@@ -1,0 +1,417 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Designer Account | AdnnStudio.com</title>
+  <link rel="icon" type="image/svg+xml" href="adnn icon.svg" />
+  <style>
+    @import url("https://fonts.cdnfonts.com/css/aileron");
+    @import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap");
+    :root {
+      --accent:#272dcf;
+      --paper:#f5f5f7;
+      --ink:#0b0b0d;
+      --muted:rgba(11,11,13,.62);
+      --line:rgba(0,0,0,.08);
+      --font-body:"Aileron", ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial, sans-serif;
+      --font-mono:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+    * { box-sizing:border-box; }
+    body {
+      margin:0;
+      min-height:100vh;
+      background:radial-gradient(circle at 78% 12%, rgba(39,45,207,.14), transparent 30%), linear-gradient(180deg,#fbfbfd,var(--paper));
+      color:var(--ink);
+      font-family:var(--font-body);
+      font-weight:300;
+      -webkit-font-smoothing:antialiased;
+      text-rendering:geometricPrecision;
+    }
+    a, button { font:inherit; }
+    .glass {
+      background:linear-gradient(135deg, rgba(255,255,255,.82), rgba(255,255,255,.56));
+      border:1px solid var(--line);
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.92), 0 22px 70px rgba(0,0,0,.08);
+      backdrop-filter:blur(24px) saturate(160%);
+      -webkit-backdrop-filter:blur(24px) saturate(160%);
+    }
+    header {
+      position:fixed;
+      top:20px;
+      left:50%;
+      transform:translateX(-50%);
+      width:min(1120px,94vw);
+      z-index:20;
+    }
+    .nav-wrap {
+      min-height:64px;
+      border-radius:28px;
+      padding:10px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      background:linear-gradient(135deg, rgba(34,34,38,.82), rgba(22,22,26,.68) 38%, rgba(14,14,18,.52));
+      border:1px solid rgba(255,255,255,.08);
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.08), 0 20px 70px rgba(0,0,0,.26);
+    }
+    .brand, .home-link {
+      height:44px;
+      border-radius:18px;
+      color:#fff;
+      display:inline-flex;
+      align-items:center;
+      text-decoration:none;
+      font-family:var(--font-mono);
+      font-size:12px;
+    }
+    .brand { padding:0 16px; background:rgba(255,255,255,.045); border:1px solid rgba(255,255,255,.06); }
+    .brand span:first-child {
+      display:grid;
+      place-items:center;
+      width:22px;
+      height:22px;
+      border-radius:7px;
+      background:#050506;
+      font-size:10px;
+      margin-right:10px;
+    }
+    .home-link { padding:0 18px; background:var(--accent); box-shadow:0 0 34px rgba(39,45,207,.36); }
+    .shell {
+      width:min(1280px, calc(100% - 48px));
+      margin:0 auto;
+      padding:132px 0 72px;
+      display:grid;
+      grid-template-columns:280px minmax(0,1fr);
+      gap:28px;
+      align-items:start;
+    }
+    aside {
+      position:sticky;
+      top:108px;
+      border-radius:28px;
+      padding:16px;
+    }
+    .profile {
+      display:grid;
+      grid-template-columns:50px 1fr;
+      gap:14px;
+      align-items:center;
+      padding:10px 10px 18px;
+      border-bottom:1px solid var(--line);
+      margin-bottom:12px;
+    }
+    .avatar {
+      width:50px;
+      height:50px;
+      border-radius:18px;
+      display:grid;
+      place-items:center;
+      color:#fff;
+      background:#272dcf;
+      font-family:var(--font-mono);
+      font-size:12px;
+      box-shadow:0 16px 40px rgba(39,45,207,.24);
+    }
+    .profile strong, .profile small {
+      display:block;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+    }
+    .profile strong { font-size:15px; font-weight:500; }
+    .profile small { margin-top:3px; color:var(--muted); font-family:var(--font-mono); font-size:11px; }
+    .side-nav { display:grid; gap:6px; }
+    .side-nav a, .side-nav button {
+      width:100%;
+      min-height:46px;
+      border:0;
+      border-radius:16px;
+      padding:0 14px;
+      display:grid;
+      grid-template-columns:22px 1fr;
+      gap:10px;
+      align-items:center;
+      color:rgba(11,11,13,.68);
+      background:transparent;
+      text-decoration:none;
+      font-family:var(--font-mono);
+      font-size:12px;
+      text-align:left;
+      cursor:pointer;
+      transition:background .2s ease, color .2s ease, transform .2s ease, box-shadow .2s ease;
+    }
+    .side-nav a:hover, .side-nav a.active, .side-nav button:hover {
+      color:#0b0b0d;
+      background:#fff;
+      transform:translateX(2px);
+      box-shadow:0 12px 28px rgba(0,0,0,.06);
+    }
+    .side-nav .logout { color:#ff2602; margin-top:10px; }
+    .side-nav .logout:hover { background:rgba(255,38,2,.08); color:#ff2602; }
+    .side-nav svg { width:20px; height:20px; }
+    main {
+      min-height:calc(100vh - 204px);
+      border-radius:34px;
+      padding:clamp(24px,4vw,54px);
+    }
+    .view { display:none; }
+    .view.active { display:block; }
+    .kicker {
+      font-family:var(--font-mono);
+      font-size:12px;
+      letter-spacing:.18em;
+      text-transform:uppercase;
+      color:var(--accent);
+      margin:0 0 18px;
+    }
+    h1 {
+      margin:0;
+      font-size:clamp(46px,6vw,86px);
+      line-height:.92;
+      letter-spacing:-.058em;
+      font-weight:400;
+    }
+    .lead {
+      max-width:680px;
+      color:var(--muted);
+      font-size:clamp(16px,1.45vw,20px);
+      line-height:1.7;
+      margin:20px 0 0;
+    }
+    .empty-card {
+      margin-top:42px;
+      min-height:260px;
+      border-radius:28px;
+      display:grid;
+      place-items:center;
+      text-align:center;
+      border:1px dashed rgba(0,0,0,.12);
+      background:rgba(255,255,255,.48);
+    }
+    .empty-card strong { display:block; font-size:26px; font-weight:400; letter-spacing:-.035em; }
+    .empty-card span { display:block; margin-top:8px; color:var(--muted); font-family:var(--font-mono); font-size:12px; }
+    .auth-gate {
+      display:none;
+      min-height:100vh;
+      place-items:center;
+      padding:24px;
+    }
+    body.locked .shell, body.locked header { display:none; }
+    body.locked .auth-gate { display:grid; }
+    .gate-card {
+      width:min(520px,100%);
+      border-radius:32px;
+      padding:34px;
+      text-align:center;
+    }
+    .gate-card h1 { font-size:clamp(38px,8vw,64px); }
+    .designer-login {
+      display:grid;
+      gap:12px;
+      margin-top:28px;
+      text-align:left;
+    }
+    .designer-login label {
+      display:grid;
+      gap:8px;
+      color:rgba(11,11,13,.62);
+      font-family:var(--font-mono);
+      font-size:11px;
+      text-transform:uppercase;
+      letter-spacing:.12em;
+    }
+    .designer-login input {
+      width:100%;
+      height:48px;
+      border:1px solid var(--line);
+      border-radius:18px;
+      padding:0 16px;
+      outline:0;
+      background:rgba(255,255,255,.68);
+      color:var(--ink);
+      font-family:var(--font-body);
+      font-size:15px;
+      letter-spacing:0;
+      text-transform:none;
+    }
+    .designer-login input:focus {
+      border-color:rgba(39,45,207,.42);
+      box-shadow:0 0 0 4px rgba(39,45,207,.08);
+    }
+    .designer-login button, .gate-card a {
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      height:48px;
+      border-radius:999px;
+      padding:0 22px;
+      background:#0b0b0d;
+      color:#fff;
+      border:0;
+      text-decoration:none;
+      font-family:var(--font-mono);
+      font-size:12px;
+      cursor:pointer;
+    }
+    .designer-login button { width:100%; margin-top:4px; }
+    .gate-card a {
+      margin-top:18px;
+      background:rgba(255,255,255,.66);
+      color:var(--ink);
+      border:1px solid var(--line);
+    }
+    .login-error {
+      min-height:18px;
+      margin:2px 0 0;
+      color:#ff2602;
+      font-family:var(--font-mono);
+      font-size:11px;
+      text-align:center;
+    }
+    @media (max-width:900px) {
+      header { top:10px; width:calc(100vw - 16px); }
+      .shell { width:calc(100% - 24px); grid-template-columns:1fr; padding-top:96px; }
+      aside { position:relative; top:auto; }
+      .side-nav { grid-template-columns:repeat(2,minmax(0,1fr)); }
+      .side-nav .logout { margin-top:0; }
+    }
+    @media (max-width:560px) {
+      .brand { max-width:calc(100vw - 160px); overflow:hidden; }
+      .home-link { padding:0 14px; }
+      main { border-radius:26px; }
+      .side-nav { grid-template-columns:1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="auth-gate">
+    <div class="gate-card glass">
+      <p class="kicker">Designer</p>
+      <h1>Designer login.</h1>
+      <p class="lead">Open the private designer workspace for assigned studio work.</p>
+      <form class="designer-login" id="designerLoginForm">
+        <label for="designerId">Designer ID
+          <input id="designerId" name="designerid" autocomplete="username" placeholder="D0001" />
+        </label>
+        <label for="designerPassword">Password
+          <input id="designerPassword" name="password" type="password" autocomplete="current-password" placeholder="Password" />
+        </label>
+        <button type="submit">Designer login</button>
+        <p class="login-error" id="designerLoginError" aria-live="polite"></p>
+      </form>
+      <a href="index.html#home">Back home</a>
+    </div>
+  </div>
+
+  <header>
+    <div class="nav-wrap">
+      <a href="index.html#home" class="brand"><span>AN</span>AdnnStudio.com</a>
+      <a href="index.html#home" class="home-link">Back home</a>
+    </div>
+  </header>
+
+  <div class="shell">
+    <aside class="glass">
+      <div class="profile">
+        <span class="avatar" id="designerAvatar">DS</span>
+        <span>
+          <strong id="designerName">Designer</strong>
+          <small id="designerEmail">Signed in</small>
+        </span>
+      </div>
+      <nav class="side-nav" aria-label="Designer navigation">
+        <a href="#tasks" data-view-link="tasks" class="active">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 7h10M8 12h10M8 17h7M4.5 7h.01M4.5 12h.01M4.5 17h.01" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+          <span>Tasks</span>
+        </a>
+        <a href="#invoice" data-view-link="invoice">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3.5h10A1.5 1.5 0 0 1 18.5 5v15.5l-2.3-1.4-2.1 1.4-2.1-1.4-2.1 1.4-2.4-1.4V5A1.5 1.5 0 0 1 7 3.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M9 8h6M9 12h6M9 16h3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          <span>Invoice</span>
+        </a>
+        <a href="#notes" data-view-link="notes">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 3.5h8.7L19 7.3v13.2H6.5v-17Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M15 3.8V8h4M9 12h6M9 16h6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span>Notes</span>
+        </a>
+        <button class="logout" type="button" id="logoutButton">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.5 5.5h-4v13h4M14 8l4 4-4 4M8.5 12H18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span>Log out</span>
+        </button>
+      </nav>
+    </aside>
+
+    <main class="glass">
+      <section id="tasks" class="view active">
+        <p class="kicker">Designer Tasks</p>
+        <h1>Tasks</h1>
+        <p class="lead">Assigned design work, uploads, and studio deadlines will appear here.</p>
+        <div class="empty-card"><span><strong>No ongoing task</strong><span>Nothing has been assigned yet.</span></span></div>
+      </section>
+      <section id="invoice" class="view">
+        <p class="kicker">Designer Invoice</p>
+        <h1>Invoice</h1>
+        <p class="lead">Designer payment records and invoice notes will appear here once added.</p>
+        <div class="empty-card"><span><strong>Nothing here</strong><span>No invoice has been added yet.</span></span></div>
+      </section>
+      <section id="notes" class="view">
+        <p class="kicker">Studio Notes</p>
+        <h1>Notes</h1>
+        <p class="lead">Internal studio instructions and designer references will appear here.</p>
+        <div class="empty-card"><span><strong>No notes yet</strong><span>The workspace is ready.</span></span></div>
+      </section>
+    </main>
+  </div>
+
+  <script src="designer-users.js"></script>
+  <script>
+    const userKey = "adnnDesignerUser";
+    function getUser() {
+      try { return JSON.parse(localStorage.getItem(userKey) || "null"); } catch { return null; }
+    }
+    function hydrateUser() {
+      const user = getUser();
+      document.body.classList.toggle("locked", !user);
+      if (!user) return;
+      document.getElementById("designerName").textContent = user.name || "Designer";
+      document.getElementById("designerEmail").textContent = user.email || "Signed in";
+      document.getElementById("designerAvatar").textContent = (user.name || user.designerid || "DS").trim().slice(0,2).toUpperCase();
+    }
+    function setView(view) {
+      const selected = ["tasks", "invoice", "notes"].includes(view) ? view : "tasks";
+      document.querySelectorAll(".view").forEach((section) => section.classList.toggle("active", section.id === selected));
+      document.querySelectorAll("[data-view-link]").forEach((link) => link.classList.toggle("active", link.dataset.viewLink === selected));
+      if (location.hash.replace("#", "") !== selected) history.replaceState(null, "", `#${selected}`);
+    }
+    function loginDesigner(event) {
+      event.preventDefault();
+      const id = document.getElementById("designerId").value.trim();
+      const password = document.getElementById("designerPassword").value;
+      const error = document.getElementById("designerLoginError");
+      const users = Array.isArray(window.ADNN_DESIGNER_USERS) ? window.ADNN_DESIGNER_USERS : [];
+      const designer = users.find((item) => String(item.designerid) === id && String(item.password) === password);
+      if (!designer) {
+        error.textContent = "Designer ID or password is incorrect.";
+        return;
+      }
+      localStorage.setItem(userKey, JSON.stringify({
+        name: designer.name || `Designer ${designer.designerid}`,
+        email: designer.email || `designer${designer.designerid}@adnnstudio.com`,
+        role: "designer",
+        designerid: designer.designerid
+      }));
+      error.textContent = "";
+      hydrateUser();
+      setView(location.hash.replace("#", "") || "tasks");
+    }
+    function logout() {
+      localStorage.removeItem(userKey);
+      location.href = "index.html#home";
+    }
+    document.getElementById("designerLoginForm")?.addEventListener("submit", loginDesigner);
+    document.getElementById("logoutButton")?.addEventListener("click", logout);
+    addEventListener("hashchange", () => setView(location.hash.replace("#", "")));
+    hydrateUser();
+    setView(location.hash.replace("#", ""));
+  </script>
+</body>
+</html>

@@ -405,6 +405,12 @@
       object-fit:cover;
       filter:grayscale(.76) contrast(1.16) brightness(.86);
       transition:filter .45s ease, transform .7s cubic-bezier(.16,1,.3,1);
+      
+      /* Prevents mobile touch engines from lifting the sharp image out of its curved mask container */
+      pointer-events: none !important; 
+      user-select: none !important;
+      -webkit-user-drag: none !important;
+      -webkit-touch-callout: none !important;
     }
     .portfolio-card-ref.is-center img,
     .portfolio-card-ref:hover img { transform:scale(1.045); filter:grayscale(.04) contrast(1.14) saturate(1.1) brightness(.92); }
@@ -3356,6 +3362,13 @@
   html, body { width:100%; max-width:100%; overflow-x:hidden !important; }
   img, video, iframe, canvas, svg { max-width:100%; }
   @media (max-width:980px) {
+    /* Instantly drops out interactive background dots and ripple waves from mobile viewports */
+    .cursor-dots, .cursor-dots::before, .cursor-dots::after, .cursor-click-wave, .cursor-click-wave::before, .cursor-click-wave::after { 
+      display: none !important; 
+      opacity: 0 !important; 
+      visibility: hidden !important; 
+      pointer-events: none !important; 
+    }
     main, section, footer, .hero-grid, .portfolio-grid, .connect-grid, .projects-head, .subcards, .tiles, .report, .client-stat-panel, .portfolio-reference-head, .portfolio-cta-mini, .studio-film-wrap, .studio-film-header, .site-search-box {
       max-width:100% !important; min-width:0 !important; box-sizing:border-box !important;
     }
@@ -3433,6 +3446,19 @@
     .about-video-box { max-width: clamp(260px, 65vw, 380px) !important; margin-top: 12px !important; }
   }
   @media (max-width: 560px) {
+    /* Enforces natural line wrapping to keep high-end editorial headings perfectly within the right viewport boundary edge */
+    #about h2.big { 
+      white-space: normal !important; 
+      word-break: break-word !important;
+      /* Increased the size range from 34px-48px up to 44px-64px for a giant, premium look */
+      font-size: clamp(44px, 13vw, 64px) !important;
+      line-height: 0.92 !important; /* Tightens line tracking for a clean look at large sizes */
+      letter-spacing: -0.05em !important;
+    }
+    /* Completely drops the video block layout from rendering on mobile screen widths */
+    #about .about-video-box {
+      display: none !important;
+    }
     section:not(#portfolio), footer { padding-left:16px !important; padding-right:16px !important; }
     .studio-film { padding-left:0 !important; padding-right:0 !important; }
     .hero-grid { gap:28px !important; }

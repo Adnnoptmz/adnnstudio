@@ -3,7 +3,13 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>AdnnStudio.com</title>
+  <title>adnnstudio.com</title>
+  <!-- Main Browser Tab Favicon Asset Definition -->
+  <link rel="icon" type="image/svg+xml" href="adnn icon.svg" />
+  <!-- Touch Device Homescreen Bookmark Icon Shortcut (Handles your crisp 180x180px footprint perfectly) -->
+  <link rel="apple-touch-icon" sizes="180x180" href="adnn icon.svg" />
+  <!-- Premium Vector Safe Pin Mask Accent -->
+  <link rel="mask-icon" href="adnn icon.svg" color="#272dcf" />
   <style>
     /*
       CSS EDIT MAP - change these values later if needed:
@@ -974,12 +980,26 @@
 
    /* Tablet: reduce travel and add enough vertical room */
     @media (max-width: 980px) {
-      #portfolio.reference-style { padding-bottom: 120px !important; }
-      #portfolio .reference-slider-shell { height: 530px !important; padding-bottom: 140px !important; margin-top: 18px !important; overflow: visible !important; }
+      /* Snaps the section height down to remove the large gaps on tablet/iPad */
+      #portfolio.reference-style { 
+        padding-top: 24px !important; 
+        padding-bottom: 10px !important; 
+      }
+      /* Shaves down excess inner padding and container shell height */
+      #portfolio .reference-slider-shell { 
+        height: 440px !important; 
+        padding-bottom: 20px !important; 
+        margin-top: 12px !important; 
+        overflow: visible !important; 
+      }
       #portfolio .portfolio-card-ref { width: min(58vw, 270px) !important; height: min(390px, 58vw) !important; transform: translate(-50%,-50%) translateX(calc(var(--offset) * clamp(104px, 18vw, 152px))) translateY(calc(var(--lift) * .72)) rotateY(calc(var(--offset) * -15deg)) scale(calc(1 - var(--abs) * .115)) !important; }
       #portfolio.portfolio-revealed .portfolio-card-ref { transform: translate(-50%,-50%) translateX(calc(var(--offset) * clamp(104px, 18vw, 152px))) translateY(calc(var(--lift) * .72)) rotateY(calc(var(--offset) * -15deg)) scale(calc(1 - var(--abs) * .115)) !important; }
-      #portfolio .portfolio-slider-controls { bottom: -10px !important; }
-      #portfolio .portfolio-cta-mini { margin-top: 56px !important; }
+      #portfolio .portfolio-slider-controls { bottom: -15px !important; }
+      /* Squeezes out the massive dead space under the carousel */
+      #portfolio .portfolio-cta-mini { 
+        margin-top: 24px !important; 
+        margin-bottom: 0px !important;
+      }
     }
 
     /* Mobile: fit all cards inside viewport width and prevent bottom crop */
@@ -2122,15 +2142,51 @@
             <path d="m15.65 15.65 4.15 4.15" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round"/>
           </svg>
         </button>
-        <button class="login glass edge" type="button" aria-label="Login with Google" onclick="startGoogleLogin()">
-          <svg class="google-mark" viewBox="0 0 48 48" aria-hidden="true">
-            <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-            <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
-            <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24s.92 7.54 2.56 10.78l7.97-6.19z"/>
-            <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
-          </svg>
-          <span class="login-text">login</span>
-        </button>
+        <div class="account-menu-wrap" id="accountMenuWrap">
+          <button class="login glass edge" type="button" aria-label="Log in" aria-haspopup="true" aria-expanded="false">
+            <span class="login-text">log in</span>
+          </button>
+          
+          <div class="login-choice-popover glass edge" id="loginChoicePopover" aria-label="Login options">
+            <button type="button" onclick="startGoogleLogin()">
+              <svg class="google-mark" viewBox="0 0 48 48" aria-hidden="true">
+                <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+                <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+                <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24s.92 7.54 2.56 10.78l7.97-6.19z"/>
+                <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+              </svg>
+              <span>Google login</span>
+            </button>
+            <a href="designer-account.html">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 20 8v8l-8 4.5L4 16V8l8-4.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M12 12.2 20 8M12 12.2 4 8M12 12.2v8.3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <span>Designer login</span>
+            </a>
+          </div>
+
+          <div class="account-popover glass edge" id="accountPopover" aria-label="Account menu">
+            <div class="account-popover-head">
+              <span class="account-avatar" id="accountMenuAvatar">AN</span>
+              <span><strong id="accountMenuName">Workspace</strong><small id="accountMenuEmail">Active Session</small></span>
+            </div>
+            <a href="account.html#tasks" id="universalTaskLink">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 7h10M8 12h10M8 17h7M4.5 7h.01M4.5 12h.01M4.5 17h.01" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+              <span>Tasks</span>
+            </a>
+            <a href="account.html#invoice" id="universalInvoiceLink">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3.5h10A1.5 1.5 0 0 1 18.5 5v15.5l-2.3-1.4-2.1 1.4-2.1-1.4-2.1 1.4-2.4-1.4V5A1.5 1.5 0 0 1 7 3.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M9 8h6M9 12h6M9 16h3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+              <span>Invoice</span>
+            </a>
+            <a href="account.html#terms">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 3.5h8.7L19 7.3v13.2H6.5v-17Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M15 3.8V8h4M9 12h6M9 16h6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <span>Terms & Privacy</span>
+            </a>
+            <button class="account-logout" type="button" onclick="logoutGoogleAccount(event)">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.5 5.5h-4v13h4M14 8l4 4-4 4M8.5 12H18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <span>Log out</span>
+            </button>
+          </div>
+
+        </div>
       </div>
     </div>
   </header>
@@ -2194,10 +2250,6 @@
               <span class="live-pulse-ball red"></span><span class="pill-title">3d designing</span>
             </button>
           </div>
-        </div>
-        <div class="visual">
-          <div class="pixels"><span></span><span>盛</span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
-          <h2>Creative systems with a pulse.</h2>
         </div>
       </div>
       <div class="home-scroll-indicator" aria-hidden="true">
@@ -2469,7 +2521,41 @@
 	      <path d="M12 19V5m0 0-6.25 6.25M12 5l6.25 6.25" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
 	    </svg>
 	  </a>
-	  <script>
+		  <script type="importmap">
+			{
+			  "imports": {
+				"firebase/app": "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js",
+				"firebase/analytics": "https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js"
+			  }
+			}
+		  </script>
+
+		  <script type="module">
+			import { initializeApp } from "firebase/app";
+			import { getAnalytics, logEvent } from "firebase/analytics";
+
+			// Your Verified Live Studio Web Application Configurations
+			const firebaseConfig = {
+			  apiKey: "AIzaSyChrcjNZdMZ1QehOSDsyWO2jeArnZ1AgCk",
+			  authDomain: "adnnstudio-ffdc7.firebaseapp.com",
+			  projectId: "adnnstudio-ffdc7",
+			  storageBucket: "adnnstudio-ffdc7.firebasestorage.app",
+			  messagingSenderId: "525462599967",
+			  appId: "1:525462599967:web:51bfcb3cf5f1af629ad82a",
+			  measurementId: "G-D6HWQB9V0M"
+			};
+
+			// Initialize Active Production Infrastructure
+			const app = initializeApp(firebaseConfig);
+			const analytics = getAnalytics(app);
+
+			// Track generic initial site entry view smoothly
+			logEvent(analytics, 'page_view_studio');
+			console.log("Firebase system core successfully operational.");
+		  </script>
+
+		  <script src="auth-config.js"></script>
+		  <script>
 	    (function() {
 	      const backToTopBtn = document.getElementById("backToTopBtn");
 	      const homeSection = document.getElementById("home");
@@ -2881,7 +2967,7 @@
     
     setTimeout(syncStudioVideoControls, 300);
   }
-  window.GOOGLE_CLIENT_ID = "PASTE_YOUR_GOOGLE_CLIENT_ID_HERE";
+  window.GOOGLE_CLIENT_ID = window.GOOGLE_CLIENT_ID || "PASTE_YOUR_GOOGLE_CLIENT_ID_HERE";
 
   /* Mouse Coordinate Tracking Engine */
   const cursorDots = document.querySelector(".cursor-dots");
@@ -2958,17 +3044,69 @@
   }
 
   function renderGoogleUser() {
-    const user = getSavedGoogleUser();
-    if (!user) return;
+    const googleUser = getSavedGoogleUser();
+    let designerUser = null;
+    try { 
+      designerUser = JSON.parse(localStorage.getItem("adnnDesignerUser") || "null"); 
+    } catch(e) { designerUser = null; }
+
+    const activeUser = googleUser || designerUser;
+    
+    // Set explicit functional body state classes to hook into our smart layout css blocks
+    document.body.classList.toggle("has-active-session", Boolean(activeUser));
+    document.body.classList.toggle("session-is-designer", Boolean(designerUser && !googleUser));
+    
+    if (!activeUser) {
+      document.querySelectorAll(".login .login-text").forEach((label) => {
+        label.textContent = "log in";
+      });
+      document.querySelectorAll(".google-continue span").forEach((label) => {
+        label.textContent = "Create / access account";
+      });
+      return;
+    }
+
+    const isDesigner = designerUser && !googleUser;
+    const shortDisplay = isDesigner ? (activeUser.name || "Designer") : (activeUser.name ? activeUser.name.split(" ")[0] : "account");
+    const fullEmailStr = isDesigner ? (activeUser.email || "Private Workspace") : (activeUser.email || "Signed in");
+    const initialAvatarStr = isDesigner ? "DS" : ((activeUser.name || activeUser.email || "AN").trim().slice(0, 2).toUpperCase());
+
+    // Auto-rewrite destination navigation routing parameters for matching active workspace files
+    const taskLink = document.getElementById("universalTaskLink");
+    const invoiceLink = document.getElementById("universalInvoiceLink");
+    
+    if (taskLink) {
+      taskLink.setAttribute("href", isDesigner ? "designer-account.html#tasks" : "account.html#tasks");
+    }
+    if (invoiceLink) {
+      invoiceLink.setAttribute("href", isDesigner ? "designer-account.html#invoice" : "account.html#invoice");
+    }
+
     document.querySelectorAll(".login .login-text").forEach((label) => {
-      label.textContent = user.name ? user.name.split(" ")[0] : "account";
+      label.textContent = shortDisplay.toLowerCase();
     });
+    
     document.querySelectorAll(".google-continue span").forEach((label) => {
-      label.textContent = user.name ? `Continue as ${user.name.split(" ")[0]}` : "Continue with account";
+      label.textContent = `continue as ${shortDisplay.toLowerCase()}`;
     });
+
+    const accountName = document.getElementById("accountMenuName");
+    const accountEmail = document.getElementById("accountMenuEmail");
+    const accountAvatar = document.getElementById("accountMenuAvatar");
+    
+    if (accountName) accountName.textContent = activeUser.name || "Workspace";
+    if (accountEmail) accountEmail.textContent = fullEmailStr;
+    if (accountAvatar) {
+      accountAvatar.textContent = initialAvatarStr;
+      accountAvatar.style.backgroundImage = (!isDesigner && activeUser.picture) ? `url("${activeUser.picture}")` : "";
+    }
   }
 
   window.startGoogleLogin = function startGoogleLogin() {
+    if (getSavedGoogleUser()) {
+      location.href = "account.html#tasks";
+      return;
+    }
     if (!window.GOOGLE_CLIENT_ID || window.GOOGLE_CLIENT_ID === "PASTE_YOUR_GOOGLE_CLIENT_ID_HERE") {
       alert("Google login is ready to connect. Add your Google OAuth Client ID first, then this button will send visitors to Google and return them to your website.");
       return;
@@ -3000,6 +3138,13 @@
     }));
     renderGoogleUser();
     alert(`Welcome ${profile.name || "back"}. Your account is connected to this website preview.`);
+  };
+
+  window.logoutGoogleAccount = function logoutGoogleAccount(event) {
+    if (event) event.preventDefault();
+    localStorage.removeItem("adhnanPortfolioUser");
+    localStorage.removeItem("adnnDesignerUser"); // Wipes custom designer keys safely
+    renderGoogleUser();
   };
 
   finishGoogleLogin().catch(() => {
@@ -3616,6 +3761,160 @@
 <style>
 /* CSS EDIT MAP - Hero overflow safety. Change only if headline edges are clipped. */
 .hero,.hero-content,.hero-text,.hero h1,.hero-title{overflow:visible !important;padding-left:12px !important;padding-right:12px !important;}
+</style>
+<style id="account-menu-polish">
+  .account-menu-wrap {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    order: 2;
+  }
+  .account-menu-wrap .login {
+    min-width: 74px;
+    justify-content: center;
+  }
+  .account-menu-wrap .login .login-text {
+    display: inline !important;
+  }
+  .account-popover,
+  .login-choice-popover {
+    position: absolute;
+    top: calc(100% + 8px); /* Nudges the box slightly up closer to the navbar tracking line */
+    right: 0;
+    width: 260px;
+    padding: 10px;
+    border-radius: 22px;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-6px) scale(.98);
+    display: grid; /* Keep grid display persistent so the transition engine can calculate calculations */
+    z-index: 90;
+    /* Spring ease transition curve matching Apple production mechanics */
+    transition: opacity 0.28s ease, transform 0.32s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.28s ease;
+    pointer-events: none;
+  }
+
+  /* The Invisible Pointer Bridge: Closes the gap between menu and pill so mouse movement never breaks the hover */
+  .account-menu-wrap::before {
+    content: "";
+    position: absolute;
+    top: 30px;
+    right: 0;
+    width: 100%;
+    height: 24px;
+    background: transparent;
+    z-index: 85;
+    pointer-events: none;
+  }
+  .account-menu-wrap:hover::before {
+    pointer-events: auto;
+  }
+
+  /* Trigger States: Smooth entry transitions with an intentional safety buffer */
+  .account-menu-wrap:hover .login-choice-popover,
+  .account-menu-wrap:focus-within .login-choice-popover,
+  .account-menu-wrap:hover .account-popover,
+  .account-menu-wrap:focus-within .account-popover {
+    opacity: 1 !important;
+    visibility: visible !important;
+    transform: translateY(0) scale(1) !important;
+    pointer-events: auto !important;
+  }
+
+  /* Structural configuration rule overrides to completely separate Client and Designer menus when logged in */
+  body.has-active-session:not(.session-is-designer) .login-choice-popover,
+  body.has-active-session.session-is-designer .login-choice-popover,
+  body:not(.has-active-session) .account-popover {
+    display: none !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+  body.has-active-session.session-is-designer .account-popover,
+  body.has-active-session:not(.session-is-designer) .account-popover {
+    display: grid !important;
+  }
+  .login-choice-popover {
+    gap: 4px;
+  }
+  .account-popover-head {
+    display: grid;
+    grid-template-columns: 38px 1fr;
+    gap: 12px;
+    align-items: center;
+    padding: 8px 8px 12px;
+    border-bottom: 1px solid rgba(255,255,255,.1);
+    margin-bottom: 6px;
+  }
+  .account-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 14px;
+    display: grid;
+    place-items: center;
+    background: #272dcf center / cover no-repeat;
+    color: #fff;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 14px 32px rgba(39,45,207,.22);
+  }
+  .account-popover-head strong,
+  .account-popover-head small {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .account-popover-head strong { color: #fff; font-size: 13px; font-weight: 500; }
+  .account-popover-head small { color: rgba(255,255,255,.58); font-family: var(--font-mono); font-size: 10px; margin-top: 2px; }
+  .account-popover a,
+  .account-popover button,
+  .login-choice-popover a,
+  .login-choice-popover button {
+    width: 100%;
+    height: 42px;
+    border: 0;
+    border-radius: 15px;
+    display: grid;
+    grid-template-columns: 20px 1fr;
+    align-items: center;
+    gap: 10px;
+    padding: 0 12px;
+    color: rgba(255,255,255,.78);
+    background: transparent;
+    text-decoration: none;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    text-align: left;
+    cursor: pointer;
+    transition: background .18s ease, color .18s ease, transform .18s ease;
+  }
+  .account-popover a:hover,
+  .account-popover button:hover,
+  .login-choice-popover a:hover,
+  .login-choice-popover button:hover {
+    color: #fff;
+    background: rgba(255,255,255,.08);
+    transform: translateX(2px);
+  }
+  .account-popover svg,
+  .login-choice-popover svg { width: 18px; height: 18px; }
+  .login-choice-popover .google-mark { width: 17px; height: 17px; }
+  .account-popover .account-logout { color: #ff4d4d; margin-top: 4px; }
+  .account-popover .account-logout:hover { color: #ff6b6b; background: rgba(255,38,2,.1); }
+  @media (max-width: 680px) {
+    .account-menu-wrap .login {
+      width: auto !important;
+      min-width: 70px;
+      padding: 0 14px !important;
+    }
+    .account-popover,
+    .login-choice-popover {
+      right: -44px;
+      width: min(260px, calc(100vw - 24px));
+    }
+  }
 </style>
 </body>
 </html>

@@ -3193,17 +3193,19 @@
       location.href = "account.html#tasks";
       return;
     }
-	    if (!window.GOOGLE_CLIENT_ID) {
-	      alert("Google login is ready to connect. Add your Google OAuth Client ID in auth-config.js first.");
-	      return;
-	    }
-    const params = new URLSearchParams({
-      client_id: window.GOOGLE_CLIENT_ID,
-      redirect_uri: `${location.origin}${location.pathname}`,
-      response_type: "token",
-      scope: "openid email profile",
-      prompt: "select_account",
-    });
+		    if (!window.GOOGLE_CLIENT_ID) {
+		      alert("Google login is ready to connect. Add your Google OAuth Client ID in auth-config.js first.");
+		      return;
+		    }
+	    const redirectUri = window.GOOGLE_REDIRECT_URI || `${location.origin}${location.pathname}`;
+	    const params = new URLSearchParams({
+	      client_id: window.GOOGLE_CLIENT_ID,
+	      redirect_uri: redirectUri,
+	      response_type: "token",
+	      scope: "openid email profile",
+	      prompt: "select_account",
+	      state: "account",
+	    });
     location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
   };
 
@@ -3217,14 +3219,15 @@
       headers: { Authorization: `Bearer ${accessToken}` },
     });
     const profile = await response.json();
-    localStorage.setItem("adhnanPortfolioUser", JSON.stringify({
-      name: profile.name,
-      email: profile.email,
-      picture: profile.picture,
-    }));
-    renderGoogleUser();
-    alert(`Welcome ${profile.name || "back"}. Your account is connected to this website preview.`);
-  };
+	    localStorage.setItem("adhnanPortfolioUser", JSON.stringify({
+	      name: profile.name,
+	      email: profile.email,
+	      picture: profile.picture,
+	      role: "client",
+	    }));
+	    renderGoogleUser();
+	    location.href = "account.html#tasks";
+	  };
 
   window.logoutGoogleAccount = function logoutGoogleAccount(event) {
     if (event) event.preventDefault();

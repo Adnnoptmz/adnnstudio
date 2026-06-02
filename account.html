@@ -58,28 +58,37 @@
       border:1px solid rgba(255,255,255,.08);
       box-shadow:inset 0 1px 0 rgba(255,255,255,.08), 0 20px 70px rgba(0,0,0,.26);
     }
-    .brand, .home-link {
-      height:44px;
-      border-radius:18px;
-      color:#fff;
-      display:inline-flex;
-      align-items:center;
-      text-decoration:none;
-      font-family:var(--font-mono);
-      font-size:12px;
+    .brand-logo-wrap {
+      display: inline-flex;
+      align-items: center;
+      height: 44px;
+      padding: 0;
+      text-decoration: none;
+      cursor: pointer;
     }
-    .brand { padding:0 16px; background:rgba(255,255,255,.045); border:1px solid rgba(255,255,255,.06); }
-    .brand span:first-child {
-      display:grid;
-      place-items:center;
-      width:22px;
-      height:22px;
-      border-radius:7px;
-      background:#050506;
-      font-size:10px;
-      margin-right:10px;
+    .brand-logo-img {
+      height: 46px;
+      width: auto;
+      display: block;
+      object-fit: contain;
+      transform: translateY(-1px);
     }
-    .home-link { padding:0 18px; background:var(--accent); box-shadow:0 0 34px rgba(39,45,207,.36); }
+    .home-link { 
+      width: 44px; 
+      height: 44px;
+      border-radius: 50%; 
+      display: inline-flex; 
+      align-items: center; 
+      justify-content: center; 
+      background: var(--accent); 
+      color: #fff; 
+      box-shadow: 0 0 34px rgba(39,45,207,.36); 
+      transition: background 0.25s ease, transform 0.25s ease;
+    }
+    .home-link:hover {
+      background: #1e23b0;
+      transform: translateY(-1px);
+    }
     .shell {
       width:min(1280px, calc(100% - 48px));
       margin:0 auto;
@@ -302,8 +311,12 @@
 
   <header>
     <div class="nav-wrap">
-      <a href="index.html#home" class="brand"><span>AN</span>AdnnStudio.com</a>
-      <a href="index.html#home" class="home-link">Back home</a>
+      <a href="index.html#home" class="brand-logo-wrap" aria-label="Adnn Studio Home">
+        <img src="adnn icon.svg" alt="Adnn Studio Icon Logo" class="brand-logo-img">
+      </a>
+      <button class="home-link" type="button" id="headerLogoutButton" aria-label="Log out" title="Log out" style="border: 0; cursor: pointer; padding: 0;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px; display: block;"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+      </button>
     </div>
   </header>
 
@@ -311,10 +324,10 @@
     <aside class="glass">
       <div class="profile">
         <span class="avatar" id="accountAvatar">AN</span>
-        <span>
-          <strong id="accountName">Account</strong>
+        <div style="min-width: 0; flex: 1;">
+          <div id="accountName" contenteditable="true" style="font-size: 15px; font-weight: 500; color: var(--ink); outline: none; border-bottom: 1px dashed rgba(0,0,0,0.15); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer;" title="Click text directly to edit name">Account</div>
           <small id="accountEmail">Signed in</small>
-        </span>
+        </div>
       </div>
       <nav class="side-nav" aria-label="Account navigation">
         <a href="#tasks" data-view-link="tasks" class="active">
@@ -329,10 +342,6 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 3.5h8.7L19 7.3v13.2H6.5v-17Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M15 3.8V8h4M9 12h6M9 16h6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
           <span>Terms & Privacy</span>
         </a>
-        <button class="logout" type="button" id="logoutButton">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.5 5.5h-4v13h4M14 8l4 4-4 4M8.5 12H18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          <span>Log out</span>
-        </button>
       </nav>
     </aside>
 
@@ -447,7 +456,6 @@
   <script src="auth-config.js"></script>
   <script>
     const userKey = "adhnanPortfolioUser";
-    window.GOOGLE_CLIENT_ID = window.GOOGLE_CLIENT_ID || "PASTE_YOUR_GOOGLE_CLIENT_ID_HERE";
     function getUser() {
       try { return JSON.parse(localStorage.getItem(userKey) || "null"); } catch { return null; }
     }
@@ -455,14 +463,43 @@
       const user = getUser();
       document.body.classList.toggle("locked", !user);
       if (!user) return;
-      const name = document.getElementById("accountName");
-      const email = document.getElementById("accountEmail");
-      const avatar = document.getElementById("accountAvatar");
-      if (name) name.textContent = user.name || "Account";
-      if (email) email.textContent = user.email || "Signed in";
-      if (avatar) {
-        avatar.textContent = (user.name || user.email || "AN").trim().slice(0, 2).toUpperCase();
-        avatar.style.backgroundImage = user.picture ? `url("${user.picture}")` : "";
+      
+      const customizedName = localStorage.getItem("customClientName") || user.name || "Account";
+      
+      const nameNode = document.getElementById("accountName");
+      if (nameNode) nameNode.textContent = customizedName;
+      
+      const emailNode = document.getElementById("accountEmail");
+      if (emailNode) emailNode.textContent = user.email || "Signed in";
+      
+      const avatarNode = document.getElementById("accountAvatar");
+      if (avatarNode) {
+        avatarNode.textContent = customizedName.trim().slice(0, 2).toUpperCase();
+        avatarNode.style.backgroundImage = user.picture ? `url("${user.picture}")` : "";
+      }
+
+      if (nameNode) {
+        nameNode.onblur = null;
+        nameNode.onkeydown = null;
+
+	        nameNode.addEventListener("blur", () => {
+	          let textVal = nameNode.textContent.trim();
+	          if (!textVal) textVal = user.name || "Account";
+	          nameNode.textContent = textVal;
+	          localStorage.setItem("customClientName", textVal);
+	          user.name = textVal;
+	          localStorage.setItem(userKey, JSON.stringify(user));
+	          if (avatarNode && !user.picture) {
+	            avatarNode.textContent = textVal.trim().slice(0, 2).toUpperCase();
+	          }
+        });
+
+        nameNode.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            nameNode.blur();
+          }
+        });
       }
     }
     function setView(view) {
@@ -477,8 +514,8 @@
     }
     window.startGoogleLogin = function startGoogleLogin() {
       const error = document.getElementById("googleLoginError");
-      if (!window.GOOGLE_CLIENT_ID || window.GOOGLE_CLIENT_ID === "PASTE_YOUR_GOOGLE_CLIENT_ID_HERE") {
-        if (error) error.textContent = "Add your Google OAuth Client ID first.";
+      if (!window.GOOGLE_CLIENT_ID) {
+        if (error) error.textContent = "Add your Google OAuth Client ID in auth-config.js first.";
         return;
       }
       const params = new URLSearchParams({
@@ -508,7 +545,7 @@
       hydrateUser();
       setView("tasks");
     }
-    document.getElementById("logoutButton")?.addEventListener("click", logout);
+    document.getElementById("headerLogoutButton")?.addEventListener("click", logout);
     addEventListener("hashchange", () => setView(location.hash.replace("#", "")));
     finishGoogleLogin().catch(() => {
       const error = document.getElementById("googleLoginError");

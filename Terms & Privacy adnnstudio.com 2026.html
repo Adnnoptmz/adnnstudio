@@ -1,0 +1,851 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Terms & Privacy | AdnnStudio.com</title>
+  <link rel="icon" type="image/svg+xml" href="adnn icon.svg" />
+  <link rel="apple-touch-icon" sizes="180x180" href="adnn icon.svg" />
+  <link rel="mask-icon" href="adnn icon.svg" color="#272dcf" />
+  <style>
+    @import url("https://fonts.cdnfonts.com/css/aileron");
+    @import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap");
+
+    /* Core Apple-Inspired Variables inherited directly from Main Site Design */
+    :root {
+      --accent: #272dcf;
+      --bg: #050506;
+      --paper: #f5f5f7;
+      --white-panel: #ffffff;
+      --ink: #0b0b0d;
+      --text-muted: rgba(11, 11, 13, 0.68);
+      --border-light: rgba(0, 0, 0, 0.08);
+      --font-body: "Aileron", ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial, sans-serif;
+      --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: var(--font-body);
+      font-weight: 300;
+      background: var(--paper);
+      color: var(--ink);
+      font-size: 16px;
+      line-height: 1.65;
+      letter-spacing: -0.012em;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: geometricPrecision;
+    }
+
+    ::selection { background: #ff6b35; color: #fff; }
+
+    /* Frosted Glass Black Navbar Styling - Exact structural duplicate from Main Layout */
+    header {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: min(1120px, 94vw);
+      z-index: 100;
+    }
+
+    .nav-wrap {
+      border-radius: 28px;
+      padding: 10px;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 12px;
+      align-items: center;
+      background: linear-gradient(135deg, rgba(34,34,38,.82), rgba(22,22,26,.68) 38%, rgba(14,14,18,.52));
+      backdrop-filter: blur(26px) saturate(160%);
+      -webkit-backdrop-filter: blur(26px) saturate(160%);
+      border: 1px solid rgba(255,255,255,.08);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.08), inset 0 -12px 35px rgba(255,255,255,.03), 0 20px 70px rgba(0,0,0,.34);
+    }
+
+    .brand-logo-wrap {
+      display: inline-flex;
+      align-items: center;
+      height: 44px;
+      padding: 0;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .brand-logo-img {
+      height: 46px;
+      width: auto;
+      display: block;
+      object-fit: contain;
+      transform: translateY(-1px);
+    }
+    .topnav {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+    }
+    .topnav .cta-mail-icon {
+      width: 44px !important;
+      height: 44px !important;
+      border-radius: 50% !important;
+      color: #fff !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      background: var(--accent) !important;
+      border: 0 !important;
+      box-shadow: 0 0 34px rgba(39,45,207,.36) !important;
+      transition: background 0.25s ease, transform 0.25s ease !important;
+    }
+    .topnav .cta-mail-icon:hover {
+      background: #1e23b0 !important;
+      transform: translateY(-1px) !important;
+    }
+    @media (min-width: 761px) {
+      .brand-logo-wrap { grid-column: 1; justify-self: start; }
+      .topnav { grid-column: 3; justify-self: end; }
+    }
+
+    /* Layout Content Shell Wrapper Framework */
+    .page {
+      width: min(1280px, calc(100% - 48px));
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 320px;
+      gap: clamp(40px, 5vw, 72px);
+      padding: 154px 0 92px;
+    }
+
+    .breadcrumb {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      margin-bottom: 24px;
+    }
+
+    .breadcrumb a { color: inherit; text-decoration: none; }
+    .breadcrumb span.sep { color: var(--accent); font-weight: 500; }
+
+    h1, .legal-content h2 {
+      font-family: var(--font-body);
+      font-weight: 400;
+      letter-spacing: -0.055em;
+      line-height: .92;
+      margin: 0;
+    }
+
+    h1 {
+      font-size: clamp(44px, 5.2vw, 72px);
+      color: var(--ink);
+      margin-bottom: 16px;
+    }
+
+    .updated {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: clamp(48px, 6vw, 68px);
+    }
+
+    /* Core Document Copy Formatting */
+    .legal-content { max-width: 860px; }
+    .legal-content section { scroll-margin-top: 104px; margin: 0 0 56px; }
+    
+    .legal-content h2 {
+      font-size: clamp(28px, 2.8vw, 42px);
+      margin: 0 0 20px;
+      color: var(--ink);
+    }
+
+    .legal-content p, .legal-content li {
+      font-size: clamp(16px, 1.2vw, 18px);
+      color: var(--text-muted);
+      font-weight: 300;
+      line-height: 1.65;
+    }
+
+    .legal-content p { margin: 0 0 18px; }
+    .legal-content ol, .legal-content ul { margin: 0 0 28px; padding-left: 24px; }
+    .legal-content ol li { margin-bottom: 12px; }
+    .legal-content ol li::marker { font-family: var(--font-mono); font-size: 14px; color: var(--ink); }
+    .legal-content strong { color: var(--ink); font-weight: 500; }
+
+    /* Apple-Style Light Informational Panels */
+    .callout {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 16px;
+      align-items: start;
+      margin: 32px 0;
+      padding: 22px 26px;
+      border-radius: 20px;
+      background: var(--white-panel);
+      border: 1px solid var(--border-light);
+      box-shadow: 0 16px 46px rgba(0,0,0,.045);
+    }
+
+    .callout-icon {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      display: grid;
+      place-items: center;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      line-height: 1;
+      margin-top: 2px;
+    }
+
+    .callout p { margin: 0; font-size: 15px; color: var(--ink); font-weight: 400; }
+
+    /* Page Navigation Sidebar Links */
+    .side {
+      position: sticky;
+      top: 112px;
+      height: calc(100vh - 140px);
+      align-self: start;
+      overflow: auto;
+      padding-right: 8px;
+    }
+
+    .searchbox {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      height: 52px;
+      border-radius: 18px;
+      padding: 0 18px;
+      border: 1px solid var(--border-light);
+      background: var(--white-panel);
+      box-shadow: 0 8px 24px rgba(0,0,0,.02);
+      margin-bottom: 28px;
+    }
+
+    .searchbox svg { width: 18px; height: 18px; flex: 0 0 auto; color: var(--ink); opacity: 0.4; }
+    .searchbox input {
+      width: 100%;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      font-family: var(--font-body);
+      font-size: 14px;
+      color: var(--ink);
+    }
+    .searchbox input::placeholder { color: var(--ink); opacity: 0.35; }
+
+    .toc {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: grid;
+      gap: 3px;
+    }
+
+    .toc a {
+      display: block;
+      padding: 10px 14px;
+      border-radius: 10px;
+      color: var(--ink);
+      opacity: 0.7;
+      text-decoration: none;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      line-height: 1.35;
+      letter-spacing: -0.02em;
+      transition: background .2s, opacity .2s, transform .2s;
+    }
+
+    .toc a:hover { transform: translateX(2px); opacity: 1; background: rgba(0,0,0,.035); }
+    .toc a.active { background: var(--white-panel); border: 1px solid var(--border-light); opacity: 1; font-weight: 500; box-shadow: 0 8px 24px rgba(0,0,0,.03); }
+
+    /* Editorial Footer Framework Layout */
+    footer {
+      background: var(--bg);
+      color: #fff;
+      padding: 64px clamp(16px, 5vw, 64px) 32px;
+    }
+
+    .foot {
+      max-width: 1280px;
+      margin: 0 auto;
+      border-top: 1px solid rgba(255,255,255,.1);
+      padding-top: 32px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 24px;
+      flex-wrap: wrap;
+      font-family: var(--font-mono);
+      font-size: 12px;
+    }
+
+    .foot p { margin: 0; color: rgba(255,255,255,.52); }
+    .foot span { font-family: var(--font-body); color: #fff; }
+    .foot-links { display: flex; flex-wrap: wrap; gap: 8px; }
+    
+    .foot-links a {
+      color: rgba(255,255,255,.72);
+      text-decoration: none;
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 999px;
+      padding: 8px 14px;
+      transition: color .25s, border-color .25s;
+    }
+    .foot-links a:hover { color: #fff; border-color: rgba(255,255,255,.36); }
+
+    /* Interactive Apple-Inspired Square Floating Contact Widget */
+    .chat-bubble {
+      position: fixed;
+      right: 24px;
+      bottom: 24px;
+      z-index: 120;
+      display: inline-flex;
+      align-items: center;
+      width: 48px;
+      height: 48px;
+      padding: 0;
+      border-radius: 16px;
+      background: rgba(30, 30, 35, 0.72);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.38), inset 0 -12px 24px rgba(255,255,255,.06), 0 12px 40px rgba(0,0,0,.5);
+      backdrop-filter: blur(22px) saturate(170%);
+      -webkit-backdrop-filter: blur(22px) saturate(170%);
+      color: #fff;
+      text-decoration: none;
+      overflow: hidden;
+      white-space: nowrap;
+      cursor: pointer;
+      transition: width 0.35s cubic-bezier(0.16, 1, 0.3, 1), background 0.25s, transform 0.25s;
+    }
+
+    .chat-bubble:hover {
+      width: 240px;
+      background: var(--accent);
+      transform: translateY(-2px);
+    }
+
+    .chat-bubble .icon-box {
+      width: 48px;
+      height: 48px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .chat-bubble .chat-text {
+      font-size: 13px;
+      font-family: var(--font-mono);
+      padding-right: 20px;
+      opacity: 0;
+      transform: translateX(8px);
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+
+    .chat-bubble:hover .chat-text {
+      opacity: 1;
+      transform: translateX(0);
+      transition-delay: 0.05s;
+    }
+
+    /* Embedded Studio AI Chat Panel */
+    .ai-chat-window {
+      position: fixed;
+      right: 24px;
+      bottom: 84px;
+      width: 360px;
+      height: 480px;
+      border-radius: 24px;
+      background: linear-gradient(135deg, rgba(34,34,38,.94), rgba(22,22,26,.88) 38%, rgba(14,14,18,.82));
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 28px 80px rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(30px) saturate(160%);
+      -webkit-backdrop-filter: blur(30px) saturate(160%);
+      z-index: 130;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(20px) scale(0.95);
+      transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    
+    .ai-chat-window.is-open {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0) scale(1);
+    }
+    
+    .ai-chat-header {
+      padding: 16px 20px;
+      background: rgba(255, 255, 255, 0.03);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .ai-chat-title {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .ai-chat-status {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #65a51b;
+      box-shadow: 0 0 10px #65a51b;
+    }
+    
+    .ai-chat-close {
+      background: transparent;
+      border: 0;
+      color: rgba(255, 255, 255, 0.4);
+      font-size: 20px;
+      cursor: pointer;
+      padding: 0;
+      line-height: 1;
+    }
+    .ai-chat-close:hover { color: #fff; }
+    
+    .ai-chat-body {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    
+    .ai-bubble {
+      max-width: 85%;
+      padding: 10px 14px;
+      border-radius: 16px;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    
+    .ai-bubble.system {
+      align-self: flex-start;
+      background: rgba(255, 255, 255, 0.05);
+      color: rgba(255, 255, 255, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.04);
+    }
+    
+    .ai-bubble.user {
+      align-self: flex-end;
+      background: var(--accent);
+      color: #fff;
+    }
+    
+    .ai-chat-footer {
+      padding: 14px 16px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      gap: 10px;
+      background: rgba(0, 0, 0, 0.15);
+    }
+    
+    .ai-chat-input {
+      flex: 1;
+      height: 38px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.05);
+      color: #fff;
+      padding: 0 14px;
+      font-size: 13px;
+      outline: none;
+      font-family: var(--font-body);
+    }
+    .ai-chat-input::placeholder { color: rgba(255, 255, 255, 0.3); }
+    .ai-chat-input:focus { border-color: rgba(255, 255, 255, 0.2); }
+    
+    .ai-chat-submit {
+      width: 38px;
+      height: 38px;
+      border-radius: 12px;
+      border: 0;
+      background: #fff;
+      color: #000;
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      transition: opacity 0.2s;
+    }
+    .ai-chat-submit:hover { opacity: 0.9; }
+
+    /* Responsive Adaptation Breakpoints */
+    @media (max-width: 980px) {
+      header { width: calc(100vw - 16px) !important; top: 10px !important; }
+      .page { grid-template-columns: 1fr; padding-top: 112px; }
+      .side { position: relative; top: auto; height: auto; order: -1; overflow: visible; padding-right: 0; }
+      .toc { display: none; } /* Kept clean and architectural on tablet formats */
+      .searchbox { height: 48px; margin-bottom: 34px; }
+      .ai-chat-window { width: calc(100vw - 48px); right: 24px; bottom: 84px; }
+    }
+
+    @media (max-width: 560px) {
+      .nav-wrap { display: flex !important; justify-content: space-between !important; align-items: center !important; }
+      .page { padding-bottom: 78px; }
+      h1 { font-size: clamp(34px, 10vw, 48px); }
+      .chat-bubble { right: 16px; bottom: 16px; }
+      .ai-chat-window { width: calc(100vw - 32px); right: 16px; bottom: 76px; height: 420px; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="nav-wrap">
+      <a href="index.html#home" class="brand-logo-wrap" aria-label="Adnn Studio Home">
+        <img src="adnn icon.svg" alt="Adnn Studio Icon Logo" class="brand-logo-img">
+      </a>
+      <div class="topnav" aria-label="Legal navigation processing actions">
+        <a href="mailto:adnnoptmz@gmail.com?subject=Project%20Enquiry" class="cta-mail-icon" title="Contact via Email" aria-label="Contact via Email">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px; display: block;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <div class="page">
+    <main class="legal-content" id="legalDocumentContent">
+      <div class="breadcrumb" aria-label="Breadcrumb">
+      </div>
+
+      <h1>Terms & Privacy</h1>
+      <div class="updated">Updated recently · For freelance creative enquiries, projects, invoices and client communication</div>
+
+      <section id="intro">
+        <p><strong>Last revised: June 1st, 2026</strong></p>
+        <h2>About us and these terms</h2>
+        <ol>
+          <li><strong>Welcome:</strong> Hi, we are Adnn Studio. We provide freelance and collaborative creative services for businesses, brands and individuals who need thoughtful visual work.</li>
+          <li><strong>About us:</strong> Adnn Studio works across logo design, brand identity, graphic design, motion graphics, video editing, 3D design and web development. These terms explain how enquiries, projects, creative work and communication are handled through this website.</li>
+        </ol>
+        <div class="callout">
+          <span class="callout-icon">i</span>
+          <p>Submitting an enquiry does not automatically confirm a project. A project begins only after scope, pricing, timeline and payment terms are discussed and accepted.</p>
+        </div>
+      </section>
+
+      <section id="enquiries">
+        <h2>Project enquiries</h2>
+        <ol start="3">
+          <li><strong>Sending an enquiry:</strong> When you submit a form or contact us by email, phone or message, you are inviting us to review your project requirement.</li>
+          <li><strong>Acceptance:</strong> We may accept, decline or request more information before starting any work. We may decline requests that are outside our scope, availability or comfort.</li>
+          <li><strong>Accuracy:</strong> Clients are responsible for sharing clear project details, brand materials, references, deadlines and feedback. Delays in information can affect delivery timelines.</li>
+        </ol>
+      </section>
+
+      <section id="services">
+        <h2>Creative services</h2>
+        <p>Our services may include logo design, brand identity systems, posters, social media design, motion graphics, video editing, 3D visualization, landing pages, website design and website development.</p>
+        <p>Each service is handled as a custom creative project. The exact deliverables, revisions, file formats and timelines will depend on the agreed scope.</p>
+      </section>
+
+      <section id="pricing">
+        <h2>Pricing and payment</h2>
+        <ol>
+          <li><strong>Quotations:</strong> Prices are shared after understanding the project scope. A quotation may change if the scope, deadline or deliverables change.</li>
+          <li><strong>Advance payment:</strong> Some projects may require an advance payment before work begins.</li>
+          <li><strong>Final payment:</strong> Final files, source files or live handover may be shared only after pending payment is completed.</li>
+          <li><strong>Invoices:</strong> Invoices or payment summaries may be provided digitally through email or the client workflow used for the project.</li>
+        </ol>
+      </section>
+
+      <section id="revisions">
+        <h2>Revisions and delivery</h2>
+        <p>Reasonable revisions may be included depending on the project agreement. Extra revisions, new concepts, major changes or additional formats may require additional charges.</p>
+        <p>Delivery timelines are estimates and may depend on client feedback, content availability, project complexity and third-party tools or platforms.</p>
+      </section>
+
+      <section id="ip">
+        <h2>Intellectual property</h2>
+        <p>Drafts, concepts, unused directions, working files and previews remain the property of Adnn Studio unless agreed otherwise.</p>
+        <p>Final approved deliverables may be used by the client after full payment, according to the agreed project scope. Source files, editable files or raw assets are not automatically included unless specified.</p>
+        <div class="callout">
+          <span class="callout-icon">i</span>
+          <p>Portfolio display rights may be retained by Adnn Studio unless a confidential or white-label arrangement is agreed before the project begins.</p>
+        </div>
+      </section>
+
+      <section id="client-materials">
+        <h2>Client materials</h2>
+        <p>Clients must ensure that any images, logos, videos, fonts, music, text or brand materials shared with us are owned by them or properly licensed for use.</p>
+        <p>Adnn Studio is not responsible for copyright issues caused by materials supplied by the client.</p>
+      </section>
+
+      <section id="third-party">
+        <h2>Third-party tools and platforms</h2>
+        <p>Some projects may use hosting providers, plugins, stock assets, fonts, AI tools, payment services, analytics or other third-party platforms. Their own terms, pricing and technical limitations may apply.</p>
+      </section>
+
+      <section id="privacy">
+        <h2>Privacy policy</h2>
+        <p>We respect your privacy. Information submitted through this website is used only to respond to enquiries, discuss projects, prepare quotations, communicate during work and maintain project records.</p>
+        <p>We may collect your name, email address, phone number, company name, project details, uploaded materials and communication history if you voluntarily provide them.</p>
+      </section>
+
+      <section id="data-use">
+        <h2>How we use your information</h2>
+        <ol>
+          <li>To reply to your enquiry and understand your project.</li>
+          <li>To prepare proposals, quotes, timelines and invoices.</li>
+          <li>To deliver creative services and manage project communication.</li>
+          <li>To improve our website, service quality and client experience.</li>
+        </ol>
+        <p>We do not sell, rent or trade your personal information for marketing purposes.</p>
+      </section>
+
+      <section id="cookies">
+        <h2>Cookies and website data</h2>
+        <p>This website may use cookies or similar technologies for basic functionality, performance, analytics or user experience improvements. You can control cookies through your browser settings.</p>
+      </section>
+
+      <section id="security">
+        <h2>Data security and retention</h2>
+        <p>We take reasonable care to protect information shared with us. However, no online method of transmission or storage can be guaranteed as completely secure.</p>
+        <p>Project and enquiry information may be retained as long as needed for communication, records, legal requirements or future project reference.</p>
+      </section>
+
+      <section id="rights">
+        <h2>Your rights</h2>
+        <p>You may contact us to request access, correction or deletion of your personal information where reasonably possible. Some information may need to be retained for payment, project or legal records.</p>
+      </section>
+
+      <section id="liability">
+        <h2>Disclaimer and limitation</h2>
+        <p>Adnn Studio aims to deliver high-quality creative work, but we cannot guarantee specific business results, sales, audience growth or platform performance from any design or digital deliverable.</p>
+        <p>We are not liable for indirect, incidental or consequential losses arising from use of this website or our services.</p>
+      </section>
+
+      <section id="changes">
+        <h2>Changes to this page</h2>
+        <p>We may update these Terms & Privacy details when our services, workflow or legal requirements change. The latest version will be published on this page.</p>
+      </section>
+
+      <section id="contact">
+        <h2>Contact</h2>
+        <p>For questions about these terms, privacy, project enquiries or client communication, contact Adnn Studio:</p>
+        <p><strong>Email:</strong> adnnoptmz@gmail.com<br><strong>Phone:</strong> +91 8129616839<br><strong>Location:</strong> India</p>
+      </section>
+    </main>
+
+    <aside class="side" aria-label="Page content navigation tracker">
+      <label class="searchbox" aria-label="Search text contents">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.75 17.5a6.75 6.75 0 1 1 0-13.5 6.75 6.75 0 0 1 0 13.5Z" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round"/><path d="m15.65 15.65 4.15 4.15" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round"/></svg>
+        <input id="pageSearch" type="search" placeholder="Ask us a question" autocomplete="off" />
+      </label>
+      <ul class="toc" id="toc">
+        <li><a href="#intro" class="active">About us and these terms</a></li>
+        <li><a href="#enquiries">Project enquiries</a></li>
+        <li><a href="#services">Creative services</a></li>
+        <li><a href="#pricing">Pricing and payment</a></li>
+        <li><a href="#revisions">Revisions and delivery</a></li>
+        <li><a href="#ip">Intellectual property</a></li>
+        <li><a href="#client-materials">Client materials</a></li>
+        <li><a href="#third-party">Third-party tools</a></li>
+        <li><a href="#privacy">Privacy policy</a></li>
+        <li><a href="#data-use">Our use of your information</a></li>
+        <li><a href="#cookies">Cookies and website data</a></li>
+        <li><a href="#security">Data security</a></li>
+        <li><a href="#rights">Your rights</a></li>
+        <li><a href="#liability">Disclaimer and limitation</a></li>
+        <li><a href="#changes">Changes to this page</a></li>
+        <li><a href="#contact">Contact</a></li>
+      </ul>
+    </aside>
+  </div>
+
+  <div class="ai-chat-window" id="aiChatWindow">
+    <div class="ai-chat-header">
+      <div class="ai-chat-title">
+        <span class="ai-chat-status"></span>
+        <span>How can i assist you? 😊</span>
+      </div>
+      <button class="ai-chat-close" id="closeChatBtn" type="button">&times;</button>
+    </div>
+    <div class="ai-chat-body" id="chatMessageFlow">
+      <div class="ai-bubble system">
+        Hey! I am lavio. Ask me anything about our terms, project revisions, usage rights, or pricing rules!
+      </div>
+    </div>
+    <div class="ai-chat-footer">
+      <input class="ai-chat-input" id="chatUserInput" type="text" placeholder="Is a deposit required?..." autocomplete="off">
+      <button class="ai-chat-submit" id="sendChatBtn" type="button">
+        <svg viewBox="0 0 24 24" style="width:16px; height:16px;" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="22" y1="2" x2="11" y2="13"></line>
+          <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="chat-bubble" id="triggerChatBubble">
+    <div class="icon-box">
+      <img src="adnn icon.svg" alt="Adnn Studio AI Icon" style="width: 24px; height: 24px; display: block;" />
+    </div>
+    <span class="chat-text">Need any help?</span>
+  </div>
+
+  <footer>
+    <div class="foot">
+      <p>Available for freelance, studio, and project collaborations</p>
+      <div class="foot-links">
+        <a href="#intro">Terms</a>
+        <a href="#privacy">Privacy</a>
+        <a href="mailto:adnnoptmz@gmail.com">Email</a>
+      </div>
+      <p><span>© Adnn Studio 2026</span></p>
+    </div>
+  </footer>
+
+  <script>
+    // Active Navigation Highlighting Sync Loop
+    const links = Array.from(document.querySelectorAll('.toc a'));
+    const sections = links.map(link => document.querySelector(link.getAttribute('href'))).filter(Boolean);
+
+    const setActive = () => {
+      let current = sections[0];
+      for (const section of sections) {
+        const rect = section.getBoundingClientRect();
+        if (rect.top <= 140) current = section;
+      }
+      links.forEach(link => link.classList.toggle('active', link.getAttribute('href') === '#' + current.id));
+    };
+
+    window.addEventListener('scroll', setActive, { passive: true });
+    setActive();
+
+    // Fast Document Internal Search Logic Framework
+    const search = document.getElementById('pageSearch');
+    search.addEventListener('input', () => {
+      const term = search.value.trim().toLowerCase();
+      if (!term) return;
+      const match = sections.find(section => section.innerText.toLowerCase().includes(term));
+      if (match) {
+        document.querySelector(`.toc a[href="#${match.id}"]`)?.scrollIntoView({ block: 'nearest' });
+      }
+    });
+
+    search.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        const term = search.value.trim().toLowerCase();
+        const match = sections.find(section => section.innerText.toLowerCase().includes(term));
+        if (match) match.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+
+    // Zero-Cost Client-Side AI Integration Core
+    const chatBubble = document.getElementById('triggerChatBubble');
+    const chatWindow = document.getElementById('aiChatWindow');
+    const closeChat = document.getElementById('closeChatBtn');
+    const sendBtn = document.getElementById('sendChatBtn');
+    const userInput = document.getElementById('chatUserInput');
+    const messageFlow = document.getElementById('chatMessageFlow');
+    const contextSource = document.getElementById('legalDocumentContent');
+
+    let aiSessionInstance = null;
+
+    // Slide open/close layout visibility states safely
+    chatBubble.addEventListener('click', async () => {
+      chatWindow.classList.toggle('is-open');
+      if (chatWindow.classList.contains('is-open') && !aiSessionInstance) {
+        await initLocalAISubsystem();
+      }
+    });
+    
+    closeChat.addEventListener('click', () => chatWindow.classList.remove('is-open'));
+
+    // Fallback dictionary for browsers without experimental flags active
+    const localizedAnswersFallback = {
+      deposit: "Yes, section 4 specifies that some projects require an advance payment before any visual work begins.",
+      revisions: "Reasonable revisions are included based on your project agreement. Major layout changes or secondary concepts will involve extra charges.",
+      rights: "Final deliverables are fully yours once payments clear. Unused paths and draft concept assets remain the sole property of Adnn Studio.",
+      refund: "Payments are processed based on project milestones. Advance deposits secure project schedule spots and are non-refundable once tasks begin.",
+      logo: "We provide clean logo marks engineered for high recall. Final formats and revision limits are outlined directly in your custom statement of work."
+    };
+
+    async function initLocalAISubsystem() {
+      try {
+        if (window.ai && window.ai.assistant) {
+          const documentContextString = contextSource.innerText;
+          aiSessionInstance = await window.ai.assistant.create({
+            systemPrompt: `You are an AI legal assistant for Adnn Studio. Answer user questions relying strictly on this document context:\n${documentContextString}\nKeep responses clear, warm, short, and accurate to the text.`
+          });
+        }
+      } catch (e) {
+        console.warn("Natively bundled hardware inference API unavailable. Defaulting to local indexing fallback matrix.");
+      }
+    }
+
+    async function handleIncomingUserQuery() {
+      const text = userInput.value.trim();
+      if (!text) return;
+
+      userInput.value = "";
+      appendBubble(text, 'user');
+
+      const scrollingViewNode = messageFlow;
+      scrollingViewNode.scrollTop = scrollingViewNode.scrollHeight;
+
+      // Render placeholder loader indicator
+      const loader = appendBubble("Thinking...", 'system');
+      scrollingViewNode.scrollTop = scrollingViewNode.scrollHeight;
+
+      setTimeout(async () => {
+        if (aiSessionInstance) {
+          try {
+            const resultText = await aiSessionInstance.prompt(text);
+            loader.textContent = resultText;
+          } catch (err) {
+            loader.textContent = "Something tripped up during the processing run. Please refresh or drop us an email direct!";
+          }
+        } else {
+          // Smart structural scanner lookup fallback match loop
+          const queryLower = text.toLowerCase();
+          let answered = false;
+          
+          for (const key in localizedAnswersFallback) {
+            if (queryLower.includes(key)) {
+              loader.textContent = localizedAnswersFallback[key];
+              answered = true;
+              break;
+            }
+          }
+          if (!answered) {
+            loader.textContent = "Based on our studio terms, we handle enquiries on a custom project basis. Advance deposits are standard, final files follow full payment, and you retain final usage rights. Reach out direct to adnnoptmz@gmail.com for granular parameter sorting!";
+          }
+        }
+        scrollingViewNode.scrollTop = scrollingViewNode.scrollHeight;
+      }, 600);
+    }
+
+    function appendBubble(contentStr, roleClass) {
+      const bubble = document.createElement('div');
+      bubble.className = `ai-bubble ${roleClass}`;
+      bubble.textContent = contentStr;
+      messageFlow.appendChild(bubble);
+      return bubble;
+    }
+
+    sendBtn.addEventListener('click', handleIncomingUserQuery);
+    userInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleIncomingUserQuery(); });
+  </script>
+</body>
+</html>

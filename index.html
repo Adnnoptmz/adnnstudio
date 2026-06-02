@@ -246,7 +246,8 @@
     .kicker { font-size:12px; line-height:1; text-transform:uppercase; letter-spacing:0; }
     h2.big { font-size:62px; line-height:1.04; letter-spacing:0; font-weight:520; margin:24px 0 0; }
     .subcards { margin-top:48px; display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
-    .subcard { border-radius:24px; padding:24px; min-height:190px; }
+    .subcard { border-radius:24px; padding:24px; min-height:190px; transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important; will-change: transform; }
+    .subcard:hover { transform: translateY(-6px); box-shadow: 0 22px 60px rgba(0, 0, 0, 0.4); }
     .subcard p { margin-top:58px; font-size:15px; line-height:1.4; letter-spacing:0; }
     .portfolio-grid { max-width:1280px; margin:auto; display:grid; grid-template-columns:.85fr 1.15fr; gap:40px; align-items:start; }
     .portfolio-title { font-size:56px; line-height:1.05; letter-spacing:0; font-weight:520; margin:0; }
@@ -284,10 +285,11 @@
     form { border-radius:26px; padding:24px; animation:liquid 5.2s ease-in-out infinite; }
     @keyframes liquid { 0%,100%{border-radius:30px 38px 34px 42px} 35%{border-radius:44px 26px 48px 28px} 70%{border-radius:28px 50px 25px 46px} }
     .form-label { display:flex; align-items:center; gap:8px; font-size:12px; line-height:1.2; margin-bottom:22px; }
-    input, textarea { width:100%; border:1px solid rgba(255,255,255,.1); background:rgba(255,255,255,.1); color:#fff; outline:0; border-radius:18px; padding:16px; margin-top:12px; font-size:13px; line-height:1.35; }
-    textarea { min-height:128px; resize:vertical; }
-    form button { width:100%; margin-top:14px; border:0; border-radius:18px; padding:14px; background:#050506; color:#fff; font-size:12px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:10px; }
-	    footer { padding:64px clamp(16px,5vw,64px) 32px; }
+	    input, textarea { width:100%; border:1px solid rgba(255,255,255,.1); background:rgba(255,255,255,.1); color:#fff; outline:0; border-radius:18px; padding:16px; margin-top:12px; font-size:13px; line-height:1.35; }
+	    textarea { min-height:128px; resize:vertical; }
+	    form button { width:100%; margin-top:14px; border:0; border-radius:18px; padding:14px; background:#050506; color:#fff; font-size:12px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:10px; }
+	    .enquiry-status { min-height:18px; margin:12px 0 0; font-family:var(--font-mono); font-size:11px; line-height:1.45; color:rgba(11,11,13,.62); }
+		    footer { padding:64px clamp(16px,5vw,64px) 32px; }
     .foot { max-width:1280px; margin:auto; border-top:1px solid rgba(255,255,255,.1); padding-top:32px; }
     .links { display:flex; flex-wrap:wrap; gap:8px; }
     footer .links a { color:#ffffffb3; text-decoration:none; border:1px solid rgba(255,255,255,.1); border-radius:999px; padding:8px 13px; font-size:12px; line-height:1; transition: color 0.3s ease, border-color 0.3s ease, background-color 0.3s ease; }
@@ -760,7 +762,17 @@
       nav.nav-menu a:hover, nav.nav-menu a:focus-visible { background:rgba(255,255,255,.085) !important; color:#fff !important; }
     }
 
-    /* Force Home hero title smaller */
+    /* Pro Website Landing Smooth Entrance */
+  @keyframes landingRevealUp {
+    0% { opacity: 0; transform: translateY(24px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+  #home .hero-grid > div:first-child {
+    animation: landingRevealUp 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    opacity: 0;
+  }
+
+  /* Force Home hero title smaller */
     #home h1 { font-size: clamp(28px, 4.8vw, 52px) !important; line-height: 0.98 !important; letter-spacing: -0.035em !important; }
     #home .typed { font-size: inherit !important; }
     @media (max-width: 900px) { #home h1 { font-size: clamp(30px, 8vw, 48px) !important; } }
@@ -818,11 +830,18 @@
     #projects + section .graph { background: #f5f5f7 !important; border-color: rgba(0,0,0,.08) !important; }
     #projects + section .metrics span { color: rgba(11,11,13,.52) !important; }
 
-    /* Contact form on white page */
-    #connect form { background: #ffffff !important; border: 1px solid rgba(0,0,0,.08) !important; box-shadow: 0 28px 80px rgba(0,0,0,.08) !important; color: #0b0b0d !important; }
-    #connect input, #connect textarea { background: #f5f5f7 !important; border-color: rgba(0,0,0,.08) !important; color: #0b0b0d !important; }
-    #connect input::placeholder, #connect textarea::placeholder { color: rgba(11,11,13,.44) !important; }
-	    #connect form button { background: #0b0b0d !important; color: #ffffff !important; }
+    /* High-Visibility Crisp White Content Box Framework */
+    #connect { background: #0b0b0d !important; color: #f5f5f7 !important; }
+    #connect .kicker { color: rgba(255, 255, 255, 0.72) !important; }
+    #connect h2.big { color: #f5f5f7 !important; }
+    #connect form { background: #f5f5f7 !important; border: 1px solid rgba(0,0,0,0.06) !important; box-shadow: 0 32px 90px rgba(0,0,0,0.65) !important; color: #0b0b0d !important; }
+    #connect .form-label, #connect form span, #connect form svg { color: #0b0b0d !important; }
+    #connect input, #connect textarea { background: #ffffff !important; border: 1px solid rgba(0,0,0,0.12) !important; color: #0b0b0d !important; transition: border-color 0.25s, box-shadow 0.25s ease !important; }
+    #connect input:focus, #connect textarea:focus { border-color: #272dcf !important; box-shadow: 0 0 0 4px rgba(39,45,207,0.12) !important; }
+    #connect input::placeholder, #connect textarea::placeholder { color: rgba(11,11,13,0.44) !important; }
+    #connect form button { background: #0b0b0d !important; color: #ffffff !important; font-weight: 500 !important; transition: background 0.3s ease, color 0.3s ease, box-shadow 0.3s ease !important; }
+    #connect form button:hover { background: #272dcf !important; color: #ffffff !important; box-shadow: 0 14px 36px rgba(39, 45, 207, 0.35) !important; }
+    #connect form button span, #connect form button svg { color: #ffffff !important; }
 
     /* Footer links on white */
     footer .foot { border-top-color: rgba(0,0,0,.10) !important; }
@@ -897,8 +916,8 @@
     #projects .marquee span, #projects .marquee-box span, #projects .marquee-box { color:rgba(11,11,13,.68) !important; }
     #projects .tile-top span, #projects .tile p { color:inherit !important; }
     #projects + section .report, #projects + section .report p, #projects + section .metrics b { color:#0b0b0d !important; }
-    #connect .form-label, #connect form span, #connect form svg { color:#0b0b0d !important; }
-	    #connect form button, #connect form button span, #connect form button svg { color:#ffffff !important; }
+    #connect .form-label, #connect form span, #connect form svg { color:#f5f5f7 !important; }
+    #connect form button:hover span, #connect form button:hover svg { color:#ffffff !important; }
 
     /* Copyright/footer end returns to soft black for contrast */
     footer { background:#0b0b0d !important; color:#f5f5f7 !important; }
@@ -982,11 +1001,11 @@
     #portfolio .portfolio-dots button { width: 7px !important; height: 7px !important; border-radius: 999px !important; background: rgba(29,29,31,.28) !important; border: 0 !important; box-shadow: none !important; opacity: 1 !important; }
     #portfolio .portfolio-dots button.is-active { width: 22px !important; background: rgba(29,29,31,.62) !important; box-shadow: none !important; }
 
-    /* Clean visible CTA button: no blue hover, no gradients */
+    /* Clean visible CTA button: no blue hover, no shadow action */
     #portfolio .portfolio-cta-mini { margin-top: 36px !important; }
     #portfolio .portfolio-cta-mini a { color: #1d1d1f !important; background: rgba(255,255,255,.78) !important; border: 1px solid rgba(0,0,0,.12) !important; box-shadow: 0 16px 46px rgba(0,0,0,.09) !important; backdrop-filter: blur(18px) saturate(150%) !important; -webkit-backdrop-filter: blur(18px) saturate(150%) !important; }
     #portfolio .portfolio-cta-mini a::before { display: none !important; }
-    #portfolio .portfolio-cta-mini a:hover { transform: translateY(-1px) !important; color: #ffffff !important; background: #272dcf !important; border-color: #272dcf !important; box-shadow: 0 18px 50px rgba(39,45,207,.35) !important; }
+    #portfolio .portfolio-cta-mini a:hover { transform: translateY(-1px) !important; color: #1d1d1f !important; background: rgba(255,255,255,.90) !important; border-color: rgba(0,0,0,.18) !important; box-shadow: 0 16px 46px rgba(0,0,0,.09) !important; }
 
     /* Client report: animated editorial graph, same box size */
     .client-live-report { overflow:hidden !important; min-height:118px !important; }
@@ -1255,10 +1274,10 @@
   #home .visual { display: none !important; }
 
   /* Center the Home hero text after removing the visual block */
-  #home.hero { min-height: 88vh !important; display: grid !important; place-items: center !important; text-align: center !important; }
-  #home .hero-grid { max-width: 1100px !important; width: 100% !important; display: grid !important; grid-template-columns: 1fr !important; justify-items: center !important; align-items: center !important; gap: 0 !important; }
-  #home .hero-grid > div:first-child { display: grid !important; justify-items: center !important; }
-  #home .badge, #home .hero p, #home .cta { justify-content: center !important; margin-left: auto !important; margin-right: auto !important; }
+  #home.hero { min-height: 100vh !important; display: flex !important; align-items: center !important; justify-content: center !important; text-align: center !important; padding-top: 60px !important; }
+  #home .hero-grid { max-width: 960px !important; width: 100% !important; display: grid !important; grid-template-columns: 1fr !important; justify-items: center !important; align-items: center !important; gap: 0 !important; margin: 0 auto !important; }
+  #home .hero-grid > div:first-child { display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important; width: 100% !important; }
+  #home .badge, #home .hero p, #home .cta { display: inline-flex !important; justify-content: center !important; text-align: center !important; margin-left: auto !important; margin-right: auto !important; }
 
   /* Home headline: Centered Aileron presentation keeping identical spacing layout attributes */
   /* Home headline: Forced to 1 line and scaled down 20% */
@@ -1324,18 +1343,21 @@
   @media (min-width: 981px) {
     #portfolio.reference-style { 
       min-height: auto !important; 
-      padding-top: 36px !important;    /* Decrease this value to pull Projects closer up to the Studio video */
-      padding-bottom: 37px !important; /* Decrease this value to pull Services up closer to the Projects row */
+      padding-top: 36px !important;    
+      padding-bottom: 37px !important; 
       overflow: hidden !important; 
     }
     #projects { 
-      padding-top: 36px !important;    /* Decrease this value to pull the service cards up closer to the Projects section */
-      padding-bottom: 42px !important; /* Decrease this value to pull the Client Report section closer up */
+      padding-top: 20px !important;    /* Squeezes layout gap directly under projects slider */
+      padding-bottom: 12px !important; /* Shaves off the empty gap leading to the Client Report */
+    }
+    #client-report.client-report-section {
+      padding-top: 12px !important;    /* Pulls Client Report right up closer to the Studio Services marquee */
     }
   }
   #client-report.client-report-section { padding-top: clamp(46px, 6vw, 72px) !important; padding-bottom: clamp(46px, 6vw, 76px) !important; }
-  #connect { padding-top: clamp(62px, 7vw, 92px) !important; padding-bottom: clamp(62px, 7vw, 96px) !important; }
-  footer { padding-top: clamp(54px, 7vw, 82px) !important; }
+  #connect { padding-top: clamp(80px, 9vw, 120px) !important; padding-bottom: 20px !important; }
+  footer { padding-top: 20px !important; }
 
   /* Projects slider: prevent overlapping and give each card a clean panoramic spread */
   #portfolio .portfolio-grid { overflow: visible !important; }
@@ -2535,7 +2557,7 @@
     <section id="connect" class="connect">
       <div class="connect-grid">
         <div><p class="kicker">Connect</p><h2 class="big" style="line-height:1.02">Let’s make the brand feel Inevitable.</h2></div>
-        <form class="glass edge" onsubmit="event.preventDefault(); alert('Preview only: this would open an email enquiry.');">
+        <form class="glass edge" id="projectEnquiryForm">
           <div class="form-label">
             <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
               <rect x="5.25" y="10.25" width="13.5" height="10" rx="2.4" fill="none" stroke="currentColor" stroke-width="1.8"/>
@@ -2543,17 +2565,18 @@
             </svg>
             <span>Project enquiry</span>
           </div>
-          <input placeholder="Name">
-          <input placeholder="Email">
-          <textarea placeholder="Tell us the service, deadline, and project idea"></textarea>
-          <button>
+          <input id="enquiryName" name="name" placeholder="Name" autocomplete="name" required>
+          <input id="enquiryEmail" name="email" type="email" placeholder="Email" autocomplete="email" required>
+          <textarea id="enquiryMessage" name="message" placeholder="Tell us the service, deadline, and project idea" required></textarea>
+          <button type="submit">
             <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
               <path d="M2 5.5a2.5 2.5 0 0 1 2.5-2.5h15A2.5 2.5 0 0 1 22 5.5v13a2.5 2.5 0 0 1-2.5 2.5h-15A2.5 2.5 0 0 1 2 18.5v-13z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
               <path d="m2.5 6 8.37 5.58a2.002 2.002 0 0 0 2.26 0L21.5 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
-            <span>Send enquiry</span>
-          </button>
-	        </form>
+	            <span>Send enquiry</span>
+	          </button>
+	          <p class="enquiry-status" id="enquiryStatus" aria-live="polite"></p>
+		        </form>
       </div>
     </section>
 
@@ -2575,7 +2598,16 @@
 	          </div>
 	        </div>
 	        <div style="margin-top:40px; width: 100%;">
-	          <p style="color:#ffffff8c; margin: 0; width: 100%;">Available for freelance, studio, and project collaborations <span style="float:right">© adnnstudio 2026</span></p>
+	          <p style="color:#ffffff8c; margin: 0; width: 100%;">
+	            Available for freelance, studio, and project collaborations 
+	            <span style="float:right; display: inline-flex; align-items: center; gap: 10px; font-family: var(--font-mono) !important; font-size: 11px;">
+	              <a href="Terms & Privacy adnnstudio.com 2026.html#intro" style="color: inherit; text-decoration: none; border-bottom: 1px dashed transparent; transition: color 0.2s, border-color 0.2s;" onmouseover="this.style.color='#fff'; this.style.borderColor='rgba(255,255,255,0.4)'" onmouseout="this.style.color='inherit'; this.style.borderColor='transparent'">Terms & Privacy</a>
+	              <span style="opacity: 0.4;">·</span>
+	              <a href="Terms & Privacy adnnstudio.com 2026.html#privacy" style="color: inherit; text-decoration: none; border-bottom: 1px dashed transparent; transition: color 0.2s, border-color 0.2s;" onmouseover="this.style.color='#fff'; this.style.borderColor='rgba(255,255,255,0.4)'" onmouseout="this.style.color='inherit'; this.style.borderColor='transparent'">Do not sell or share my personal information</a>
+	              <span style="opacity: 0.4; margin-left: 4px;">·</span>
+	              <span style="font-family: var(--font-body) !important; font-size: 14px; color: #fff;">© adnnstudio 2026</span>
+	            </span>
+	          </p>
 	        </div>
 	      </div>
 	    </footer>
@@ -2618,7 +2650,8 @@
 		    })();
 		  </script>
 
-		  <script src="auth-config.js"></script>
+		  <script src="enquiry-config.js"></script>
+<script src="enquire.js"></script>
 		  <script>
 	    (function() {
 	      const backToTopBtn = document.getElementById("backToTopBtn");
@@ -2766,26 +2799,151 @@
     prevButton?.addEventListener("click", () => setPortfolioIndexUser(activePortfolioIndex - 1));
     nextButton?.addEventListener("click", () => setPortfolioIndexUser(activePortfolioIndex + 1));
 
-    // Direct interface routing now targets the Services boxes, not the projects slider.
+    // Hardware-Accelerated Dynamic Form Typewriter Routine Configuration Loop
+    let activeFormTypewriterTimerReference = null;
+
     window.routeOrbitToProject = function(index) {
-      const targetSection = document.getElementById("projects");
-      if (!targetSection) return;
+      const servicesListNames = [
+        "Logo Design",
+        "Brand Identity",
+        "Motion Graphics",
+        "Web Designing",
+        "Video Editing",
+        "3D Design"
+      ];
+      
+      const targetName = servicesListNames[index] || "Creative Services";
+      const connectBlock = document.getElementById("connect");
+      const textareaField = connectBlock ? connectBlock.querySelector("textarea") : null;
 
-      const projectTiles = targetSection.querySelectorAll(".tile");
-      const targetElement = projectTiles[index];
-      if (!targetElement) return;
+      if (connectBlock && textareaField) {
+        // Halt any ongoing character layout animation loops instantly to prevent text overlapping
+        if (activeFormTypewriterTimerReference) clearInterval(activeFormTypewriterTimerReference);
+        
+        // Reset element bounds crisp clean before typing simulation initializes
+        textareaField.value = "";
 
-      targetSection.scrollIntoView({ behavior: "smooth", block: "center" });
+        // Scroll gracefully straight to the off-white information query field block canvas
+        connectBlock.scrollIntoView({ behavior: "smooth", block: "center" });
+        
+        const completeMessageStringToRender = `We would like to make a custom ${targetName.toLowerCase()} project for our brand. Please let me know how to get started with the workspace setup, what assets are needed, and how we can align on the estimated creative direction timeline!`;
+        
+        const characterArrayStream = [...completeMessageStringToRender];
+        let currentStringCharacterIndexPosition = 0;
 
-      setTimeout(() => {
-        document.querySelectorAll(".search-target-highlight").forEach(el => el.classList.remove("search-target-highlight"));
-        targetElement.classList.add("search-target-highlight");
-        setTimeout(() => targetElement.classList.remove("search-target-highlight"), 2200);
-      }, 560);
+        // Force browser focal execution parameters straight to textbox boundaries
+        setTimeout(() => {
+          textareaField.focus();
+          
+          // Progressive interval stream generator configured at a hyper-fluid speed setting (14ms per letter)
+          activeFormTypewriterTimerReference = setInterval(() => {
+            if (currentStringCharacterIndexPosition < characterArrayStream.length) {
+              textareaField.value += characterArrayStream[currentStringCharacterIndexPosition];
+              currentStringCharacterIndexPosition++;
+              
+              // Automatically push typing scroll baseline bounds down for long responsive messages
+              textareaField.scrollTop = textareaField.scrollHeight;
+            } else {
+              clearInterval(activeFormTypewriterTimerReference);
+              activeFormTypewriterTimerReference = null;
+            }
+          }, 14);
+        }, 650);
+      }
     };
 
-    // Backward compatible alias in case any old inline references remain.
-    window.routeOrbitToSlider = window.routeOrbitToProject;
+	    // Backward compatible alias in case any old inline references remain.
+	    window.routeOrbitToSlider = window.routeOrbitToProject;
+
+	    (function setupProjectEnquiryForm() {
+	      const form = document.getElementById("projectEnquiryForm");
+	      if (!form) return;
+
+	      const nameInput = document.getElementById("enquiryName");
+	      const emailInput = document.getElementById("enquiryEmail");
+	      const messageInput = document.getElementById("enquiryMessage");
+	      const status = document.getElementById("enquiryStatus");
+
+	      form.addEventListener("submit", async (event) => {
+	        event.preventDefault();
+	        if (!form.reportValidity()) return;
+
+	        const name = nameInput.value.trim();
+	        const email = emailInput.value.trim();
+	        const message = messageInput.value.trim();
+	        const endpoint = window.ADNN_ENQUIRY_ENDPOINT;
+
+	        if (!endpoint) {
+	          if (status) status.textContent = "Enquiry sheet is not connected yet.";
+	          return;
+	        }
+
+	        const submitButton = form.querySelector("button[type='submit']");
+	        if (submitButton) submitButton.disabled = true;
+	        if (status) status.textContent = "Sending enquiry...";
+
+	        try {
+	          const frameName = "adnn-enquiry-submit-frame";
+	          let frame = document.querySelector(`iframe[name="${frameName}"]`);
+	          if (!frame) {
+	            frame = document.createElement("iframe");
+	            frame.name = frameName;
+	            frame.hidden = true;
+	            document.body.appendChild(frame);
+	          }
+
+	          const postForm = document.createElement("form");
+	          postForm.method = "POST";
+	          postForm.action = endpoint;
+	          postForm.target = frameName;
+	          postForm.style.display = "none";
+
+	          const fields = {
+	            timestamp: new Date().toISOString(),
+	            name,
+	            email,
+	            message,
+	            pageUrl: location.href,
+	            source: "Website enquiry form"
+	          };
+
+	          Object.entries(fields).forEach(([key, value]) => {
+	            const input = document.createElement("input");
+	            input.type = "hidden";
+	            input.name = key;
+	            input.value = value;
+	            postForm.appendChild(input);
+	          });
+
+	          document.body.appendChild(postForm);
+	          postForm.submit();
+	          postForm.remove();
+
+	          form.reset();
+	          if (status) status.textContent = "Enquiry sent. Check the admin sheet in a moment.";
+	        } catch {
+	          if (status) status.textContent = "Could not send enquiry. Please try again.";
+	        } finally {
+	          setTimeout(() => {
+	            if (submitButton) submitButton.disabled = false;
+	          }, 900);
+	        }
+	      });
+	    })();
+
+	    // Direct click listener mapping layout bindings across static project tiles
+    window.addEventListener("DOMContentLoaded", () => {
+      const parentTilesBox = document.getElementById("projects");
+      if (!parentTilesBox) return;
+      
+      parentTilesBox.querySelectorAll(".tile").forEach((tileElement, tileIndex) => {
+        tileElement.style.cursor = "pointer";
+        tileElement.addEventListener("click", (e) => {
+          e.preventDefault();
+          window.routeOrbitToProject(tileIndex);
+        });
+      });
+    });
 
    // Apple-Timer Continuous Real-Time Sliding Engine
     let isDraggingTrack = false;
@@ -3530,16 +3688,9 @@
       button.className = "site-search-result";
       button.innerHTML = "<span>" + item.title + "</span><span>service</span>";
       button.addEventListener("click", function(){
-        const projects = document.getElementById("projects");
-        if (projects) { projects.scrollIntoView({ behavior: "smooth", block: "center" }); }
         clearHighlights();
-        setTimeout(function(){
-          const refreshedTarget = document.querySelector(item.selector);
-          if (!refreshedTarget) return;
-          refreshedTarget.classList.add("search-target-highlight");
-          setTimeout(function(){ refreshedTarget.classList.remove("search-target-highlight"); }, 2200);
-        }, 560);
         setSearchOpen(false, true);
+        if (window.routeOrbitToProject) { window.routeOrbitToProject(item.index); }
       });
       resultsWrap.appendChild(button);
     });

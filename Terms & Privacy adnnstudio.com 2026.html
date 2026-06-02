@@ -11,7 +11,6 @@
     @import url("https://fonts.cdnfonts.com/css/aileron");
     @import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap");
 
-    /* Core Apple-Inspired Variables inherited directly from Main Site Design */
     :root {
       --accent: #272dcf;
       --bg: #050506;
@@ -41,7 +40,6 @@
 
     ::selection { background: #ff6b35; color: #fff; }
 
-    /* Frosted Glass Black Navbar Styling - Exact structural duplicate from Main Layout */
     header {
       position: fixed;
       top: 20px;
@@ -107,7 +105,6 @@
       .topnav { grid-column: 3; justify-self: end; }
     }
 
-    /* Layout Content Shell Wrapper Framework */
     .page {
       width: min(1280px, calc(100% - 48px));
       margin: 0 auto;
@@ -127,9 +124,6 @@
       font-size: 12px;
       margin-bottom: 24px;
     }
-
-    .breadcrumb a { color: inherit; text-decoration: none; }
-    .breadcrumb span.sep { color: var(--accent); font-weight: 500; }
 
     h1, .legal-content h2 {
       font-family: var(--font-body);
@@ -152,7 +146,6 @@
       margin-bottom: clamp(48px, 6vw, 68px);
     }
 
-    /* Core Document Copy Formatting */
     .legal-content { max-width: 860px; }
     .legal-content section { scroll-margin-top: 104px; margin: 0 0 56px; }
     
@@ -175,7 +168,6 @@
     .legal-content ol li::marker { font-family: var(--font-mono); font-size: 14px; color: var(--ink); }
     .legal-content strong { color: var(--ink); font-weight: 500; }
 
-    /* Apple-Style Light Informational Panels */
     .callout {
       display: grid;
       grid-template-columns: auto 1fr;
@@ -205,7 +197,6 @@
 
     .callout p { margin: 0; font-size: 15px; color: var(--ink); font-weight: 400; }
 
-    /* Page Navigation Sidebar Links */
     .side {
       position: sticky;
       top: 112px;
@@ -265,7 +256,6 @@
     .toc a:hover { transform: translateX(2px); opacity: 1; background: rgba(0,0,0,.035); }
     .toc a.active { background: var(--white-panel); border: 1px solid var(--border-light); opacity: 1; font-weight: 500; box-shadow: 0 8px 24px rgba(0,0,0,.03); }
 
-    /* Editorial Footer Framework Layout */
     footer {
       background: var(--bg);
       color: #fff;
@@ -300,7 +290,6 @@
     }
     .foot-links a:hover { color: #fff; border-color: rgba(255,255,255,.36); }
 
-    /* Interactive Apple-Inspired Square Floating Contact Widget */
     .chat-bubble {
       position: fixed;
       right: 24px;
@@ -355,7 +344,6 @@
       transition-delay: 0.05s;
     }
 
-    /* Embedded Studio AI Chat Panel */
     .ai-chat-window {
       position: fixed;
       right: 24px;
@@ -436,6 +424,7 @@
       border-radius: 16px;
       font-size: 13px;
       line-height: 1.45;
+      white-space: pre-wrap;
     }
     
     .ai-bubble.system {
@@ -488,12 +477,11 @@
     }
     .ai-chat-submit:hover { opacity: 0.9; }
 
-    /* Responsive Adaptation Breakpoints */
     @media (max-width: 980px) {
       header { width: calc(100vw - 16px) !important; top: 10px !important; }
       .page { grid-template-columns: 1fr; padding-top: 112px; }
       .side { position: relative; top: auto; height: auto; order: -1; overflow: visible; padding-right: 0; }
-      .toc { display: none; } /* Kept clean and architectural on tablet formats */
+      .toc { display: none; }
       .searchbox { height: 48px; margin-bottom: 34px; }
       .ai-chat-window { width: calc(100vw - 48px); right: 24px; bottom: 84px; }
     }
@@ -524,9 +512,6 @@
 
   <div class="page">
     <main class="legal-content" id="legalDocumentContent">
-      <div class="breadcrumb" aria-label="Breadcrumb">
-      </div>
-
       <h1>Terms & Privacy</h1>
       <div class="updated">Updated recently · For freelance creative enquiries, projects, invoices and client communication</div>
 
@@ -682,11 +667,11 @@
     </div>
     <div class="ai-chat-body" id="chatMessageFlow">
       <div class="ai-bubble system">
-        Hey! I am lavio. Ask me anything about our terms, project revisions, usage rights, or pricing rules!
+        Hey! I am Lavio, your Adnn Studio assistant. Ask me anything about our terms, creative services, design revisions, or pricing policies!
       </div>
     </div>
     <div class="ai-chat-footer">
-      <input class="ai-chat-input" id="chatUserInput" type="text" placeholder="Is a deposit required?..." autocomplete="off">
+      <input class="ai-chat-input" id="chatUserInput" type="text" placeholder="Tell me about your 3D work..." autocomplete="off">
       <button class="ai-chat-submit" id="sendChatBtn" type="button">
         <svg viewBox="0 0 24 24" style="width:16px; height:16px;" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <line x1="22" y1="2" x2="11" y2="13"></line>
@@ -716,7 +701,6 @@
   </footer>
 
   <script>
-    // Active Navigation Highlighting Sync Loop
     const links = Array.from(document.querySelectorAll('.toc a'));
     const sections = links.map(link => document.querySelector(link.getAttribute('href'))).filter(Boolean);
 
@@ -732,7 +716,6 @@
     window.addEventListener('scroll', setActive, { passive: true });
     setActive();
 
-    // Fast Document Internal Search Logic Framework
     const search = document.getElementById('pageSearch');
     search.addEventListener('input', () => {
       const term = search.value.trim().toLowerCase();
@@ -751,47 +734,114 @@
       }
     });
 
-    // Zero-Cost Client-Side AI Integration Core
     const chatBubble = document.getElementById('triggerChatBubble');
     const chatWindow = document.getElementById('aiChatWindow');
     const closeChat = document.getElementById('closeChatBtn');
     const sendBtn = document.getElementById('sendChatBtn');
     const userInput = document.getElementById('chatUserInput');
     const messageFlow = document.getElementById('chatMessageFlow');
-    const contextSource = document.getElementById('legalDocumentContent');
 
-    let aiSessionInstance = null;
-
-    // Slide open/close layout visibility states safely
-    chatBubble.addEventListener('click', async () => {
+    chatBubble.addEventListener('click', () => {
       chatWindow.classList.toggle('is-open');
-      if (chatWindow.classList.contains('is-open') && !aiSessionInstance) {
-        await initLocalAISubsystem();
-      }
     });
     
     closeChat.addEventListener('click', () => chatWindow.classList.remove('is-open'));
 
-    // Fallback dictionary for browsers without experimental flags active
-    const localizedAnswersFallback = {
-      deposit: "Yes, section 4 specifies that some projects require an advance payment before any visual work begins.",
-      revisions: "Reasonable revisions are included based on your project agreement. Major layout changes or secondary concepts will involve extra charges.",
-      rights: "Final deliverables are fully yours once payments clear. Unused paths and draft concept assets remain the sole property of Adnn Studio.",
-      refund: "Payments are processed based on project milestones. Advance deposits secure project schedule spots and are non-refundable once tasks begin.",
-      logo: "We provide clean logo marks engineered for high recall. Final formats and revision limits are outlined directly in your custom statement of work."
-    };
-
-    async function initLocalAISubsystem() {
-      try {
-        if (window.ai && window.ai.assistant) {
-          const documentContextString = contextSource.innerText;
-          aiSessionInstance = await window.ai.assistant.create({
-            systemPrompt: `You are an AI legal assistant for Adnn Studio. Answer user questions relying strictly on this document context:\n${documentContextString}\nKeep responses clear, warm, short, and accurate to the text.`
-          });
-        }
-      } catch (e) {
-        console.warn("Natively bundled hardware inference API unavailable. Defaulting to local indexing fallback matrix.");
+    // High-Performance Conversational Intent Framework
+    // High-Performance Conversational Intent Framework
+    function getSmartAnswer(userQuestion) {
+      const query = userQuestion.toLowerCase().trim().replace(/[^\w\s\+]/g, '');
+      
+      if (!query) {
+        return "I am right here! Go ahead and ask me any questions about Adnn Studio's creative work, workflows, or terms.";
       }
+
+      // 1. Natural Chit-Chat & Greeting Intent Overrides (The Gemini Assistant Experience)
+      if (query === "hi" || query === "hello" || query === "hey" || query === "yo" || query.startsWith("greeting")) {
+        return "Hello! I am Lavio, your Adnn Studio assistant. How's your day going? Ask me anything about our creative design services, pricing rules, or workspace policies!";
+      }
+      if (query.includes("how are you") || query.includes("how is it going") || query.includes("how you doing")) {
+        return "I'm doing fantastic, thank you for asking! I'm fully charged and ready to answer any questions you have about Adnn Studio's design workflows or terms. How can I help you today? 😊";
+      }
+      if (query.includes("who are you") || query.includes("your name") || query.includes("what are you")) {
+        return "I am Lavio! I act as the digital assistant for Adnn Studio. I'm trained directly on our workflow parameters to help clients understand our design capabilities, revision steps, and terms.";
+      }
+      if (query.includes("thank") || query === "thanks" || query.includes("awesome") || query.includes("great")) {
+        return "You're very welcome! Let me know if you need clarification on anything else regarding our studio workflow.";
+      }
+      if (query.includes("joke")) {
+        return "Why do graphic designers love dark mode?\n\nBecause light attracts bugs! 💻 Let me know if you want to talk about real design tasks instead!";
+      }
+
+      // 2. Project Enquiries Intent (Fixes your current bug)
+      if (query.includes("enquire") || query.includes("how to start") || query.includes("hire") || query.includes("start a project") || query.includes("submit")) {
+        return "To enquire for a project with us, you can simply click the mail icon up in the navigation bar or email us directly at **adnnoptmz@gmail.com**! \n\nWhen you submit an enquiry, you invite us to review your requirements. We'll chat about your project scope, timeline, and pricing parameters to get everything confirmed before any creative tasks officially kick off!";
+      }
+
+      // 3. Studio Services & 3D Deliverables Intent
+      if (query.includes("3d") || query.includes("render") || query.includes("visualization") || query.includes("modeling")) {
+        return "At Adnn Studio, our 3D visualization and modeling work is handled on a custom creative project basis! We build high-fidelity 3D structural visual models mapped out explicitly to your scope. Exact file formats, deadlines, and project tiers are locked in before kickoff.";
+      }
+      if (query.includes("service") || query.includes("do you do") || query.includes("capabilities") || query.includes("offer") || query.includes("work across") || query.includes("logo") || query.includes("branding") || query.includes("identity") || query.includes("video") || query.includes("motion") || query.includes("web")) {
+        return "Adnn Studio provides tailored visual execution across multiple mediums! Our services cover custom logo design, full brand identity systems, poster art, social imagery, motion graphics, video editing, 3D visualization, landing pages, and web asset development.";
+      }
+
+      // 4. Financial Invoicing, Estimates & Retainers Intent
+      if (query.includes("deposit") || query.includes("advance") || query.includes("upfront") || query.includes("pay before")) {
+        return "Yes, our advance milestone payment is a standard phase required before creative project execution begins. This secures your booking slot on our studio calendar. Final project source folders are cleared and sent over upon final invoice settlement.";
+      }
+      if (query.includes("pricing") || query.includes("cost") || query.includes("quote") || query.includes("quotation") || query.includes("invoice") || query.includes("rate")) {
+        return "Regarding our pricing models: Quotations are customized directly from your unique guidelines. Quotes might adapt dynamically if your design requirements or aesthetic guidelines morph during structural sprints. Summarized invoices are shared directly via email loops.";
+      }
+
+      // 5. Structural Revisions & Iteration Sprints Intent
+      if (query.includes("revision") || query.includes("change") || query.includes("edit") || query.includes("modify") || query.includes("concept") || query.includes("feedback") || query.includes("delay")) {
+        return "We offer reasonable structural revision cycles to perfect your assets! Please note that completely transforming your concept direction midway, or requiring complex alternative formats out of scope, will generate secondary processing fees. Fast client feedback speeds up final delivery loops.";
+      }
+
+      // 6. Intellectual Property Rights & Vector Source Layouts Intent
+      if (query.includes("copyright") || query.includes("own") || query.includes("right") || query.includes("source file") || query.includes("raw file") || query.includes("portfolio")) {
+        return "Once final invoice accounts are completely clear, usage permissions pass cleanly to you for approved project variants. However, all active design drafts, raw layout nodes, and alternate concepts remain the property of Adnn Studio. We retain portfolio staging rights unless non-disclosure parameter criteria are set before launching.";
+      }
+
+      // 7. Direct Contact Matrix Intent
+      if (query.includes("contact") || query.includes("email") || query.includes("phone") || query.includes("call") || query.includes("location") || query.includes("where") || query.includes("india")) {
+        return "You can ping Adnn Studio directly through our studio coordinates:\n\n• **Email:** adnnoptmz@gmail.com\n• **Phone:** +91 8129616839\n• **Location:** India\n\nDrop us an enquiry message to get a tailored pricing brief setup!";
+      }
+
+      // 8. Data Privacy, Encryption and Cookie Controls Intent
+      if (query.includes("privacy") || query.includes("data") || query.includes("secure") || query.includes("track") || query.includes("sell") || query.includes("cookie")) {
+        return "Your design metadata metrics are treated with deep professional respect. Information supplied (project specs, company briefs, shared logos) is used exclusively to evaluate timelines and build custom workflows. Adnn Studio strictly never trades user statistics with external advertising channels.";
+      }
+
+      // 9. Adaptive Dynamic Text Search Fallback
+      let bestSection = null;
+      let highestScore = 0;
+      const parsedWords = query.split(/\s+/).filter(w => w.length > 2);
+
+      document.querySelectorAll('#legalDocumentContent section').forEach(section => {
+        const textToSearch = section.innerText.toLowerCase();
+        let score = 0;
+        const headingText = section.querySelector('h2')?.innerText.toLowerCase() || "";
+
+        parsedWords.forEach(word => {
+          if (headingText.includes(word)) score += 6;
+          if (textToSearch.includes(word)) score += 1;
+        });
+
+        if (score > highestScore) {
+          highestScore = score;
+          bestSection = section;
+        }
+      });
+
+      if (bestSection && highestScore > 1) {
+        let textResult = bestSection.innerText.split('\n').filter(l => l.trim().length > 0).slice(1).join(' ');
+        if (textResult.length > 320) textResult = textResult.substring(0, 320) + "...";
+        return `Based on our page records regarding "${bestSection.querySelector('h2').innerText}":\n\n${textResult}`;
+      }
+
+      return "I can confirm that all Adnn Studio collaborative timelines run on individual project arrangements. Advance retainers are typical, full delivery ownership applies post-invoice clearing, and flexible visual iteration steps are provided. Reach out to **adnnoptmz@gmail.com** for direct consultation help!";
     }
 
     async function handleIncomingUserQuery() {
@@ -801,39 +851,15 @@
       userInput.value = "";
       appendBubble(text, 'user');
 
-      const scrollingViewNode = messageFlow;
-      scrollingViewNode.scrollTop = scrollingViewNode.scrollHeight;
+      messageFlow.scrollTop = messageFlow.scrollHeight;
 
-      // Render placeholder loader indicator
       const loader = appendBubble("Thinking...", 'system');
-      scrollingViewNode.scrollTop = scrollingViewNode.scrollHeight;
+      messageFlow.scrollTop = messageFlow.scrollHeight;
 
-      setTimeout(async () => {
-        if (aiSessionInstance) {
-          try {
-            const resultText = await aiSessionInstance.prompt(text);
-            loader.textContent = resultText;
-          } catch (err) {
-            loader.textContent = "Something tripped up during the processing run. Please refresh or drop us an email direct!";
-          }
-        } else {
-          // Smart structural scanner lookup fallback match loop
-          const queryLower = text.toLowerCase();
-          let answered = false;
-          
-          for (const key in localizedAnswersFallback) {
-            if (queryLower.includes(key)) {
-              loader.textContent = localizedAnswersFallback[key];
-              answered = true;
-              break;
-            }
-          }
-          if (!answered) {
-            loader.textContent = "Based on our studio terms, we handle enquiries on a custom project basis. Advance deposits are standard, final files follow full payment, and you retain final usage rights. Reach out direct to adnnoptmz@gmail.com for granular parameter sorting!";
-          }
-        }
-        scrollingViewNode.scrollTop = scrollingViewNode.scrollHeight;
-      }, 600);
+      setTimeout(() => {
+        loader.textContent = getSmartAnswer(text);
+        messageFlow.scrollTop = messageFlow.scrollHeight;
+      }, 400);
     }
 
     function appendBubble(contentStr, roleClass) {

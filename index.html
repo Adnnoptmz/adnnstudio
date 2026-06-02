@@ -2650,6 +2650,7 @@
 		    })();
 		  </script>
 
+		  <script src="auth-config.js"></script>
 		  <script src="enquiry-config.js"></script>
 <script src="enquire.js"></script>
 		  <script>
@@ -2856,80 +2857,41 @@
 	    window.routeOrbitToSlider = window.routeOrbitToProject;
 
 	    (function setupProjectEnquiryForm() {
-	      const form = document.getElementById("projectEnquiryForm");
-	      if (!form) return;
+  const form = document.getElementById("projectEnquiryForm");
+  if (!form) return;
 
-	      const nameInput = document.getElementById("enquiryName");
-	      const emailInput = document.getElementById("enquiryEmail");
-	      const messageInput = document.getElementById("enquiryMessage");
-	      const status = document.getElementById("enquiryStatus");
+  const status = document.getElementById("enquiryStatus");
 
-	      form.addEventListener("submit", async (event) => {
-	        event.preventDefault();
-	        if (!form.reportValidity()) return;
+  form.addEventListener("submit", function (event) {
+    event.preventDefault();
 
-	        const name = nameInput.value.trim();
-	        const email = emailInput.value.trim();
-	        const message = messageInput.value.trim();
-	        const endpoint = window.ADNN_ENQUIRY_ENDPOINT;
+    const endpoint = window.ADNN_ENQUIRY_ENDPOINT;
 
-	        if (!endpoint) {
-	          if (status) status.textContent = "Enquiry sheet is not connected yet.";
-	          return;
-	        }
+    if (!endpoint) {
+      if (status) status.textContent = "Enquiry sheet is not connected yet.";
+      return;
+    }
 
-	        const submitButton = form.querySelector("button[type='submit']");
-	        if (submitButton) submitButton.disabled = true;
-	        if (status) status.textContent = "Sending enquiry...";
+    if (status) status.textContent = "Sending enquiry...";
 
-	        try {
-	          const frameName = "adnn-enquiry-submit-frame";
-	          let frame = document.querySelector(`iframe[name="${frameName}"]`);
-	          if (!frame) {
-	            frame = document.createElement("iframe");
-	            frame.name = frameName;
-	            frame.hidden = true;
-	            document.body.appendChild(frame);
-	          }
+    const formData = new FormData(form);
+    formData.append("timestamp", new Date().toISOString());
+    formData.append("pageUrl", window.location.href);
+    formData.append("source", "Website enquiry form");
 
-	          const postForm = document.createElement("form");
-	          postForm.method = "POST";
-	          postForm.action = endpoint;
-	          postForm.target = frameName;
-	          postForm.style.display = "none";
+    fetch(endpoint, {
+      method: "POST",
+      body: formData,
+      mode: "no-cors"
+    });
 
-	          const fields = {
-	            timestamp: new Date().toISOString(),
-	            name,
-	            email,
-	            message,
-	            pageUrl: location.href,
-	            source: "Website enquiry form"
-	          };
+    form.reset();
 
-	          Object.entries(fields).forEach(([key, value]) => {
-	            const input = document.createElement("input");
-	            input.type = "hidden";
-	            input.name = key;
-	            input.value = value;
-	            postForm.appendChild(input);
-	          });
-
-	          document.body.appendChild(postForm);
-	          postForm.submit();
-	          postForm.remove();
-
-	          form.reset();
-	          if (status) status.textContent = "Enquiry sent. Check the admin sheet in a moment.";
-	        } catch {
-	          if (status) status.textContent = "Could not send enquiry. Please try again.";
-	        } finally {
-	          setTimeout(() => {
-	            if (submitButton) submitButton.disabled = false;
-	          }, 900);
-	        }
-	      });
-	    })();
+    if (status) {
+      status.textContent = "Enquiry sent. Please check the Google Sheet.";
+    }
+  });
+})();
 
 	    // Direct click listener mapping layout bindings across static project tiles
     window.addEventListener("DOMContentLoaded", () => {
@@ -3369,6 +3331,13 @@
 
   window.finishGoogleLogin = async function finishGoogleLogin() {
     const params = new URLSearchParams(location.hash.slice(1));
+    const oauthError = params.get("error");
+    if (oauthError) {
+      const errorDescription = params.get("error_description") || oauthError;
+      history.replaceState(null, "", location.pathname);
+      alert(`Google login failed: ${errorDescription}`);
+      return;
+    }
     const accessToken = params.get("access_token");
     if (!accessToken) return;
 
@@ -3377,15 +3346,19 @@
       headers: { Authorization: `Bearer ${accessToken}` },
     });
     const profile = await response.json();
-	    localStorage.setItem("adhnanPortfolioUser", JSON.stringify({
-	      name: profile.name,
-	      email: profile.email,
-	      picture: profile.picture,
-	      role: "client",
-	    }));
-	    renderGoogleUser();
-	    location.href = "account.html#tasks";
-	  };
+    localStorage.setItem("adhnanPortfolioUser", JSON.stringify({
+      name: profile.name,
+      email: profile.email,
+      picture: profile.picture,
+      role: "client",
+    }));
+    
+    // Core Correction: Trigger session status state rendering instantly
+    renderGoogleUser();
+    
+    // Route smoothly to the designated active client tasks layout
+    location.href = "account.html#tasks";
+  };
 
   window.logoutGoogleAccount = function logoutGoogleAccount(event) {
     if (event) event.preventDefault();

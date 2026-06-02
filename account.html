@@ -514,17 +514,19 @@
     }
     window.startGoogleLogin = function startGoogleLogin() {
       const error = document.getElementById("googleLoginError");
-      if (!window.GOOGLE_CLIENT_ID) {
-        if (error) error.textContent = "Add your Google OAuth Client ID in auth-config.js first.";
-        return;
-      }
-      const params = new URLSearchParams({
-        client_id: window.GOOGLE_CLIENT_ID,
-        redirect_uri: `${location.origin}${location.pathname}`,
-        response_type: "token",
-        scope: "openid email profile",
-        prompt: "select_account",
-      });
+	      if (!window.GOOGLE_CLIENT_ID) {
+	        if (error) error.textContent = "Add your Google OAuth Client ID in auth-config.js first.";
+	        return;
+	      }
+	      const redirectUri = window.GOOGLE_REDIRECT_URI || `${location.origin}${location.pathname}`;
+	      const params = new URLSearchParams({
+	        client_id: window.GOOGLE_CLIENT_ID,
+	        redirect_uri: redirectUri,
+	        response_type: "token",
+	        scope: "openid email profile",
+	        prompt: "select_account",
+	        state: "account",
+	      });
       location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
     };
     async function finishGoogleLogin() {

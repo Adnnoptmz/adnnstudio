@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Designer Account | AdnnStudio.com</title>
+  <title>Designer Login | adnnstudio.com</title>
   <link rel="icon" type="image/svg+xml" href="adnn icon.svg" />
   <style>
     @import url("https://fonts.cdnfonts.com/css/aileron");
@@ -216,6 +216,9 @@
       place-items:center;
       padding:24px;
     }
+    body.auth-pending .shell,
+    body.auth-pending header,
+    body.auth-pending .auth-gate { visibility:hidden; }
     body.locked .shell, body.locked header { display:none; }
     body.locked .auth-gate { display:grid; }
     .gate-card {
@@ -303,7 +306,7 @@
     }
   </style>
 </head>
-<body>
+<body class="auth-pending locked">
   <div class="auth-gate">
     <div class="gate-card glass">
       <p class="kicker">Designer</p>
@@ -403,6 +406,7 @@
     function hydrateUser() {
       const user = getUser();
       document.body.classList.toggle("locked", !user);
+      document.body.classList.remove("auth-pending");
       if (!user) return;
       
       const customizedName = localStorage.getItem("customDesignerName") || user.name || "Designer";

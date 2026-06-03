@@ -15,6 +15,7 @@
   <link rel="apple-touch-icon" sizes="180x180" href="adnn icon.svg" />
   <!-- Premium Vector Safe Pin Mask Accent -->
   <link rel="mask-icon" href="adnn icon.svg" color="#272dcf" />
+	<link rel="preload" href="bg1.webp" as="image" type="image/webp" fetchpriority="high" crossorigin="anonymous" />
   <style>
     /*
       CSS EDIT MAP - change these values later if needed:
@@ -194,7 +195,130 @@
     section { padding-left:clamp(16px,5vw,64px); padding-right:clamp(16px,5vw,64px); position: relative; z-index: 3; }
     .hero { min-height:88vh; display:grid; place-items:center; padding-top:132px; }
     .hero-grid { max-width:1280px; width:100%; display:grid; grid-template-columns:1.1fr .9fr; gap:48px; align-items:center; }
-    .badge { display:inline-flex; gap:8px; align-items:center; border:1px solid rgba(255,255,255,.1); background:rgba(255,255,255,.1); border-radius:999px; padding:7px 12px; font-size:12px; line-height:1; }
+    /* Premium Gemini Drop-to-Capsule Morphing Engine */
+    .badge.gemini-intro-capsule {
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      border: 1px solid rgba(255, 255, 255, 0.1) !important;
+      background: rgba(255, 255, 255, 0.05) !important;
+      backdrop-filter: blur(20px) saturate(140%) !important;
+      -webkit-backdrop-filter: blur(20px) saturate(140%) !important;
+      border-radius: 999px !important;
+      font-size: 12px !important;
+      line-height: 1 !important;
+      padding: 0 !important; /* Managed dynamically during the animation */
+      white-space: nowrap !important;
+      overflow: hidden !important;
+      
+      /* Hardware-accelerated property setup */
+      transform-origin: center top !important;
+      will-change: transform, width, height, background-color, box-shadow;
+      animation: geminiDropAndExpand 1.6s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+    }
+
+    /* Staggered text fade-in triggered precisely as the capsule expansion completes */
+    .gemini-content-fade {
+      display: inline-flex !important;
+      align-items: center !important;
+      gap: 8px !important;
+      padding: 7px 16px !important;
+      opacity: 0;
+      animation: geminiTextReveal 0.5s cubic-bezier(0.16, 1, 0.3, 1) 1.1s forwards !important;
+    }
+
+    @keyframes geminiDropAndExpand {
+      /* Stage 1: Dropping into the canvas view viewport as a concentrated, high-energy glowing particle ball */
+      0% {
+        width: 14px !important;
+        height: 14px !important;
+        transform: translateY(-80px) scale(0.6);
+        background-color: #5360ff !important;
+        border-color: rgba(83, 96, 255, 0.6) !important;
+        box-shadow: 0 0 20px #272dcf, 0 0 40px rgba(39, 45, 207, 0.8), inset 0 0 4px #fff !important;
+      }
+      /* Stage 2: Hitting vertical center impact point — creating a brilliant lens-flare visual pulse */
+      35% {
+        width: 14px !important;
+        height: 14px !important;
+        transform: translateY(0) scale(1.1);
+        background-color: #ffffff !important;
+        border-color: #ffffff !important;
+        box-shadow: 0 0 35px #ffffff, 0 0 70px #272dcf, 0 0 110px rgba(39, 45, 207, 0.9) !important;
+      }
+      /* Stage 3: Burst energy diffuses into a soft theme color as the width container unlocks */
+      55% {
+        width: 16px !important;
+        height: 28px !important;
+        transform: translateY(0) scale(1);
+        background-color: rgba(39, 45, 207, 0.3) !important;
+        border-color: rgba(83, 96, 255, 0.4) !important;
+        box-shadow: 0 0 25px rgba(39, 45, 207, 0.4) !important;
+      }
+      /* Stage 4: Telescoping sideways seamlessly out to full structural layout box metrics */
+      100% {
+        width: 100% !important;
+        max-width: 494px !important; /* Perfect pixel length boundary layout footprint for this string length */
+        height: 28px !important;
+        transform: translateY(0) scale(1);
+        background-color: rgba(255, 255, 255, 0.05) !important;
+        border-color: rgba(255, 255, 255, 0.1) !important;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 15px 35px rgba(0, 0, 0, 0.2) !important;
+      }
+    }
+
+    @keyframes geminiTextReveal {
+      0% {
+        opacity: 0;
+        transform: scale(0.96);
+        filter: blur(2px);
+      }
+      100% {
+        opacity: 1;
+        transform: scale(1);
+        filter: blur(0);
+      }
+    }
+
+    /* Keep mobile view bounds balanced when track widths break parameters */
+    @media (max-width: 560px) {
+      .badge.gemini-intro-capsule {
+        animation: geminiDropAndExpandMobile 1.6s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+      }
+      .gemini-content-fade {
+        padding: 5px 12px !important;
+      }
+    }
+
+    @keyframes geminiDropAndExpandMobile {
+      0% {
+        width: 12px !important;
+        height: 12px !important;
+        transform: translateY(-60px) scale(0.6);
+        background-color: #5360ff !important;
+        box-shadow: 0 0 15px #272dcf, 0 0 30px rgba(39, 45, 207, 0.8) !important;
+      }
+      35% {
+        width: 12px !important;
+        height: 12px !important;
+        transform: translateY(0) scale(1.1);
+        background-color: #ffffff !important;
+        box-shadow: 0 0 25px #ffffff, 0 0 50px #272dcf !important;
+      }
+      55% {
+        width: 14px !important;
+        height: 22px !important;
+        transform: translateY(0) scale(1);
+        background-color: rgba(39, 45, 207, 0.3) !important;
+      }
+      100% {
+        width: auto !important;
+        max-width: calc(100% - 32px) !important;
+        height: 22px !important;
+        transform: translateY(0) scale(1);
+        background-color: rgba(255, 255, 255, 0.05) !important;
+      }
+    }
     h1 { font-size:104px; line-height:.96; letter-spacing:0; margin:26px 0 0; font-weight:520; }
    .typed { 
       display: flex !important; 
@@ -805,14 +929,57 @@
       nav.nav-menu a:hover, nav.nav-menu a:focus-visible { background:rgba(255,255,255,.085) !important; color:#fff !important; }
     }
 
-    /* Pro Website Landing Smooth Entrance */
-  @keyframes landingRevealUp {
-    0% { opacity: 0; transform: translateY(24px); }
-    100% { opacity: 1; transform: translateY(0); }
+    /* High-End Split-Line Entrance Animation Engine */
+  .line-mask {
+    display: block !important;
+    overflow: hidden !important;
+    vertical-align: top !important;
+    line-height: 1.15 !important;
   }
-  #home .hero-grid > div:first-child {
-    animation: landingRevealUp 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  
+  .animate-line {
+    display: block !important;
+    transform: translateY(105%);
     opacity: 0;
+    animation: premiumLineReveal 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    will-change: transform, opacity;
+  }
+
+  @keyframes premiumLineReveal {
+    0% {
+      transform: translateY(105%);
+      opacity: 0;
+    }
+    30% {
+      opacity: 0.5;
+    }
+    100% {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  /* Finely tuned cinematic timeline delays for each row */
+  .staggered-heading .line-mask:nth-child(1) .animate-line {
+    animation-delay: 0.15s;
+  }
+  .staggered-heading .line-mask:nth-child(2) .animate-line {
+    animation-delay: 0.32s;
+  }
+  .staggered-paragraph .line-mask:nth-child(1) .animate-line {
+    animation-delay: 0.52s;
+  }
+  .staggered-paragraph .line-mask:nth-child(2) .animate-line {
+    animation-delay: 0.64s;
+  }
+  
+  /* Retain cta button fade-in to anchor the completion of the intro sequence */
+  #home .cta {
+    opacity: 0;
+    animation: premiumBtnFade 1s cubic-bezier(0.16, 1, 0.3, 1) 0.85s forwards;
+  }
+  @keyframes premiumBtnFade {
+    to { opacity: 1; }
   }
 
   /* Force Home hero title smaller */
@@ -841,7 +1008,10 @@
     /* Home + About: solid soft black */
     #about { background: #0b0b0d !important; color: #f5f5f7 !important; }
     #home { 
-      background: #0b0b0d url('bg1.webp') no-repeat center center !important; 
+      background-color: #0b0b0d !important;
+      background-image: url('bg1.webp') !important;
+      background-repeat: no-repeat !important;
+      background-position: center center !important;
       background-size: cover !important; 
       background-attachment: scroll !important;
       color: #f5f5f7 !important; 
@@ -1473,7 +1643,6 @@
     }
     #home.hero h1, 
     #home.hero p, 
-    #home.hero .badge,
     #home.hero .cta {
       text-align: center !important;
       align-items: center !important;
@@ -1486,13 +1655,7 @@
     
     /* Makes the info badge small, centers it, and locks it strictly to 1 line */
     #home.hero .badge {
-      display: inline-flex !important;
-      white-space: nowrap !important;
-      width: auto !important;
-      max-width: calc(100% - 12px) !important;
-      padding: 5px 12px !important;
       font-size: clamp(9px, 2.3vw, 11px) !important;
-      overflow: hidden !important;
       text-overflow: ellipsis !important;
     }
     
@@ -1850,9 +2013,9 @@
   #rolling-word-container,
   #rolling-word-container * {
     font-family: "Mountriel Italic", "Mountriel", "Bureau Serif", Georgia, "Times New Roman", serif !important;
-    font-style: italic !important;
+    font-style: italic !important; /* Restored the elegant italic slant */
     font-weight: 400 !important;
-    letter-spacing: -0.085em !important;
+    letter-spacing: -0.085em !important; /* Re-applied tighter letter-spacing for elegant cursive tracking */
     font-kerning: normal !important;
     font-feature-settings: "kern" 1, "liga" 1 !important;
     
@@ -1902,9 +2065,10 @@
     letter-spacing: -0.045em !important;
   }
 
-  #home h1 > .typed,
+  #home h1 .typed,
   #rolling-word-container {
     font-size: 1em !important;
+    display: inline-block !important;
   }
 
 
@@ -1928,10 +2092,10 @@
   #rolling-word-container.word-orbit-container {
     position: relative !important;
     display: block !important;
-    margin: -0.05em auto 0 !important; /* Brought significantly closer to Line 1 */
+    margin: -0.05em auto 0 !important;
     min-width: 5.4em !important;
     height: 1.08em !important;
-    line-height: 1.02em !important; /* Compressed baseline height */
+    line-height: 1.02em !important;
     overflow: visible !important;
     text-align: center !important;
     isolation: isolate !important;
@@ -1967,10 +2131,10 @@
     white-space: nowrap !important;
     overflow: visible !important;
     color: #272dcf !important;
-    font-family: "Mountriel Italic", "Mountriel", "Aileron", ui-sans-serif, system-ui, -apple-system, Arial, sans-serif !important;
-    font-style: italic !important;
+    font-family: "Bureau Serif", Georgia, "Times New Roman", serif !important;
+    font-style: normal !important;
     font-weight: 400 !important;
-    letter-spacing: -0.085em !important;
+    letter-spacing: -0.03em !important;
     padding-left: 0.28em !important;
     padding-right: 0.28em !important;
     backface-visibility: hidden !important;
@@ -2232,6 +2396,7 @@
 	</style>
 </head>
 	<body class="auth-state-pending">
+  <img src="bg1.webp" fetchpriority="high" alt="" style="position:absolute; width:1px; height:1px; opacity:0.01; pointer-events:none; z-index:-9999; top:0; left:0;" aria-hidden="true" decoding="async">
   <!--
     HTML EDIT MAP - change these names later if needed:
     - Brand name: change the text inside <span class="name">AdnnStudio</span>.
@@ -2330,14 +2495,22 @@
     <section id="home" class="hero">
       <div class="hero-grid">
         <div>
-          <div class="badge">
-            <svg class="icon spark-icon" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M12 2.5 14.15 9.85 21.5 12l-7.35 2.15L12 21.5l-2.15-7.35L2.5 12l7.35-2.15L12 2.5Z" fill="currentColor"/>
-            </svg>
-            Graphic design / identity systems / visual direction
+          <div class="badge gemini-intro-capsule">
+            <div class="gemini-content-fade">
+              <svg class="icon spark-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 2.5 14.15 9.85 21.5 12l-7.35 2.15L12 21.5l-2.15-7.35L2.5 12l7.35-2.15L12 2.5Z" fill="currentColor"/>
+              </svg>
+              Graphic design / identity systems / visual direction
+            </div>
           </div>
-          <h1><span>Where Ideas Become</span><span class="typed" id="rolling-word-container"></span></h1>
-          <p>Thoughtful design. Clear direction. Lasting impressions. <br>Let's create something remarkable together.</p>
+          <h1 class="staggered-heading">
+            <span class="line-mask"><span class="animate-line">Where Ideas Become</span></span>
+            <span class="line-mask"><span class="typed animate-line" id="rolling-word-container"></span></span>
+          </h1>
+          <p class="staggered-paragraph">
+            <span class="line-mask"><span class="animate-line">Thoughtful design. Clear direction. Lasting impressions.</span></span>
+            <span class="line-mask"><span class="animate-line">Let's create something remarkable together.</span></span>
+          </p>
           <div class="cta"><a class="white" href="#portfolio">View work</a><a class="dark glass edge" href="#connect">Start a project</a></div>
         </div>
 
@@ -3939,8 +4112,8 @@
   #rolling-word-container,
   #rolling-word-container.typewriter-word-container {
     position: relative !important;
-    display: block !important;
-    margin: -0.05em auto 0 !important; /* Matched to desktop layout spacing */
+    display: inline-block !important;
+    margin: 0 auto !important;
     min-width: 5.5em !important;
     min-height: 1.08em !important;
     height: 1.08em !important;
@@ -3949,13 +4122,13 @@
     box-sizing: content-box !important;
     padding-left: 0.44em !important;
     padding-right: 0.44em !important;
-    color: transparent !important;
+    color: #f5f5f7 !important;
     text-align: center !important;
     white-space: nowrap !important;
-    font-family: "Mountriel Italic", "Mountriel", "Aileron", ui-sans-serif, system-ui, -apple-system, Arial, sans-serif !important;
-    font-style: italic !important;
+    font-family: "Mountriel Italic", "Mountriel", "Bureau Serif", Georgia, "Times New Roman", serif !important;
+    font-style: italic !important; /* Restored the elegant italic slant */
     font-weight: 400 !important;
-    letter-spacing: -0.078em !important;
+    letter-spacing: -0.078em !important; /* Re-applied tighter letter-spacing for elegant cursive tracking */
     font-kerning: normal !important;
     font-feature-settings: "kern" 1, "liga" 1 !important;
     text-rendering: geometricPrecision !important;

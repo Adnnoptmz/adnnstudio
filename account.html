@@ -216,6 +216,12 @@
       padding:20px;
       background:rgba(255,255,255,.62);
       box-shadow:0 18px 52px rgba(0,0,0,.055);
+      transition: border-color .2s ease, background .2s ease;
+    }
+    /* Style for unread items */
+    .account-item.is-unread {
+      border-color: rgba(39, 45, 207, 0.24);
+      background: linear-gradient(135deg, rgba(39, 45, 207, 0.03), rgba(255, 255, 255, 0.75));
     }
     .account-item-top {
       display:flex;
@@ -230,6 +236,10 @@
       line-height:1.1;
       letter-spacing:-.035em;
       font-weight:400;
+    }
+    /* Blue unread title highlight */
+    .account-item.is-unread h2 {
+      color: var(--accent);
     }
     .account-status {
       min-height:28px;
@@ -258,7 +268,8 @@
       font-size:11px;
     }
     .account-meta span,
-    .account-meta a {
+    .account-meta a,
+    .account-meta button {
       border:1px solid rgba(0,0,0,.08);
       border-radius:999px;
       padding:8px 10px;
@@ -269,6 +280,22 @@
     .account-meta a {
       color:var(--accent);
       border-color:rgba(39,45,207,.18);
+    }
+    /* Custom button styling within item meta layout */
+    .account-meta button {
+      cursor: pointer;
+      font: inherit;
+      background: rgba(255, 255, 255, 0.7);
+      transition: all 0.2s ease;
+    }
+    .account-meta button:hover {
+      background: #fff;
+      color: var(--ink);
+      border-color: rgba(0,0,0,0.18);
+    }
+    .account-meta .seen-btn {
+      color: var(--accent);
+      border-color: rgba(39, 45, 207, 0.15);
     }
     .private-sync-status {
       min-height:18px;
@@ -301,6 +328,14 @@
       transform:translateY(-1px) rotate(18deg);
       background:#fff;
       box-shadow:inset 0 1px 0 rgba(255,255,255,.96), 0 18px 42px rgba(39,45,207,.12);
+    }
+    /* Controlled spinning animation classes */
+    .refresh-account-button.is-spinning svg {
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
     }
     .refresh-account-button svg {
       width:18px;
@@ -484,11 +519,11 @@
           <span>Tasks</span>
         </a>
         <a href="#invoice" data-view-link="invoice">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3.5h10A1.5 1.5 0 0 1 18.5 5v15.5l-2.3-1.4-2.1 1.4-2.1-1.4-2.1 1.4-2.4-1.4V5A1.5 1.5 0 0 1 7 3.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M9 8h6M9 12h6M9 16h3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3.5h10A1.5 1.5 0 0 1 18.5 5v15.5l-2.3-1.4-2.1 1.4-2.1-1.4-2.1 1.4-2.4-1.4V5A1.5 1.5 0 0 1 7 3.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M9 8h6M9 12h6M9 16h3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M9 8h6M9 12h6M9 16h3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
           <span>Invoice</span>
         </a>
         <a href="#terms" data-view-link="terms">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 3.5h8.7L19 7.3v13.2H6.5v-17Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M15 3.8V8h4M9 12h6M9 16h6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 3.5h8.7L19 7.3v13.2H6.5v-17Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M15 3.8V8h4M9 12h6M9 16h6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linejoin="round"/></svg>
           <span>Terms & Privacy</span>
         </a>
       </nav>
@@ -777,6 +812,10 @@
         return;
       }
 
+      // Add spin animation class when starting data fetch
+      const refreshBtn = document.getElementById("refreshAccountDataButton");
+      if (refreshBtn) refreshBtn.classList.add("is-spinning");
+
       fetchPrivateAccountData(accessToken)
         .then((data) => {
           if (!data || !data.ok) throw new Error(data?.error || "Could not load account data.");
@@ -786,6 +825,12 @@
         })
         .catch(() => {
           renderEmpty("notificationsList", "Private sync unavailable", "Log in again with Google, then refresh this account page.");
+        })
+        .finally(() => {
+          // Remove spin animation after the async operation complete
+          if (refreshBtn) {
+            setTimeout(() => { refreshBtn.classList.remove("is-spinning"); }, 400);
+          }
         });
     }
 
@@ -882,10 +927,12 @@
 
       if (!items.length) {
         renderEmpty(containerId, emptyTitle, emptyText);
+        updateSideBadgeCount();
         return;
       }
 
       items.forEach((item) => container.appendChild(createAccountItem(item, type)));
+      updateSideBadgeCount();
     }
 
     function renderEmpty(containerId, title, text) {
@@ -908,6 +955,17 @@
     function createAccountItem(item, type) {
       const article = document.createElement("article");
       article.className = "account-item";
+      
+      // Generate a deterministic structural ID based on unique keys of the item if no item.id exists
+      const itemUniqueId = item.id || btoa(encodeURIComponent((item.title || '') + (item.created || item.publishAt || ''))).slice(0, 24);
+      
+      // Check read status tracking from client localstorage
+      const seenKey = "adnn_seen_" + itemUniqueId;
+      const isRead = localStorage.getItem(seenKey) === "true";
+      
+      if (!isRead) {
+        article.classList.add("is-unread");
+      }
 
       const top = document.createElement("div");
       top.className = "account-item-top";
@@ -930,6 +988,21 @@
       addLink(meta, item.paymentLink, "Payment link");
       addLink(meta, item.fileLink, "Open file");
       addLink(meta, item.buttonLink, item.buttonLabel || "Open");
+
+      // Append Mark as Read/Seen action button to the structural item
+      if (!isRead) {
+        const seenBtn = document.createElement("button");
+        seenBtn.type = "button";
+        seenBtn.className = "seen-btn";
+        seenBtn.textContent = "Mark as seen";
+        seenBtn.addEventListener("click", () => {
+          localStorage.setItem(seenKey, "true");
+          article.classList.remove("is-unread");
+          seenBtn.remove();
+          updateSideBadgeCount();
+        });
+        meta.appendChild(seenBtn);
+      }
 
       article.append(top, body);
       if (meta.childElementCount) article.appendChild(meta);
@@ -979,6 +1052,16 @@
       return "Notification";
     }
 
+    // Helper dynamically monitoring total global unread notifications counts for navigation side-badge updates
+    function updateSideBadgeCount() {
+      const totalUnread = document.querySelectorAll("#notificationsList .account-item.is-unread").length;
+      const badge = document.querySelector("[data-notification-badge]");
+      if (badge) {
+        badge.textContent = totalUnread;
+        badge.hidden = totalUnread === 0;
+      }
+    }
+
     function syncGoogleSessionOnce() {
       const profile = getUser();
       const accessToken = getGoogleAccessToken();
@@ -994,6 +1077,8 @@
       accountSyncTimer = window.setInterval(syncGoogleSessionOnce, 60000);
     }
 
+    // Connect refresh button to run programmatic structural sync logic trigger smoothly
+    document.getElementById("refreshAccountDataButton")?.addEventListener("click", loadPrivateAccountData);
     document.getElementById("headerLogoutButton")?.addEventListener("click", logout);
     addEventListener("hashchange", () => setView(location.hash.replace("#", "")));
     finishGoogleLogin().catch(() => {

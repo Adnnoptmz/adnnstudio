@@ -9,6 +9,7 @@ import {
 import {
   addDoc,
   collection,
+  deleteDoc,
   doc,
   getDoc,
   getFirestore,
@@ -33,6 +34,10 @@ let navBadgeEmail = "";
 let lastAccountItems = [];
 let lastReadIds = new Set();
 let activeAccountUser = null;
+let knownLiveItemIds = new Set();
+let hasSeenFirstItemsSnapshot = false;
+let notificationAudio = null;
+let notificationAudioPrimed = false;
 
 function emailKey(email) {
   return String(email || "").trim().toLowerCase();
@@ -144,7 +149,13 @@ function stopFirebaseListeners() {
   navBadgeEmail = "";
   activeAccountUser = null;
   lastReadIds = new Set();
+  knownLiveItemIds = new Set();
+  hasSeenFirstItemsSnapshot = false;
 }
+
+["pointerdown", "keydown", "touchstart"].forEach((eventName) => {
+  document.addEventListener(eventName, primeNotificationAudio, { once: true, passive: true });
+});
 
 function startAccountReadsListener(user) {
   if (!db || !user?.uid) return;
@@ -167,6 +178,10 @@ function startAccountItemsListener(user) {
   const key = emailKey(user?.email);
   if (!db || !key) return;
   if (navBadgeUnsubscribe && navBadgeEmail === key) return;
+  if (navBadgeEmail && navBadgeEmail !== key) {
+    knownLiveItemIds = new Set();
+    hasSeenFirstItemsSnapshot = false;
+  }
   if (navBadgeUnsubscribe) navBadgeUnsubscribe();
   navBadgeEmail = key;
   const itemsQuery = query(
@@ -174,10 +189,19 @@ function startAccountItemsListener(user) {
     where("email", "==", key)
   );
   navBadgeUnsubscribe = onSnapshot(itemsQuery, (snapshot) => {
-    lastAccountItems = snapshot.docs
+    const nextItems = snapshot.docs
       .map((docSnap) => normalizeItem(docSnap))
       .filter(isVisibleItem)
       .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
+    const nextIds = new Set(nextItems.map((item) => item.id));
+    if (hasSeenFirstItemsSnapshot) {
+      nextItems
+        .filter((item) => !knownLiveItemIds.has(item.id) && !isRead(item))
+        .forEach(showLiveAlert);
+    }
+    knownLiveItemIds = nextIds;
+    hasSeenFirstItemsSnapshot = true;
+    lastAccountItems = nextItems;
     renderAccountItems(lastAccountItems);
     updateBadgeCounts();
   }, (error) => {
@@ -317,7 +341,7 @@ function createFirebaseItem(item, type) {
   const status = document.createElement("span");
   status.className = "account-status";
   title.textContent = item.title || defaultTitle(type);
-  status.textContent = unread ? "Unread" : item.status || "Read";
+  status.textContent = unread ? "Unread" : "Read";
   top.append(title, status);
 
   const body = document.createElement("p");
@@ -332,30 +356,44 @@ function createFirebaseItem(item, type) {
   addLink(meta, item.fileLink, "Open file");
   addLink(meta, item.buttonLink, item.buttonLabel || "Open");
 
-  if (unread) {
-    const readButton = document.createElement("button");
-    readButton.type = "button";
-    readButton.className = "mark-read-button";
-    readButton.textContent = "Mark as read";
-    readButton.addEventListener("click", async () => {
-      readButton.disabled = true;
+  const readButton = document.createElement("button");
+  readButton.type = "button";
+  readButton.className = "mark-read-button";
+  readButton.textContent = unread ? "Mark as read" : "Mark as unread";
+  readButton.addEventListener("click", async () => {
+    readButton.disabled = true;
+    if (isRead(item)) {
+      lastReadIds.delete(item.id);
+      article.classList.add("is-unread");
+      status.textContent = "Unread";
+      readButton.textContent = "Mark as read";
+      updateBadgeCounts();
+      await markItemUnread(item).catch((error) => {
+        lastReadIds.add(item.id);
+        article.classList.remove("is-unread");
+        status.textContent = "Read";
+        readButton.textContent = "Mark as unread";
+        updateBadgeCounts();
+        console.warn("AdnnStudio mark unread error", error);
+      });
+    } else {
       lastReadIds.add(item.id);
       article.classList.remove("is-unread");
-      status.textContent = item.status || "Read";
-      readButton.remove();
+      status.textContent = "Read";
+      readButton.textContent = "Mark as unread";
       updateBadgeCounts();
       await markItemRead(item).catch((error) => {
         lastReadIds.delete(item.id);
         article.classList.add("is-unread");
         status.textContent = "Unread";
-        meta.appendChild(readButton);
-        readButton.disabled = false;
+        readButton.textContent = "Mark as read";
         updateBadgeCounts();
         console.warn("AdnnStudio mark read error", error);
       });
-    });
-    meta.appendChild(readButton);
-  }
+    }
+    readButton.disabled = false;
+  });
+  meta.appendChild(readButton);
 
   article.append(top, body);
   if (meta.childElementCount) article.appendChild(meta);
@@ -372,6 +410,12 @@ async function markItemRead(item) {
     itemType: item.type || "notification",
     readAt: serverTimestamp()
   }, { merge: true });
+}
+
+async function markItemUnread(item) {
+  if (!db || !auth?.currentUser || !item?.id) return;
+  const user = auth.currentUser;
+  await deleteDoc(doc(db, "accountReads", `${user.uid}_${item.id}`));
 }
 
 function addMeta(container, text) {
@@ -504,6 +548,116 @@ async function runRefreshAnimation(callback) {
       }, 720);
     }
   }
+}
+
+function primeNotificationAudio() {
+  const audio = getNotificationAudio();
+  if (!audio || notificationAudioPrimed) return;
+  notificationAudioPrimed = true;
+  const previousVolume = audio.volume;
+  audio.volume = 0;
+  audio.play()
+    .then(() => {
+      audio.pause();
+      audio.currentTime = 0;
+      audio.volume = previousVolume;
+    })
+    .catch(() => {
+      audio.volume = previousVolume;
+    });
+}
+
+function getNotificationAudio() {
+  if (notificationAudio) return notificationAudio;
+  notificationAudio = new Audio("Message%20Notification.wav");
+  notificationAudio.preload = "auto";
+  notificationAudio.volume = 0.32;
+  return notificationAudio;
+}
+
+function playNotificationSound() {
+  const audio = getNotificationAudio();
+  if (!audio) return;
+  audio.currentTime = 0;
+  audio.volume = 0.32;
+  audio.play().catch(() => {});
+}
+
+function showLiveAlert(item) {
+  ensureLiveAlertStyle();
+  playNotificationSound();
+
+  const alert = document.createElement("div");
+  alert.className = "adnn-live-alert";
+  const label = document.createElement("span");
+  const title = document.createElement("strong");
+  label.textContent = alertLabel(item.type);
+  title.textContent = item.title || defaultTitle(item.type);
+  alert.append(label, title);
+  document.body.appendChild(alert);
+
+  requestAnimationFrame(() => alert.classList.add("is-visible"));
+  window.setTimeout(() => alert.classList.remove("is-visible"), 4200);
+  window.setTimeout(() => alert.remove(), 5200);
+}
+
+function alertLabel(type) {
+  if (type === "task") return "New task";
+  if (type === "invoice") return "New invoice";
+  return "New notification";
+}
+
+function ensureLiveAlertStyle() {
+  if (document.getElementById("adnnLiveAlertStyle")) return;
+  const style = document.createElement("style");
+  style.id = "adnnLiveAlertStyle";
+  style.textContent = `
+    .adnn-live-alert {
+      position: fixed;
+      right: clamp(16px, 4vw, 34px);
+      bottom: clamp(18px, 4vw, 34px);
+      z-index: 9999;
+      width: min(320px, calc(100vw - 32px));
+      border: 1px solid rgba(255,255,255,.16);
+      border-radius: 22px;
+      padding: 14px 16px;
+      color: #fff;
+      background: linear-gradient(135deg, rgba(34,34,38,.78), rgba(14,14,18,.68));
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.12), 0 24px 70px rgba(0,0,0,.34), 0 0 34px rgba(39,45,207,.18);
+      backdrop-filter: blur(24px) saturate(160%);
+      -webkit-backdrop-filter: blur(24px) saturate(160%);
+      opacity: 0;
+      transform: translateY(16px) scale(.98);
+      pointer-events: none;
+      transition: opacity .55s ease, transform .65s cubic-bezier(.16,1,.3,1);
+    }
+    .adnn-live-alert.is-visible {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+    .adnn-live-alert span,
+    .adnn-live-alert strong {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .adnn-live-alert span {
+      color: #8d96ff;
+      font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: .16em;
+      margin-bottom: 6px;
+    }
+    .adnn-live-alert strong {
+      font-family: var(--font-body, Inter, system-ui, sans-serif);
+      font-size: 15px;
+      font-weight: 500;
+      letter-spacing: -.02em;
+    }
+  `;
+  document.head.appendChild(style);
 }
 
 window.ADNN_FIREBASE_ADMIN = {

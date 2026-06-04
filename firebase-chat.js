@@ -444,7 +444,7 @@ function installChatStyles() {
   padding: 0;
   justify-content: center;
   position: relative;
-  border: 1px solid rgba(255,255,255,.08);
+  border: 0.5px solid rgba(255,255,255,.08);
   border-radius: 16px;
   color: #fff;
   cursor: pointer;

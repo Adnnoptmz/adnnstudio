@@ -27,9 +27,12 @@ const provider = new GoogleAuthProvider();
 provider.setCustomParameters({ prompt: "select_account" });
 
 let accountItemsUnsubscribe = null;
+let accountReadsUnsubscribe = null;
 let navBadgeUnsubscribe = null;
 let navBadgeEmail = "";
 let lastAccountItems = [];
+let lastReadIds = new Set();
+let activeAccountUser = null;
 
 function emailKey(email) {
   return String(email || "").trim().toLowerCase();
@@ -103,9 +106,15 @@ async function firebaseLogout(event) {
 window.startGoogleLogin = firebaseGoogleLogin;
 window.logoutGoogleAccount = firebaseLogout;
 document.getElementById("headerLogoutButton")?.addEventListener("click", firebaseLogout);
-document.getElementById("refreshAccountDataButton")?.addEventListener("click", () => {
-  if (auth?.currentUser) startAccountItemsListener(auth.currentUser);
-  else renderAccountItems(lastAccountItems);
+document.getElementById("refreshAccountDataButton")?.addEventListener("click", async () => {
+  await runRefreshAnimation(async () => {
+    if (auth?.currentUser) {
+      startAccountReadsListener(auth.currentUser);
+      startAccountItemsListener(auth.currentUser);
+    } else {
+      renderAccountItems(lastAccountItems);
+    }
+  });
 });
 
 if (auth) {
@@ -115,24 +124,46 @@ if (auth) {
       syncClientDoc(user).catch(() => {});
       if (typeof window.renderGoogleUser === "function") window.renderGoogleUser();
       if (typeof window.hydrateUser === "function") window.hydrateUser();
-      startNavBadgeListener(user);
+      activeAccountUser = user;
+      startAccountReadsListener(user);
       startAccountItemsListener(user);
     } else {
       stopFirebaseListeners();
-      updateBadges(0);
+      updateBadges({});
     }
   });
 }
 
 function stopFirebaseListeners() {
   if (accountItemsUnsubscribe) accountItemsUnsubscribe();
+  if (accountReadsUnsubscribe) accountReadsUnsubscribe();
   if (navBadgeUnsubscribe) navBadgeUnsubscribe();
   accountItemsUnsubscribe = null;
+  accountReadsUnsubscribe = null;
   navBadgeUnsubscribe = null;
   navBadgeEmail = "";
+  activeAccountUser = null;
+  lastReadIds = new Set();
 }
 
-function startNavBadgeListener(user) {
+function startAccountReadsListener(user) {
+  if (!db || !user?.uid) return;
+  if (accountReadsUnsubscribe) accountReadsUnsubscribe();
+  const readsQuery = query(
+    collection(db, "accountReads"),
+    where("uid", "==", user.uid)
+  );
+  accountReadsUnsubscribe = onSnapshot(readsQuery, (snapshot) => {
+    lastReadIds = new Set(snapshot.docs.map((docSnap) => String(docSnap.data()?.itemId || "")));
+    renderAccountItems(lastAccountItems);
+    updateBadgeCounts();
+  }, () => {
+    lastReadIds = new Set();
+    updateBadgeCounts();
+  });
+}
+
+function startAccountItemsListener(user) {
   const key = emailKey(user?.email);
   if (!db || !key) return;
   if (navBadgeUnsubscribe && navBadgeEmail === key) return;
@@ -140,38 +171,20 @@ function startNavBadgeListener(user) {
   navBadgeEmail = key;
   const itemsQuery = query(
     collection(db, "accountItems"),
-    where("email", "==", key),
-    where("type", "==", "notification")
+    where("email", "==", key)
   );
   navBadgeUnsubscribe = onSnapshot(itemsQuery, (snapshot) => {
-    const count = snapshot.docs
-      .map((docSnap) => normalizeItem(docSnap))
-      .filter(isVisibleItem)
-      .length;
-    updateBadges(count);
-  }, () => updateBadges(0));
-}
-
-function startAccountItemsListener(user) {
-  if (!db || !user?.email || !location.pathname.includes("account.html")) return;
-  if (accountItemsUnsubscribe) accountItemsUnsubscribe();
-
-  setAccountStatus("");
-  const itemsQuery = query(
-    collection(db, "accountItems"),
-    where("email", "==", emailKey(user.email))
-  );
-
-  accountItemsUnsubscribe = onSnapshot(itemsQuery, (snapshot) => {
     lastAccountItems = snapshot.docs
       .map((docSnap) => normalizeItem(docSnap))
       .filter(isVisibleItem)
       .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
     renderAccountItems(lastAccountItems);
+    updateBadgeCounts();
   }, (error) => {
     setAccountStatus("");
     renderEmpty("notificationsList", "Private sync unavailable", "Check Firebase rules and admin setup, then refresh.");
     console.warn("AdnnStudio account data error", error);
+    updateBadges({});
   });
 }
 
@@ -219,6 +232,7 @@ function toMillis(value) {
 
 function renderAccountItems(items) {
   setAccountStatus("");
+  updateBadgeCounts();
   renderFirebaseFeed(
     "notificationsList",
     items.filter((item) => item.type === "notification"),
@@ -276,6 +290,8 @@ function renderEmpty(containerId, title, text) {
 function createFirebaseItem(item, type) {
   const article = document.createElement("article");
   article.className = "account-item firebase-account-item";
+  const unread = !isRead(item);
+  article.classList.toggle("is-unread", unread);
 
   if (isSafeUrl(item.bannerImage)) {
     const image = document.createElement("img");
@@ -286,13 +302,22 @@ function createFirebaseItem(item, type) {
     article.appendChild(image);
   }
 
+  if (type === "invoice" && isSafeUrl(item.fileLink)) {
+    const preview = document.createElement("iframe");
+    preview.className = "account-pdf-preview";
+    preview.src = pdfPreviewUrl(item.fileLink);
+    preview.title = item.title ? `${item.title} preview` : "Invoice preview";
+    preview.loading = "lazy";
+    article.appendChild(preview);
+  }
+
   const top = document.createElement("div");
   top.className = "account-item-top";
   const title = document.createElement("h2");
   const status = document.createElement("span");
   status.className = "account-status";
   title.textContent = item.title || defaultTitle(type);
-  status.textContent = item.status || "New";
+  status.textContent = unread ? "Unread" : item.status || "Read";
   top.append(title, status);
 
   const body = document.createElement("p");
@@ -300,16 +325,53 @@ function createFirebaseItem(item, type) {
 
   const meta = document.createElement("div");
   meta.className = "account-meta";
-  addMeta(meta, item.createdAt ? `Created ${formatDate(item.createdAt)}` : "");
+  addMeta(meta, relativeTime(item.createdAt));
   addMeta(meta, item.dueDate ? `Due ${formatDate(item.dueDate)}` : "");
   addMeta(meta, item.amount ? `${item.currency || ""} ${item.amount}`.trim() : "");
   addLink(meta, item.paymentLink, "Payment link");
   addLink(meta, item.fileLink, "Open file");
   addLink(meta, item.buttonLink, item.buttonLabel || "Open");
 
+  if (unread) {
+    const readButton = document.createElement("button");
+    readButton.type = "button";
+    readButton.className = "mark-read-button";
+    readButton.textContent = "Mark as read";
+    readButton.addEventListener("click", async () => {
+      readButton.disabled = true;
+      lastReadIds.add(item.id);
+      article.classList.remove("is-unread");
+      status.textContent = item.status || "Read";
+      readButton.remove();
+      updateBadgeCounts();
+      await markItemRead(item).catch((error) => {
+        lastReadIds.delete(item.id);
+        article.classList.add("is-unread");
+        status.textContent = "Unread";
+        meta.appendChild(readButton);
+        readButton.disabled = false;
+        updateBadgeCounts();
+        console.warn("AdnnStudio mark read error", error);
+      });
+    });
+    meta.appendChild(readButton);
+  }
+
   article.append(top, body);
   if (meta.childElementCount) article.appendChild(meta);
   return article;
+}
+
+async function markItemRead(item) {
+  if (!db || !auth?.currentUser || !item?.id) return;
+  const user = auth.currentUser;
+  await setDoc(doc(db, "accountReads", `${user.uid}_${item.id}`), {
+    uid: user.uid,
+    email: emailKey(user.email),
+    itemId: item.id,
+    itemType: item.type || "notification",
+    readAt: serverTimestamp()
+  }, { merge: true });
 }
 
 function addMeta(container, text) {
@@ -344,6 +406,40 @@ function formatDate(value) {
   return new Date(millis).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
 }
 
+function relativeTime(value) {
+  const millis = toMillis(value);
+  if (!millis) return "Just now";
+  const seconds = Math.max(0, Math.floor((Date.now() - millis) / 1000));
+  if (seconds < 60) return "Just now";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}hr ago`;
+  const days = Math.floor(hours / 24);
+  if (days === 1) return "1 day ago";
+  if (days < 7) return `${days} days ago`;
+  const weeks = Math.floor(days / 7);
+  if (weeks === 1) return "1 week ago";
+  if (weeks < 5) return `${weeks} weeks ago`;
+  const months = Math.floor(days / 30);
+  if (months === 1) return "1 month ago";
+  if (months < 12) return `${months} months ago`;
+  const years = Math.floor(days / 365);
+  return years === 1 ? "1 year ago" : `${years} years ago`;
+}
+
+function pdfPreviewUrl(value) {
+  try {
+    const url = new URL(value);
+    if (url.hostname.includes("drive.google.com") && url.pathname.includes("/view")) {
+      return value.replace(/\/view(?:\?.*)?$/, "/preview");
+    }
+    return value;
+  } catch {
+    return value;
+  }
+}
+
 function invoiceSummary(item) {
   const amount = item.amount ? `${item.currency || ""} ${item.amount}`.trim() : "";
   return amount ? `Invoice amount: ${amount}` : item.message;
@@ -361,11 +457,53 @@ function setAccountStatus(message) {
 }
 
 function updateBadges(count) {
-  const visible = Number(count) > 0;
+  const counts = typeof count === "object" && count
+    ? count
+    : { notification: Number(count) || 0, task: 0, invoice: 0 };
   document.querySelectorAll("[data-notification-badge]").forEach((badge) => {
-    badge.textContent = String(count);
-    badge.hidden = !visible;
+    const value = counts.notification || 0;
+    badge.textContent = String(value);
+    badge.hidden = value <= 0;
   });
+  document.querySelectorAll("[data-account-badge]").forEach((badge) => {
+    const type = badge.dataset.accountBadge || "notification";
+    const value = counts[type] || 0;
+    badge.textContent = String(value);
+    badge.hidden = value <= 0;
+  });
+}
+
+function updateBadgeCounts() {
+  const counts = { notification: 0, task: 0, invoice: 0 };
+  lastAccountItems.forEach((item) => {
+    if (!isRead(item) && counts[item.type] !== undefined) counts[item.type] += 1;
+  });
+  updateBadges(counts);
+}
+
+function isRead(item) {
+  if (!item?.id) return false;
+  return lastReadIds.has(item.id);
+}
+
+async function runRefreshAnimation(callback) {
+  const button = document.getElementById("refreshAccountDataButton");
+  if (button) {
+    button.classList.remove("is-spinning");
+    void button.offsetWidth;
+    button.classList.add("is-spinning");
+    button.setAttribute("aria-busy", "true");
+  }
+  try {
+    await callback();
+  } finally {
+    if (button) {
+      window.setTimeout(() => {
+        button.classList.remove("is-spinning");
+        button.removeAttribute("aria-busy");
+      }, 720);
+    }
+  }
 }
 
 window.ADNN_FIREBASE_ADMIN = {

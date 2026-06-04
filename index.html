@@ -4539,6 +4539,38 @@
 	</style>
 <script src="firebase-config.js"></script>
 <script type="module" src="firebase-account.js"></script>
+<style id="apple-chat-style-only">
+  body.has-active-session .account-popover a[href*="chat" i],
+  body.has-active-session .account-popover button[class*="chat" i],
+  body.has-active-session .account-popover [class*="chat" i] {
+    min-height: 44px !important;
+    border-radius: 16px !important;
+    background: rgba(255,255,255,.055) !important;
+    border: 1px solid rgba(255,255,255,.08) !important;
+    color: rgba(245,245,247,.92) !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.08) !important;
+    backdrop-filter: blur(20px) saturate(160%) !important;
+    -webkit-backdrop-filter: blur(20px) saturate(160%) !important;
+    transition: background .25s ease, transform .25s ease, border-color .25s ease !important;
+  }
+
+  body.has-active-session .account-popover a[href*="chat" i]:hover,
+  body.has-active-session .account-popover button[class*="chat" i]:hover,
+  body.has-active-session .account-popover [class*="chat" i]:hover {
+    background: rgba(255,255,255,.105) !important;
+    border-color: rgba(255,255,255,.18) !important;
+    transform: translateY(-1px) !important;
+  }
+
+  body.has-active-session .account-popover a[href*="chat" i] svg,
+  body.has-active-session .account-popover button[class*="chat" i] svg,
+  body.has-active-session .account-popover [class*="chat" i] svg {
+    width: 18px !important;
+    height: 18px !important;
+    color: #f5f5f7 !important;
+    stroke-width: 1.65 !important;
+  }
+</style>
 <script type="module" src="firebase-chat.js"></script>
 </body>
 </html>

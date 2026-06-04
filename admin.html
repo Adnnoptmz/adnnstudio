@@ -123,6 +123,36 @@
       color: #f5f5f7 !important;
       border: 1px solid rgba(255, 255, 255, 0.08) !important;
     }
+    .password-wrap {
+      position: relative;
+      display: grid;
+    }
+    .password-wrap input {
+      padding-right: 52px !important;
+    }
+    .password-toggle {
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      width: 36px;
+      height: 36px;
+      min-height: 36px !important;
+      padding: 0 !important;
+      border-radius: 50%;
+      transform: translateY(-50%);
+      background: rgba(255,255,255,.06) !important;
+      color: #f5f5f7 !important;
+      box-shadow: none !important;
+    }
+    .password-toggle:hover {
+      transform: translateY(-50%) scale(1.04) !important;
+      background: rgba(255,255,255,.12) !important;
+    }
+    .password-toggle svg {
+      width: 17px;
+      height: 17px;
+      display: block;
+    }
 
     .top {
       display: flex;
@@ -185,6 +215,9 @@
     }
 
     label.full { grid-column: 1 / -1; }
+    .form-field.is-hidden {
+      display: none !important;
+    }
 
     input, textarea, select {
       width: 100%;
@@ -279,6 +312,9 @@
     .apple-icon-toggle {
       width: 44px;
       height: 44px;
+      min-height: 44px !important;
+      padding: 0 !important;
+      flex: 0 0 44px;
       border-radius: 50%;
       border: 1px solid var(--line);
       background: var(--toggle-btn-bg);
@@ -355,7 +391,12 @@
       <form id="localGateForm">
         <div class="lock-group">
           <input type="text" id="gateUser" placeholder="Admin ID" required autocomplete="username">
-          <input type="password" id="gatePass" placeholder="Password" required autocomplete="current-password">
+          <div class="password-wrap">
+            <input type="password" id="gatePass" placeholder="Password" required autocomplete="current-password">
+            <button type="button" class="password-toggle" id="gatePasswordToggle" aria-label="Show password" title="Show password">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.8"/></svg>
+            </button>
+          </div>
         </div>
         <button type="submit">Unlock Workspace</button>
         <p class="gate-error" id="gateError"></p>
@@ -392,20 +433,20 @@
       <p class="help" id="adminHelp">Workspace sync active[cite: 9]. Type your client's target email address and select the respective dispatch group below to update their dynamic layout feeds[cite: 9].</p>
       <form id="adminSendForm">
         <div class="grid">
-          <label>Send to client email
+          <label class="form-field" data-show="notification task invoice">Send to client email
             <input id="clientEmail" type="email" placeholder="client@gmail.com" required>
           </label>
-          <label>Type
+          <label class="form-field" data-show="notification task invoice">Type
             <select id="itemType">
               <option value="notification">Notification</option>
               <option value="task">Task</option>
               <option value="invoice">Invoice</option>
             </select>
           </label>
-          <label>Title
+          <label class="form-field" data-show="notification task invoice" id="titleFieldLabel">Title
             <input id="itemTitle" placeholder="Project update" required>
           </label>
-          <label>Status
+          <label class="form-field" data-show="notification task invoice">Status
             <select id="itemStatus">
               <option value="New">New</option>
               <option value="Published">Published</option>
@@ -413,34 +454,37 @@
               <option value="Hidden">Hidden</option>
             </select>
           </label>
-          <label class="full">Message
+          <label class="form-field full" data-show="notification task invoice" id="messageFieldLabel">Message
             <textarea id="itemMessage" placeholder="Your logo draft is ready." required></textarea>
           </label>
-          <label class="full">Banner image URL
+          <label class="form-field full" data-show="notification">Banner image URL
             <input id="bannerImage" placeholder="https://...">
           </label>
-          <label>Publish at
+          <label class="form-field" data-show="notification task invoice">Publish at
             <input id="publishAt" type="datetime-local">
           </label>
-          <label>Expires at
+          <label class="form-field" data-show="notification task invoice">Expires at
             <input id="expiresAt" type="datetime-local">
           </label>
-          <label>File link
+          <label class="form-field" data-show="task invoice" id="fileLinkFieldLabel">File link
             <input id="fileLink" placeholder="https://drive.google.com/...">
           </label>
-          <label>Button label
+          <label class="form-field" data-show="notification task">Button label
             <input id="buttonLabel" placeholder="View draft">
           </label>
-          <label>Button link
+          <label class="form-field" data-show="notification task">Button link
             <input id="buttonLink" placeholder="https://...">
           </label>
-          <label>Due date / invoice date
+          <label class="form-field" data-show="invoice">Payment link
+            <input id="paymentLink" placeholder="https://...">
+          </label>
+          <label class="form-field" data-show="task invoice" id="dueDateFieldLabel">Due date / invoice date
             <input id="dueDate" type="date">
           </label>
-          <label>Amount
+          <label class="form-field" data-show="invoice">Amount
             <input id="amount" placeholder="250">
           </label>
-          <label>Currency
+          <label class="form-field" data-show="invoice">Currency
             <input id="currency" placeholder="USD">
           </label>
         </div>
@@ -460,15 +504,24 @@
       const themeStorageKey = "adnn_portal_light_mode";
       const errorMsg = document.getElementById("gateError");
       const themeToggleBtn = document.getElementById("appleThemeToggle");
+      const passwordInput = document.getElementById("gatePass");
+      const passwordToggle = document.getElementById("gatePasswordToggle");
       
       // Theme Restoration Loop
       if (localStorage.getItem(themeStorageKey) === "true") {
         document.documentElement.classList.add("light-theme");
       }
 
-      themeToggleBtn.addEventListener("click", function() {
+      themeToggleBtn?.addEventListener("click", function() {
         const isCurrentlyLight = document.documentElement.classList.toggle("light-theme");
         localStorage.setItem(themeStorageKey, isCurrentlyLight);
+      });
+
+      passwordToggle?.addEventListener("click", function() {
+        const isVisible = passwordInput.type === "text";
+        passwordInput.type = isVisible ? "password" : "text";
+        passwordToggle.setAttribute("aria-label", isVisible ? "Show password" : "Hide password");
+        passwordToggle.setAttribute("title", isVisible ? "Show password" : "Hide password");
       });
       
       // Gate Lock Restoration Loop
@@ -501,6 +554,7 @@
   </script>
 
   <script src="firebase-config.js"></script>
+  <script src="account-data-config.js"></script>
   <script type="module">
     import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
@@ -535,6 +589,82 @@
       return Timestamp.fromDate(new Date(input.value));
     }
 
+    function fieldValue(id) {
+      return document.getElementById(id)?.value?.trim() || "";
+    }
+
+    function isFieldVisible(id) {
+      const input = document.getElementById(id);
+      const label = input?.closest(".form-field");
+      return Boolean(input && label && !label.classList.contains("is-hidden"));
+    }
+
+    function visibleValue(id) {
+      return isFieldVisible(id) ? fieldValue(id) : "";
+    }
+
+    function updateComposerFormat() {
+      const type = document.getElementById("itemType").value;
+      document.querySelectorAll(".form-field[data-show]").forEach((field) => {
+        const visible = field.dataset.show.split(/\s+/).includes(type);
+        field.classList.toggle("is-hidden", !visible);
+        field.querySelectorAll("input, textarea, select").forEach((input) => {
+          input.disabled = !visible;
+        });
+      });
+
+      const titleInput = document.getElementById("itemTitle");
+      const messageInput = document.getElementById("itemMessage");
+      const buttonLabel = document.getElementById("buttonLabel");
+      const fileLink = document.getElementById("fileLink");
+
+      if (type === "notification") {
+        document.getElementById("titleFieldLabel").firstChild.textContent = "Notification title";
+        document.getElementById("messageFieldLabel").firstChild.textContent = "Message";
+        titleInput.placeholder = "Project update";
+        messageInput.placeholder = "Your logo draft is ready.";
+        buttonLabel.placeholder = "Open update";
+      } else if (type === "task") {
+        document.getElementById("titleFieldLabel").firstChild.textContent = "Task title";
+        document.getElementById("messageFieldLabel").firstChild.textContent = "Task brief";
+        document.getElementById("fileLinkFieldLabel").firstChild.textContent = "Brief / file link";
+        document.getElementById("dueDateFieldLabel").firstChild.textContent = "Task due date";
+        titleInput.placeholder = "Logo revision brief";
+        messageInput.placeholder = "Review the new direction and send feedback by the due date.";
+        buttonLabel.placeholder = "Open brief";
+        fileLink.placeholder = "https://drive.google.com/...";
+      } else {
+        document.getElementById("titleFieldLabel").firstChild.textContent = "Invoice title";
+        document.getElementById("messageFieldLabel").firstChild.textContent = "Invoice note";
+        document.getElementById("fileLinkFieldLabel").firstChild.textContent = "Invoice PDF link";
+        document.getElementById("dueDateFieldLabel").firstChild.textContent = "Invoice due date";
+        titleInput.placeholder = "Invoice for brand identity";
+        messageInput.placeholder = "Invoice attached as PDF. Please review the amount and payment link.";
+        fileLink.placeholder = "https://drive.google.com/.../view";
+      }
+    }
+
+    function recordClientDispatch(payload) {
+      const endpoint = window.ADNN_ACCOUNT_ENDPOINT;
+      if (!endpoint) return;
+      const form = new URLSearchParams();
+      form.set("action", "recordClientMessage");
+      Object.entries(payload).forEach(([key, value]) => {
+        form.set(key, value === null || value === undefined ? "" : String(value));
+      });
+      form.set("pageUrl", location.href);
+      form.set("timestamp", new Date().toISOString());
+      fetch(endpoint, {
+        method: "POST",
+        body: form,
+        mode: "no-cors",
+        keepalive: true
+      }).catch(() => {});
+    }
+
+    document.getElementById("itemType").addEventListener("change", updateComposerFormat);
+    updateComposerFormat();
+
     window.addEventListener("DOMContentLoaded", async () => {
       if (isAdmin && db) {
         // Silent validation verification hook with your live Firestore settings
@@ -567,30 +697,51 @@
       }
 
       setStatus("Sending...");
+      const dispatchPayload = {
+        email,
+        type,
+        title,
+        message,
+        status: document.getElementById("itemStatus").value || "New",
+        bannerImage: visibleValue("bannerImage"),
+        publishAt: document.getElementById("publishAt").value,
+        expiresAt: document.getElementById("expiresAt").value,
+        fileLink: visibleValue("fileLink"),
+        buttonLabel: visibleValue("buttonLabel"),
+        buttonLink: visibleValue("buttonLink"),
+        paymentLink: visibleValue("paymentLink"),
+        dueDate: visibleValue("dueDate"),
+        amount: visibleValue("amount"),
+        currency: visibleValue("currency"),
+        createdByEmail: currentUser.email
+      };
       try {
         await addDoc(collection(db, "accountItems"), {
           email,
           type,
           title,
           message,
-          status: document.getElementById("itemStatus").value || "New",
-          bannerImage: document.getElementById("bannerImage").value.trim(),
+          status: dispatchPayload.status,
+          bannerImage: dispatchPayload.bannerImage,
           publishAt: timestampFromInput(document.getElementById("publishAt")),
           expiresAt: timestampFromInput(document.getElementById("expiresAt")),
-          fileLink: document.getElementById("fileLink").value.trim(),
-          buttonLabel: document.getElementById("buttonLabel").value.trim(),
-          buttonLink: document.getElementById("buttonLink").value.trim(),
-          dueDate: document.getElementById("dueDate").value,
-          amount: document.getElementById("amount").value.trim(),
-          currency: document.getElementById("currency").value.trim(),
+          fileLink: dispatchPayload.fileLink,
+          buttonLabel: dispatchPayload.buttonLabel,
+          buttonLink: dispatchPayload.buttonLink,
+          paymentLink: dispatchPayload.paymentLink,
+          dueDate: dispatchPayload.dueDate,
+          amount: dispatchPayload.amount,
+          currency: dispatchPayload.currency,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
           createdBy: currentUser.uid,
           createdByEmail: currentUser.email
         });
 
+        recordClientDispatch(dispatchPayload);
         event.target.reset();
-        setStatus("Sent. The client will see it in their account.");
+        updateComposerFormat();
+        setStatus("Sent. The client will see it in their account. Sheet log requested.");
       } catch (error) {
         console.error(error);
         setStatus("Transmission failed. Confirm Firestore network rules permit document writes.");

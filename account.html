@@ -1038,7 +1038,33 @@
     function formatDate(value) {
       const date = new Date(value);
       if (Number.isNaN(date.getTime())) return value;
-      return date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+      
+      const now = new Date();
+      const secondsPast = Math.floor((now.getTime() - date.getTime()) / 1000);
+      
+      // If client timestamp is set slightly in the future or under a minute ago
+      if (secondsPast < 60) {
+        return "Just now";
+      }
+      
+      const minutesPast = Math.floor(secondsPast / 60);
+      if (minutesPast < 60) {
+        return `${minutesPast}m ago`;
+      }
+      
+      const hoursPast = Math.floor(minutesPast / 60);
+      if (hoursPast < 24) {
+        return `${hoursPast}h ago`;
+      }
+      
+      // Beyond 24 hours: Display clean regional calendar layouts matched to device language rules
+      return date.toLocaleDateString(undefined, { 
+        year: "numeric", 
+        month: "short", 
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit"
+      });
     }
 
     function invoiceSummary(item) {
@@ -1055,11 +1081,18 @@
     // Helper dynamically monitoring total global unread notifications counts for navigation side-badge updates
     function updateSideBadgeCount() {
       const totalUnread = document.querySelectorAll("#notificationsList .account-item.is-unread").length;
-      const badge = document.querySelector("[data-notification-badge]");
-      if (badge) {
+      
+      // Update all navigation elements carrying a notification tracking data attribute badge
+      document.querySelectorAll("[data-notification-badge]").forEach(badge => {
         badge.textContent = totalUnread;
-        badge.hidden = totalUnread === 0;
-      }
+        if (totalUnread === 0) {
+          badge.setAttribute("hidden", "hidden");
+          badge.style.display = "none";
+        } else {
+          badge.removeAttribute("hidden");
+          badge.style.display = "grid";
+        }
+      });
     }
 
     function syncGoogleSessionOnce() {
@@ -1078,7 +1111,11 @@
     }
 
     // Connect refresh button to run programmatic structural sync logic trigger smoothly
-    document.getElementById("refreshAccountDataButton")?.addEventListener("click", loadPrivateAccountData);
+    document.getElementById("refreshAccountDataButton")?.addEventListener("click", () => {
+      const statusAlert = document.getElementById("accountDataStatus");
+      if (statusAlert) statusAlert.textContent = "Updating dashboard matrices...";
+      syncGoogleSessionOnce();
+    });
     document.getElementById("headerLogoutButton")?.addEventListener("click", logout);
     addEventListener("hashchange", () => setView(location.hash.replace("#", "")));
     finishGoogleLogin().catch(() => {

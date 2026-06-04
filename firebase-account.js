@@ -29,10 +29,12 @@ provider.setCustomParameters({ prompt: "select_account" });
 
 let accountItemsUnsubscribe = null;
 let accountReadsUnsubscribe = null;
+let accountDeletesUnsubscribe = null;
 let navBadgeUnsubscribe = null;
 let navBadgeEmail = "";
 let lastAccountItems = [];
 let lastReadIds = new Set();
+let lastDeletedIds = new Set();
 let activeAccountUser = null;
 let knownLiveItemIds = new Set();
 let hasSeenFirstItemsSnapshot = false;
@@ -115,6 +117,7 @@ document.getElementById("refreshAccountDataButton")?.addEventListener("click", a
   await runRefreshAnimation(async () => {
     if (auth?.currentUser) {
       startAccountReadsListener(auth.currentUser);
+      startAccountDeletesListener(auth.currentUser);
       startAccountItemsListener(auth.currentUser);
     } else {
       renderAccountItems(lastAccountItems);
@@ -131,6 +134,7 @@ if (auth) {
       if (typeof window.hydrateUser === "function") window.hydrateUser();
       activeAccountUser = user;
       startAccountReadsListener(user);
+      startAccountDeletesListener(user);
       startAccountItemsListener(user);
     } else {
       stopFirebaseListeners();
@@ -142,13 +146,16 @@ if (auth) {
 function stopFirebaseListeners() {
   if (accountItemsUnsubscribe) accountItemsUnsubscribe();
   if (accountReadsUnsubscribe) accountReadsUnsubscribe();
+  if (accountDeletesUnsubscribe) accountDeletesUnsubscribe();
   if (navBadgeUnsubscribe) navBadgeUnsubscribe();
   accountItemsUnsubscribe = null;
   accountReadsUnsubscribe = null;
+  accountDeletesUnsubscribe = null;
   navBadgeUnsubscribe = null;
   navBadgeEmail = "";
   activeAccountUser = null;
   lastReadIds = new Set();
+  lastDeletedIds = new Set();
   knownLiveItemIds = new Set();
   hasSeenFirstItemsSnapshot = false;
 }
@@ -170,6 +177,23 @@ function startAccountReadsListener(user) {
     updateBadgeCounts();
   }, () => {
     lastReadIds = new Set();
+    updateBadgeCounts();
+  });
+}
+
+function startAccountDeletesListener(user) {
+  if (!db || !user?.uid) return;
+  if (accountDeletesUnsubscribe) accountDeletesUnsubscribe();
+  const deletesQuery = query(
+    collection(db, "accountDeletes"),
+    where("uid", "==", user.uid)
+  );
+  accountDeletesUnsubscribe = onSnapshot(deletesQuery, (snapshot) => {
+    lastDeletedIds = new Set(snapshot.docs.map((docSnap) => String(docSnap.data()?.itemId || "")));
+    renderAccountItems(lastAccountItems);
+    updateBadgeCounts();
+  }, () => {
+    lastDeletedIds = new Set();
     updateBadgeCounts();
   });
 }
@@ -257,23 +281,24 @@ function toMillis(value) {
 function renderAccountItems(items) {
   setAccountStatus("");
   updateBadgeCounts();
+  const visibleItems = items.filter((item) => !isDeleted(item));
   renderFirebaseFeed(
     "notificationsList",
-    items.filter((item) => item.type === "notification"),
+    visibleItems.filter((item) => item.type === "notification"),
     "No notifications yet",
     "Nothing has been shared with this account yet.",
     "notification"
   );
   renderFirebaseFeed(
     "tasksList",
-    items.filter((item) => item.type === "task"),
+    visibleItems.filter((item) => item.type === "task"),
     "No ongoing task",
     "Nothing has been assigned yet.",
     "task"
   );
   renderFirebaseFeed(
     "invoiceList",
-    items.filter((item) => item.type === "invoice"),
+    visibleItems.filter((item) => item.type === "invoice"),
     "Nothing here",
     "No invoice has been added yet.",
     "invoice"
@@ -395,9 +420,43 @@ function createFirebaseItem(item, type) {
   });
   meta.appendChild(readButton);
 
+  if (type === "notification" || type === "task") {
+    const deleteButton = document.createElement("button");
+    deleteButton.type = "button";
+    deleteButton.className = "delete-item-button";
+    deleteButton.setAttribute("aria-label", `Delete ${defaultTitle(type).toLowerCase()}`);
+    deleteButton.title = "Delete from this account";
+    deleteButton.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4h6m-8.5 4h11M9 8v10m6-10v10M7.5 8l.7 12h7.6l.7-12" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+    deleteButton.addEventListener("click", async () => {
+      deleteButton.disabled = true;
+      lastDeletedIds.add(item.id);
+      renderAccountItems(lastAccountItems);
+      updateBadgeCounts();
+      await hideAccountItem(item).catch((error) => {
+        lastDeletedIds.delete(item.id);
+        renderAccountItems(lastAccountItems);
+        updateBadgeCounts();
+        console.warn("AdnnStudio delete item error", error);
+      });
+    });
+    meta.appendChild(deleteButton);
+  }
+
   article.append(top, body);
   if (meta.childElementCount) article.appendChild(meta);
   return article;
+}
+
+async function hideAccountItem(item) {
+  if (!db || !auth?.currentUser || !item?.id) return;
+  const user = auth.currentUser;
+  await setDoc(doc(db, "accountDeletes", `${user.uid}_${item.id}`), {
+    uid: user.uid,
+    email: emailKey(user.email),
+    itemId: item.id,
+    itemType: item.type || "notification",
+    deletedAt: serverTimestamp()
+  }, { merge: true });
 }
 
 async function markItemRead(item) {
@@ -520,6 +579,7 @@ function updateBadges(count) {
 function updateBadgeCounts() {
   const counts = { notification: 0, task: 0, invoice: 0 };
   lastAccountItems.forEach((item) => {
+    if (isDeleted(item)) return;
     if (!isRead(item) && counts[item.type] !== undefined) counts[item.type] += 1;
   });
   updateBadges(counts);
@@ -528,6 +588,11 @@ function updateBadgeCounts() {
 function isRead(item) {
   if (!item?.id) return false;
   return lastReadIds.has(item.id);
+}
+
+function isDeleted(item) {
+  if (!item?.id) return false;
+  return lastDeletedIds.has(item.id);
 }
 
 async function runRefreshAnimation(callback) {

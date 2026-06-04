@@ -438,18 +438,26 @@ function installChatStyles() {
   style.id = "adnnChatStyles";
   style.textContent = `
     .adnn-chat-trigger {
-      width: 44px;
-      height: 44px;
-      min-width: 44px;
-      padding: 0;
-      justify-content: center;
-      position: relative;
-      border-radius: 16px;
-      color: #fff;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-    }
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  padding: 0;
+  justify-content: center;
+  position: relative;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 18px;
+  color: #fff;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  line-height: 1;
+  text-decoration: none;
+  background: linear-gradient(135deg, rgba(34,34,38,.72), rgba(22,22,26,.58) 38%, rgba(14,14,18,.42));
+  backdrop-filter: blur(26px) saturate(160%);
+  -webkit-backdrop-filter: blur(26px) saturate(160%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.08), inset 0 -12px 35px rgba(255,255,255,.03), 0 20px 70px rgba(0,0,0,.34);
+}
     .adnn-chat-trigger[hidden] { display: none !important; }
     .adnn-chat-trigger svg { width: 19px; height: 19px; }
     .adnn-chat-trigger.is-floating {

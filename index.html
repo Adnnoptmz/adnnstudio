@@ -2465,15 +2465,17 @@
             <a href="account.html#notifications" id="universalNotificationLink">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 9.8c0-3.1-2-5.3-5-5.8V3.2a1 1 0 0 0-2 0V4c-3 .5-5 2.7-5 5.8v3.4l-1.6 2.6v.9h17.2v-.9L18 13.2V9.8Z" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linejoin="round"/><path d="M9.5 18.8a2.6 2.6 0 0 0 5 0" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round"/></svg>
               <span>Notifications</span>
-              <span class="account-notification-count" data-notification-badge hidden>0</span>
+              <span class="account-notification-count" data-account-badge="notification" hidden>0</span>
             </a>
             <a href="account.html#tasks" id="universalTaskLink">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 7h10M8 12h10M8 17h7M4.5 7h.01M4.5 12h.01M4.5 17h.01" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
               <span>Tasks</span>
+              <span class="account-notification-count" data-account-badge="task" hidden>0</span>
             </a>
             <a href="account.html#invoice" id="universalInvoiceLink">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3.5h10A1.5 1.5 0 0 1 18.5 5v15.5l-2.3-1.4-2.1 1.4-2.1-1.4-2.1 1.4-2.4-1.4V5A1.5 1.5 0 0 1 7 3.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M9 8h6M9 12h6M9 16h3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
               <span>Invoice</span>
+              <span class="account-notification-count" data-account-badge="invoice" hidden>0</span>
             </a>
             <a href="Terms & Privacy adnnstudio.com 2026.html">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 3.5h8.7L19 7.3v13.2H6.5v-17Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M15 3.8V8h4M9 12h6M9 16h6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -4507,6 +4509,9 @@
     font-size: 10px;
     line-height: 1;
     box-shadow: 0 8px 22px rgba(255, 38, 2, .32);
+  }
+  .account-notification-count[hidden] {
+    display: none !important;
   }
   .account-popover .account-logout { color: #ff4d4d; margin-top: 4px; }
   .account-popover .account-logout:hover { color: #ff6b6b; background: rgba(255,38,2,.1); }

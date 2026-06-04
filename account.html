@@ -293,7 +293,8 @@
       color: var(--ink);
       border-color: rgba(0,0,0,0.18);
     }
-    .account-meta .seen-btn {
+    .account-meta .seen-btn,
+    .account-meta .mark-read-button {
       color: var(--accent);
       border-color: rgba(39, 45, 207, 0.15);
     }
@@ -331,11 +332,12 @@
     }
     /* Controlled spinning animation classes */
     .refresh-account-button.is-spinning svg {
-      animation: spin 0.8s linear infinite;
+      animation: refreshSpin .72s cubic-bezier(.16, 1, .3, 1) both;
     }
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
+    @keyframes refreshSpin {
+      0% { transform: rotate(0deg) scale(1); }
+      72% { transform: rotate(320deg) scale(1.055); }
+      100% { transform: rotate(360deg) scale(1); }
     }
     .refresh-account-button svg {
       width:18px;
@@ -359,6 +361,9 @@
       line-height:1;
       box-shadow:0 8px 22px rgba(255,38,2,.28);
     }
+    .side-notification-badge[hidden] {
+      display:none !important;
+    }
     .account-banner-image {
       width:100%;
       aspect-ratio:16 / 7;
@@ -367,6 +372,15 @@
       border-radius:18px;
       margin-bottom:16px;
       border:1px solid rgba(0,0,0,.08);
+      background:rgba(255,255,255,.58);
+    }
+    .account-pdf-preview {
+      width:100%;
+      min-height:360px;
+      border:1px solid rgba(0,0,0,.08);
+      border-radius:18px;
+      display:block;
+      margin-bottom:16px;
       background:rgba(255,255,255,.58);
     }
     .legal-content { max-width:860px; margin-top:34px; }
@@ -463,7 +477,7 @@
   (function() {
     try {
       const userSession = JSON.parse(localStorage.getItem("adhnanPortfolioUser"));
-      if (userSession && userSession.email && userSession.email.trim().toLowerCase() === "youradmin@gmail.com") {
+      if (userSession && userSession.email && ["getavcollab@gmail.com", "youradmin@gmail.com"].includes(userSession.email.trim().toLowerCase())) {
         window.location.replace("admin.html");
       }
     } catch(e) {}
@@ -512,15 +526,17 @@
         <a href="#notifications" data-view-link="notifications">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 9.8c0-3.1-2-5.3-5-5.8V3.2a1 1 0 0 0-2 0V4c-3 .5-5 2.7-5 5.8v3.4l-1.6 2.6v.9h17.2v-.9L18 13.2V9.8Z" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linejoin="round"/><path d="M9.5 18.8a2.6 2.6 0 0 0 5 0" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round"/></svg>
           <span>Notifications</span>
-          <span class="side-notification-badge" data-notification-badge hidden>0</span>
+          <span class="side-notification-badge" data-account-badge="notification" hidden>0</span>
         </a>
         <a href="#tasks" data-view-link="tasks" class="active">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 7h10M8 12h10M8 17h7M4.5 7h.01M4.5 12h.01M4.5 17h.01" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
           <span>Tasks</span>
+          <span class="side-notification-badge" data-account-badge="task" hidden>0</span>
         </a>
         <a href="#invoice" data-view-link="invoice">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3.5h10A1.5 1.5 0 0 1 18.5 5v15.5l-2.3-1.4-2.1 1.4-2.1-1.4-2.1 1.4-2.4-1.4V5A1.5 1.5 0 0 1 7 3.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M9 8h6M9 12h6M9 16h3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M9 8h6M9 12h6M9 16h3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
           <span>Invoice</span>
+          <span class="side-notification-badge" data-account-badge="invoice" hidden>0</span>
         </a>
         <a href="#terms" data-view-link="terms">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 3.5h8.7L19 7.3v13.2H6.5v-17Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M15 3.8V8h4M9 12h6M9 16h6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linejoin="round"/></svg>
@@ -663,7 +679,7 @@
     }
     function hydrateUser() {
       const user = getUser();
-      if (user && user.email && user.email.trim().toLowerCase() === "getavcollab@gmail.com") {
+      if (user && user.email && ["getavcollab@gmail.com", "youradmin@gmail.com"].includes(user.email.trim().toLowerCase())) {
         location.href = "admin.html";
         return;
       }
@@ -685,20 +701,20 @@
         avatarNode.style.backgroundImage = user.picture ? `url("${user.picture}")` : "";
       }
 
-      if (nameNode) {
-        nameNode.onblur = null;
-        nameNode.onkeydown = null;
+      if (nameNode && !nameNode.dataset.editorReady) {
+        nameNode.dataset.editorReady = "true";
 
-	        nameNode.addEventListener("blur", () => {
-	          let textVal = nameNode.textContent.trim();
-	          if (!textVal) textVal = user.name || "Account";
-	          nameNode.textContent = textVal;
-	          localStorage.setItem("customClientName", textVal);
-	          user.name = textVal;
-	          localStorage.setItem(userKey, JSON.stringify(user));
-	          if (avatarNode && !user.picture) {
-	            avatarNode.textContent = textVal.trim().slice(0, 2).toUpperCase();
-	          }
+        nameNode.addEventListener("blur", () => {
+          const currentUser = getUser() || user;
+          let textVal = nameNode.textContent.trim();
+          if (!textVal) textVal = currentUser.name || "Account";
+          nameNode.textContent = textVal;
+          localStorage.setItem("customClientName", textVal);
+          currentUser.name = textVal;
+          localStorage.setItem(userKey, JSON.stringify(currentUser));
+          if (avatarNode && !currentUser.picture) {
+            avatarNode.textContent = textVal.trim().slice(0, 2).toUpperCase();
+          }
         });
 
         nameNode.addEventListener("keydown", (e) => {
@@ -754,8 +770,10 @@
       const response = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
+      if (!response.ok) throw new Error("Google profile request failed.");
       const profile = await response.json();
-      const isAdminEmail = profile.email.trim().toLowerCase() === "getavcollab@gmail.com";
+      if (!profile || !profile.email) throw new Error("Google profile email is missing.");
+      const isAdminEmail = ["getavcollab@gmail.com", "youradmin@gmail.com"].includes(profile.email.trim().toLowerCase());
       localStorage.setItem(userKey, JSON.stringify({
         name: profile.name,
         email: profile.email,
@@ -893,8 +911,15 @@
         frame.style.cssText = "position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;border:0;left:-9999px;top:-9999px;";
 
         const timeout = window.setTimeout(() => {
+          accountBridgeReady = null;
           reject(new Error("Account bridge did not load."));
         }, 14000);
+
+        frame.onerror = () => {
+          window.clearTimeout(timeout);
+          accountBridgeReady = null;
+          reject(new Error("Account bridge failed to load."));
+        };
 
         function onMessage(event) {
           if (event.source !== frame.contentWindow) return;
@@ -1041,13 +1066,24 @@
     }
 
     function formatDate(value) {
-      const date = new Date(value);
-      if (Number.isNaN(date.getTime())) return value;
+      if (!value) return "Just now";
+      
+      // Clean sanitation loop to handle Firestore formats or custom text strings gracefully
+      let standardValue = value;
+      if (typeof value === "string" && value.includes(" at ")) {
+        standardValue = value.replace(" at ", " ").replace(/UTC[\+\-]\d+/g, "").trim();
+      }
+      
+      let date = new Date(standardValue);
+      
+      // Ultimate fallback: If the date parsing still returns invalid, use the current time context
+      if (Number.isNaN(date.getTime())) {
+        date = new Date();
+      }
       
       const now = new Date();
       const secondsPast = Math.floor((now.getTime() - date.getTime()) / 1000);
       
-      // If client timestamp is set slightly in the future or under a minute ago
       if (secondsPast < 60) {
         return "Just now";
       }
@@ -1062,7 +1098,6 @@
         return `${hoursPast}h ago`;
       }
       
-      // Beyond 24 hours: Display clean regional calendar layouts matched to device language rules
       return date.toLocaleDateString(undefined, { 
         year: "numeric", 
         month: "short", 
@@ -1085,12 +1120,28 @@
 
     // Helper dynamically monitoring total global unread notifications counts for navigation side-badge updates
     function updateSideBadgeCount() {
-      const totalUnread = document.querySelectorAll("#notificationsList .account-item.is-unread").length;
+      const counts = {
+        notification: document.querySelectorAll("#notificationsList .account-item.is-unread").length,
+        task: document.querySelectorAll("#tasksList .account-item.is-unread").length,
+        invoice: document.querySelectorAll("#invoiceList .account-item.is-unread").length
+      };
       
       // Update all navigation elements carrying a notification tracking data attribute badge
       document.querySelectorAll("[data-notification-badge]").forEach(badge => {
+        const totalUnread = counts.notification;
         badge.textContent = totalUnread;
         if (totalUnread === 0) {
+          badge.setAttribute("hidden", "hidden");
+          badge.style.display = "none";
+        } else {
+          badge.removeAttribute("hidden");
+          badge.style.display = "grid";
+        }
+      });
+      document.querySelectorAll("[data-account-badge]").forEach(badge => {
+        const value = counts[badge.dataset.accountBadge] || 0;
+        badge.textContent = value;
+        if (value === 0) {
           badge.setAttribute("hidden", "hidden");
           badge.style.display = "none";
         } else {
@@ -1117,6 +1168,7 @@
 
     // Connect refresh button to run programmatic structural sync logic trigger smoothly
     document.getElementById("refreshAccountDataButton")?.addEventListener("click", () => {
+      if (window.ADNN_USE_FIREBASE_ACCOUNT) return;
       const statusAlert = document.getElementById("accountDataStatus");
       if (statusAlert) statusAlert.textContent = "Updating dashboard matrices...";
       syncGoogleSessionOnce();
@@ -1131,7 +1183,12 @@
       setView(location.hash.replace("#", ""));
       startAccountSyncLoop();
     });
+
+    window.adnnAccountModuleFallback = function adnnAccountModuleFallback() {
+      window.ADNN_USE_FIREBASE_ACCOUNT = false;
+      startAccountSyncLoop();
+    };
   </script>
-  <script type="module" src="firebase-account.js"></script>
+  <script type="module" src="firebase-account.js" onerror="window.adnnAccountModuleFallback && window.adnnAccountModuleFallback()"></script>
 </body>
 </html>

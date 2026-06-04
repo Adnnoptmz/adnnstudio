@@ -226,6 +226,9 @@
       place-items:center;
       padding:24px;
     }
+    body.auth-pending .shell,
+    body.auth-pending header,
+    body.auth-pending .auth-gate { visibility:hidden; }
     body.locked .shell, body.locked header { display:none; }
     body.locked .auth-gate { display:grid; }
     .gate-card {
@@ -289,7 +292,7 @@
     }
   </style>
 </head>
-<body>
+<body class="auth-pending locked">
   <div class="auth-gate">
     <div class="gate-card glass">
       <p class="kicker">Account</p>
@@ -330,6 +333,10 @@
         </div>
       </div>
       <nav class="side-nav" aria-label="Account navigation">
+        <a href="#notifications" data-view-link="notifications">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 9.8c0-3.1-2-5.3-5-5.8V3.2a1 1 0 0 0-2 0V4c-3 .5-5 2.7-5 5.8v3.4l-1.6 2.6v.9h17.2v-.9L18 13.2V9.8Z" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linejoin="round"/><path d="M9.5 18.8a2.6 2.6 0 0 0 5 0" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round"/></svg>
+          <span>Notifications</span>
+        </a>
         <a href="#tasks" data-view-link="tasks" class="active">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 7h10M8 12h10M8 17h7M4.5 7h.01M4.5 12h.01M4.5 17h.01" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
           <span>Tasks</span>
@@ -346,6 +353,13 @@
     </aside>
 
     <main class="glass">
+      <section id="notifications" class="view">
+        <p class="kicker">Notifications</p>
+        <h1>Notifications</h1>
+        <p class="lead">Private account updates, studio messages, and project alerts will appear here.</p>
+        <div class="empty-card"><span><strong>No notifications yet</strong><span>Nothing has been shared with this account yet.</span></span></div>
+      </section>
+
       <section id="tasks" class="view active">
         <p class="kicker">Tasks</p>
         <h1>Tasks</h1>
@@ -454,6 +468,7 @@
   </div>
 
   <script src="auth-config.js"></script>
+  <script src="account-data-config.js"></script>
   <script>
     const userKey = "adhnanPortfolioUser";
     function getUser() {
@@ -462,6 +477,7 @@
     function hydrateUser() {
       const user = getUser();
       document.body.classList.toggle("locked", !user);
+      document.body.classList.remove("auth-pending");
       if (!user) return;
       
       const customizedName = localStorage.getItem("customClientName") || user.name || "Account";
@@ -503,7 +519,7 @@
       }
     }
     function setView(view) {
-      const selected = ["tasks", "invoice", "terms"].includes(view) ? view : "tasks";
+      const selected = ["notifications", "tasks", "invoice", "terms"].includes(view) ? view : "tasks";
       document.querySelectorAll(".view").forEach((section) => section.classList.toggle("active", section.id === selected));
       document.querySelectorAll("[data-view-link]").forEach((link) => link.classList.toggle("active", link.dataset.viewLink === selected));
       if (location.hash.replace("#", "") !== selected) history.replaceState(null, "", `#${selected}`);
@@ -531,6 +547,14 @@
     };
     async function finishGoogleLogin() {
       const params = new URLSearchParams(location.hash.slice(1));
+      const oauthError = params.get("error");
+      if (oauthError) {
+        const errorDescription = params.get("error_description") || oauthError;
+        history.replaceState(null, "", location.pathname);
+        const error = document.getElementById("googleLoginError");
+        if (error) error.textContent = `Google login failed: ${errorDescription}`;
+        return;
+      }
       const accessToken = params.get("access_token");
       if (!accessToken) return;
       history.replaceState(null, "", location.pathname);
@@ -544,8 +568,28 @@
         picture: profile.picture,
         role: "client",
       }));
+      recordGoogleSignIn(accessToken, profile);
       hydrateUser();
       setView("tasks");
+    }
+    function recordGoogleSignIn(accessToken, profile) {
+      const endpoint = window.ADNN_ACCOUNT_ENDPOINT;
+      if (!endpoint || !accessToken) return;
+
+      const formData = new FormData();
+      formData.append("action", "recordLogin");
+      formData.append("accessToken", accessToken);
+      formData.append("name", profile?.name || "");
+      formData.append("email", profile?.email || "");
+      formData.append("picture", profile?.picture || "");
+      formData.append("pageUrl", window.location.href);
+      formData.append("userAgent", navigator.userAgent || "");
+
+      fetch(endpoint, {
+        method: "POST",
+        body: formData,
+        mode: "no-cors"
+      }).catch(() => {});
     }
     document.getElementById("headerLogoutButton")?.addEventListener("click", logout);
     addEventListener("hashchange", () => setView(location.hash.replace("#", "")));

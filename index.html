@@ -2452,6 +2452,10 @@
 
           <div class="account-popover glass edge" id="accountPopover" aria-label="Account menu">
             <span class="account-popover-user-badge" id="accountMenuName">username</span>
+            <a href="account.html#notifications" id="universalNotificationLink">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 9.8c0-3.1-2-5.3-5-5.8V3.2a1 1 0 0 0-2 0V4c-3 .5-5 2.7-5 5.8v3.4l-1.6 2.6v.9h17.2v-.9L18 13.2V9.8Z" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linejoin="round"/><path d="M9.5 18.8a2.6 2.6 0 0 0 5 0" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round"/></svg>
+              <span>Notifications</span>
+            </a>
             <a href="account.html#tasks" id="universalTaskLink">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 7h10M8 12h10M8 17h7M4.5 7h.01M4.5 12h.01M4.5 17h.01" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
               <span>Tasks</span>
@@ -2843,6 +2847,7 @@
 		  </script>
 
 		  <script src="auth-config.js"></script>
+		  <script src="account-data-config.js"></script>
 		  <script src="enquiry-config.js"></script>
 <script src="enquire.js"></script>
 		  <script>
@@ -3469,9 +3474,13 @@
 	    const displayName = getSavedDisplayName(isDesigner, activeUser);
 
     // Auto-rewrite destination navigation routing parameters for matching active workspace files
+    const notificationLink = document.getElementById("universalNotificationLink");
     const taskLink = document.getElementById("universalTaskLink");
     const invoiceLink = document.getElementById("universalInvoiceLink");
     
+    if (notificationLink) {
+      notificationLink.setAttribute("href", isDesigner ? "designer-account.html#notifications" : "account.html#notifications");
+    }
     if (taskLink) {
       taskLink.setAttribute("href", isDesigner ? "designer-account.html#tasks" : "account.html#tasks");
     }
@@ -3546,6 +3555,7 @@
       picture: profile.picture,
       role: "client",
     }));
+    recordGoogleSignIn(accessToken, profile);
     
     // Core Correction: Trigger session status state rendering instantly
     renderGoogleUser();
@@ -3560,6 +3570,26 @@
     localStorage.removeItem("adnnDesignerUser"); // Wipes custom designer keys safely
     renderGoogleUser();
   };
+
+  function recordGoogleSignIn(accessToken, profile) {
+    const endpoint = window.ADNN_ACCOUNT_ENDPOINT;
+    if (!endpoint || !accessToken) return;
+
+    const formData = new FormData();
+    formData.append("action", "recordLogin");
+    formData.append("accessToken", accessToken);
+    formData.append("name", profile?.name || "");
+    formData.append("email", profile?.email || "");
+    formData.append("picture", profile?.picture || "");
+    formData.append("pageUrl", window.location.href);
+    formData.append("userAgent", navigator.userAgent || "");
+
+    fetch(endpoint, {
+      method: "POST",
+      body: formData,
+      mode: "no-cors"
+    }).catch(() => {});
+  }
 
   finishGoogleLogin().catch(() => {
     alert("Google login returned, but the account profile could not be loaded. Please check your Google OAuth setup.");

@@ -3,182 +3,393 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>AdnnStudio Admin Sender</title>
+  <title>adnnstudio Admin Portal</title>
   <link rel="icon" type="image/svg+xml" href="adnn icon.svg" />
   <style>
     @import url("https://fonts.cdnfonts.com/css/aileron");
     @import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap");
+    
     :root {
-      --accent:#272dcf;
-      --paper:#f5f5f7;
-      --ink:#0b0b0d;
-      --muted:rgba(11,11,13,.62);
-      --line:rgba(0,0,0,.08);
-      --font-body:"Aileron", ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial, sans-serif;
-      --font-mono:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+      --accent: #272dcf;
+      --red: #ff2602;
+      --bg: #050506;
+      --panel-bg: linear-gradient(135deg, rgba(34, 34, 38, 0.72), rgba(22, 22, 26, 0.58) 38%, rgba(14, 14, 18, 0.42));
+      --input-bg: #111114;
+      --text: #f5f5f7;
+      --muted: rgba(245, 245, 247, 0.62);
+      --line: rgba(255, 255, 255, 0.08);
+      --font-body: "Aileron", ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial, sans-serif;
+      --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+      --radial-glow: radial-gradient(circle at 82% 8%, rgba(39, 45, 207, 0.14), transparent 36%);
+      --linear-bg: linear-gradient(180deg, #050506, #0b0b0d);
+      --glass-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 24px 70px rgba(0, 0, 0, 0.55);
+      --toggle-btn-bg: rgba(255, 255, 255, 0.05);
+      --toggle-btn-hover: rgba(255, 255, 255, 0.1);
     }
-    * { box-sizing:border-box; }
+
+    /* Light Theme Overrides (Apple Light Ecosystem Layout Elements) */
+    :root.light-theme {
+      --bg: #f5f5f7;
+      --panel-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.56));
+      --input-bg: #ffffff;
+      --text: #0b0b0d;
+      --muted: rgba(11, 11, 13, 0.62);
+      --line: rgba(0, 0, 0, 0.08);
+      --radial-glow: radial-gradient(circle at 82% 8%, rgba(39, 45, 207, 0.06), transparent 36%);
+      --linear-bg: linear-gradient(180deg, #fbfbfd, #f5f5f7);
+      --glass-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.92), 0 22px 70px rgba(0, 0, 0, 0.08);
+      --toggle-btn-bg: rgba(0, 0, 0, 0.03);
+      --toggle-btn-hover: rgba(0, 0, 0, 0.06);
+    }
+
+    * { box-sizing: border-box; }
+    
+    html, body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: var(--font-body);
+      font-weight: 300;
+      margin: 0;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+      transition: background-color 0.4s cubic-bezier(0.16, 1, 0.3, 1), color 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
     body {
-      margin:0;
-      min-height:100vh;
-      background:radial-gradient(circle at 82% 8%, rgba(39,45,207,.16), transparent 32%), linear-gradient(180deg,#fbfbfd,var(--paper));
-      color:var(--ink);
-      font-family:var(--font-body);
-      font-weight:300;
-      -webkit-font-smoothing:antialiased;
+      background-image: var(--radial-glow), var(--linear-bg);
     }
-    button, input, textarea, select { font:inherit; }
+
+    button, input, textarea, select { font: inherit; }
+
+    /* Premium Blur/Glass Panels */
+    .glass {
+      background: var(--panel-bg);
+      backdrop-filter: blur(26px) saturate(160%);
+      -webkit-backdrop-filter: blur(26px) saturate(160%);
+      border: 1px solid var(--line);
+      box-shadow: var(--glass-shadow);
+      transition: background 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease;
+    }
+
     .shell {
-      width:min(1120px, calc(100% - 32px));
-      margin:0 auto;
-      padding:clamp(28px, 5vw, 68px) 0;
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: clamp(28px, 5vw, 68px) 0;
     }
+
+    /* Portal Lock Screen Gate Framework */
+    .portal-lock-gate {
+      position: fixed;
+      inset: 0;
+      z-index: 99999;
+      background: #050506;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      opacity: 1;
+      visibility: visible;
+      transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.5s ease;
+    }
+
+    body.portal-unlocked .portal-lock-gate {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .lock-card {
+      width: min(420px, 100%);
+      border-radius: 28px;
+      padding: 40px 32px;
+      text-align: center;
+    }
+
+    .lock-card h2 {
+      font-size: 32px;
+      font-weight: 400;
+      letter-spacing: -0.05em;
+      margin: 0 0 24px;
+      color: #f5f5f7;
+    }
+
+    .lock-group {
+      display: grid;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .lock-group input {
+      background: #111114 !important;
+      color: #f5f5f7 !important;
+      border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    }
+
     .top {
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      gap:16px;
-      margin-bottom:28px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 32px;
     }
+
     .brand {
-      display:flex;
-      align-items:center;
-      gap:12px;
-      min-width:0;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      min-width: 0;
     }
+
     .brand img {
-      width:46px;
-      height:46px;
-      border-radius:16px;
-      object-fit:cover;
-      box-shadow:0 14px 34px rgba(39,45,207,.22);
+      width: 46px;
+      height: 46px;
+      border-radius: 14px;
+      object-fit: cover;
+      box-shadow: 0 12px 30px rgba(39, 45, 207, 0.3);
     }
+
     h1 {
-      margin:0;
-      font-size:clamp(42px,7vw,82px);
-      line-height:.92;
-      letter-spacing:-.058em;
-      font-weight:400;
+      margin: 0;
+      font-size: clamp(38px, 6vw, 72px);
+      line-height: 0.95;
+      letter-spacing: -0.055em;
+      font-weight: 400;
     }
+
     .kicker {
-      margin:0 0 12px;
-      color:var(--accent);
-      font-family:var(--font-mono);
-      font-size:12px;
-      letter-spacing:.18em;
-      text-transform:uppercase;
+      margin: 0 0 8px;
+      color: #5360ff;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
     }
+
     .panel {
-      border:1px solid var(--line);
-      border-radius:34px;
-      padding:clamp(22px,4vw,44px);
-      background:linear-gradient(135deg, rgba(255,255,255,.86), rgba(255,255,255,.58));
-      box-shadow:inset 0 1px 0 rgba(255,255,255,.92), 0 22px 70px rgba(0,0,0,.08);
-      backdrop-filter:blur(24px) saturate(160%);
-      -webkit-backdrop-filter:blur(24px) saturate(160%);
+      border-radius: 28px;
+      padding: clamp(20px, 4vw, 42px);
     }
+
     .grid {
-      display:grid;
-      grid-template-columns:repeat(2, minmax(0, 1fr));
-      gap:14px;
-      margin-top:32px;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      margin-top: 28px;
     }
+
     label {
-      display:grid;
-      gap:8px;
-      color:rgba(11,11,13,.58);
-      font-family:var(--font-mono);
-      font-size:11px;
+      display: grid;
+      gap: 8px;
+      color: var(--muted);
+      font-family: var(--font-mono);
+      font-size: 11px;
     }
-    label.full { grid-column:1 / -1; }
+
+    label.full { grid-column: 1 / -1; }
+
     input, textarea, select {
-      width:100%;
-      border:1px solid rgba(0,0,0,.10);
-      border-radius:18px;
-      background:#fff;
-      color:var(--ink);
-      outline:0;
-      padding:14px 15px;
-      font-family:var(--font-body);
-      font-size:14px;
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--input-bg);
+      color: var(--text);
+      outline: 0;
+      padding: 14px 16px;
+      font-family: var(--font-body);
+      font-size: 14px;
+      transition: border-color 0.25s, box-shadow 0.25s ease, background-color 0.4s ease, color 0.4s ease, border-color 0.4s ease;
     }
-    textarea { min-height:120px; resize:vertical; }
+
+    input:focus, textarea:focus, select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 4px rgba(39, 45, 207, 0.16);
+    }
+
+    :root.light-theme input::placeholder, :root.light-theme textarea::placeholder {
+      color: rgba(11, 11, 13, 0.35);
+    }
+    input::placeholder, textarea::placeholder {
+      color: rgba(245, 245, 247, 0.3);
+    }
+
+    textarea { min-height: 124px; resize: vertical; }
+
     .actions {
-      display:flex;
-      flex-wrap:wrap;
-      gap:10px;
-      margin-top:18px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 24px;
     }
-    .actions button, .top button, .top a {
-      min-height:44px;
-      border:0;
-      border-radius:999px;
-      padding:0 18px;
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      gap:9px;
-      color:#fff;
-      background:var(--accent);
-      text-decoration:none;
-      cursor:pointer;
-      box-shadow:0 16px 36px rgba(39,45,207,.24);
+
+    .actions button, .top button, .top a, .lock-card button {
+      min-height: 44px;
+      border: 0;
+      border-radius: 999px;
+      padding: 0 22px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      color: #fff;
+      background: var(--accent);
+      text-decoration: none;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      cursor: pointer;
+      transition: background 0.25s ease, transform 0.25s ease, box-shadow 0.25s ease;
     }
-    .top a { background:#111114; }
-    .actions .secondary, .top .secondary {
-      color:var(--ink);
-      background:rgba(255,255,255,.72);
-      border:1px solid rgba(0,0,0,.08);
-      box-shadow:0 12px 30px rgba(0,0,0,.06);
+
+    .actions button:hover, .top button:hover, .top a:hover, .lock-card button:hover {
+      background: #3946ff;
+      transform: translateY(-1px);
+      box-shadow: 0 12px 28px rgba(39, 45, 207, 0.35);
     }
+
+    .top a.home-btn { 
+      background: var(--input-bg); 
+      border: 1px solid var(--line);
+      color: var(--text);
+      transition: background 0.4s ease, color 0.4s ease, border-color 0.4s ease, transform 0.25s ease;
+    }
+    .top a.home-btn:hover { 
+      background: rgba(255, 255, 255, 0.12); 
+      transform: translateY(-1px);
+    }
+    :root.light-theme .top a.home-btn:hover {
+      background: rgba(0, 0, 0, 0.04);
+    }
+
+    /* Apple Red Logout Button Link Style */
+    .top button.apple-logout-btn {
+      width: 44px;
+      height: 44px;
+      min-height: 44px;
+      padding: 0;
+      border-radius: 50%;
+      background: var(--red);
+      color: #ffffff;
+      box-shadow: 0 8px 24px rgba(255, 38, 2, 0.25);
+    }
+    .top button.apple-logout-btn:hover {
+      background: #ff4122;
+      box-shadow: 0 12px 28px rgba(255, 38, 2, 0.4);
+      transform: translateY(-1px);
+    }
+
+    /* Apple Fine-Art Morphing Icon Toggle Controller */
+    .apple-icon-toggle {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: 1px solid var(--line);
+      background: var(--toggle-btn-bg);
+      color: var(--text);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      overflow: hidden;
+      position: relative;
+      transition: background-color 0.3s, border-color 0.3s, color 0.3s, transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .apple-icon-toggle:hover {
+      background-color: var(--toggle-btn-hover);
+      transform: scale(1.04) rotate(6deg);
+    }
+    .apple-icon-toggle:active {
+      transform: scale(0.96);
+    }
+    .apple-icon-toggle svg {
+      width: 20px;
+      height: 20px;
+      display: block;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.85;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    
+    /* Dynamic Path Rendering Group Rules */
+    .apple-icon-toggle .sun-icon { display: none; }
+    .apple-icon-toggle .moon-icon { display: block; }
+    :root.light-theme .apple-icon-toggle .sun-icon { display: block; }
+    :root.light-theme .apple-icon-toggle .moon-icon { display: none; }
+
     .status {
-      min-height:20px;
-      margin:18px 0 0;
-      color:var(--muted);
-      font-family:var(--font-mono);
-      font-size:12px;
-      line-height:1.55;
+      min-height: 20px;
+      margin: 18px 0 0;
+      color: var(--muted);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      line-height: 1.55;
     }
+
     .help {
-      margin-top:22px;
-      color:var(--muted);
-      font-size:14px;
-      line-height:1.7;
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.65;
     }
-    code {
-      font-family:var(--font-mono);
-      font-size:12px;
-      background:rgba(39,45,207,.08);
-      color:var(--accent);
-      border-radius:8px;
-      padding:2px 6px;
+
+    .gate-error {
+      color: var(--red);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      margin: 12px 0 0;
+      min-height: 16px;
     }
-    @media (max-width:760px) {
-      .top, .grid { grid-template-columns:1fr; }
-      .top { align-items:flex-start; flex-direction:column; }
+
+    @media (max-width: 760px) {
+      .top { align-items: flex-start; flex-direction: column; }
+      .grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
 <body>
+
+  <!-- Premium Apple-Inspired Fake Lock Credential Screen Gate -->
+  <div class="portal-lock-gate" id="portalLockGate">
+    <div class="lock-card glass">
+      <p class="kicker">Security Gateway</p>
+      <h2>Admin Access</h2>
+      <form id="localGateForm">
+        <div class="lock-group">
+          <input type="text" id="gateUser" placeholder="Admin ID" required autocomplete="username">
+          <input type="password" id="gatePass" placeholder="Password" required autocomplete="current-password">
+        </div>
+        <button type="submit">Unlock Workspace</button>
+        <p class="gate-error" id="gateError"></p>
+      </form>
+    </div>
+  </div>
+
   <div class="shell">
     <div class="top">
       <div class="brand">
         <img src="adnn icon.svg" alt="Adnn Studio">
         <div>
-          <p class="kicker">Admin sender</p>
+          <p class="kicker">Admin portal</p>
           <h1>Send to account.</h1>
         </div>
       </div>
-      <div class="actions" style="margin-top:0">
-        <a href="index.html#home" class="secondary">Home</a>
-        <button type="button" id="adminLoginButton">Google admin login</button>
-        <button type="button" class="secondary" id="adminLogoutButton">Log out</button>
+      <div class="actions" style="margin-top:0; display: flex; align-items: center; gap: 12px;">
+        <!-- Apple Fine-Art Morphing Icon Toggle Controller -->
+        <button type="button" class="apple-icon-toggle" id="appleThemeToggle" title="Toggle System Workspace Aesthetics" aria-label="Toggle System Workspace Aesthetics">
+          <!-- Moon Icon (Rendered in Dark Mode Framework) -->
+          <svg class="moon-icon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          <!-- Sun Icon (Rendered in Clean Light Mode Framework) -->
+          <svg class="sun-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+        </button>
+        <a href="index.html#home" class="home-btn">Back to Home</a>
+        <button type="button" class="apple-logout-btn" id="adminLogoutButton" title="Lock Workspace Panel" aria-label="Lock Workspace Panel">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px; display: block; margin: 0 auto;"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+        </button>
       </div>
     </div>
 
-    <div class="panel">
+    <div class="panel glass">
       <p class="kicker">Message composer</p>
-      <p class="help" id="adminHelp">Login with your admin Google account. If this page says you are not admin, add your Firebase UID to the <code>admins</code> collection once.</p>
+      <p class="help" id="adminHelp">Workspace sync active[cite: 9]. Type your client's target email address and select the respective dispatch group below to update their dynamic layout feeds[cite: 9].</p>
       <form id="adminSendForm">
         <div class="grid">
           <label>Send to client email
@@ -242,17 +453,63 @@
     </div>
   </div>
 
+  <!-- Local Session Authentication Verification & Theme Switcher Engine Scripts -->
+  <script>
+    (function manageLocalGateAndThemeSession() {
+      const storageSessionKey = "adnn_portal_unlocked";
+      const themeStorageKey = "adnn_portal_light_mode";
+      const errorMsg = document.getElementById("gateError");
+      const themeToggleBtn = document.getElementById("appleThemeToggle");
+      
+      // Theme Restoration Loop
+      if (localStorage.getItem(themeStorageKey) === "true") {
+        document.documentElement.classList.add("light-theme");
+      }
+
+      themeToggleBtn.addEventListener("click", function() {
+        const isCurrentlyLight = document.documentElement.classList.toggle("light-theme");
+        localStorage.setItem(themeStorageKey, isCurrentlyLight);
+      });
+      
+      // Gate Lock Restoration Loop
+      if (sessionStorage.getItem(storageSessionKey) === "true") {
+        document.body.classList.add("portal-unlocked");
+      }
+
+      document.getElementById("localGateForm").addEventListener("submit", function(e) {
+        e.preventDefault();
+        const user = document.getElementById("gateUser").value;
+        const pass = document.getElementById("gatePass").value;
+
+        if (user === "adhnannv" && pass === "adhnan#77.as") {
+          sessionStorage.setItem(storageSessionKey, "true");
+          document.body.classList.add("portal-unlocked");
+          if (errorMsg) errorMsg.textContent = "";
+        } else {
+          if (errorMsg) errorMsg.textContent = "Invalid administrator credentials.";
+        }
+      });
+
+      // Clear layout variables cleanly to force a lock screen bounce upon clicking logout
+      document.getElementById("adminLogoutButton").addEventListener("click", function() {
+        sessionStorage.removeItem(storageSessionKey);
+        document.body.classList.remove("portal-unlocked");
+        document.getElementById("gateUser").value = "";
+        document.getElementById("gatePass").value = "";
+      });
+    })();
+  </script>
+
   <script src="firebase-config.js"></script>
   <script type="module">
     import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getAuth, GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
     import { addDoc, collection, doc, getDoc, getFirestore, serverTimestamp, Timestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     const config = window.ADNN_FIREBASE_CONFIG;
     const app = config ? (getApps()[0] || initializeApp(config)) : null;
     const auth = app ? getAuth(app) : null;
     const db = app ? getFirestore(app) : null;
-    const provider = new GoogleAuthProvider();
     const status = document.getElementById("adminStatus");
     const help = document.getElementById("adminHelp");
     let currentUser = null;
@@ -271,42 +528,28 @@
       return Timestamp.fromDate(new Date(input.value));
     }
 
-    document.getElementById("adminLoginButton").addEventListener("click", async () => {
-      if (!auth) {
-        setStatus("Firebase config is missing.");
-        return;
-      }
-      await signInWithPopup(auth, provider);
-    });
-
-    document.getElementById("adminLogoutButton").addEventListener("click", async () => {
-      if (auth) await signOut(auth);
-    });
-
     onAuthStateChanged(auth, async (user) => {
       currentUser = user;
       isAdmin = false;
       if (!user) {
-        help.innerHTML = "Login with your admin Google account.";
-        setStatus("Not logged in.");
+        setStatus("Verification warning: No active Google session found. Ensure you are signed in on index.html.");
         return;
       }
 
       const adminDoc = await getDoc(doc(db, "admins", user.uid)).catch(() => null);
       isAdmin = Boolean(adminDoc && adminDoc.exists());
       if (isAdmin) {
-        help.textContent = `Admin ready: ${user.email}`;
-        setStatus("Ready to send.");
+        setStatus("Ready to sync.");
       } else {
-        help.innerHTML = `Logged in as ${user.email}, but this UID is not admin yet: <code>${user.uid}</code>. Add a document with this UID in Firestore collection <code>admins</code>.`;
-        setStatus("Admin access missing.");
+        help.innerHTML = `Google identity recognized, but this ID is missing permission roles in Firestore: <code>${user.uid}</code>.`;
+        setStatus("Admin authorization gate failed.");
       }
     });
 
     document.getElementById("adminSendForm").addEventListener("submit", async (event) => {
       event.preventDefault();
       if (!currentUser || !isAdmin) {
-        setStatus("Login as an admin first.");
+        setStatus("Permission error: Authenticate as an admin first via your main login link.");
         return;
       }
 
@@ -321,29 +564,34 @@
       }
 
       setStatus("Sending...");
-      await addDoc(collection(db, "accountItems"), {
-        email,
-        type,
-        title,
-        message,
-        status: document.getElementById("itemStatus").value || "New",
-        bannerImage: document.getElementById("bannerImage").value.trim(),
-        publishAt: timestampFromInput(document.getElementById("publishAt")),
-        expiresAt: timestampFromInput(document.getElementById("expiresAt")),
-        fileLink: document.getElementById("fileLink").value.trim(),
-        buttonLabel: document.getElementById("buttonLabel").value.trim(),
-        buttonLink: document.getElementById("buttonLink").value.trim(),
-        dueDate: document.getElementById("dueDate").value,
-        amount: document.getElementById("amount").value.trim(),
-        currency: document.getElementById("currency").value.trim(),
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        createdBy: currentUser.uid,
-        createdByEmail: currentUser.email
-      });
+      try {
+        await addDoc(collection(db, "accountItems"), {
+          email,
+          type,
+          title,
+          message,
+          status: document.getElementById("itemStatus").value || "New",
+          bannerImage: document.getElementById("bannerImage").value.trim(),
+          publishAt: timestampFromInput(document.getElementById("publishAt")),
+          expiresAt: timestampFromInput(document.getElementById("expiresAt")),
+          fileLink: document.getElementById("fileLink").value.trim(),
+          buttonLabel: document.getElementById("buttonLabel").value.trim(),
+          buttonLink: document.getElementById("buttonLink").value.trim(),
+          dueDate: document.getElementById("dueDate").value,
+          amount: document.getElementById("amount").value.trim(),
+          currency: document.getElementById("currency").value.trim(),
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+          createdBy: currentUser.uid,
+          createdByEmail: currentUser.email
+        });
 
-      event.target.reset();
-      setStatus("Sent. The client will see it in their account.");
+        event.target.reset();
+        setStatus("Sent. The client will see it in their account.");
+      } catch (error) {
+        console.error(error);
+        setStatus("Transmission failed. Confirm Firestore network rules permit document writes.");
+      }
     });
   </script>
 </body>

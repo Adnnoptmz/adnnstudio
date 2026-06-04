@@ -3510,9 +3510,9 @@
   }
 
   window.startGoogleLogin = function startGoogleLogin() {
-    if (getSavedGoogleUser()) {
+    if (getSavedGoogleUser() && getGoogleAccessToken()) {
       // Safely maintain view context on the home screen instead of loading separate files
-      location.href = "#home";
+      location.href = "account.html#notifications";
       return;
     }
 		    if (!window.GOOGLE_CLIENT_ID) {

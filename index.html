@@ -3578,28 +3578,31 @@
   }
 
   let accountSyncTimer = null;
+  const ADNN_ACCOUNT_ENDPOINT_FALLBACK = "https://script.google.com/macros/s/AKfycbyNYpnnZNDHrvY1E2FgJ8jwcqjt0OkfFlYcHlLPhP3birFb3OBDbIGtgS1M6khnmfljLw/exec";
 
   function getGoogleAccessToken() {
     try { return sessionStorage.getItem("adnnGoogleAccessToken") || ""; } catch { return ""; }
   }
 
   function sendAccountSync(action, accessToken, profile) {
-    const endpoint = window.ADNN_ACCOUNT_ENDPOINT;
+    const endpoint = window.ADNN_ACCOUNT_ENDPOINT || ADNN_ACCOUNT_ENDPOINT_FALLBACK;
     if (!endpoint || !accessToken) return;
 
-    const formData = new FormData();
-    formData.append("action", action);
-    formData.append("accessToken", accessToken);
-    formData.append("name", profile?.name || "");
-    formData.append("email", profile?.email || "");
-    formData.append("picture", profile?.picture || "");
-    formData.append("pageUrl", window.location.href);
-    formData.append("userAgent", navigator.userAgent || "");
+    const formData = new URLSearchParams();
+    formData.set("action", action);
+    formData.set("accessToken", accessToken);
+    formData.set("name", profile?.name || "");
+    formData.set("email", profile?.email || "");
+    formData.set("picture", profile?.picture || "");
+    formData.set("pageUrl", window.location.href);
+    formData.set("userAgent", navigator.userAgent || "");
+    formData.set("timestamp", new Date().toISOString());
 
     fetch(endpoint, {
       method: "POST",
       body: formData,
-      mode: "no-cors"
+      mode: "no-cors",
+      keepalive: true
     }).catch(() => {});
   }
 

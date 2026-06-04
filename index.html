@@ -3543,6 +3543,7 @@
     }
     const accessToken = params.get("access_token");
     if (!accessToken) return;
+    sessionStorage.setItem("adnnGoogleAccessToken", accessToken);
 
     history.replaceState(null, "", location.pathname);
     const response = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
@@ -3568,15 +3569,26 @@
     if (event) event.preventDefault();
     localStorage.removeItem("adhnanPortfolioUser");
     localStorage.removeItem("adnnDesignerUser"); // Wipes custom designer keys safely
+    sessionStorage.removeItem("adnnGoogleAccessToken");
     renderGoogleUser();
   };
 
   function recordGoogleSignIn(accessToken, profile) {
+    sendAccountSync("recordLogin", accessToken, profile);
+  }
+
+  let accountSyncTimer = null;
+
+  function getGoogleAccessToken() {
+    try { return sessionStorage.getItem("adnnGoogleAccessToken") || ""; } catch { return ""; }
+  }
+
+  function sendAccountSync(action, accessToken, profile) {
     const endpoint = window.ADNN_ACCOUNT_ENDPOINT;
     if (!endpoint || !accessToken) return;
 
     const formData = new FormData();
-    formData.append("action", "recordLogin");
+    formData.append("action", action);
     formData.append("accessToken", accessToken);
     formData.append("name", profile?.name || "");
     formData.append("email", profile?.email || "");
@@ -3591,10 +3603,24 @@
     }).catch(() => {});
   }
 
+  function syncGoogleSessionOnce() {
+    const profile = getSavedGoogleUser();
+    const accessToken = getGoogleAccessToken();
+    if (!profile || !accessToken) return;
+    sendAccountSync("syncSession", accessToken, profile);
+  }
+
+  function startAccountSyncLoop() {
+    if (accountSyncTimer) return;
+    syncGoogleSessionOnce();
+    accountSyncTimer = window.setInterval(syncGoogleSessionOnce, 120000);
+  }
+
   finishGoogleLogin().catch(() => {
     alert("Google login returned, but the account profile could not be loaded. Please check your Google OAuth setup.");
   });
   renderGoogleUser();
+  startAccountSyncLoop();
   (function() {
     const wordsList = ["Experiences", "Visuals", "Movement", "Identity", "Innovation"];
     const container = document.getElementById("rolling-word-container");

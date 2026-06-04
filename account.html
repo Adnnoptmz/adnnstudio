@@ -812,7 +812,6 @@
         return;
       }
 
-      // Add spin animation class when starting data fetch
       const refreshBtn = document.getElementById("refreshAccountDataButton");
       if (refreshBtn) refreshBtn.classList.add("is-spinning");
 
@@ -822,12 +821,18 @@
           renderAccountFeed("notificationsList", data.notifications || [], "No notifications yet", "Nothing has been shared with this account yet.", "notification");
           renderAccountFeed("tasksList", data.tasks || [], "No ongoing task", "Nothing has been assigned yet.", "task");
           renderAccountFeed("invoiceList", data.invoices || [], "Nothing here", "No invoice has been added yet.", "invoice");
+          
+          const statusAlert = document.getElementById("accountDataStatus");
+          if (statusAlert) statusAlert.textContent = ""; 
         })
-        .catch(() => {
+        .catch((err) => {
+          console.error(err);
           renderEmpty("notificationsList", "Private sync unavailable", "Log in again with Google, then refresh this account page.");
+          const statusAlert = document.getElementById("accountDataStatus");
+          if (statusAlert) statusAlert.textContent = "Sync failed. Check connection.";
         })
-        .finally(() => {
-          // Remove spin animation after the async operation complete
+        .then(() => {
+          // This always executes in the promise ecosystem, guaranteeing the icon stops spinning
           if (refreshBtn) {
             setTimeout(() => { refreshBtn.classList.remove("is-spinning"); }, 400);
           }

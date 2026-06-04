@@ -6,6 +6,7 @@ import {
 import {
   addDoc,
   collection,
+  deleteDoc,
   doc,
   getDoc,
   getFirestore,
@@ -17,6 +18,12 @@ import {
   updateDoc,
   where
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import {
+  getDownloadURL,
+  getStorage,
+  ref as storageRef,
+  uploadBytes
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
 const ADMIN_EMAIL = "getavcollab@gmail.com";
 const ADMIN_ALIAS_UID = "adnn-admin";
@@ -24,6 +31,7 @@ const config = window.ADNN_FIREBASE_CONFIG;
 const app = config ? (getApps()[0] || initializeApp(config)) : null;
 const auth = app ? getAuth(app) : null;
 const db = app ? getFirestore(app) : null;
+const storage = app ? getStorage(app) : null;
 
 let activeUser = null;
 let clientChatId = "";
@@ -32,16 +40,32 @@ let clientMessagesUnsubscribe = null;
 let adminChatsUnsubscribe = null;
 let adminMessagesUnsubscribe = null;
 let selectedAdminChatId = "";
+let selectedAdminChat = null;
+let designerMessagesUnsubscribe = null;
+let designerChatId = "designer_lounge";
+let activeDesignerProfile = null;
 let firstClientMessagesSnapshot = true;
 let firstAdminMessagesSnapshot = true;
+let firstDesignerMessagesSnapshot = true;
 let knownClientMessageIds = new Set();
 let knownAdminMessageIds = new Set();
+let knownDesignerMessageIds = new Set();
 let chatAudio = null;
 
 if (auth && db) {
   installChatStyles();
   installClientChatShell();
   if (location.pathname.includes("admin.html")) installAdminChatPanel();
+  if (location.pathname.includes("designer-account.html")) installDesignerChatPanel();
+  window.addEventListener("adnnDesignerFirebaseReady", () => {
+    if (location.pathname.includes("designer-account.html") && auth.currentUser) {
+      getDesignerProfile(auth.currentUser).then((designer) => {
+        if (!designer) return;
+        ensureDesignerRoom(auth.currentUser, designer).catch(() => {});
+        startDesignerChat(auth.currentUser, designer);
+      }).catch(() => {});
+    }
+  });
 
   onAuthStateChanged(auth, async (user) => {
     activeUser = user;
@@ -49,11 +73,25 @@ if (auth && db) {
     if (!user) {
       stopClientChat();
       stopAdminChat();
+      stopDesignerChat();
       return;
     }
 
     if (isAdminEmail(user.email) && location.pathname.includes("admin.html")) {
       startAdminChat();
+      return;
+    }
+
+    if (location.pathname.includes("designer-account.html")) {
+      stopClientChat();
+      const designer = await getDesignerProfile(user).catch(() => null);
+      if (designer) {
+        await ensureDesignerRoom(user, designer).catch(() => {});
+        startDesignerChat(user, designer);
+      } else {
+        activeDesignerProfile = null;
+        renderDesignerChatStatus("Designer Firebase access is not connected yet.");
+      }
       return;
     }
 
@@ -102,6 +140,10 @@ function installClientChatShell() {
       <div class="adnn-chat-empty">No messages yet.</div>
     </div>
     <form class="adnn-chat-form" id="adnnChatForm">
+      <label class="adnn-chat-media" title="Add media" aria-label="Add media">
+        <input id="adnnChatFile" type="file" accept="image/*,.pdf,.doc,.docx,.zip">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      </label>
       <input id="adnnChatInput" autocomplete="off" maxlength="1800" placeholder="Type a message">
       <button type="submit" aria-label="Send message">
         <svg viewBox="0 0 24 24" fill="currentColor" style="width: 14px; height: 14px; display: block;">
@@ -128,7 +170,8 @@ function updateClientChatVisibility(user) {
   if (!trigger) return;
   const hasUser = Boolean(user);
   const hideOnAdminPanel = location.pathname.includes("admin.html") && isAdminEmail(user?.email);
-  trigger.hidden = !hasUser || hideOnAdminPanel;
+  const hideOnDesignerPanel = location.pathname.includes("designer-account.html");
+  trigger.hidden = !hasUser || hideOnAdminPanel || hideOnDesignerPanel;
   trigger.classList.toggle("is-admin", isAdminEmail(user?.email));
 }
 
@@ -205,12 +248,21 @@ async function sendClientMessage(event) {
   event.preventDefault();
   if (!activeUser || !clientChatId) return;
   const input = document.getElementById("adnnChatInput");
+  const fileInput = document.getElementById("adnnChatFile");
   const text = String(input?.value || "").trim();
-  if (!text) return;
+  const file = fileInput?.files?.[0] || null;
+  if (!text && !file) return;
   input.value = "";
+  if (fileInput) fileInput.value = "";
   await ensureClientChat(activeUser);
+  const media = await uploadChatFile(file, clientChatId).catch((error) => {
+    alert("The media could not be attached. Try a smaller file.");
+    throw error;
+  });
+  const lastMessage = text || media.mediaName || "Media";
   await addDoc(collection(db, "chats", clientChatId, "messages"), {
     text,
+    ...media,
     senderUid: activeUser.uid,
     senderEmail: emailKey(activeUser.email),
     senderName: activeUser.displayName || activeUser.email || "Client",
@@ -218,7 +270,7 @@ async function sendClientMessage(event) {
     createdAt: serverTimestamp()
   });
   await setDoc(doc(db, "chats", clientChatId), {
-    lastMessage: text,
+    lastMessage,
     lastSenderUid: activeUser.uid,
     updatedAt: serverTimestamp(),
     unreadForAdmin: increment(1)
@@ -236,7 +288,7 @@ function renderClientMessages(messages) {
     wrap.appendChild(empty);
     return;
   }
-  messages.forEach((message) => wrap.appendChild(messageBubble(message, message.senderUid === activeUser?.uid)));
+  messages.forEach((message) => wrap.appendChild(messageBubble(message, message.senderUid === activeUser?.uid, clientChatId)));
   wrap.scrollTop = wrap.scrollHeight;
 }
 
@@ -261,10 +313,10 @@ function installAdminChatPanel() {
   panel.id = "adnnAdminChatPanel";
   panel.className = "panel glass adnn-admin-chat-panel";
   panel.innerHTML = `
-    <p class="kicker">Client chat</p>
+    <p class="kicker">Studio chat</p>
     <div class="adnn-admin-chat-grid">
       <div class="adnn-admin-chat-list" id="adnnAdminChatList">
-        <div class="adnn-chat-empty">Waiting for client chats.</div>
+        <div class="adnn-chat-empty">Waiting for chats.</div>
       </div>
       <div class="adnn-admin-chat-room">
         <div class="adnn-admin-chat-title" id="adnnAdminChatTitle">Select a client</div>
@@ -272,6 +324,10 @@ function installAdminChatPanel() {
           <div class="adnn-chat-empty">Choose a chat to reply.</div>
         </div>
         <form class="adnn-chat-form" id="adnnAdminChatForm">
+          <label class="adnn-chat-media" title="Add media" aria-label="Add media">
+            <input id="adnnAdminChatFile" type="file" accept="image/*,.pdf,.doc,.docx,.zip">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </label>
           <input id="adnnAdminChatInput" autocomplete="off" maxlength="1800" placeholder="Reply to client">
           <button type="submit" aria-label="Send reply">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12 20 5l-5.8 14-3-5.9L4 12Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
@@ -307,6 +363,129 @@ function stopAdminChat() {
   adminChatsUnsubscribe = null;
   adminMessagesUnsubscribe = null;
   selectedAdminChatId = "";
+  selectedAdminChat = null;
+}
+
+function installDesignerChatPanel() {
+  if (document.getElementById("adnnDesignerChatPanel")) return;
+  const view = document.getElementById("chat");
+  if (!view) return;
+  const panel = document.createElement("div");
+  panel.id = "adnnDesignerChatPanel";
+  panel.className = "adnn-designer-chat-panel";
+  panel.innerHTML = `
+    <div class="adnn-chat-messages" id="adnnDesignerMessages">
+      <div class="adnn-chat-empty">Designer chat connects after Firebase designer login.</div>
+    </div>
+    <form class="adnn-chat-form" id="adnnDesignerChatForm">
+      <label class="adnn-chat-media" title="Add media" aria-label="Add media">
+        <input id="adnnDesignerChatFile" type="file" accept="image/*,.pdf,.doc,.docx,.zip">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      </label>
+      <input id="adnnDesignerChatInput" autocomplete="off" maxlength="1800" placeholder="Message designers">
+      <button type="submit" aria-label="Send designer message">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12 20 5l-5.8 14-3-5.9L4 12Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+      </button>
+    </form>
+  `;
+  view.appendChild(panel);
+  document.getElementById("adnnDesignerChatForm")?.addEventListener("submit", sendDesignerMessage);
+}
+
+async function getDesignerProfile(user) {
+  if (!user?.uid) return null;
+  const snap = await getDoc(doc(db, "designers", user.uid));
+  return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+}
+
+async function ensureDesignerRoom(user, designer) {
+  const ref = doc(db, "chats", designerChatId);
+  await setDoc(ref, {
+    type: "designer-room",
+    roomKey: "designer_lounge",
+    title: "Designer Lounge",
+    lastDesignerUid: user.uid,
+    lastDesignerId: designer.designerId || designer.designerid || "",
+    updatedAt: serverTimestamp(),
+    createdAt: serverTimestamp()
+  }, { merge: true });
+}
+
+function startDesignerChat(user, designer) {
+  stopDesignerChat();
+  activeDesignerProfile = designer;
+  designerMessagesUnsubscribe = onSnapshot(collection(db, "chats", designerChatId, "messages"), (snapshot) => {
+    const messages = snapshot.docs
+      .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
+      .sort((a, b) => toMillis(a.createdAt) - toMillis(b.createdAt));
+    const nextIds = new Set(messages.map((message) => message.id));
+    const incoming = !firstDesignerMessagesSnapshot
+      ? messages.filter((message) => message.senderUid !== user.uid && !knownDesignerMessageIds.has(message.id))
+      : [];
+    firstDesignerMessagesSnapshot = false;
+    knownDesignerMessageIds = nextIds;
+    renderDesignerMessages(messages);
+    if (incoming.length) showChatAlert(incoming[incoming.length - 1], "Designer chat");
+  }, () => {
+    renderDesignerChatStatus("Designer chat could not load.");
+  });
+}
+
+function stopDesignerChat() {
+  if (designerMessagesUnsubscribe) designerMessagesUnsubscribe();
+  designerMessagesUnsubscribe = null;
+  activeDesignerProfile = null;
+  firstDesignerMessagesSnapshot = true;
+  knownDesignerMessageIds = new Set();
+}
+
+function renderDesignerMessages(messages) {
+  const wrap = document.getElementById("adnnDesignerMessages");
+  if (!wrap) return;
+  wrap.innerHTML = "";
+  if (!messages.length) {
+    wrap.innerHTML = `<div class="adnn-chat-empty">No designer messages yet.</div>`;
+    return;
+  }
+  messages.forEach((message) => wrap.appendChild(messageBubble(message, message.senderUid === activeUser?.uid, designerChatId)));
+  wrap.scrollTop = wrap.scrollHeight;
+}
+
+function renderDesignerChatStatus(text) {
+  const wrap = document.getElementById("adnnDesignerMessages");
+  if (!wrap) return;
+  wrap.innerHTML = `<div class="adnn-chat-empty">${escapeHtml(text)}</div>`;
+}
+
+async function sendDesignerMessage(event) {
+  event.preventDefault();
+  if (!activeUser) return;
+  const input = document.getElementById("adnnDesignerChatInput");
+  const fileInput = document.getElementById("adnnDesignerChatFile");
+  const text = String(input?.value || "").trim();
+  const file = fileInput?.files?.[0] || null;
+  if (!text && !file) return;
+  input.value = "";
+  if (fileInput) fileInput.value = "";
+  const media = await uploadChatFile(file, designerChatId).catch((error) => {
+    alert("The media could not be attached. Try a smaller file.");
+    throw error;
+  });
+  const lastMessage = text || media.mediaName || "Media";
+  await addDoc(collection(db, "chats", designerChatId, "messages"), {
+    text,
+    ...media,
+    senderUid: activeUser.uid,
+    senderEmail: emailKey(activeUser.email),
+    senderName: activeDesignerProfile?.name || activeUser.displayName || activeUser.email || "Designer",
+    senderRole: "designer",
+    createdAt: serverTimestamp()
+  });
+  await setDoc(doc(db, "chats", designerChatId), {
+    lastMessage,
+    lastSenderUid: activeUser.uid,
+    updatedAt: serverTimestamp()
+  }, { merge: true });
 }
 
 function renderAdminChatStatus(text) {
@@ -320,7 +499,7 @@ function renderAdminChatList(chats) {
   if (!list) return;
   list.innerHTML = "";
   if (!chats.length) {
-    list.innerHTML = `<div class="adnn-chat-empty">Waiting for client chats.</div>`;
+    list.innerHTML = `<div class="adnn-chat-empty">Waiting for chats.</div>`;
     return;
   }
   chats.forEach((chat) => {
@@ -329,10 +508,12 @@ function renderAdminChatList(chats) {
     button.className = "adnn-admin-chat-item";
     button.classList.toggle("is-active", chat.id === selectedAdminChatId);
     const unread = Number(chat.unreadForAdmin) || 0;
+    const label = chat.title || chat.clientName || chat.clientEmail || "Chat";
+    const preview = chat.lastMessage || chat.clientEmail || "No messages yet";
     button.innerHTML = `
       <span>
-        <strong>${escapeHtml(chat.clientName || chat.clientEmail || "Client")}</strong>
-        <small>${escapeHtml(chat.lastMessage || chat.clientEmail || "No messages yet")}</small>
+        <strong>${escapeHtml(label)}</strong>
+        <small>${escapeHtml(preview)}</small>
       </span>
       ${unread > 0 ? `<b>${unread}</b>` : ""}
     `;
@@ -343,7 +524,8 @@ function renderAdminChatList(chats) {
 
 function selectAdminChat(chat) {
   selectedAdminChatId = chat.id;
-  document.getElementById("adnnAdminChatTitle").textContent = chat.clientName || chat.clientEmail || "Client";
+  selectedAdminChat = chat;
+  document.getElementById("adnnAdminChatTitle").textContent = chat.title || chat.clientName || chat.clientEmail || "Client";
   if (adminMessagesUnsubscribe) adminMessagesUnsubscribe();
   firstAdminMessagesSnapshot = true;
   knownAdminMessageIds = new Set();
@@ -371,7 +553,7 @@ function renderAdminMessages(messages) {
     wrap.innerHTML = `<div class="adnn-chat-empty">No messages yet.</div>`;
     return;
   }
-  messages.forEach((message) => wrap.appendChild(messageBubble(message, message.senderUid === activeUser?.uid)));
+  messages.forEach((message) => wrap.appendChild(messageBubble(message, message.senderUid === activeUser?.uid, selectedAdminChatId)));
   wrap.scrollTop = wrap.scrollHeight;
 }
 
@@ -379,41 +561,136 @@ async function sendAdminMessage(event) {
   event.preventDefault();
   if (!activeUser || !selectedAdminChatId) return;
   const input = document.getElementById("adnnAdminChatInput");
+  const fileInput = document.getElementById("adnnAdminChatFile");
   const text = String(input?.value || "").trim();
-  if (!text) return;
+  const file = fileInput?.files?.[0] || null;
+  if (!text && !file) return;
   input.value = "";
+  if (fileInput) fileInput.value = "";
+  const media = await uploadChatFile(file, selectedAdminChatId).catch((error) => {
+    alert("The media could not be attached. Try a smaller file.");
+    throw error;
+  });
+  const lastMessage = text || media.mediaName || "Media";
+  const chatUpdate = {
+    lastMessage,
+    lastSenderUid: activeUser.uid,
+    updatedAt: serverTimestamp()
+  };
+  if (selectedAdminChat?.type !== "designer-room") chatUpdate.unreadForClient = increment(1);
   await addDoc(collection(db, "chats", selectedAdminChatId, "messages"), {
     text,
+    ...media,
     senderUid: activeUser.uid,
     senderEmail: emailKey(activeUser.email),
     senderName: "AdnnStudio",
     senderRole: "admin",
     createdAt: serverTimestamp()
   });
-  await setDoc(doc(db, "chats", selectedAdminChatId), {
-    lastMessage: text,
-    lastSenderUid: activeUser.uid,
-    updatedAt: serverTimestamp(),
-    unreadForClient: increment(1)
-  }, { merge: true });
+  await setDoc(doc(db, "chats", selectedAdminChatId), chatUpdate, { merge: true });
 }
 
-function messageBubble(message, mine) {
+function messageBubble(message, mine, chatId) {
   const bubble = document.createElement("article");
   bubble.className = `adnn-chat-bubble${mine ? " is-mine" : ""}`;
+  if (message.senderName && !mine) {
+    const name = document.createElement("strong");
+    name.className = "adnn-chat-sender";
+    name.textContent = message.senderName;
+    bubble.appendChild(name);
+  }
+  if (isSafeUrl(message.mediaUrl)) {
+    bubble.appendChild(createMediaAttachment(message));
+  }
   const text = document.createElement("p");
   const time = document.createElement("span");
   text.textContent = message.text || "";
   time.textContent = relativeTime(message.createdAt);
-  bubble.append(text, time);
+  if (message.text) bubble.appendChild(text);
+  bubble.appendChild(time);
+  if (canDeleteMessage(message)) {
+    const deleteButton = document.createElement("button");
+    deleteButton.type = "button";
+    deleteButton.className = "adnn-chat-delete";
+    deleteButton.title = "Delete message";
+    deleteButton.setAttribute("aria-label", "Delete message");
+    deleteButton.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4h6m-8.5 4h11M9 8v10m6-10v10M7.5 8l.7 12h7.6l.7-12" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+    deleteButton.addEventListener("click", () => deleteChatMessage(chatId, message.id, deleteButton));
+    bubble.appendChild(deleteButton);
+  }
   return bubble;
+}
+
+function createMediaAttachment(message) {
+  const mediaType = String(message.mediaType || "");
+  if (mediaType.startsWith("image/")) {
+    const link = document.createElement("a");
+    link.className = "adnn-chat-attachment is-image";
+    link.href = message.mediaUrl;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    const image = document.createElement("img");
+    image.src = message.mediaUrl;
+    image.alt = message.mediaName || "Chat image";
+    image.loading = "lazy";
+    link.appendChild(image);
+    return link;
+  }
+
+  const link = document.createElement("a");
+  link.className = "adnn-chat-attachment";
+  link.href = message.mediaUrl;
+  link.target = "_blank";
+  link.rel = "noopener noreferrer";
+  link.textContent = message.mediaName || "Open attachment";
+  return link;
+}
+
+async function deleteChatMessage(chatId, messageId, button) {
+  if (!chatId || !messageId) return;
+  if (button) button.disabled = true;
+  await deleteDoc(doc(db, "chats", chatId, "messages", messageId)).catch((error) => {
+    if (button) button.disabled = false;
+    console.warn("AdnnStudio chat delete error", error);
+  });
+}
+
+function canDeleteMessage(message) {
+  return isAdminEmail(activeUser?.email) || message.senderUid === activeUser?.uid;
+}
+
+async function uploadChatFile(file, chatId) {
+  if (!file) return {};
+  if (!storage) throw new Error("Firebase Storage is not connected.");
+  if (file.size > 10 * 1024 * 1024) throw new Error("Chat file is too large.");
+  const safeName = sanitizeFileName(file.name || "attachment");
+  const path = `chat-media/${chatId}/${activeUser.uid}/${Date.now()}-${safeName}`;
+  const ref = storageRef(storage, path);
+  await uploadBytes(ref, file, {
+    contentType: file.type || "application/octet-stream"
+  });
+  const mediaUrl = await getDownloadURL(ref);
+  return {
+    mediaUrl,
+    mediaName: file.name || "Attachment",
+    mediaType: file.type || "application/octet-stream",
+    mediaPath: path
+  };
+}
+
+function sanitizeFileName(value) {
+  return String(value || "attachment")
+    .replace(/[^a-z0-9._-]+/gi, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 80) || "attachment";
 }
 
 function showChatAlert(message, label) {
   playChatSound();
   const alert = document.createElement("div");
   alert.className = "adnn-chat-alert";
-  alert.innerHTML = `<span>${escapeHtml(label)}</span><strong>${escapeHtml(message.text || "New message")}</strong>`;
+  alert.innerHTML = `<span>${escapeHtml(label)}</span><strong>${escapeHtml(message.text || message.mediaName || "New message")}</strong>`;
   document.body.appendChild(alert);
   requestAnimationFrame(() => alert.classList.add("is-visible"));
   setTimeout(() => alert.classList.remove("is-visible"), 4200);
@@ -593,12 +870,94 @@ function installChatStyles() {
       font-family: var(--font-mono, ui-monospace, Menlo, monospace);
       font-size: 10px;
     }
+    .adnn-chat-sender {
+      display: block;
+      margin-bottom: 5px;
+      color: rgba(255,255,255,.7);
+      font-family: var(--font-mono, ui-monospace, Menlo, monospace);
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: .05em;
+    }
+    .adnn-chat-attachment {
+      display: block;
+      margin-bottom: 8px;
+      max-width: 100%;
+      color: #fff;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+      overflow-wrap: anywhere;
+      font-size: 13px;
+    }
+    .adnn-chat-attachment.is-image {
+      text-decoration: none;
+    }
+    .adnn-chat-attachment img {
+      display: block;
+      width: 100%;
+      max-height: 220px;
+      object-fit: cover;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.1);
+    }
+    .adnn-chat-delete {
+      width: 28px;
+      height: 28px;
+      margin-top: 8px;
+      border: 0;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      color: rgba(255,255,255,.78);
+      background: rgba(0,0,0,.16);
+      cursor: pointer;
+      opacity: 0;
+      transform: scale(.92);
+      transition: opacity .2s ease, transform .2s ease, background .2s ease;
+    }
+    .adnn-chat-bubble:hover .adnn-chat-delete,
+    .adnn-chat-delete:focus-visible {
+      opacity: 1;
+      transform: scale(1);
+    }
+    .adnn-chat-delete:hover {
+      color: #fff;
+      background: rgba(255,38,2,.5);
+    }
+    .adnn-chat-delete svg {
+      width: 14px;
+      height: 14px;
+      display: block;
+    }
     .adnn-chat-form {
       display: grid;
-      grid-template-columns: 1fr 42px;
+      grid-template-columns: 42px minmax(0, 1fr) 42px;
       gap: 8px;
       padding: 12px;
       border-top: 1px solid rgba(255,255,255,.1);
+    }
+    .adnn-chat-media {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: rgba(255,255,255,.08);
+      color: #fff;
+      cursor: pointer;
+      border: 1px solid rgba(255,255,255,.08);
+    }
+    .adnn-chat-media input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+      pointer-events: none;
+    }
+    .adnn-chat-media svg {
+      width: 18px;
+      height: 18px;
+      display: block;
     }
     .adnn-chat-form input {
       min-width: 0;
@@ -740,6 +1099,17 @@ function installChatStyles() {
       font-size: 18px;
       letter-spacing: -.03em;
     }
+    .adnn-designer-chat-panel {
+      margin-top: 34px;
+      min-height: 440px;
+      display: grid;
+      grid-template-rows: minmax(320px, 1fr) auto;
+      border: 1px solid var(--line, rgba(0,0,0,.08));
+      border-radius: 28px;
+      overflow: hidden;
+      background: linear-gradient(135deg, rgba(16,16,20,.9), rgba(28,28,34,.78));
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.12), 0 24px 70px rgba(0,0,0,.1);
+    }
     @media (max-width: 760px) {
       .adnn-admin-chat-grid { grid-template-columns: 1fr; }
       .adnn-admin-chat-list, .adnn-admin-chat-room { min-height: 320px; }
@@ -758,6 +1128,15 @@ function emailKey(email) {
 
 function isAdminEmail(email) {
   return emailKey(email) === ADMIN_EMAIL;
+}
+
+function isSafeUrl(value) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:";
+  } catch {
+    return false;
+  }
 }
 
 function toMillis(value) {

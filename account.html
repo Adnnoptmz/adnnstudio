@@ -86,7 +86,7 @@
       transition: background 0.25s ease, transform 0.25s ease;
     }
     .home-link:hover {
-      background: #1e23b0;
+      background: #DE1616;
       transform: translateY(-1px);
     }
     .shell {
@@ -269,6 +269,14 @@
       color:var(--accent);
       border-color:rgba(39,45,207,.18);
     }
+    .private-sync-status {
+      min-height:18px;
+      margin:18px 0 0;
+      color:rgba(11,11,13,.56);
+      font-family:var(--font-mono);
+      font-size:11px;
+      line-height:1.5;
+    }
     .legal-content { max-width:860px; margin-top:34px; }
     .legal-content section { margin:0 0 42px; scroll-margin-top:120px; }
     .legal-content h2 {
@@ -423,6 +431,7 @@
         <p class="kicker">Notifications</p>
         <h1>Notifications</h1>
         <p class="lead">Private account updates, studio messages, and project alerts will appear here.</p>
+        <p class="private-sync-status" id="accountDataStatus" aria-live="polite">Checking private account data...</p>
         <div class="account-feed is-empty" id="notificationsList"><div class="empty-card"><span><strong>No notifications yet</strong><span>Nothing has been shared with this account yet.</span></span></div></div>
       </section>
 
@@ -829,10 +838,12 @@
       const meta = document.createElement("div");
       meta.className = "account-meta";
       addMeta(meta, item.created ? `Created ${formatDate(item.created)}` : "");
+      addMeta(meta, item.publishAt ? `Published ${formatDate(item.publishAt)}` : "");
       addMeta(meta, item.dueDate ? `Due ${formatDate(item.dueDate)}` : "");
       addMeta(meta, item.amount ? `${item.currency || ""} ${item.amount}`.trim() : "");
       addLink(meta, item.paymentLink, "Payment link");
       addLink(meta, item.fileLink, "Open file");
+      addLink(meta, item.buttonLink, item.buttonLabel || "Open");
 
       article.append(top, body);
       if (meta.childElementCount) article.appendChild(meta);
@@ -893,7 +904,7 @@
     function startAccountSyncLoop() {
       if (accountSyncTimer) return;
       syncGoogleSessionOnce();
-      accountSyncTimer = window.setInterval(syncGoogleSessionOnce, 120000);
+      accountSyncTimer = window.setInterval(syncGoogleSessionOnce, 60000);
     }
 
     document.getElementById("headerLogoutButton")?.addEventListener("click", logout);

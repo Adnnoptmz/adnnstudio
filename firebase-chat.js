@@ -74,7 +74,7 @@ function installClientChatShell() {
   trigger.hidden = true;
   trigger.setAttribute("aria-label", "Open chat");
   trigger.innerHTML = `
-    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5.5h14v9.8H9.2L5 18.8V5.5Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8.2 9h7.6M8.2 12h5.4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+    <svg viewBox="0 0 24 24" fill="currentColor" style="width: 20px; height: 20px; display: block;"><path d="M12 3.5c-5.25 0-9.5 3.8-9.5 8.5 0 2.62 1.34 4.97 3.45 6.53-.15.77-.53 2.14-1.13 3.2-.13.23.05.51.31.44 1.14-.32 2.83-1.04 3.93-1.85A10.6 10.6 0 0 0 12 20.5c5.25 0 9.5-3.8 9.5-8.5S17.25 3.5 12 3.5z"/></svg>
     <span class="adnn-chat-count" hidden>0</span>
   `;
 
@@ -92,14 +92,9 @@ function installClientChatShell() {
   drawer.setAttribute("aria-hidden", "true");
   drawer.innerHTML = `
     <div class="adnn-chat-head">
-      <div class="apple-chat-identity">
-        <div class="apple-chat-avatar">
-          <svg viewBox="0 0 24 24" fill="currentColor" style="width:20px; height:20px;"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
-        </div>
-        <div>
-          <strong style="display:block; font-size:15px; font-weight:600; color:#1d1d1f; letter-spacing:-0.01em;">Studio Chat</strong>
-          <span style="display:block; color:rgba(0,0,0,0.45); font-family:var(--font-mono, monospace); font-size:10px; margin-top:1px;">Workspace Active</span>
-        </div>
+      <div>
+        <span>Private chat</span>
+        <strong>AdnnStudio</strong>
       </div>
       <button type="button" class="adnn-chat-close" aria-label="Close chat">×</button>
     </div>
@@ -107,9 +102,9 @@ function installClientChatShell() {
       <div class="adnn-chat-empty">No messages yet.</div>
     </div>
     <form class="adnn-chat-form" id="adnnChatForm">
-      <input id="adnnChatInput" autocomplete="off" maxlength="1800" placeholder="iMessage">
+      <input id="adnnChatInput" autocomplete="off" maxlength="1800" placeholder="Type a message">
       <button type="submit" aria-label="Send message">
-        <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px; height:14px; transform:rotate(45deg) translate(-1px,1px);"><path d="M2.01 21 23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12 20 5l-5.8 14-3-5.9L4 12Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
       </button>
     </form>
   `;
@@ -484,28 +479,26 @@ function installChatStyles() {
       box-shadow: 0 8px 22px rgba(255,38,2,.32);
     }
     .adnn-chat-count[hidden] { display: none !important; }
-    
     .adnn-chat-drawer {
       position: fixed;
-      right: clamp(16px, 2.4vw, 34px);
-      bottom: clamp(16px, 2.4vw, 84px);
+      right: clamp(12px, 3vw, 28px);
+      bottom: clamp(12px, 3vw, 28px);
       z-index: 120;
-      width: min(360px, calc(100vw - 32px));
-      height: min(490px, calc(100vh - 160px));
+      width: min(380px, calc(100vw - 24px));
+      height: min(560px, calc(100vh - 24px));
       display: grid;
       grid-template-rows: auto 1fr auto;
-      border: 1px solid rgba(0, 0, 0, 0.08) !important;
-      border-radius: 24px !important;
+      border: 1px solid rgba(255,255,255,.14);
+      border-radius: 28px;
       overflow: hidden;
-      background: rgba(255, 255, 255, 0.85) !important;
-      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.12) !important;
-      backdrop-filter: blur(30px) saturate(180%) !important;
-      -webkit-backdrop-filter: blur(30px) saturate(180%) !important;
+      background: linear-gradient(135deg, rgba(34,34,38,.88), rgba(14,14,18,.78));
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.12), 0 28px 90px rgba(0,0,0,.38);
+      backdrop-filter: blur(28px) saturate(160%);
+      -webkit-backdrop-filter: blur(28px) saturate(160%);
       opacity: 0;
-      transform: translateY(12px) scale(.96);
+      transform: translateY(18px) scale(.98);
       pointer-events: none;
-      transform-origin: right bottom;
-      transition: opacity .3s cubic-bezier(0.16,1,.3,1), transform .35s cubic-bezier(0.16,1,.3,1);
+      transition: opacity .3s ease, transform .36s cubic-bezier(.16,1,.3,1);
     }
     .adnn-chat-drawer.is-open {
       opacity: 1;
@@ -513,41 +506,38 @@ function installChatStyles() {
       pointer-events: auto;
     }
     .adnn-chat-head {
-      min-height: 64px;
-      padding: 12px 16px;
+      min-height: 72px;
+      padding: 16px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      border-bottom: 1px solid rgba(0, 0, 0, 0.05) !important;
-      background: rgba(255, 255, 255, 0.5);
-    }
-    .apple-chat-identity {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-    .apple-chat-avatar {
-      width: 34px;
-      height: 34px;
-      border-radius: 50%;
-      background: #8e8e93;
+      border-bottom: 1px solid rgba(255,255,255,.1);
       color: #fff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+    }
+    .adnn-chat-head span {
+      display: block;
+      color: #8d96ff;
+      font-family: var(--font-mono, ui-monospace, Menlo, monospace);
+      font-size: 10px;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .adnn-chat-head strong {
+      font-size: 17px;
+      font-weight: 500;
+      letter-spacing: -.02em;
     }
     .adnn-chat-close {
-      width: 28px;
-      height: 28px;
+      width: 36px;
+      height: 36px;
       border: 0;
       border-radius: 50%;
-      background: rgba(0, 0, 0, 0.05) !important;
-      color: #1d1d1f !important;
+      background: rgba(255,255,255,.08);
+      color: #fff;
       cursor: pointer;
-      font-size: 18px;
+      font-size: 22px;
       line-height: 1;
-      display: grid;
-      place-items: center;
     }
     .adnn-chat-messages {
       min-height: 0;
@@ -556,93 +546,84 @@ function installChatStyles() {
       flex-direction: column;
       gap: 10px;
       padding: 16px;
+      color: #fff;
     }
     .adnn-chat-empty {
       margin: auto;
-      color: rgba(0, 0, 0, 0.35) !important;
+      color: rgba(255,255,255,.56);
       font-family: var(--font-mono, ui-monospace, Menlo, monospace);
       font-size: 12px;
       text-align: center;
     }
     .adnn-chat-bubble {
-      max-width: 75%;
+      max-width: 82%;
       align-self: flex-start;
-      border-radius: 18px !important;
-      border-bottom-left-radius: 4px !important;
-      padding: 8px 14px !important;
-      background: #e9e9eb !important;
-      border: none !important;
-      color: #1d1d1f !important;
+      border-radius: 18px 18px 18px 6px;
+      padding: 10px 12px;
+      background: rgba(255,255,255,.1);
+      border: 1px solid rgba(255,255,255,.08);
+      color: #fff;
     }
     .adnn-chat-bubble.is-mine {
       align-self: flex-end;
-      border-radius: 18px !important;
-      border-bottom-right-radius: 4px !important;
-      background: #0071e3 !important;
-      color: #fff !important;
+      border-radius: 18px 18px 6px 18px;
+      background: #272dcf;
+      border-color: rgba(255,255,255,.14);
     }
     .adnn-chat-bubble p {
       margin: 0;
-      font-size: 14px !important;
-      line-height: 1.4 !important;
+      font-size: 14px;
+      line-height: 1.45;
       overflow-wrap: anywhere;
     }
     .adnn-chat-bubble span {
       display: block;
-      margin-top: 4px;
-      color: rgba(0, 0, 0, 0.3) !important;
+      margin-top: 6px;
+      color: rgba(255,255,255,.56);
       font-family: var(--font-mono, ui-monospace, Menlo, monospace);
-      font-size: 9px !important;
-    }
-    .adnn-chat-bubble.is-mine span {
-      color: rgba(255, 255, 255, 0.65) !important;
+      font-size: 10px;
     }
     .adnn-chat-form {
       display: grid;
-      grid-template-columns: 1fr 28px;
+      grid-template-columns: 1fr 42px;
       gap: 8px;
-      padding: 12px 14px;
-      border-top: 1px solid rgba(0, 0, 0, 0.05) !important;
-      background: rgba(255, 255, 255, 0.4);
-      align-items: center;
+      padding: 12px;
+      border-top: 1px solid rgba(255,255,255,.1);
     }
     .adnn-chat-form input {
       min-width: 0;
-      height: 32px;
-      border: 1px solid rgba(0, 0, 0, 0.12) !important;
-      border-radius: 20px !important;
-      padding: 0 14px !important;
-      background: #ffffff !important;
-      color: #1d1d1f !important;
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 999px;
+      padding: 0 14px;
+      background: rgba(255,255,255,.08);
+      color: #fff;
       outline: 0;
-      font-size: 14px !important;
-      margin: 0 !important;
+      font-size: 14px;
     }
     .adnn-chat-form button {
-      width: 28px;
-      height: 28px;
+      width: 42px;
+      height: 42px;
       border: 0;
       border-radius: 50%;
       display: grid;
       place-items: center;
-      background: #0071e3 !important;
-      color: #fff !important;
+      background: #272dcf;
+      color: #fff;
       cursor: pointer;
-      padding: 0 !important;
-      margin: 0 !important;
     }
+    .adnn-chat-form button svg { width: 18px; height: 18px; }
     .adnn-chat-alert {
       position: fixed;
       right: clamp(16px, 4vw, 34px);
       bottom: clamp(18px, 4vw, 34px);
       z-index: 10000;
       width: min(320px, calc(100vw - 32px));
-      border: 1px solid rgba(0,0,0,.08);
+      border: 1px solid rgba(255,255,255,.16);
       border-radius: 22px;
       padding: 14px 16px;
-      color: #1d1d1f;
-      background: rgba(255, 255, 255, 0.9);
-      box-shadow: 0 24px 70px rgba(0,0,0,.15);
+      color: #fff;
+      background: linear-gradient(135deg, rgba(34,34,38,.78), rgba(14,14,18,.68));
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.12), 0 24px 70px rgba(0,0,0,.34), 0 0 34px rgba(39,45,207,.18);
       backdrop-filter: blur(24px) saturate(160%);
       -webkit-backdrop-filter: blur(24px) saturate(160%);
       opacity: 0;
@@ -662,7 +643,7 @@ function installChatStyles() {
       white-space: nowrap;
     }
     .adnn-chat-alert span {
-      color: #0071e3;
+      color: #8d96ff;
       font-family: var(--font-mono, ui-monospace, Menlo, monospace);
       font-size: 10px;
       text-transform: uppercase;

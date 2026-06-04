@@ -1000,11 +1000,16 @@
       const top = document.createElement("div");
       top.className = "account-item-top";
       const title = document.createElement("h2");
-      const status = document.createElement("span");
-      status.className = "account-status";
       title.textContent = item.title || defaultTitle(type);
-      status.textContent = item.status || "New";
-      top.append(title, status);
+      top.append(title);
+
+      // Only generate and render the status badge if the message is unread
+      if (!isRead) {
+        const status = document.createElement("span");
+        status.className = "account-status";
+        status.textContent = item.status || "New";
+        top.append(status);
+      }
 
       const body = document.createElement("p");
       body.textContent = item.message || item.details || invoiceSummary(item) || "No details added yet.";

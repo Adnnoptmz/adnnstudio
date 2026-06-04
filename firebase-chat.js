@@ -444,7 +444,7 @@ function installChatStyles() {
       padding: 0;
       justify-content: center;
       position: relative;
-      border: 0;
+      border: 16px;
       color: #fff;
       cursor: pointer;
       display: inline-flex;

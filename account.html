@@ -424,6 +424,16 @@
   </style>
 </head>
 <body class="auth-pending locked">
+	<script>
+  (function() {
+    try {
+      const userSession = JSON.parse(localStorage.getItem("adhnanPortfolioUser"));
+      if (userSession && userSession.email && userSession.email.trim().toLowerCase() === "youradmin@gmail.com") {
+        window.location.replace("admin.html");
+      }
+    } catch(e) {}
+  })();
+</script>
   <div class="auth-gate">
     <div class="gate-card glass">
       <p class="kicker">Account</p>
@@ -618,6 +628,10 @@
     }
     function hydrateUser() {
       const user = getUser();
+      if (user && user.email && user.email.trim().toLowerCase() === "getavcollab@gmail.com") {
+        location.href = "admin.html";
+        return;
+      }
       document.body.classList.toggle("locked", !user);
       document.body.classList.remove("auth-pending");
       if (!user) return;
@@ -706,15 +720,20 @@
         headers: { Authorization: `Bearer ${accessToken}` },
       });
       const profile = await response.json();
+      const isAdminEmail = profile.email.trim().toLowerCase() === "getavcollab@gmail.com";
       localStorage.setItem(userKey, JSON.stringify({
         name: profile.name,
         email: profile.email,
         picture: profile.picture,
-        role: "client",
+        role: isAdminEmail ? "admin" : "client",
       }));
       recordGoogleSignIn(accessToken, profile);
-      hydrateUser();
-      setView("tasks");
+      if (isAdminEmail) {
+        location.href = "admin.html";
+      } else {
+        hydrateUser();
+        setView("tasks");
+      }
     }
     function recordGoogleSignIn(accessToken, profile) {
       sendAccountSync("recordLogin", accessToken, profile);

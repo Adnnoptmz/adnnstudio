@@ -2396,6 +2396,16 @@
 	</style>
 </head>
 	<body class="auth-state-pending">
+		<script>
+  (function() {
+    try {
+      const userSession = JSON.parse(localStorage.getItem("adhnanPortfolioUser"));
+      if (userSession && userSession.email && userSession.email.trim().toLowerCase() === "getavcollab@gmail.com") {
+        window.location.replace("admin.html");
+      }
+    } catch(e) {}
+  })();
+</script>
   <img src="bg1-hero.jpg" fetchpriority="high" loading="eager" width="2048" height="1365" alt="" style="position:absolute; width:1px; height:1px; opacity:0.01; pointer-events:none; z-index:-9999; top:0; left:0;" aria-hidden="true" decoding="sync">
   <!--
     HTML EDIT MAP - change these names later if needed:
@@ -2783,11 +2793,11 @@
 	          <div style="flex: 1; min-width: 260px;">
 	            <p style="font-weight:500; margin: 0 0 12px 0;">Studio Links</p>
 	            <div class="links" style="display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-start;">
-	              <a href="mailto:adnnoptmz@gmail.com">Email</a>
+	              <a href="mailto:getavcollab@gmail.com">Email</a>
 	              <a href="https://www.instagram.com/artifstudio.co/" target="_blank" rel="noopener">Instagram</a>
 	              <a href="https://www.linkedin.com/in/adhnan-nv-5aa4011b5/" target="_blank" rel="noopener">LinkedIn</a>
-	              <a href="https://www.behance.net/adhnannv" target="_blank" rel="noopener">Behance</a>
-	              <a href="https://dribbble.com/adnnoptmz" target="_blank" rel="noopener">Dribbble</a>
+	              <a href="https://www.behance.net/" target="_blank" rel="noopener">Behance</a>
+	              <a href="https://dribbble.com/" target="_blank" rel="noopener">Dribbble</a>
 	            </div>
 	          </div>
 	          <div style="display: flex; justify-content: flex-end; min-width: max-content; margin-bottom: 2px;">
@@ -3554,15 +3564,17 @@
       name: profile.name,
       email: profile.email,
       picture: profile.picture,
-      role: "client",
+      role: profile.email.trim().toLowerCase() === "getavcollab@gmail.com" ? "admin" : "client",
     }));
     recordGoogleSignIn(accessToken, profile);
     
-    // Core Correction: Trigger session status state rendering instantly
     renderGoogleUser();
     
-    // Stay cleanly on your homepage loop without loading external files
-    location.href = "#home";
+    if (profile.email.trim().toLowerCase() === "getavcollab@gmail.com") {
+      location.href = "admin.html";
+    } else {
+      location.href = "#home";
+    }
   };
 
   window.logoutGoogleAccount = function logoutGoogleAccount(event) {

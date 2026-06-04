@@ -771,7 +771,8 @@
         }
 
         window.addEventListener("message", onMessage);
-        frame.src = `${endpoint}${separator}action=accountBridge&origin=${encodeURIComponent(window.location.origin)}`;
+        const pageOrigin = /^https?:\/\//.test(window.location.origin) ? window.location.origin : "";
+        frame.src = `${endpoint}${separator}action=accountBridge&origin=${encodeURIComponent(pageOrigin)}`;
         document.body.appendChild(frame);
       });
 

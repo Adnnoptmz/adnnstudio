@@ -74,7 +74,9 @@ function installClientChatShell() {
   trigger.hidden = true;
   trigger.setAttribute("aria-label", "Open chat");
   trigger.innerHTML = `
-    <svg viewBox="0 0 24 24" fill="currentColor" style="width: 20px; height: 20px; display: block;"><path d="M12 3.5c-5.25 0-9.5 3.8-9.5 8.5 0 2.62 1.34 4.97 3.45 6.53-.15.77-.53 2.14-1.13 3.2-.13.23.05.51.31.44 1.14-.32 2.83-1.04 3.93-1.85A10.6 10.6 0 0 0 12 20.5c5.25 0 9.5-3.8 9.5-8.5S17.25 3.5 12 3.5z"/></svg>
+    <svg viewBox="0 0 24 24" fill="currentColor" style="width: 14px; height: 14px; display: block;">
+  <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+</svg>
     <span class="adnn-chat-count" hidden>0</span>
   `;
 

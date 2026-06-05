@@ -215,7 +215,6 @@
       border-radius: 4px 14px 14px 4px;
     }
     
-    /* PERFECT ICON ALIGNMENT ACCELERATORS */
     .sidebar-link-item svg {
       width: 18px;
       height: 18px;
@@ -546,49 +545,6 @@
       height: 19px;
     }
 
-    /* Apple Fine-Art Morphing Icon Toggle Controller */
-    .apple-icon-toggle {
-      width: 44px;
-      height: 44px;
-      min-height: 44px !important;
-      padding: 0 !important;
-      flex: 0 0 44px;
-      border-radius: 50%;
-      border: 1px solid var(--line);
-      background: var(--toggle-btn-bg);
-      color: var(--text);
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      overflow: hidden;
-      position: relative;
-      transition: background-color 0.3s, border-color 0.3s, color 0.3s, transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-    .apple-icon-toggle:hover {
-      background-color: var(--toggle-btn-hover);
-      transform: scale(1.04) rotate(6deg);
-    }
-    .apple-icon-toggle:active {
-      transform: scale(0.96);
-    }
-    .apple-icon-toggle svg {
-      width: 20px;
-      height: 20px;
-      display: block;
-      fill: none;
-      stroke: currentColor;
-      stroke-width: 1.85;
-      stroke-linecap: round;
-      stroke-linejoin: round;
-    }
-    
-    /* Dynamic Path Rendering Group Rules */
-    .apple-icon-toggle .sun-icon { display: none; }
-    .apple-icon-toggle .moon-icon { display: block; }
-    :root.light-theme .apple-icon-toggle .sun-icon { display: block; }
-    :root.light-theme .apple-icon-toggle .moon-icon { display: none; }
-
     .status {
       min-height: 20px;
       margin: 18px 0 0;
@@ -611,6 +567,112 @@
       font-size: 11px;
       margin: 12px 0 0;
       min-height: 16px;
+    }
+
+    /* APPLE CALENDAR INTERACTIVE CONSOLE MODULE UI */
+    .apple-cal-wrap {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 24px;
+      margin-top: 24px;
+    }
+    @media (max-width: 768px) {
+      .apple-cal-wrap { grid-template-columns: 1fr; }
+    }
+    .cal-box-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    .cal-box-header h3 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 400;
+    }
+    .cal-arrows {
+      display: flex;
+      gap: 6px;
+    }
+    .cal-arrow-btn {
+      width: 32px;
+      height: 32px;
+      border: 1px solid var(--line);
+      background: var(--input-bg);
+      color: var(--text);
+      border-radius: 50%;
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+    }
+    .cal-grid-mesh {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 6px;
+      text-align: center;
+    }
+    .cal-day-label {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--muted);
+      padding: 6px 0;
+    }
+    .cal-cell {
+      aspect-ratio: 1;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      cursor: pointer;
+      position: relative;
+      transition: background 0.2s;
+    }
+    .cal-cell:hover:not(.empty-day) {
+      background: var(--toggle-btn-hover);
+    }
+    .cal-cell.is-selected {
+      background: var(--accent) !important;
+      color: #fff !important;
+      font-weight: 500;
+    }
+    .cal-cell.has-reminders::after {
+      content: '';
+      position: absolute;
+      bottom: 4px;
+      width: 4px;
+      height: 4px;
+      background: var(--red);
+      border-radius: 50%;
+    }
+    .reminder-list-box {
+      border-left: 1px solid var(--line);
+      padding-left: 24px;
+    }
+    @media (max-width: 768px) {
+      .reminder-list-box { border-left: none; padding-left: 0; padding-top: 16px; border-top: 1px solid var(--line); }
+    }
+    .reminder-entry-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--line);
+      margin-bottom: 8px;
+    }
+    .reminder-entry-row span {
+      font-size: 13px;
+    }
+    .reminder-del-btn {
+      background: transparent;
+      border: 0;
+      color: var(--red);
+      cursor: pointer;
+      font-size: 11px;
+      font-family: var(--font-mono);
     }
 
     /* GEMINI UI EXTRA-PREMIUM HIDDING SIDEBAR OVERRIDES */
@@ -647,12 +709,17 @@
         display: none;
       }
 
-      /* RETAIN FULL TEXT LABELS NEXT TO ICONS ON MOBILE ECOSYSTEMS */
+      /* PERFECT MOBILE LEFT ALIGNMENT STUCTURE PASSTHROUGH RULES */
       .admin-sidebar .sidebar-link-item {
-        grid-template-columns: 20px 1fr !important;
-        padding: 0 14px !important;
+        grid-template-columns: 24px 1fr !important; /* Locks left icon track bounds precisely */
+        padding: 0 16px !important;
         width: 100% !important;
+        text-align: left !important;
         justify-content: start !important;
+        gap: 12px !important;
+      }
+      .admin-sidebar .sidebar-link-item svg {
+        margin: 0 !important; /* Moves from centered to left-docked inside the icon grid track */
       }
       .admin-sidebar .sidebar-link-item span.link-label {
         display: block !important;
@@ -678,7 +745,6 @@
         grid-template-columns: 1fr;
       }
 
-      /* STACK THE DASHBOARD STATS CARD MATRIX 1 BY 1 VERTICALLY ON MOBILE VIEWPORTS */
       #adminStatsGrid {
         grid-template-columns: 1fr !important;
         gap: 14px !important;
@@ -786,7 +852,6 @@
           <span class="link-label">Settings Workspace</span>
         </button>
         <button type="button" class="sidebar-link-item" id="sidebarThemeToggleBtn">
-          <!-- Dynamic Duo-State Canvas Node SVGs -->
           <svg class="moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
           <span class="link-label">Toggle System Mode</span>
         </button>
@@ -814,20 +879,10 @@
         </div>
       </div>
       <div class="actions" style="margin-top:0; display: flex; align-items: center; gap: 12px;">
-        <!-- Apple Fine-Art Morphing Icon Toggle Controller -->
-        <button type="button" class="apple-icon-toggle" id="appleThemeToggle" title="Toggle System Workspace Aesthetics" aria-label="Toggle System Workspace Aesthetics">
-          <!-- Moon Icon (Rendered in Dark Mode Framework) -->
-          <svg class="moon-icon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-          <!-- Sun Icon (Rendered in Clean Light Mode Framework) -->
-          <svg class="sun-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-        </button>
         <!-- Apple-Inspired Minimalist Home Icon Button Link Component -->
         <a href="index.html#home" class="apple-home-btn" title="Back to Home Workspace" aria-label="Back to Home Workspace" onclick="sessionStorage.setItem('adnn_allow_admin_home','true'); sessionStorage.removeItem('adnn_admin_visited');">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
         </a>
-        <button type="button" class="apple-logout-btn" id="adminLogoutButton" title="Lock Workspace Panel" aria-label="Lock Workspace Panel">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px; display: block; margin: 0 auto;"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
-        </button>
       </div>
     </div>
 
@@ -943,9 +998,41 @@
     <div id="notifications_view" class="admin-view-panel-container" style="display:none;">
       <div class="panel glass"><p class="kicker">Broadcasts</p><h2>Global System Push Dispatch</h2><p class="help">Account global notice layout tracking sync controls.</p></div>
     </div>
+
+    <!-- FULLY FUNCTIONAL APPLE-INSPIRED REMINDER CALENDAR COMPONENT -->
     <div id="calendar_view" class="admin-view-panel-container" style="display:none;">
-      <div class="panel glass"><p class="kicker">Schedule</p><h2>Reminder Studio Calendar</h2><p class="help">Milestone delivery deadlines and client review sync loops.</p></div>
+      <div class="panel glass">
+        <p class="kicker">Schedule</p>
+        <h2>Reminder Studio Calendar</h2>
+        
+        <div class="apple-cal-wrap">
+          <div>
+            <div class="cal-box-header">
+              <h3 id="calendarMonthYearLabel">June 2026</h3>
+              <div class="cal-arrows">
+                <button type="button" class="cal-arrow-btn" id="prevMonthBtn">‹</button>
+                <button type="button" class="cal-arrow-btn" id="nextMonthBtn">›</button>
+              </div>
+            </div>
+            <div class="cal-grid-mesh" id="calendarGridMesh">
+              <!-- Rendered via setup calendar method loops -->
+            </div>
+          </div>
+
+          <div class="reminder-list-box">
+            <h3 style="margin:0 0 16px; font-size:16px; font-weight:400;">Reminders</h3>
+            <div style="display:flex; gap:8px; margin-bottom:16px;">
+              <input type="text" id="newReminderInput" placeholder="New milestone action item..." style="border-radius:12px; padding:10px 14px;">
+              <button type="button" id="addReminderBtn" style="border-radius:12px; background:var(--accent); color:#fff; border:0; padding:0 14px; font-size:12px; cursor:pointer;">Add</button>
+            </div>
+            <div id="remindersOutputContainer">
+              <p class="help">Select a calendar date to view or insert system entries.</p>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
+
     <div id="settings_view" class="admin-view-panel-container" style="display:none;">
       <div class="panel glass"><p class="kicker">System</p><h2>Global Environment Settings</h2><p class="help">API Endpoint configurations and system variable fallback targets.</p></div>
     </div>
@@ -955,7 +1042,6 @@
   <!-- Local Session Authentication Verification & Theme Switcher Engine Scripts -->
   <script>
     (function manageLocalGateAndThemeSession() {
-      // Set navigation bypass flag when admin explicitly lands here via a fresh homepage redirect loop
       if (document.referrer.includes("index.html") && !sessionStorage.getItem("adnn_admin_visited")) {
         sessionStorage.setItem("adnn_admin_visited", "true");
       }
@@ -963,7 +1049,6 @@
       const storageSessionKey = "adnn_portal_unlocked";
       const themeStorageKey = "adnn_portal_light_mode";
       const errorMsg = document.getElementById("gateError");
-      const themeToggleBtn = document.getElementById("appleThemeToggle");
       const sidebarThemeToggleBtn = document.getElementById("sidebarThemeToggleBtn");
       const passwordToggle = document.getElementById("gatePasswordToggle");
       const gatePass = document.getElementById("gatePass");
@@ -972,7 +1057,6 @@
       const adminLogoutButton = document.getElementById("adminLogoutButton");
       const sidebarLogoutActionBtn = document.getElementById("sidebarLogoutActionBtn");
       
-      // Theme Restoration Loop
       if (localStorage.getItem(themeStorageKey) === "true") {
         document.documentElement.classList.add("light-theme");
       }
@@ -982,7 +1066,6 @@
         localStorage.setItem(themeStorageKey, isCurrentlyLight);
       }
 
-      themeToggleBtn?.addEventListener("click", toggleTheme);
       sidebarThemeToggleBtn?.addEventListener("click", toggleTheme);
 
       // GEMINI SIDEBAR CORE CONTROLLERS
@@ -1000,32 +1083,26 @@
 
       dimOverlay?.addEventListener("click", closeMobileSidebar);
 
-      // Unified Sidebar Panel View Controller & Layout Collapsing Script Loop
       const sidebarCollapseBtn = document.getElementById("sidebarCollapseBtn");
       const navButtons = document.querySelectorAll(".sidebar-link-item[data-target-view]");
       const defaultActiveTab = "composer_view";
 
-      // Toggle Sidebar Width State Parameter Maps
       sidebarCollapseBtn?.addEventListener("click", function() {
         document.body.classList.toggle("sidebar-collapsed");
         localStorage.setItem("adnn_sidebar_minimized", document.body.classList.contains("sidebar-collapsed"));
       });
 
-      // Restore Minimized Sidebar Profile state context gracefully on mount
       if (localStorage.getItem("adnn_sidebar_minimized") === "true") {
         document.body.classList.add("sidebar-collapsed");
       }
 
-      // Tab Panel Visibility Routing Engine Loop
       function activateTabPanel(targetViewId) {
-        // Hide only the composer panel and top-level view wrappers.
         document.querySelectorAll(".admin-view-panel-container").forEach(el => {
           el.style.display = "none";
         });
         const originalFormPanel = document.getElementById("adminSendForm")?.closest(".panel.glass");
         if (originalFormPanel) originalFormPanel.style.display = "none";
 
-        // Set the state targets to display block grid layouts
         if (targetViewId === "composer_view") {
           if (originalFormPanel) originalFormPanel.style.display = "block";
         } else {
@@ -1033,13 +1110,11 @@
           if (matchedTargetPanel) matchedTargetPanel.style.display = "block";
         }
 
-        // Cycle text highlighting and active structural marker border properties cleanly
         document.querySelectorAll(".sidebar-link-item").forEach(btn => {
           const isMatched = btn.dataset.targetView === targetViewId;
           btn.classList.toggle("is-active", isMatched);
         });
 
-        // Auto-Dismiss sliding canvas once route executes
         closeMobileSidebar();
       }
 
@@ -1051,7 +1126,6 @@
         });
       });
 
-      // Initialize the default composer workspace form display layout on first entry mount pass
       activateTabPanel(defaultActiveTab);
 
       passwordToggle?.addEventListener("click", function() {
@@ -1061,35 +1135,33 @@
         passwordToggle.setAttribute("title", isVisible ? "Show password" : "Hide password");
       });
       
-	      // Gate Lock Restoration Loop: requires the Google admin session plus this local unlock.
-	      if (sessionStorage.getItem(storageSessionKey) === "true" && hasAdminSession()) {
-	        sessionStorage.setItem(storageSessionKey, "true");
-	        document.body.classList.add("portal-unlocked");
-	      } else {
-	        sessionStorage.removeItem(storageSessionKey);
-	        document.body.classList.remove("portal-unlocked");
-	      }
+      if (sessionStorage.getItem(storageSessionKey) === "true" && hasAdminSession()) {
+        sessionStorage.setItem(storageSessionKey, "true");
+        document.body.classList.add("portal-unlocked");
+      } else {
+        sessionStorage.removeItem(storageSessionKey);
+        document.body.classList.remove("portal-unlocked");
+      }
 
-	      localGateForm?.addEventListener("submit", function(e) {
-	        e.preventDefault();
-	        const user = String(gateUser?.value || "").trim().toLowerCase();
-	        const pass = String(gatePass?.value || "");
+      localGateForm?.addEventListener("submit", function(e) {
+        e.preventDefault();
+        const user = String(gateUser?.value || "").trim().toLowerCase();
+        const pass = String(gatePass?.value || "");
 
-	        if (!hasAdminSession()) {
-	          if (errorMsg) errorMsg.textContent = "Admin Access Needed";
-	          return;
-	        }
+        if (!hasAdminSession()) {
+          if (errorMsg) errorMsg.textContent = "Admin Access Needed";
+          return;
+        }
 
-	        if (user === "adhnannv" && pass === "adhnan#77.as") {
-	          sessionStorage.setItem(storageSessionKey, "true");
-	          document.body.classList.add("portal-unlocked");
-	          if (errorMsg) errorMsg.textContent = "";
+        if (user === "adhnannv" && pass === "adhnan#77.as") {
+          sessionStorage.setItem(storageSessionKey, "true");
+          document.body.classList.add("portal-unlocked");
+          if (errorMsg) errorMsg.textContent = "";
         } else {
           if (errorMsg) errorMsg.textContent = "Invalid administrator credentials.";
         }
       });
 
-      // Clear layout variables cleanly to force a lock screen bounce upon clicking logout
       function executeLogoutAction() {
         sessionStorage.removeItem(storageSessionKey);
         document.body.classList.remove("portal-unlocked");
@@ -1109,6 +1181,130 @@
           return false;
         }
       }
+
+      // NATIVE INTERACTIVE APPLE CALENDAR LOGIC WITH PERSISTENT REMINDER FEEDS
+      (function runtimeAppleCalendarEngine() {
+        let currentDate = new Date();
+        let selectedDateKey = null;
+        const storageRemindersKey = "adnn_calendar_reminders";
+        
+        let reminderDatabase = {};
+        try {
+          reminderDatabase = JSON.parse(localStorage.getItem(storageRemindersKey)) || {};
+        } catch { reminderDatabase = {}; }
+
+        const mesh = document.getElementById("calendarGridMesh");
+        const monthLabel = document.getElementById("calendarMonthYearLabel");
+        const prevBtn = document.getElementById("prevMonthBtn");
+        const nextBtn = document.getElementById("nextMonthBtn");
+        const remInput = document.getElementById("newReminderInput");
+        const remAddBtn = document.getElementById("addReminderBtn");
+        const remBox = document.getElementById("remindersOutputContainer");
+
+        const dayNames = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"];
+
+        function buildCalendarStructure() {
+          mesh.innerHTML = "";
+          const year = currentDate.getFullYear();
+          const month = currentDate.getMonth();
+
+          const monthStrings = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+          monthLabel.textContent = `${monthStrings[month]} ${year}`;
+
+          dayNames.forEach(d => {
+            const labelEl = document.createElement("div");
+            labelEl.className = "cal-day-label";
+            labelEl.textContent = d;
+            mesh.appendChild(labelEl);
+          });
+
+          const initialDayIndex = new Date(year, month, 1).getDay();
+          const runningDaysCount = new Date(year, month + 1, 0).getDate();
+
+          for(let i = 0; i < initialDayIndex; i++) {
+            const block = document.createElement("div");
+            block.className = "cal-cell empty-day";
+            mesh.appendChild(block);
+          }
+
+          for(let day = 1; day <= runningDaysCount; day++) {
+            const cell = document.createElement("div");
+            cell.className = "cal-cell";
+            cell.textContent = day;
+
+            const dateKey = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+            cell.dataset.dateKey = dateKey;
+
+            if (reminderDatabase[dateKey] && reminderDatabase[dateKey].length > 0) {
+              cell.classList.add("has-reminders");
+            }
+
+            if (selectedDateKey === dateKey) {
+              cell.classList.add("is-selected");
+            }
+
+            cell.addEventListener("click", () => {
+              document.querySelectorAll(".cal-cell").forEach(c => c.classList.remove("is-selected"));
+              cell.classList.add("is-selected");
+              selectedDateKey = dateKey;
+              renderRemindersForSelectedDate();
+            });
+
+            mesh.appendChild(cell);
+          }
+        }
+
+        function renderRemindersForSelectedDate() {
+          if(!selectedDateKey) {
+            remBox.innerHTML = '<p class="help">Select a calendar date to view or insert system entries.</p>';
+            return;
+          }
+          remBox.innerHTML = "";
+          const list = reminderDatabase[selectedDateKey] || [];
+          if(list.length === 0) {
+            remBox.innerHTML = '<p class="help" style="margin-top:4px;">No reminders set for this deadline date.</p>';
+            return;
+          }
+          list.forEach((text, index) => {
+            const row = document.createElement("div");
+            row.className = "reminder-entry-row";
+            row.innerHTML = `<span>${text}</span><button type="button" class="reminder-del-btn" data-index="${index}">Delete</button>`;
+            row.querySelector(".reminder-del-btn").addEventListener("click", function() {
+              const idx = parseInt(this.dataset.index);
+              reminderDatabase[selectedDateKey].splice(idx, 1);
+              if(reminderDatabase[selectedDateKey].length === 0) delete reminderDatabase[selectedDateKey];
+              localStorage.setItem(storageRemindersKey, JSON.stringify(reminderDatabase));
+              renderRemindersForSelectedDate();
+              buildCalendarStructure();
+            });
+            remBox.appendChild(row);
+          });
+        }
+
+        prevBtn?.addEventListener("click", () => {
+          currentDate.setMonth(currentDate.getMonth() - 1);
+          buildCalendarStructure();
+        });
+
+        nextBtn?.addEventListener("click", () => {
+          currentDate.setMonth(currentDate.getMonth() + 1);
+          buildCalendarStructure();
+        });
+
+        remAddBtn?.addEventListener("click", () => {
+          const val = remInput.value.trim();
+          if(!val || !selectedDateKey) return;
+          if(!reminderDatabase[selectedDateKey]) reminderDatabase[selectedDateKey] = [];
+          reminderDatabase[selectedDateKey].push(val);
+          localStorage.setItem(storageRemindersKey, JSON.stringify(reminderDatabase));
+          remInput.value = "";
+          renderRemindersForSelectedDate();
+          buildCalendarStructure();
+        });
+
+        buildCalendarStructure();
+      })();
+
     })();
   </script>
 
@@ -1123,22 +1319,21 @@
     const app = config ? (getApps()[0] || initializeApp(config)) : null;
     const auth = app ? getAuth(app) : null;
     const db = app ? getFirestore(app) : null;
-	    const status = document.getElementById("adminStatus");
-	    const help = document.getElementById("adminHelp");
-	    const storageSessionKey = "adnn_portal_unlocked";
+    const status = document.getElementById("adminStatus");
+    const storageSessionKey = "adnn_portal_unlocked";
     
-	    let currentUser = null;
-	    let isAdmin = false;
+    let currentUser = null;
+    let isAdmin = false;
 
-	    function setStatus(text) {
-	      if (status) status.textContent = text;
-	    }
+    function setStatus(text) {
+      if (status) status.textContent = text;
+    }
 
-	    function lockPortal(text) {
-	      sessionStorage.removeItem(storageSessionKey);
-	      document.body.classList.remove("portal-unlocked");
-	      setStatus(text);
-	    }
+    function lockPortal(text) {
+      sessionStorage.removeItem(storageSessionKey);
+      document.body.classList.remove("portal-unlocked");
+      setStatus(text);
+    }
 
     function emailKey(email) {
       return String(email || "").trim().toLowerCase();
@@ -1226,43 +1421,42 @@
     updateComposerFormat();
     wireDesignerSetupGenerator();
 
-	    window.addEventListener("DOMContentLoaded", async () => {
-	      setStatus("Verifying admin account...");
-	    });
+    window.addEventListener("DOMContentLoaded", async () => {
+      setStatus("Verifying admin account...");
+    });
 
-	    if (auth) {
-	      onAuthStateChanged(auth, async (user) => {
-	        if (!user) {
-	          currentUser = null;
-	          isAdmin = false;
-	          lockPortal("Verification warning: Sign in with getavcollab@gmail.com on the main website.");
-	          return;
-	        }
-	        currentUser = user;
-	        if (emailKey(user.email) !== "getavcollab@gmail.com") {
-	          isAdmin = false;
-	          lockPortal("Permission error: this Google account is not tagged as admin.");
-	          return;
-	        }
-	        const adminDoc = await getDoc(doc(db, "admins", user.uid)).catch(() => null);
-	        isAdmin = Boolean(adminDoc?.exists());
-	        if (isAdmin) {
-	          setStatus("Ready to sync.");
-	          startDashboardStats();
-	          startDirectoryLists();
-	        } else {
-	          lockPortal("Database warning: Add this Google UID inside the admins collection.");
-	        }
-	      });
-	    } else {
-	      setStatus("Firebase is not connected yet.");
-	    }
+    if (auth) {
+      onAuthStateChanged(auth, async (user) => {
+        if (!user) {
+          currentUser = null;
+          isAdmin = false;
+          lockPortal("Verification warning: Sign in with getavcollab@gmail.com on the main website.");
+          return;
+        }
+        currentUser = user;
+        if (emailKey(user.email) !== "getavcollab@gmail.com") {
+          isAdmin = false;
+          lockPortal("Permission error: this Google account is not tagged as admin.");
+          return;
+        }
+        const adminDoc = await getDoc(doc(db, "admins", user.uid)).catch(() => null);
+        isAdmin = Boolean(adminDoc?.exists());
+        if (isAdmin) {
+          setStatus("Ready to sync.");
+          startDashboardStats();
+          startDirectoryLists();
+        } else {
+          lockPortal("Database warning: Add this Google UID inside the admins collection.");
+        }
+      });
+    } else {
+      setStatus("Firebase is not connected yet.");
+    }
 
     function startDashboardStats() {
       const dashboard = document.querySelector("#dashboard_view .panel.glass");
       if (!dashboard || dashboard.dataset.ready === "true") return;
       dashboard.dataset.ready = "true";
-      // Mobile-responsive stack configuration wrapper pass via dynamic media target rules
       dashboard.innerHTML = `
         <p class="kicker">Overview</p>
         <h2>Studio Analytics Dashboard</h2>

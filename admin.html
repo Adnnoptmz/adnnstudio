@@ -1532,11 +1532,9 @@
       // NATIVE INTERACTIVE APPLE CALENDAR LOGIC WITH PERSISTENT REMINDER FEEDS
       (function runtimeAppleCalendarEngine() {
         let currentDate = new Date();
-        const todayReal = new Date(); // Stores the baseline actual real-time date
+        const todayReal = new Date(); 
         
-        // Formulate default selection key string matching today's actual date
         let selectedDateKey = `${todayReal.getFullYear()}-${String(todayReal.getMonth()+1).padStart(2,'0')}-${String(todayReal.getDate()).padStart(2,'0')}`;
-        
         const storageRemindersKey = "adnn_calendar_reminders";
         
         let reminderDatabase = {};
@@ -1587,7 +1585,6 @@
             const dateKey = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
             cell.dataset.dateKey = dateKey;
 
-            // Check if this box matches the user's actual system "Today"
             if (year === todayReal.getFullYear() && month === todayReal.getMonth() && day === todayReal.getDate()) {
               cell.classList.add("is-today");
             }
@@ -1623,14 +1620,11 @@
             return;
           }
 
-          // Sort reminders chronologically by time tag
           list.sort((a, b) => a.time.localeCompare(b.time));
 
           list.forEach((item, index) => {
             const row = document.createElement("div");
             row.className = "reminder-entry-row";
-            
-            // Format time display cleanly to standard AM/PM or military
             row.innerHTML = `
               <div style="display:flex; align-items:center; gap:4px; min-width:0;">
                 <span style="word-break: break-word;">${item.text}</span>
@@ -1667,8 +1661,6 @@
           if(!val || !selectedDateKey) return;
           
           if(!reminderDatabase[selectedDateKey]) reminderDatabase[selectedDateKey] = [];
-          
-          // Store both text content and precise reminder target timestamp strings
           reminderDatabase[selectedDateKey].push({
             text: val,
             time: timeVal
@@ -1680,11 +1672,11 @@
           buildCalendarStructure();
         });
 
-        // Initialize view matching the current running state context
         buildCalendarStructure();
         renderRemindersForSelectedDate();
       })();
-// WHATSAPP-STYLE LIVE COMMUNICATIONS DISPATCH CONTROLLER ENGINE 
+
+      // WHATSAPP-STYLE LIVE COMMUNICATIONS DISPATCH CONTROLLER ENGINE 
       (function runtimeWhatsAppChatEngine() {
         const fileInput = document.getElementById("wpChatFileInput");
         const previewBox = document.getElementById("wpMediaPreviewContainer");
@@ -1699,7 +1691,6 @@
         const backBtn = document.getElementById("wpMobileBackTrigger");
         const threads = document.querySelectorAll(".wp-thread-card");
 
-        // Handle file selection and dynamic rendering previews
         fileInput?.addEventListener("change", function() {
           const file = this.files[0];
           if (!file) return;
@@ -1715,14 +1706,12 @@
             };
             reader.readAsDataURL(file);
           } else {
-            // Fallback preview thumbnail block icon placeholder for PDFs or text documents
             previewImg.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='50' height='50' viewBox='0 0 24 24' fill='none' stroke='%23f5f5f7' stroke-width='2'><path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'></path><polyline points='14 2 14 8 20 8'></polyline></svg>";
           }
 
           if (previewBox) previewBox.style.display = "flex";
         });
 
-        // Delete/Clear selected attachment media logic tracking parameters
         function clearSelectedMediaAttachment() {
           if (fileInput) fileInput.value = "";
           if (previewBox) previewBox.style.display = "none";
@@ -1730,7 +1719,6 @@
         }
         cancelMediaBtn?.addEventListener("click", clearSelectedMediaAttachment);
 
-        // Send chat text block message logic loops
         function executeSendMessage() {
           const text = textInput.value.trim();
           const hasFile = fileInput && fileInput.files.length > 0;
@@ -1766,7 +1754,6 @@
           textInput.value = "";
           clearSelectedMediaAttachment();
           
-          // Smooth scroll interaction to container base height view bounds
           if (streamContainer) {
             streamContainer.scrollTop = streamContainer.scrollHeight;
           }
@@ -1777,21 +1764,17 @@
           if (e.key === "Enter") executeSendMessage();
         });
 
-        // WHATSAPP ESCAPE BUTTON ACTION TRIGGER KEYBOARD BINDING
         window.addEventListener("keydown", function(e) {
           if (e.key === "Escape") {
-            // Close active threads context grids gracefully across view sizes
             document.body.classList.remove("mobile-sidebar-open");
             document.body.classList.remove("wp-active-theme-open");
             document.body.classList.remove("wp-active-chat-open");
             
-            // Clear input context tracking maps natively
             if (textInput) textInput.value = "";
             clearSelectedMediaAttachment();
           }
         });
 
-        // Switch conversations panels views
         threads.forEach(t => {
           t.addEventListener("click", function() {
             threads.forEach(card => card.classList.remove("is-active"));

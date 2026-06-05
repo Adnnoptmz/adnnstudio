@@ -666,6 +666,32 @@
     .reminder-entry-row span {
       font-size: 13px;
     }
+    /* Styles for the Apple-inspired Time Picker and Today highlight */
+    #newReminderTime {
+      width: auto;
+      border-radius: 12px;
+      padding: 10px;
+      background: var(--input-bg);
+      color: var(--text);
+      border: 1px solid var(--line);
+    }
+    .cal-cell.is-today:not(.is-selected) {
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      font-weight: 500;
+    }
+    .reminder-time-tag {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--accent);
+      background: rgba(39, 45, 207, 0.1);
+      padding: 2px 6px;
+      border-radius: 6px;
+      margin-left: 8px;
+    }
+    :root.light-theme .reminder-time-tag {
+      background: rgba(39, 45, 207, 0.08);
+    }
     .reminder-del-btn {
       background: transparent;
       border: 0;
@@ -1021,9 +1047,12 @@
 
           <div class="reminder-list-box">
             <h3 style="margin:0 0 16px; font-size:16px; font-weight:400;">Reminders</h3>
-            <div style="display:flex; gap:8px; margin-bottom:16px;">
+            <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:16px;">
               <input type="text" id="newReminderInput" placeholder="New milestone action item..." style="border-radius:12px; padding:10px 14px;">
-              <button type="button" id="addReminderBtn" style="border-radius:12px; background:var(--accent); color:#fff; border:0; padding:0 14px; font-size:12px; cursor:pointer;">Add</button>
+              <div style="display:flex; gap:8px;">
+                <input type="time" id="newReminderTime" value="12:00">
+                <button type="button" id="addReminderBtn" style="flex-grow:1; border-radius:12px; background:var(--accent); color:#fff; border:0; padding:0 14px; font-size:12px; cursor:pointer;">Add Reminder</button>
+              </div>
             </div>
             <div id="remindersOutputContainer">
               <p class="help">Select a calendar date to view or insert system entries.</p>
@@ -1185,7 +1214,11 @@
       // NATIVE INTERACTIVE APPLE CALENDAR LOGIC WITH PERSISTENT REMINDER FEEDS
       (function runtimeAppleCalendarEngine() {
         let currentDate = new Date();
-        let selectedDateKey = null;
+        const todayReal = new Date(); // Stores the baseline actual real-time date
+        
+        // Formulate default selection key string matching today's actual date
+        let selectedDateKey = `${todayReal.getFullYear()}-${String(todayReal.getMonth()+1).padStart(2,'0')}-${String(todayReal.getDate()).padStart(2,'0')}`;
+        
         const storageRemindersKey = "adnn_calendar_reminders";
         
         let reminderDatabase = {};
@@ -1198,6 +1231,7 @@
         const prevBtn = document.getElementById("prevMonthBtn");
         const nextBtn = document.getElementById("nextMonthBtn");
         const remInput = document.getElementById("newReminderInput");
+        const remTimeInput = document.getElementById("newReminderTime");
         const remAddBtn = document.getElementById("addReminderBtn");
         const remBox = document.getElementById("remindersOutputContainer");
 
@@ -1235,6 +1269,11 @@
             const dateKey = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
             cell.dataset.dateKey = dateKey;
 
+            // Check if this box matches the user's actual system "Today"
+            if (year === todayReal.getFullYear() && month === todayReal.getMonth() && day === todayReal.getDate()) {
+              cell.classList.add("is-today");
+            }
+
             if (reminderDatabase[dateKey] && reminderDatabase[dateKey].length > 0) {
               cell.classList.add("has-reminders");
             }
@@ -1265,10 +1304,23 @@
             remBox.innerHTML = '<p class="help" style="margin-top:4px;">No reminders set for this deadline date.</p>';
             return;
           }
-          list.forEach((text, index) => {
+
+          // Sort reminders chronologically by time tag
+          list.sort((a, b) => a.time.localeCompare(b.time));
+
+          list.forEach((item, index) => {
             const row = document.createElement("div");
             row.className = "reminder-entry-row";
-            row.innerHTML = `<span>${text}</span><button type="button" class="reminder-del-btn" data-index="${index}">Delete</button>`;
+            
+            // Format time display cleanly to standard AM/PM or military
+            row.innerHTML = `
+              <div style="display:flex; align-items:center; gap:4px; min-width:0;">
+                <span style="word-break: break-word;">${item.text}</span>
+                <span class="reminder-time-tag">${item.time}</span>
+              </div>
+              <button type="button" class="reminder-del-btn" data-index="${index}">Delete</button>
+            `;
+            
             row.querySelector(".reminder-del-btn").addEventListener("click", function() {
               const idx = parseInt(this.dataset.index);
               reminderDatabase[selectedDateKey].splice(idx, 1);
@@ -1293,16 +1345,26 @@
 
         remAddBtn?.addEventListener("click", () => {
           const val = remInput.value.trim();
+          const timeVal = remTimeInput.value || "12:00";
           if(!val || !selectedDateKey) return;
+          
           if(!reminderDatabase[selectedDateKey]) reminderDatabase[selectedDateKey] = [];
-          reminderDatabase[selectedDateKey].push(val);
+          
+          // Store both text content and precise reminder target timestamp strings
+          reminderDatabase[selectedDateKey].push({
+            text: val,
+            time: timeVal
+          });
+          
           localStorage.setItem(storageRemindersKey, JSON.stringify(reminderDatabase));
           remInput.value = "";
           renderRemindersForSelectedDate();
           buildCalendarStructure();
         });
 
+        // Initialize view matching the current running state context
         buildCalendarStructure();
+        renderRemindersForSelectedDate();
       })();
 
     })();

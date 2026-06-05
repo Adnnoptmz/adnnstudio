@@ -873,21 +873,29 @@
         passwordToggle.setAttribute("title", isVisible ? "Show password" : "Hide password");
       });
       
-      // Gate Lock Restoration Loop
-      if (sessionStorage.getItem(storageSessionKey) === "true" || hasAdminSession()) {
-        sessionStorage.setItem(storageSessionKey, "true");
-        document.body.classList.add("portal-unlocked");
-      }
+	      // Gate Lock Restoration Loop: requires the Google admin session plus this local unlock.
+	      if (sessionStorage.getItem(storageSessionKey) === "true" && hasAdminSession()) {
+	        sessionStorage.setItem(storageSessionKey, "true");
+	        document.body.classList.add("portal-unlocked");
+	      } else {
+	        sessionStorage.removeItem(storageSessionKey);
+	        document.body.classList.remove("portal-unlocked");
+	      }
 
-      localGateForm?.addEventListener("submit", function(e) {
-        e.preventDefault();
-        const user = String(gateUser?.value || "").trim().toLowerCase();
-        const pass = String(gatePass?.value || "");
+	      localGateForm?.addEventListener("submit", function(e) {
+	        e.preventDefault();
+	        const user = String(gateUser?.value || "").trim().toLowerCase();
+	        const pass = String(gatePass?.value || "");
 
-        if (user === "adhnannv" && pass === "adhnan#77.as") {
-          sessionStorage.setItem(storageSessionKey, "true");
-          document.body.classList.add("portal-unlocked");
-          if (errorMsg) errorMsg.textContent = "";
+	        if (!hasAdminSession()) {
+	          if (errorMsg) errorMsg.textContent = "Sign in with getavcollab@gmail.com on the main website first.";
+	          return;
+	        }
+
+	        if (user === "adhnannv" && pass === "adhnan#77.as") {
+	          sessionStorage.setItem(storageSessionKey, "true");
+	          document.body.classList.add("portal-unlocked");
+	          if (errorMsg) errorMsg.textContent = "";
         } else {
           if (errorMsg) errorMsg.textContent = "Invalid administrator credentials.";
         }
@@ -923,21 +931,22 @@
     const app = config ? (getApps()[0] || initializeApp(config)) : null;
     const auth = app ? getAuth(app) : null;
     const db = app ? getFirestore(app) : null;
-    const status = document.getElementById("adminStatus");
-    const help = document.getElementById("adminHelp");
+	    const status = document.getElementById("adminStatus");
+	    const help = document.getElementById("adminHelp");
+	    const storageSessionKey = "adnn_portal_unlocked";
     
-    // Read the active login footprint directly from your index session cache
-    let storedSessionUser = null;
-    try {
-      storedSessionUser = JSON.parse(localStorage.getItem("adhnanPortfolioUser"));
-    } catch(e) {}
-    
-    let currentUser = storedSessionUser ? { uid: "aoLzzYP6uFc12MhrYlgbuohkvTs1", email: "getavcollab@gmail.com" } : null;
-    let isAdmin = storedSessionUser && storedSessionUser.email.trim().toLowerCase() === "getavcollab@gmail.com";
+	    let currentUser = null;
+	    let isAdmin = false;
 
-    function setStatus(text) {
-      if (status) status.textContent = text;
-    }
+	    function setStatus(text) {
+	      if (status) status.textContent = text;
+	    }
+
+	    function lockPortal(text) {
+	      sessionStorage.removeItem(storageSessionKey);
+	      document.body.classList.remove("portal-unlocked");
+	      setStatus(text);
+	    }
 
     function emailKey(email) {
       return String(email || "").trim().toLowerCase();
@@ -1025,33 +1034,37 @@
     updateComposerFormat();
     wireDesignerSetupGenerator();
 
-    window.addEventListener("DOMContentLoaded", async () => {
-      if (isAdmin && db) {
-        // Silent validation verification hook with your live Firestore settings
-        const adminDoc = await getDoc(doc(db, "admins", "aoLzzYP6uFc12MhrYlgbuohkvTs1")).catch(() => null);
-        if (adminDoc && adminDoc.exists()) {
-          setStatus("Ready to sync.");
-        } else {
-          setStatus("Database warning: Please ensure your UID exists inside the admins collection.");
-        }
-      } else {
-        setStatus("Verification warning: No active admin account detected. Sign in on home page.");
-      }
-    });
+	    window.addEventListener("DOMContentLoaded", async () => {
+	      setStatus("Verifying admin account...");
+	    });
 
-    if (auth) {
-      onAuthStateChanged(auth, async (user) => {
-        if (!user) return;
-        currentUser = user;
-        const adminDoc = await getDoc(doc(db, "admins", user.uid)).catch(() => null);
-        isAdmin = Boolean(adminDoc?.exists());
-        if (isAdmin) {
-          setStatus("Ready to sync.");
-          startDashboardStats();
-          startDirectoryLists();
-        }
-      });
-    }
+	    if (auth) {
+	      onAuthStateChanged(auth, async (user) => {
+	        if (!user) {
+	          currentUser = null;
+	          isAdmin = false;
+	          lockPortal("Verification warning: Sign in with getavcollab@gmail.com on the main website.");
+	          return;
+	        }
+	        currentUser = user;
+	        if (emailKey(user.email) !== "getavcollab@gmail.com") {
+	          isAdmin = false;
+	          lockPortal("Permission error: this Google account is not tagged as admin.");
+	          return;
+	        }
+	        const adminDoc = await getDoc(doc(db, "admins", user.uid)).catch(() => null);
+	        isAdmin = Boolean(adminDoc?.exists());
+	        if (isAdmin) {
+	          setStatus("Ready to sync.");
+	          startDashboardStats();
+	          startDirectoryLists();
+	        } else {
+	          lockPortal("Database warning: Add this Google UID inside the admins collection.");
+	        }
+	      });
+	    } else {
+	      setStatus("Firebase is not connected yet.");
+	    }
 
     function startDashboardStats() {
       const dashboard = document.querySelector("#dashboard_view .panel.glass");

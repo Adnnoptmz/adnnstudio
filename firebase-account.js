@@ -25,6 +25,8 @@ const app = config ? (getApps()[0] || initializeApp(config)) : null;
 const auth = app ? getAuth(app) : null;
 const db = app ? getFirestore(app) : null;
 const provider = new GoogleAuthProvider();
+provider.addScope("email");
+provider.addScope("profile");
 provider.setCustomParameters({ prompt: "select_account" });
 
 let accountItemsUnsubscribe = null;
@@ -61,6 +63,10 @@ function saveUser(user) {
   return payload;
 }
 
+function isGoogleUser(user) {
+  return Boolean(user?.providerData?.some((providerData) => providerData.providerId === "google.com"));
+}
+
 async function syncClientDoc(user) {
   if (!db || !user?.email) return;
   const ref = doc(db, "clients", user.uid);
@@ -84,6 +90,7 @@ async function firebaseGoogleLogin() {
     const result = await signInWithPopup(auth, provider);
     saveUser(result.user);
     await syncClientDoc(result.user).catch(() => {});
+    await recordGoogleLoginToSheet(result).catch(() => {});
     if (typeof window.renderGoogleUser === "function") window.renderGoogleUser();
     if (typeof window.hydrateUser === "function") window.hydrateUser();
     if (typeof window.setView === "function") window.setView(location.hash.replace("#", "") || "notifications");
@@ -127,7 +134,7 @@ document.getElementById("refreshAccountDataButton")?.addEventListener("click", a
 
 if (auth) {
   onAuthStateChanged(auth, (user) => {
-    if (user) {
+    if (user && isGoogleUser(user)) {
       saveUser(user);
       syncClientDoc(user).catch(() => {});
       if (typeof window.renderGoogleUser === "function") window.renderGoogleUser();
@@ -137,9 +144,36 @@ if (auth) {
       startAccountDeletesListener(user);
       startAccountItemsListener(user);
     } else {
+      if (user && !isGoogleUser(user)) {
+        localStorage.removeItem("adhnanPortfolioUser");
+        if (typeof window.renderGoogleUser === "function") window.renderGoogleUser();
+      }
       stopFirebaseListeners();
       updateBadges({});
     }
+  });
+}
+
+async function recordGoogleLoginToSheet(result) {
+  const credential = GoogleAuthProvider.credentialFromResult(result);
+  const accessToken = credential?.accessToken || "";
+  const endpoint = window.ADNN_ACCOUNT_ENDPOINT || "";
+  if (!endpoint || !accessToken || !result?.user?.email) return;
+  sessionStorage.setItem("adnnGoogleAccessToken", accessToken);
+
+  const form = new URLSearchParams();
+  form.set("action", "recordLogin");
+  form.set("accessToken", accessToken);
+  form.set("name", result.user.displayName || "");
+  form.set("email", result.user.email || "");
+  form.set("picture", result.user.photoURL || "");
+  form.set("pageUrl", location.href);
+
+  await fetch(endpoint, {
+    method: "POST",
+    body: form,
+    mode: "no-cors",
+    keepalive: true
   });
 }
 

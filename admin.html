@@ -57,6 +57,7 @@
 
     body {
       background-image: var(--radial-glow), var(--linear-bg);
+      overflow-x: hidden;
     }
 
     button, input, textarea, select { font: inherit; }
@@ -71,10 +72,179 @@
       transition: background 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease;
     }
 
-    .shell {
-      width: min(1120px, calc(100% - 32px));
+    /* Master Multi-Column App Structure Layout Grid Frame */
+    .admin-app-container {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      min-height: 100vh;
+      transition: grid-template-columns 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    
+    body.sidebar-collapsed .admin-app-container {
+      grid-template-columns: 78px 1fr;
+    }
+
+    /* Premium Collapsable Editorial Sidebar Layout Wrapper Pass */
+    .admin-sidebar {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      border-right: 1px solid var(--line);
+      display: grid;
+      grid-template-rows: 84px 1fr auto;
+      padding: 0 16px 20px;
+      overflow: hidden;
+      z-index: 50;
+      transition: width 0.4s ease;
+    }
+
+    .sidebar-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--line);
+      padding: 0 4px;
+    }
+
+    .sidebar-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      overflow: hidden;
+      white-space: nowrap;
+      transition: opacity 0.25s ease;
+    }
+    .sidebar-brand img {
+      width: 32px;
+      height: 32px;
+      border-radius: 9px;
+      object-fit: cover;
+    }
+    .sidebar-brand span {
+      font-size: 15px;
+      font-weight: 500;
+      letter-spacing: -0.02em;
+    }
+
+    body.sidebar-collapsed .sidebar-brand {
+      opacity: 0;
+      pointer-events: none;
+      width: 0;
+    }
+
+    /* Fine-Art Toggle Menu Command Action */
+    .sidebar-toggle-trigger {
+      width: 34px;
+      height: 34px;
+      border: 0;
+      border-radius: 10px;
+      background: var(--toggle-btn-bg);
+      color: var(--text);
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .sidebar-toggle-trigger:hover {
+      background: var(--toggle-btn-hover);
+    }
+    .sidebar-toggle-trigger svg {
+      width: 16px;
+      height: 16px;
+      transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    body.sidebar-collapsed .sidebar-toggle-trigger svg {
+      transform: rotate(180deg);
+    }
+    body.sidebar-collapsed .sidebar-toggle-trigger {
       margin: 0 auto;
-      padding: clamp(28px, 5vw, 68px) 0;
+    }
+
+    /* Core Editorial Link List Structure Navigation Matrices */
+    .sidebar-navigation {
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 20px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    
+    /* Hide scrollbars cleanly across desktop browser engines */
+    .sidebar-navigation::-webkit-scrollbar { width: 0; background: transparent; }
+
+    .sidebar-link-item {
+      width: 100%;
+      height: 44px;
+      border: 0;
+      border-radius: 14px;
+      padding: 0 14px;
+      display: grid;
+      grid-template-columns: 20px 1fr;
+      align-items: center;
+      gap: 14px;
+      color: var(--muted);
+      background: transparent;
+      text-decoration: none;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      text-align: left;
+      cursor: pointer;
+      white-space: nowrap;
+      position: relative;
+      transition: background 0.2s, color 0.2s, transform 0.2s;
+    }
+    .sidebar-link-item:hover, .sidebar-link-item.is-active {
+      color: var(--text);
+      background: var(--toggle-btn-hover);
+    }
+    .sidebar-link-item.is-active {
+      border-left: 2px solid var(--accent);
+      border-radius: 4px 14px 14px 4px;
+    }
+    .sidebar-link-item svg {
+      width: 18px;
+      height: 18px;
+      color: inherit;
+    }
+    .sidebar-link-item span.link-label {
+      transition: opacity 0.2s ease;
+    }
+
+    body.sidebar-collapsed .sidebar-link-item {
+      grid-template-columns: 1fr;
+      justify-content: center;
+      padding: 0;
+      width: 44px;
+      height: 44px;
+      margin: 0 auto;
+      border-radius: 12px;
+    }
+    body.sidebar-collapsed .sidebar-link-item span.link-label {
+      display: none;
+    }
+    body.sidebar-collapsed .sidebar-link-item.is-active {
+      border-left: 0;
+      background: rgba(39, 45, 207, 0.15);
+      color: #5360ff;
+    }
+
+    .sidebar-footer-profile {
+      border-top: 1px solid var(--line);
+      padding-top: 16px;
+      overflow: hidden;
+    }
+
+    .admin-main-viewport {
+      height: 100vh;
+      overflow-y: auto;
+      padding: clamp(20px, 4vw, 54px) clamp(16px, 3.5vw, 44px);
+    }
+
+    .shell {
+      width: min(1060px, 100%);
+      margin: 0 auto;
+      padding: 0;
     }
 
     /* Portal Lock Screen Gate Framework */
@@ -404,7 +574,75 @@
     </div>
   </div>
 
-  <div class="shell">
+  <div class="admin-app-container">
+    
+    <aside class="admin-sidebar glass">
+      <div class="sidebar-header">
+        <div class="sidebar-brand">
+          <img src="adnn icon.svg" alt="Studio Logo">
+          <span>Adnn Workspace</span>
+        </div>
+        <button type="button" class="sidebar-toggle-trigger" id="sidebarCollapseBtn" title="Collapse Menu Panel" aria-label="Collapse Menu Panel">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="11 17 6 12 11 7"></polyline><polyline points="18 17 13 12 18 7"></polyline></svg>
+        </button>
+      </div>
+
+      <nav class="sidebar-navigation" aria-label="Portal Navigation Matrix">
+        <button type="button" class="sidebar-link-item" data-target-view="dashboard_view">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"></rect><rect x="14" y="3" width="7" height="5"></rect><rect x="14" y="12" width="7" height="9"></rect><rect x="3" y="16" width="7" height="5"></rect></svg>
+          <span class="link-label">Dashboard</span>
+        </button>
+        <button type="button" class="sidebar-link-item" data-target-view="enquiries_view">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+          <span class="link-label">Enquiries</span>
+        </button>
+        <button type="button" class="sidebar-link-item" data-target-view="clients_view">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+          <span class="link-label">Clients Login Data</span>
+        </button>
+        <button type="button" class="sidebar-link-item" data-target-view="designers_view">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>
+          <span class="link-label">Designers Login Data</span>
+        </button>
+        <button type="button" class="sidebar-link-item" data-target-view="projects_view">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+          <span class="link-label">Projects</span>
+        </button>
+        <button type="button" class="sidebar-link-item is-active" data-target-view="composer_view">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+          <span class="link-label">Tasks / Dispatcher</span>
+        </button>
+        <button type="button" class="sidebar-link-item" data-target-view="chats_view">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+          <span class="link-label">Chats</span>
+        </button>
+        <button type="button" class="sidebar-link-item" data-target-view="payments_view">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+          <span class="link-label">Invoices & Payments</span>
+        </button>
+        <button type="button" class="sidebar-link-item" data-target-view="notifications_view">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+          <span class="link-label">Notifications</span>
+        </button>
+        <button type="button" class="sidebar-link-item" data-target-view="calendar_view">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="11" y2="10"></line></svg>
+          <span class="link-label">Reminder Calendar</span>
+        </button>
+        <button type="button" class="sidebar-link-item" data-target-view="settings_view">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+          <span class="link-label">Settings</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer-profile">
+        <div style="font-size: 11px; font-family: var(--font-mono); color: var(--muted); text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+          root@adnnstudio
+        </div>
+      </div>
+    </aside>
+
+    <main class="admin-main-viewport">
+      <div class="shell">
     <div class="top">
       <div class="brand">
         <img src="adnn icon.svg" alt="Adnn Studio">
@@ -421,7 +659,7 @@
           <!-- Sun Icon (Rendered in Clean Light Mode Framework) -->
           <svg class="sun-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
         </button>
-        <a href="index.html#home" class="home-btn">Back to Home</a>
+        <a href="index.html#home" class="home-btn" onclick="sessionStorage.removeItem('adnn_admin_visited');">Back to Home</a>
         <button type="button" class="apple-logout-btn" id="adminLogoutButton" title="Lock Workspace Panel" aria-label="Lock Workspace Panel">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px; display: block; margin: 0 auto;"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
         </button>
@@ -495,17 +733,72 @@
         <p class="status" id="adminStatus" aria-live="polite"></p>
       </form>
     </div>
-  </div>
+    </div> <div id="dashboard_view" class="admin-view-panel-container" style="display:none;">
+      <div class="panel glass"><p class="kicker">Overview</p><h2>Studio Analytics Dashboard</h2><p class="help">Live workspace stream overview interface coming here.</p></div>
+    </div>
+    <div id="enquiries_view" class="admin-view-panel-container" style="display:none;">
+      <div class="panel glass"><p class="kicker">Enquiries</p><h2>Active Client Forms</h2><p class="help">Spreadsheet inbound pipeline telemetry grid module slot.</p></div>
+    </div>
+    <div id="clients_view" class="admin-view-panel-container" style="display:none;">
+      <div class="panel glass"><p class="kicker">Clients</p><h2>Client Records Directory</h2><p class="help">Google account sign-ins recorded through Firebase will appear here.</p><div id="clientDirectoryList" style="display:grid;gap:10px;margin-top:22px;"></div></div>
+    </div>
+    
+    <div id="designers_view" class="admin-view-panel-container" style="display:none;">
+      <div class="panel glass">
+        <p class="kicker">Designers Module</p>
+        <h2>Workspace Accounts Creator</h2>
+        <p class="help" style="margin-bottom:20px;">Generate a safe designer login setup. Create the Firebase Auth user in Firebase Console, then add the generated entry to designer-users.js.</p>
+        
+        <form id="adminDesignerCreationForm" style="display:grid; gap:16px; max-width:620px;">
+          <label>Designer Display Name <input id="newDesignerName" type="text" placeholder="Alex Carter" required></label>
+          <label>Designer ID <input id="newDesignerId" type="text" placeholder="D0002" required></label>
+          <label>Firebase Auth Email <input id="newDesignerAuthEmail" type="email" placeholder="d0002@adnnstudio.design" required></label>
+          <label>Temporary Password <input id="newDesignerPassword" type="text" placeholder="ADNNdesigner02" required></label>
+          <div class="actions" style="margin-top:4px;"><button type="submit">Generate Setup</button></div>
+        </form>
+        <div id="designerSetupOutput" style="display:none; margin-top:22px; border:1px solid var(--line); border-radius:22px; padding:18px; background:rgba(255,255,255,.04);">
+          <p class="kicker">Designer setup output</p>
+          <p class="help" id="designerSetupSteps" style="white-space:pre-line; margin-top:0;"></p>
+          <textarea id="designerSetupSnippet" readonly style="min-height:150px; font-family:var(--font-mono); font-size:12px;"></textarea>
+          <div class="actions"><button type="button" id="copyDesignerSnippetButton">Copy Entry</button><a class="home-btn" href="https://console.firebase.google.com/" target="_blank" rel="noopener noreferrer">Open Firebase</a></div>
+        </div>
+        <div id="designerDirectoryList" style="display:grid;gap:10px;margin-top:22px;"></div>
+      </div>
+    </div>
+    
+    <div id="projects_view" class="admin-view-panel-container" style="display:none;">
+      <div class="panel glass"><p class="kicker">Projects</p><h2>Creative Deliverables Directory</h2><p class="help">Interactive cylindrical slider dataset manipulation array nodes.</p></div>
+    </div>
+    <div id="chats_view" class="admin-view-panel-container" style="display:none;">
+      <div class="panel glass"><p class="kicker">Chats</p><h2>Live Single-User Session Portals</h2><p class="help">Firebase operational direct messaging response queues mount frame.</p></div>
+    </div>
+    <div id="payments_view" class="admin-view-panel-container" style="display:none;">
+      <div class="panel glass"><p class="kicker">Finances</p><h2>Invoices Ledger System</h2><p class="help">Stripe/iCloud token dispatch processing gateway layer references.</p></div>
+    </div>
+    <div id="notifications_view" class="admin-view-panel-container" style="display:none;">
+      <div class="panel glass"><p class="kicker">Broadcasts</p><h2>Global System Push Dispatch</h2><p class="help">Account global notice tracking sync layout configuration slots.</p></div>
+    </div>
+    <div id="calendar_view" class="admin-view-panel-container" style="display:none;">
+      <div class="panel glass"><p class="kicker">Schedule</p><h2>Reminder Studio Calendar</h2><p class="help">Milestone delivery deadlines and client review sync loops mapping asset.</p></div>
+    </div>
+    <div id="settings_view" class="admin-view-panel-container" style="display:none;">
+      <div class="panel glass"><p class="kicker">System</p><h2>Global Environment Settings</h2><p class="help">API Endpoint configurations, fallback maps, and secret key definitions.</p></div>
+    </div>
+
+    </div> </main> </div>
 
   <!-- Local Session Authentication Verification & Theme Switcher Engine Scripts -->
   <script>
     (function manageLocalGateAndThemeSession() {
+      // Set navigation bypass flag when admin explicitly lands here via a fresh homepage redirect loop
+      if (document.referrer.includes("index.html") && !sessionStorage.getItem("adnn_admin_visited")) {
+        sessionStorage.setItem("adnn_admin_visited", "true");
+      }
+
       const storageSessionKey = "adnn_portal_unlocked";
       const themeStorageKey = "adnn_portal_light_mode";
       const errorMsg = document.getElementById("gateError");
       const themeToggleBtn = document.getElementById("appleThemeToggle");
-      const passwordInput = document.getElementById("gatePass");
-      const passwordToggle = document.getElementById("gatePasswordToggle");
       
       // Theme Restoration Loop
       if (localStorage.getItem(themeStorageKey) === "true") {
@@ -517,9 +810,60 @@
         localStorage.setItem(themeStorageKey, isCurrentlyLight);
       });
 
+      // Unified Sidebar Panel View Controller & Layout Collapsing Script Loop
+      const sidebarCollapseBtn = document.getElementById("sidebarCollapseBtn");
+      const navButtons = document.querySelectorAll(".sidebar-link-item");
+      const defaultActiveTab = "composer_view";
+
+      // Toggle Sidebar Width State Parameter Maps
+      sidebarCollapseBtn?.addEventListener("click", function() {
+        document.body.classList.toggle("sidebar-collapsed");
+        localStorage.setItem("adnn_sidebar_minimized", document.body.classList.contains("sidebar-collapsed"));
+      });
+
+      // Restore Minimized Sidebar Profile state context gracefully on mount
+      if (localStorage.getItem("adnn_sidebar_minimized") === "true") {
+        document.body.classList.add("sidebar-collapsed");
+      }
+
+      // Tab Panel Visibility Routing Engine Loop
+      function activateTabPanel(targetViewId) {
+        // Hide only the composer panel and top-level view wrappers.
+        document.querySelectorAll(".admin-view-panel-container").forEach(el => {
+          el.style.display = "none";
+        });
+        const originalFormPanel = document.getElementById("adminSendForm")?.closest(".panel.glass");
+        if (originalFormPanel) originalFormPanel.style.display = "none";
+
+        // Set the state targets to display block grid layouts
+        if (targetViewId === "composer_view") {
+          if (originalFormPanel) originalFormPanel.style.display = "block";
+        } else {
+          const matchedTargetPanel = document.getElementById(targetViewId);
+          if (matchedTargetPanel) matchedTargetPanel.style.display = "block";
+        }
+
+        // Cycle text highlighting and active structural marker border properties cleanly
+        navButtons.forEach(btn => {
+          const isMatched = btn.dataset.targetView === targetViewId;
+          btn.classList.toggle("is-active", isMatched);
+        });
+      }
+
+      navButtons.forEach(buttonItem => {
+        buttonItem.addEventListener("click", function(event) {
+          event.preventDefault();
+          const selectedView = this.dataset.targetView;
+          if (selectedView) activateTabPanel(selectedView);
+        });
+      });
+
+      // Initialize the default composer workspace form display layout on first entry mount pass
+      activateTabPanel(defaultActiveTab);
+
       passwordToggle?.addEventListener("click", function() {
-        const isVisible = passwordInput.type === "text";
-        passwordInput.type = isVisible ? "password" : "text";
+        const isVisible = gatePass.type === "text";
+        gatePass.type = isVisible ? "password" : "text";
         passwordToggle.setAttribute("aria-label", isVisible ? "Show password" : "Hide password");
         passwordToggle.setAttribute("title", isVisible ? "Show password" : "Hide password");
       });
@@ -558,7 +902,7 @@
   <script type="module">
     import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-    import { addDoc, collection, doc, getDoc, getFirestore, serverTimestamp, Timestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { addDoc, collection, doc, getDoc, getFirestore, onSnapshot, serverTimestamp, Timestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     const config = window.ADNN_FIREBASE_CONFIG;
     const app = config ? (getApps()[0] || initializeApp(config)) : null;
@@ -664,6 +1008,7 @@
 
     document.getElementById("itemType").addEventListener("change", updateComposerFormat);
     updateComposerFormat();
+    wireDesignerSetupGenerator();
 
     window.addEventListener("DOMContentLoaded", async () => {
       if (isAdmin && db) {
@@ -678,6 +1023,119 @@
         setStatus("Verification warning: No active admin account detected. Sign in on home page.");
       }
     });
+
+    if (auth) {
+      onAuthStateChanged(auth, async (user) => {
+        if (!user) return;
+        currentUser = user;
+        const adminDoc = await getDoc(doc(db, "admins", user.uid)).catch(() => null);
+        isAdmin = Boolean(adminDoc?.exists());
+        if (isAdmin) {
+          setStatus("Ready to sync.");
+          startDashboardStats();
+          startDirectoryLists();
+        }
+      });
+    }
+
+    function startDashboardStats() {
+      const dashboard = document.querySelector("#dashboard_view .panel.glass");
+      if (!dashboard || dashboard.dataset.ready === "true") return;
+      dashboard.dataset.ready = "true";
+      dashboard.innerHTML = `
+        <p class="kicker">Overview</p>
+        <h2>Studio Analytics Dashboard</h2>
+        <div id="adminStatsGrid" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:22px;"></div>
+        <p class="help">Live Firebase counts update while the admin account is connected.</p>
+      `;
+      const statsGrid = document.getElementById("adminStatsGrid");
+      const sources = [
+        ["Clients", "clients"],
+        ["Designers", "designers"],
+        ["Dispatches", "accountItems"],
+        ["Chats", "chats"]
+      ];
+      sources.forEach(([label, collectionName]) => {
+        const card = document.createElement("div");
+        card.style.cssText = "border:1px solid var(--line);border-radius:18px;padding:16px;background:rgba(255,255,255,.04);";
+        card.innerHTML = `<p class="kicker" style="margin:0 0 10px;">${label}</p><strong style="font-size:34px;font-weight:400;">0</strong>`;
+        statsGrid.appendChild(card);
+        onSnapshot(collection(db, collectionName), (snapshot) => {
+          card.querySelector("strong").textContent = String(snapshot.size);
+        }, () => {});
+      });
+    }
+
+    function startDirectoryLists() {
+      renderDirectory("clientDirectoryList", "clients", "No client records yet.");
+      renderDirectory("designerDirectoryList", "designers", "No designer records yet.");
+    }
+
+    function renderDirectory(containerId, collectionName, emptyText) {
+      const container = document.getElementById(containerId);
+      if (!container || container.dataset.ready === "true") return;
+      container.dataset.ready = "true";
+      container.innerHTML = `<p class="help">${emptyText}</p>`;
+      onSnapshot(collection(db, collectionName), (snapshot) => {
+        container.innerHTML = "";
+        if (!snapshot.size) {
+          container.innerHTML = `<p class="help">${emptyText}</p>`;
+          return;
+        }
+        snapshot.docs
+          .map((docSnap) => ({ id: docSnap.id, ...(docSnap.data() || {}) }))
+          .sort((a, b) => String(a.email || a.authEmail || "").localeCompare(String(b.email || b.authEmail || "")))
+          .forEach((item) => {
+            const row = document.createElement("div");
+            row.style.cssText = "display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;border:1px solid var(--line);border-radius:16px;padding:12px 14px;background:rgba(255,255,255,.04);";
+            row.innerHTML = `
+              <span style="min-width:0;display:block;overflow:hidden;text-overflow:ellipsis;">
+                <strong style="display:block;font-weight:500;">${escapeHtml(item.name || item.displayEmail || item.email || item.authEmail || "Account")}</strong>
+                <small style="display:block;margin-top:4px;color:var(--muted);font-family:var(--font-mono);font-size:11px;">${escapeHtml(item.email || item.displayEmail || item.authEmail || item.designerId || item.id)}</small>
+              </span>
+              <small style="color:var(--muted);font-family:var(--font-mono);font-size:10px;">${escapeHtml(item.role || item.status || "Active")}</small>
+            `;
+            container.appendChild(row);
+          });
+      }, () => {
+        container.innerHTML = `<p class="help">Could not load ${collectionName}.</p>`;
+      });
+    }
+
+    function escapeHtml(value) {
+      return String(value || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function wireDesignerSetupGenerator() {
+      const form = document.getElementById("adminDesignerCreationForm");
+      const output = document.getElementById("designerSetupOutput");
+      const steps = document.getElementById("designerSetupSteps");
+      const snippet = document.getElementById("designerSetupSnippet");
+      const copyButton = document.getElementById("copyDesignerSnippetButton");
+      if (!form || !output || !steps || !snippet) return;
+
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const designerId = fieldValue("newDesignerId").toUpperCase();
+        const name = fieldValue("newDesignerName");
+        const authEmail = emailKey(fieldValue("newDesignerAuthEmail"));
+        const password = fieldValue("newDesignerPassword");
+        const entry = `  {\n    designerid: "${designerId}",\n    authEmail: "${authEmail}",\n    name: "${name}",\n    email: "${authEmail}"\n  }`;
+        steps.textContent = `1. Open Firebase Console > Authentication > Users > Add user.\n2. Email: ${authEmail}\n3. Password: ${password}\n4. Add this object to designer-users.js inside ADNN_DESIGNER_USERS.\n5. Share Designer ID ${designerId} and the temporary password with the designer.`;
+        snippet.value = entry;
+        output.style.display = "block";
+      });
+
+      copyButton?.addEventListener("click", async () => {
+        await navigator.clipboard?.writeText(snippet.value).catch(() => {});
+        setStatus("Designer setup entry copied.");
+      });
+    }
 
     document.getElementById("adminSendForm").addEventListener("submit", async (event) => {
       event.preventDefault();

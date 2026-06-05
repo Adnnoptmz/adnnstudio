@@ -380,20 +380,20 @@
         <p class="kicker">Designer Notifications</p>
         <h1>Notifications</h1>
         <p class="lead">Private studio alerts and workspace updates will appear here.</p>
-        <div class="empty-card"><span><strong>No notifications yet</strong><span>Nothing has been shared with this designer account yet.</span></span></div>
+        <div class="designer-feed" id="designerNotificationsList"><div class="empty-card"><span><strong>No notifications yet</strong><span>Nothing has been shared with this designer account yet.</span></span></div></div>
       </section>
 
       <section id="tasks" class="view active">
         <p class="kicker">Designer Tasks</p>
         <h1>Tasks</h1>
         <p class="lead">Assigned design work, uploads, and studio deadlines will appear here.</p>
-        <div class="empty-card"><span><strong>No ongoing task</strong><span>Nothing has been assigned yet.</span></span></div>
+        <div class="designer-feed" id="designerTasksList"><div class="empty-card"><span><strong>No ongoing task</strong><span>Nothing has been assigned yet.</span></span></div></div>
       </section>
       <section id="invoice" class="view">
         <p class="kicker">Designer Invoice</p>
         <h1>Invoice</h1>
         <p class="lead">Designer payment records and invoice notes will appear here once added.</p>
-        <div class="empty-card"><span><strong>Nothing here</strong><span>No invoice has been added yet.</span></span></div>
+        <div class="designer-feed" id="designerInvoiceList"><div class="empty-card"><span><strong>Nothing here</strong><span>No invoice has been added yet.</span></span></div></div>
       </section>
       <section id="notes" class="view">
         <p class="kicker">Studio Notes</p>
@@ -413,6 +413,7 @@
   <script src="designer-users.js"></script>
   <script type="module" src="firebase-designer-auth.js"></script>
   <script type="module" src="firebase-chat.js"></script>
+  <script type="module" src="firebase-designer-items.js"></script>
   <script>
     const userKey = "adnnDesignerUser";
 

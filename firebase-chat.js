@@ -96,6 +96,12 @@ if (auth && db) {
     }
 
     if (!isAdminEmail(user.email)) {
+      const designer = await getDesignerProfile(user).catch(() => null);
+      if (designer) {
+        activeDesignerProfile = designer;
+        stopClientChat();
+        return;
+      }
       await ensureClientChat(user).catch(() => {});
       startClientChat(user);
     }
@@ -157,6 +163,10 @@ function installClientChatShell() {
   trigger.addEventListener("click", () => {
     if (isAdminEmail(activeUser?.email)) {
       location.href = "admin.html#chat";
+      return;
+    }
+    if (activeDesignerProfile && !location.pathname.includes("designer-account.html")) {
+      location.href = "designer-account.html#chat";
       return;
     }
     openClientChat();
@@ -336,9 +346,15 @@ function installAdminChatPanel() {
       </div>
     </div>
   `;
-  const composer = document.querySelector(".panel.glass");
-  if (composer) composer.insertAdjacentElement("afterend", panel);
-  else document.querySelector(".shell")?.appendChild(panel);
+  const chatView = document.getElementById("chats_view");
+  if (chatView) {
+    chatView.innerHTML = "";
+    chatView.appendChild(panel);
+  } else {
+    const composer = document.querySelector(".panel.glass");
+    if (composer) composer.insertAdjacentElement("afterend", panel);
+    else document.querySelector(".shell")?.appendChild(panel);
+  }
   document.getElementById("adnnAdminChatForm")?.addEventListener("submit", sendAdminMessage);
 }
 

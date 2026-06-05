@@ -2391,17 +2391,18 @@
   #aiComingSoonOrb {
     position: fixed;
     right: clamp(24px, 3.5vw, 48px); /* Shifted inwards from 34px maximum for a perfect grid gutter look */
-    bottom: clamp(24px, 3.5vw, 48px); /* Shifted upwards from 34px maximum to avoid crowding the edge */
+	    bottom: var(--ai-orb-bottom, clamp(24px, 3.5vw, 48px)); /* JS pins this above the contact panel before it enters the black box */
     z-index: 999998;
     width: 64px;
     height: 64px;
     border: 0;
     border-radius: 50%;
-    display: grid;
-    place-items: center;
-    cursor: default;
-    background: transparent !important;
-    transform: translateZ(0);
+	    display: grid;
+	    place-items: center;
+	    cursor: default;
+	    color: #ffffff;
+	    background: transparent !important;
+	    transform: translateZ(0);
     transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
     overflow: visible;
   }
@@ -3020,7 +3021,7 @@
 	      const portfolioSection = document.getElementById("portfolio");
 	      if (!backToTopBtn || !homeSection || !aboutSection) return;
 
-	      function updateBackToHomeButton() {
+		      function updateBackToHomeButton() {
 	        const triggerPoint = Math.max(120, aboutSection.offsetTop - window.innerHeight * 0.18);
 	        const shouldShow = window.scrollY >= triggerPoint;
 	        backToTopBtn.classList.toggle("is-visible", shouldShow);
@@ -3038,18 +3039,46 @@
 	          backToTopBtn.style.setProperty("background", "rgba(30, 30, 35, 0.72)", "important");
 	          backToTopBtn.style.setProperty("border", "1px solid rgba(255, 255, 255, 0.15)", "important");
 	          backToTopBtn.style.setProperty("box-shadow", "inset 0 1px 0 rgba(255,255,255,.38), inset 0 -12px 24px rgba(255,255,255,.06), 0 12px 40px rgba(0,0,0,.5)", "important");
-	        }
-	      }
+		        }
+		      }
+
+		      function updateAiOrbPin() {
+		        const aiOrb = document.getElementById("aiComingSoonOrb");
+		        const connectPanel = document.querySelector("#connect form") || document.getElementById("connect");
+		        if (!aiOrb || !connectPanel) return;
+
+		        const baseBottom = window.innerWidth <= 560 ? 20 : 34;
+		        const panelGap = window.innerWidth <= 560 ? 16 : 22;
+		        const panelRect = connectPanel.getBoundingClientRect();
+		        const orbHeight = aiOrb.offsetHeight || 58;
+		        let nextBottom = baseBottom;
+
+		        if (panelRect.top < window.innerHeight - baseBottom - orbHeight - panelGap) {
+		          nextBottom = Math.min(
+		            window.innerHeight - orbHeight - panelGap,
+		            window.innerHeight - panelRect.top + panelGap
+		          );
+		        }
+
+		        aiOrb.style.setProperty("--ai-orb-bottom", `${Math.max(baseBottom, Math.round(nextBottom))}px`);
+		      }
 
 	      backToTopBtn.addEventListener("click", function(event) {
 	        event.preventDefault();
 	        homeSection.scrollIntoView({ behavior: "smooth", block: "start" });
 	      });
 
-	      window.addEventListener("scroll", updateBackToHomeButton, { passive: true });
-	      window.addEventListener("resize", updateBackToHomeButton);
-	      updateBackToHomeButton();
-	    })();
+		      window.addEventListener("scroll", () => {
+		        updateBackToHomeButton();
+		        updateAiOrbPin();
+		      }, { passive: true });
+		      window.addEventListener("resize", () => {
+		        updateBackToHomeButton();
+		        updateAiOrbPin();
+		      });
+		      updateBackToHomeButton();
+		      updateAiOrbPin();
+		    })();
 	  </script>
 
 <script>
@@ -3099,8 +3128,9 @@
     const prevButton = document.querySelector(".portfolio-prev");
     const nextButton = document.querySelector(".portfolio-next");
     const dotsWrap = document.querySelector(".portfolio-dots");
-    let activePortfolioIndex = 3;
-    let dragStartX = null;
+	    let activePortfolioIndex = 3;
+	    let dragStartX = null;
+	    let portfolioRenderQueued = false;
 
     portfolioCards.forEach((_, index) => {
       const dot = document.createElement("button");
@@ -3118,7 +3148,7 @@
       return offset;
     }
 
-    function renderPortfolioCylinder() {
+	    function renderPortfolioCylinder() {
       const dots = [...dotsWrap.querySelectorAll("button")];
       portfolioCards.forEach((card, index) => {
         const offset = signedOffset(index);
@@ -3138,8 +3168,17 @@
           card.style.zIndex = String(60 - Math.round(abs * 8));
         }
       });
-      dots.forEach((dot, index) => dot.classList.toggle("is-active", index === activePortfolioIndex));
-    }
+	      dots.forEach((dot, index) => dot.classList.toggle("is-active", index === activePortfolioIndex));
+	    }
+
+	    function requestPortfolioRender() {
+	      if (portfolioRenderQueued) return;
+	      portfolioRenderQueued = true;
+	      window.requestAnimationFrame(() => {
+	        portfolioRenderQueued = false;
+	        renderPortfolioCylinder();
+	      });
+	    }
 
     function setPortfolioIndex(index) {
       activePortfolioIndex = (index + portfolioCards.length) % portfolioCards.length;
@@ -3270,12 +3309,14 @@
     let isDraggingTrack = false;
     let trackBaseIndexOnDown = 0;
     
-    portfolioCylinder.addEventListener("pointerdown", (event) => {
-      if (event.target.tagName.toLowerCase() === 'img') {
-        event.preventDefault();
-      }
-      isDraggingTrack = true;
-      dragStartX = event.clientX;
+	    portfolioCylinder.addEventListener("pointerdown", (event) => {
+	      if (event.button !== undefined && event.button !== 0) return;
+	      if (event.target.tagName.toLowerCase() === 'img') {
+	        event.preventDefault();
+	      }
+	      isDraggingTrack = true;
+	      portfolioCylinder.classList.add("is-dragging");
+	      dragStartX = event.clientX;
       trackBaseIndexOnDown = activePortfolioIndex;
       portfolioCylinder.setPointerCapture(event.pointerId);
       
@@ -3283,15 +3324,16 @@
       if (window.portfolioControls && window.portfolioControls.loopInterval) {
         window.clearInterval(window.portfolioControls.loopInterval);
       }
-    });
+	    }, { passive: false });
 
-    portfolioCylinder.addEventListener("pointermove", (event) => {
-      if (!isDraggingTrack || dragStartX === null) return;
-      
-      const deltaX = event.clientX - dragStartX;
-      
-      // Adaptive drag tracking calculations scaling smoothly based on active desktop or mobile viewport widths
-      const cardTravelSensitivity = window.innerWidth <= 560 ? 110 : 204;
+	    portfolioCylinder.addEventListener("pointermove", (event) => {
+	      if (!isDraggingTrack || dragStartX === null) return;
+	      event.preventDefault();
+	      
+	      const deltaX = event.clientX - dragStartX;
+	      
+	      // Adaptive drag tracking calculations scaling smoothly based on active desktop or mobile viewport widths
+	      const cardTravelSensitivity = window.innerWidth <= 560 ? 132 : window.innerWidth <= 980 ? 160 : 204;
       const indexOffset = deltaX / cardTravelSensitivity;
       
       // Calculates precise fractional real-time positions
@@ -3300,15 +3342,16 @@
       // Keeps the scrolling position bound perfectly within the boundaries of your 7 cards
       const totalCards = portfolioCards.length;
       targetIndex = ((targetIndex % totalCards) + totalCards) % totalCards;
-      
-      activePortfolioIndex = targetIndex;
-      renderPortfolioCylinder();
-    });
+	      
+	      activePortfolioIndex = targetIndex;
+	      requestPortfolioRender();
+	    }, { passive: false });
 
-    portfolioCylinder.addEventListener("pointerup", (event) => {
-      if (!isDraggingTrack) return;
-      isDraggingTrack = false;
-      portfolioCylinder.releasePointerCapture(event.pointerId);
+	    portfolioCylinder.addEventListener("pointerup", (event) => {
+	      if (!isDraggingTrack) return;
+	      isDraggingTrack = false;
+	      portfolioCylinder.classList.remove("is-dragging");
+	      portfolioCylinder.releasePointerCapture(event.pointerId);
       
       // Apple Inertial Snap: Snaps perfectly to the closest whole card index once you let go
       const snappedIndex = Math.round(activePortfolioIndex);
@@ -3316,10 +3359,11 @@
       dragStartX = null;
     });
 
-    portfolioCylinder.addEventListener("pointercancel", (event) => {
-      if (!isDraggingTrack) return;
-      isDraggingTrack = false;
-      portfolioCylinder.releasePointerCapture(event.pointerId);
+	    portfolioCylinder.addEventListener("pointercancel", (event) => {
+	      if (!isDraggingTrack) return;
+	      isDraggingTrack = false;
+	      portfolioCylinder.classList.remove("is-dragging");
+	      portfolioCylinder.releasePointerCapture(event.pointerId);
       setPortfolioIndexUser(Math.round(activePortfolioIndex));
       dragStartX = null;
     });
@@ -3729,13 +3773,25 @@
     }
   };
 
-  window.logoutGoogleAccount = function logoutGoogleAccount(event) {
-    if (event) event.preventDefault();
-    localStorage.removeItem("adhnanPortfolioUser");
-    localStorage.removeItem("adnnDesignerUser"); // Wipes custom designer keys safely
-    sessionStorage.removeItem("adnnGoogleAccessToken");
-    renderGoogleUser();
-  };
+	  window.logoutGoogleAccount = async function logoutGoogleAccount(event) {
+	    if (event) event.preventDefault();
+	    try {
+	      if (window.ADNN_FIREBASE_CONFIG) {
+	        const [{ initializeApp, getApps }, { getAuth, signOut }] = await Promise.all([
+	          import("https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js"),
+	          import("https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js")
+	        ]);
+	        const firebaseApp = getApps()[0] || initializeApp(window.ADNN_FIREBASE_CONFIG);
+	        await signOut(getAuth(firebaseApp));
+	      }
+	    } catch (error) {
+	      console.warn("AdnnStudio logout sync warning", error);
+	    }
+	    localStorage.removeItem("adhnanPortfolioUser");
+	    localStorage.removeItem("adnnDesignerUser"); // Wipes custom designer keys safely
+	    sessionStorage.removeItem("adnnGoogleAccessToken");
+	    renderGoogleUser();
+	  };
 
   function recordGoogleSignIn(accessToken, profile) {
     sendAccountSync("recordLogin", accessToken, profile);
@@ -4310,6 +4366,128 @@
 
     #portfolio .portfolio-card-ref img {
       clip-path: inset(0 round 20px) !important;
+    }
+  }
+</style>
+
+<style id="portfolio-touch-polish-final">
+/* CSS EDIT MAP - Final mobile touch polish for Projects slider. Keeps touch drag smooth and prevents text/card stacking glitches. */
+  #portfolio .reference-slider-shell {
+    touch-action: pan-y !important;
+    -webkit-user-select: none !important;
+    user-select: none !important;
+    -webkit-tap-highlight-color: transparent !important;
+  }
+
+  #portfolio .reference-card-row {
+    cursor: grab;
+  }
+
+  #portfolio .reference-card-row.is-dragging {
+    cursor: grabbing;
+  }
+
+  #portfolio .reference-card-row.is-dragging .portfolio-card-ref {
+    transition: none !important;
+  }
+
+  @media (max-width: 560px) {
+    #portfolio .reference-slider-shell {
+      width: min(100vw, 330px) !important;
+      height: 472px !important;
+      padding-bottom: 78px !important;
+      margin: 12px auto 0 !important;
+      perspective: none !important;
+      overflow: visible !important;
+    }
+
+    #portfolio .reference-card-row {
+      perspective: none !important;
+      transform-style: flat !important;
+      overflow: visible !important;
+    }
+
+    #portfolio .portfolio-card-ref,
+    #portfolio.portfolio-revealed .portfolio-card-ref {
+      width: clamp(164px, 47vw, 188px) !important;
+      height: clamp(292px, 82vw, 322px) !important;
+      border-radius: 20px !important;
+      transform: translate(-50%, -50%)
+        translateX(calc(var(--offset) * clamp(112px, 31vw, 134px)))
+        translateY(calc(var(--lift) * .16))
+        rotateY(0deg)
+        scale(calc(1 - var(--abs) * .16)) !important;
+      opacity: calc(1 - var(--abs) * .12) !important;
+      filter: saturate(calc(1.05 - var(--abs) * .08)) brightness(calc(1 - var(--abs) * .04)) !important;
+      backface-visibility: hidden !important;
+      -webkit-backface-visibility: hidden !important;
+    }
+
+    #portfolio .portfolio-card-ref.is-center,
+    #portfolio.portfolio-revealed .portfolio-card-ref.is-center {
+      z-index: 4000 !important;
+      opacity: 1 !important;
+      filter: saturate(1.12) brightness(.98) !important;
+    }
+
+    #portfolio .portfolio-card-ref .number {
+      top: 16px !important;
+      left: 16px !important;
+      font-size: 14px !important;
+    }
+
+    #portfolio .portfolio-card-ref .card-copy {
+      left: 16px !important;
+      right: 44px !important;
+      bottom: 19px !important;
+      transform: translateZ(0) !important;
+    }
+
+    #portfolio .portfolio-card-ref h3 {
+      font-size: clamp(21px, 6.2vw, 25px) !important;
+      line-height: .96 !important;
+      letter-spacing: -.035em !important;
+    }
+
+    #portfolio .portfolio-card-ref p {
+      margin-top: 7px !important;
+      font-size: 10px !important;
+      line-height: 1.2 !important;
+      letter-spacing: 0 !important;
+    }
+
+    #portfolio .portfolio-card-ref .open-arrow {
+      right: 14px !important;
+      bottom: 16px !important;
+      font-size: 24px !important;
+    }
+  }
+
+  @media (max-width: 390px) {
+    #portfolio .reference-slider-shell {
+      width: min(100vw, 292px) !important;
+      height: 438px !important;
+      padding-bottom: 72px !important;
+    }
+
+    #portfolio .portfolio-card-ref,
+    #portfolio.portfolio-revealed .portfolio-card-ref {
+      width: clamp(150px, 43vw, 164px) !important;
+      height: clamp(268px, 76vw, 286px) !important;
+      transform: translate(-50%, -50%)
+        translateX(calc(var(--offset) * clamp(98px, 29vw, 116px)))
+        translateY(calc(var(--lift) * .12))
+        rotateY(0deg)
+        scale(calc(1 - var(--abs) * .17)) !important;
+    }
+
+    #portfolio .portfolio-card-ref .card-copy {
+      right: 38px !important;
+      bottom: 17px !important;
+    }
+
+    #portfolio .portfolio-card-ref h3 {
+      font-size: 21px !important;
     }
   }
 </style>

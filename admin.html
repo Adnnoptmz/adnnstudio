@@ -692,6 +692,57 @@
     :root.light-theme .reminder-time-tag {
       background: rgba(39, 45, 207, 0.08);
     }
+    
+    /* Apple-Style Settings Theme Panel Selectors */
+    #sidebarThemeToggleBtn .sun-icon,
+    #settingsInlineThemeToggleBtn .sun-icon { display: none; }
+    #sidebarThemeToggleBtn .moon-icon,
+    #settingsInlineThemeToggleBtn .moon-icon { display: block; }
+
+    :root.light-theme #sidebarThemeToggleBtn .sun-icon,
+    :root.light-theme #settingsInlineThemeToggleBtn .sun-icon { display: block; }
+    :root.light-theme #sidebarThemeToggleBtn .moon-icon,
+    :root.light-theme #settingsInlineThemeToggleBtn .moon-icon { display: none; }
+
+    .settings-theme-card-action {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 20px;
+      background: rgba(255, 255, 255, 0.02);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      max-width: 620px;
+      margin-top: 20px;
+    }
+    .settings-inline-btn {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: 1px solid var(--line);
+      background: var(--toggle-btn-bg);
+      color: var(--text);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background-color 0.3s, transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .settings-inline-btn:hover {
+      background-color: var(--toggle-btn-hover);
+      transform: scale(1.04) rotate(6deg);
+    }
+    .settings-inline-btn svg {
+      width: 20px;
+      height: 20px;
+      display: block;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.85;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
     .reminder-del-btn {
       background: transparent;
       border: 0;
@@ -700,6 +751,176 @@
       font-size: 11px;
       font-family: var(--font-mono);
     }
+
+    /* PREMIUM WHATSAPP/APPLE HYBRID CHAT VIEWS */
+    .wp-chat-container {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      height: 680px;
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      background: rgba(10, 10, 12, 0.4);
+      overflow: hidden;
+      margin-top: 20px;
+    }
+    @media (max-width: 768px) {
+      .wp-chat-container { grid-template-columns: 1fr; height: 580px; }
+      .wp-chat-body-pane { display: none; }
+      body.wp-active-chat-open .wp-chat-sidebar-pane { display: none; }
+      body.wp-active-chat-open .wp-chat-body-pane { display: flex !important; }
+    }
+    .wp-chat-sidebar-pane {
+      border-right: 1px solid var(--line);
+      display: flex;
+      flex-direction: column;
+      background: rgba(0, 0, 0, 0.15);
+    }
+    .wp-chat-search-wrap {
+      padding: 14px;
+      border-bottom: 1px solid var(--line);
+    }
+    .wp-chat-threads-feed {
+      overflow-y: auto;
+      flex-grow: 1;
+    }
+    .wp-thread-card {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      cursor: pointer;
+      border-bottom: 1px solid rgba(255,255,255,0.02);
+      transition: background 0.2s;
+    }
+    .wp-thread-card:hover, .wp-thread-card.is-active {
+      background: var(--toggle-btn-hover);
+    }
+    .wp-thread-avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      display: grid;
+      place-items: center;
+      font-size: 14px;
+      font-weight: 500;
+      flex-shrink: 0;
+    }
+    .wp-thread-meta {
+      min-width: 0;
+      flex-grow: 1;
+    }
+    .wp-thread-meta strong {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .wp-thread-meta p {
+      margin: 4px 0 0;
+      font-size: 11px;
+      color: var(--muted);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .wp-chat-body-pane {
+      display: flex;
+      flex-direction: column;
+      background: rgba(0, 0, 0, 0.05);
+    }
+    .wp-chat-body-header {
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: rgba(0,0,0,0.1);
+    }
+    .wp-messages-stream-canvas {
+      flex-grow: 1;
+      overflow-y: auto;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .wp-msg-bubble {
+      max-width: 70%;
+      padding: 10px 14px;
+      border-radius: 18px;
+      font-size: 13px;
+      line-height: 1.45;
+      word-break: break-word;
+    }
+    .wp-msg-bubble.is-incoming {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text);
+      align-self: flex-start;
+      border-bottom-left-radius: 4px;
+    }
+    .wp-msg-bubble.is-outgoing {
+      background: var(--accent);
+      color: #fff;
+      align-self: flex-end;
+      border-bottom-right-radius: 4px;
+    }
+    :root.light-theme .wp-msg-bubble.is-incoming {
+      background: rgba(0, 0, 0, 0.05);
+    }
+    .wp-media-preview-box {
+      display: none;
+      padding: 12px 20px;
+      background: rgba(0,0,0,0.2);
+      border-top: 1px solid var(--line);
+      align-items: center;
+      justify-content: space-between;
+    }
+    .wp-media-preview-frame {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .wp-media-preview-frame img {
+      width: 50px;
+      height: 50px;
+      border-radius: 8px;
+      object-fit: cover;
+      border: 1px solid var(--line);
+    }
+    .wp-chat-input-footer-bar {
+      padding: 14px 20px;
+      border-top: 1px solid var(--line);
+      background: rgba(0,0,0,0.1);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .wp-file-attach-label {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--toggle-btn-bg);
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      color: var(--muted);
+      transition: color 0.2s;
+    }
+    .wp-file-attach-label:hover { color: var(--text); background: var(--toggle-btn-hover); }
+    .wp-mobile-back-btn {
+      display: none;
+      background: transparent;
+      border: 0;
+      color: var(--accent);
+      font-size: 20px;
+      cursor: pointer;
+      padding-right: 8px;
+    }
+    @media (max-width: 768px) { .wp-mobile-back-btn { display: block; } }
 
     /* GEMINI UI EXTRA-PREMIUM HIDDING SIDEBAR OVERRIDES */
     @media (max-width: 820px) {
@@ -878,7 +1099,10 @@
           <span class="link-label">Settings Workspace</span>
         </button>
         <button type="button" class="sidebar-link-item" id="sidebarThemeToggleBtn">
+          <!-- Moon Icon -->
           <svg class="moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          <!-- Sun Icon -->
+          <svg class="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
           <span class="link-label">Toggle System Mode</span>
         </button>
         <button type="button" class="sidebar-link-item sidebar-logout-item" id="sidebarLogoutActionBtn">
@@ -1016,7 +1240,79 @@
       <div class="panel glass"><p class="kicker">Projects</p><h2>Creative Deliverables Directory</h2><p class="help">Slider datasets and active workspace node maps.</p></div>
     </div>
     <div id="chats_view" class="admin-view-panel-container" style="display:none;">
-      <div class="panel glass"><p class="kicker">Chats</p><h2>Live Single-User Session Portals</h2><p class="help">Operational direct messaging response queues.</p></div>
+      <div class="panel glass">
+        <p class="kicker">Live Sync</p>
+        <h2>Workspace Session Portals</h2>
+        <p class="help">Press <kbd style="font-family:var(--font-mono); background:rgba(255,255,255,0.08); padding:2px 6px; border-radius:4px;">ESC</kbd> to clear or close your active layout context instantly.</p>
+        
+        <div class="wp-chat-container">
+          <!-- Sidebar Threads Layer Feed Node -->
+          <div class="wp-chat-sidebar-pane">
+            <div class="wp-chat-search-wrap">
+              <input type="text" id="wpChatSearch" placeholder="Search clients or sessions..." style="border-radius:12px; padding:10px 14px; font-size:13px;">
+            </div>
+            <div class="wp-chat-threads-feed" id="wpChatThreadsTarget">
+              <div class="wp-thread-card is-active" data-session-id="demo_user_1">
+                <div class="wp-thread-avatar">AC</div>
+                <div class="wp-thread-meta">
+                  <strong>Alex Carter (Client)</strong>
+                  <p>Design directions verified...</p>
+                </div>
+              </div>
+              <div class="wp-thread-card" data-session-id="demo_user_2">
+                <div class="wp-thread-avatar">JM</div>
+                <div class="wp-thread-meta">
+                  <strong>James Miller</strong>
+                  <p>Attached the requested invoice package</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Active Workspace Main Body Panel View -->
+          <div class="wp-chat-body-pane" id="wpChatMainBodyCanvas">
+            <div class="wp-chat-body-header">
+              <button type="button" class="wp-mobile-back-btn" id="wpMobileBackTrigger">‹</button>
+              <div class="wp-thread-avatar" id="wpActiveHeaderAvatar" style="width:38px; height:38px; font-size:12px;">AC</div>
+              <div class="wp-thread-meta">
+                <strong id="wpActiveHeaderTitle" style="font-size:14px;">Alex Carter</strong>
+                <small style="color:var(--accent); font-size:11px; font-family:var(--font-mono);">Active Session Node</small>
+              </div>
+            </div>
+
+            <!-- Messages Window Feed Stream -->
+            <div class="wp-messages-stream-canvas" id="wpMessagesStreamContainer">
+              <div class="wp-msg-bubble is-incoming">Hello! Are the updated revisions for the brand guidelines ready to review?</div>
+              <div class="wp-msg-bubble is-outgoing">Yes Alex, uploading the structural files into your dynamic dashboard layout stream now.</div>
+            </div>
+
+            <!-- Dynamic Rich Media Upload Selection Preview Bar Element -->
+            <div class="wp-media-preview-box" id="wpMediaPreviewContainer">
+              <div class="wp-media-preview-frame">
+                <img src="" id="wpMediaPreviewImg" alt="Attachment Preview">
+                <div>
+                  <span id="wpMediaFilenameString" style="font-size:12px; display:block; font-weight:500;">image.jpg</span>
+                  <small id="wpMediaFilesizeString" style="color:var(--muted); font-size:11px; font-family:var(--font-mono);">2.4 MB</small>
+                </div>
+              </div>
+              <button type="button" id="wpMediaCancelAttachmentBtn" style="background:transparent; border:1px solid var(--line); border-radius:12px; color:var(--red); font-size:11px; padding:6px 12px; cursor:pointer; font-family:var(--font-mono);">Delete Media</button>
+            </div>
+
+            <!-- Input Controls Footer Tray Wrapper -->
+            <div class="wp-chat-input-footer-bar">
+              <label class="wp-file-attach-label" title="Attach Media File">
+                <input type="file" id="wpChatFileInput" accept="image/*,application/pdf" style="display:none;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:18px; height:18px;"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
+              </label>
+              <input type="text" id="wpChatTextInput" placeholder="Type a message secure sync..." style="border-radius:999px; padding:12px 20px;">
+              <button type="button" id="wpChatSendTriggerBtn" style="width:40px; height:40px; min-height:40px; padding:0; border-radius:50%; background:var(--accent); color:#fff; border:0; display:grid; place-items:center; cursor:pointer;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px; height:16px; margin-left:2px;"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
     </div>
     <div id="payments_view" class="admin-view-panel-container" style="display:none;">
       <div class="panel glass"><p class="kicker">Finances</p><h2>Invoices Ledger System</h2><p class="help">Token dispatch metrics and transactional balance history.</p></div>
@@ -1063,7 +1359,25 @@
     </div>
 
     <div id="settings_view" class="admin-view-panel-container" style="display:none;">
-      <div class="panel glass"><p class="kicker">System</p><h2>Global Environment Settings</h2><p class="help">API Endpoint configurations and system variable fallback targets.</p></div>
+      <div class="panel glass">
+        <p class="kicker">System</p>
+        <h2>Global Environment Settings</h2>
+        <p class="help">API Endpoint configurations and system variable fallback targets.</p>
+        
+        <!-- Integrated Apple-Style Inline Theme Setting Node Row -->
+        <div class="settings-theme-card-action">
+          <div>
+            <strong style="display: block; font-size: 14px; font-weight: 500; margin-bottom: 4px;">Workspace Theme Aesthetics</strong>
+            <span style="font-size: 12px; color: var(--muted);">Switch between clean light mode or dark workspace layouts seamlessly.</span>
+          </div>
+          <button type="button" class="settings-inline-btn" id="settingsInlineThemeToggleBtn" title="Toggle Workspace Aesthetics" aria-label="Toggle Workspace Aesthetics">
+            <!-- Moon Icon -->
+            <svg class="moon-icon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+            <!-- Sun Icon -->
+            <svg class="sun-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+          </button>
+        </div>
+      </div>
     </div>
 
     </div> </main> </div>
@@ -1096,6 +1410,10 @@
       }
 
       sidebarThemeToggleBtn?.addEventListener("click", toggleTheme);
+      
+      // Select the new inline setting panel view button node element
+      const settingsInlineThemeToggleBtn = document.getElementById("settingsInlineThemeToggleBtn");
+      settingsInlineThemeToggleBtn?.addEventListener("click", toggleTheme);
 
       // GEMINI SIDEBAR CORE CONTROLLERS
       const mobileTrigger = document.getElementById("mobileMenuTriggerBtn");
@@ -1366,7 +1684,133 @@
         buildCalendarStructure();
         renderRemindersForSelectedDate();
       })();
+// WHATSAPP-STYLE LIVE COMMUNICATIONS DISPATCH CONTROLLER ENGINE 
+      (function runtimeWhatsAppChatEngine() {
+        const fileInput = document.getElementById("wpChatFileInput");
+        const previewBox = document.getElementById("wpMediaPreviewContainer");
+        const previewImg = document.getElementById("wpMediaPreviewImg");
+        const filenameStr = document.getElementById("wpMediaFilenameString");
+        const filesizeStr = document.getElementById("wpMediaFilesizeString");
+        const cancelMediaBtn = document.getElementById("wpMediaCancelAttachmentBtn");
+        
+        const textInput = document.getElementById("wpChatTextInput");
+        const sendBtn = document.getElementById("wpChatSendTriggerBtn");
+        const streamContainer = document.getElementById("wpMessagesStreamContainer");
+        const backBtn = document.getElementById("wpMobileBackTrigger");
+        const threads = document.querySelectorAll(".wp-thread-card");
 
+        // Handle file selection and dynamic rendering previews
+        fileInput?.addEventListener("change", function() {
+          const file = this.files[0];
+          if (!file) return;
+
+          filenameStr.textContent = file.name;
+          filesizeStr.textContent = (file.size / (1024 * 1024)).toFixed(2) + " MB";
+
+          if (file.type.startsWith("image/")) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+              previewImg.src = e.target.result;
+              previewImg.style.display = "block";
+            };
+            reader.readAsDataURL(file);
+          } else {
+            // Fallback preview thumbnail block icon placeholder for PDFs or text documents
+            previewImg.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='50' height='50' viewBox='0 0 24 24' fill='none' stroke='%23f5f5f7' stroke-width='2'><path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'></path><polyline points='14 2 14 8 20 8'></polyline></svg>";
+          }
+
+          if (previewBox) previewBox.style.display = "flex";
+        });
+
+        // Delete/Clear selected attachment media logic tracking parameters
+        function clearSelectedMediaAttachment() {
+          if (fileInput) fileInput.value = "";
+          if (previewBox) previewBox.style.display = "none";
+          previewImg.src = "";
+        }
+        cancelMediaBtn?.addEventListener("click", clearSelectedMediaAttachment);
+
+        // Send chat text block message logic loops
+        function executeSendMessage() {
+          const text = textInput.value.trim();
+          const hasFile = fileInput && fileInput.files.length > 0;
+          
+          if (!text && !hasFile) return;
+
+          if (text) {
+            const bubble = document.createElement("div");
+            bubble.className = "wp-msg-bubble is-outgoing";
+            bubble.textContent = text;
+            streamContainer?.appendChild(bubble);
+          }
+
+          if (hasFile) {
+            const mediaBubble = document.createElement("div");
+            mediaBubble.className = "wp-msg-bubble is-outgoing";
+            mediaBubble.style.padding = "6px";
+            
+            const bubbleImg = document.createElement("img");
+            bubbleImg.src = previewImg.src;
+            bubbleImg.style.cssText = "max-width:100%; border-radius:12px; display:block;";
+            
+            mediaBubble.appendChild(bubbleImg);
+            if(textInput.value) {
+              const caption = document.createElement("div");
+              caption.style.cssText = "padding:8px 8px 4px 8px;";
+              caption.textContent = text;
+              mediaBubble.appendChild(caption);
+            }
+            streamContainer?.appendChild(mediaBubble);
+          }
+
+          textInput.value = "";
+          clearSelectedMediaAttachment();
+          
+          // Smooth scroll interaction to container base height view bounds
+          if (streamContainer) {
+            streamContainer.scrollTop = streamContainer.scrollHeight;
+          }
+        }
+
+        sendBtn?.addEventListener("click", executeSendMessage);
+        textInput?.addEventListener("keydown", function(e) {
+          if (e.key === "Enter") executeSendMessage();
+        });
+
+        // WHATSAPP ESCAPE BUTTON ACTION TRIGGER KEYBOARD BINDING
+        window.addEventListener("keydown", function(e) {
+          if (e.key === "Escape") {
+            // Close active threads context grids gracefully across view sizes
+            document.body.classList.remove("mobile-sidebar-open");
+            document.body.classList.remove("wp-active-theme-open");
+            document.body.classList.remove("wp-active-chat-open");
+            
+            // Clear input context tracking maps natively
+            if (textInput) textInput.value = "";
+            clearSelectedMediaAttachment();
+          }
+        });
+
+        // Switch conversations panels views
+        threads.forEach(t => {
+          t.addEventListener("click", function() {
+            threads.forEach(card => card.classList.remove("is-active"));
+            this.classList.add("is-active");
+            
+            const titleText = this.querySelector("strong")?.textContent || "Session";
+            const avatarText = this.querySelector(".wp-thread-avatar")?.textContent || "AC";
+            
+            document.getElementById("wpActiveHeaderTitle").textContent = titleText;
+            document.getElementById("wpActiveHeaderAvatar").textContent = avatarText;
+
+            document.body.classList.add("wp-active-chat-open");
+          });
+        });
+
+        backBtn?.addEventListener("click", function() {
+          document.body.classList.remove("wp-active-chat-open");
+        });
+      })();
     })();
   </script>
 

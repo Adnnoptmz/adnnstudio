@@ -748,27 +748,40 @@ function installChatStyles() {
   const style = document.createElement("style");
   style.id = "adnnChatStyles";
   style.textContent = `
+    :root {
+      --adnn-chat-blue: #272dcf;
+      --adnn-chat-blue-2: #4d5bff;
+      --adnn-chat-green: #25d366;
+      --adnn-chat-ink: #f5f5f7;
+      --adnn-chat-soft: rgba(245,245,247,.62);
+      --adnn-chat-hairline: rgba(255,255,255,.12);
+      --adnn-chat-glass: rgba(255,255,255,.075);
+      --adnn-chat-panel: rgba(19,19,23,.76);
+    }
+
     .adnn-chat-trigger {
-  width: 44px;
-  height: 44px;
-  min-width: 44px;
-  padding: 0;
-  justify-content: center;
-  position: relative;
-  border: 0.5px solid rgba(255,255,255,.08);
-  border-radius: 16px;
-  color: #fff;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  line-height: 1;
-  text-decoration: none;
-  background: linear-gradient(135deg, rgba(34,34,38,.72), rgba(22,22,26,.58) 38%, rgba(14,14,18,.42));
-  backdrop-filter: blur(26px) saturate(160%);
-  -webkit-backdrop-filter: blur(26px) saturate(160%);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.08), inset 0 -12px 35px rgba(255,255,255,.03), 0 20px 70px rgba(0,0,0,.34);
-}
+      width: 44px;
+      height: 44px;
+      min-width: 44px;
+      padding: 0;
+      justify-content: center;
+      position: relative;
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 16px;
+      color: #fff;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      line-height: 1;
+      text-decoration: none;
+      background:
+        radial-gradient(circle at 30% 20%, rgba(255,255,255,.28), transparent 34%),
+        linear-gradient(135deg, #5059ff, #252bd2 58%, #15187a);
+      backdrop-filter: blur(28px) saturate(175%);
+      -webkit-backdrop-filter: blur(28px) saturate(175%);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 18px 48px rgba(39,45,207,.28);
+    }
     .adnn-chat-trigger[hidden] { display: none !important; }
     .adnn-chat-trigger svg { width: 19px; height: 19px; }
     .adnn-chat-trigger.is-floating {
@@ -776,9 +789,7 @@ function installChatStyles() {
       right: 20px;
       bottom: 20px;
       z-index: 70;
-      background: #272dcf;
       border-radius: 50%;
-      box-shadow: 0 18px 48px rgba(39,45,207,.28);
     }
     .adnn-chat-count {
       position: absolute;
@@ -798,22 +809,25 @@ function installChatStyles() {
       box-shadow: 0 8px 22px rgba(255,38,2,.32);
     }
     .adnn-chat-count[hidden] { display: none !important; }
+
     .adnn-chat-drawer {
       position: fixed;
       right: clamp(12px, 3vw, 28px);
       bottom: clamp(12px, 3vw, 28px);
       z-index: 120;
-      width: min(380px, calc(100vw - 24px));
-      height: min(560px, calc(100vh - 24px));
+      width: min(390px, calc(100vw - 24px));
+      height: min(590px, calc(100vh - 24px));
       display: grid;
       grid-template-rows: auto 1fr auto;
-      border: 1px solid rgba(255,255,255,.14);
-      border-radius: 28px;
+      border: 1px solid rgba(255,255,255,.18);
+      border-radius: 32px;
       overflow: hidden;
-      background: linear-gradient(135deg, rgba(34,34,38,.88), rgba(14,14,18,.78));
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.12), 0 28px 90px rgba(0,0,0,.38);
-      backdrop-filter: blur(28px) saturate(160%);
-      -webkit-backdrop-filter: blur(28px) saturate(160%);
+      background:
+        radial-gradient(circle at 15% 0%, rgba(80,89,255,.25), transparent 32%),
+        linear-gradient(145deg, rgba(31,31,37,.92), rgba(10,10,13,.82));
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.14), 0 32px 100px rgba(0,0,0,.46);
+      backdrop-filter: blur(34px) saturate(185%);
+      -webkit-backdrop-filter: blur(34px) saturate(185%);
       opacity: 0;
       transform: translateY(18px) scale(.98);
       pointer-events: none;
@@ -825,13 +839,14 @@ function installChatStyles() {
       pointer-events: auto;
     }
     .adnn-chat-head {
-      min-height: 72px;
-      padding: 16px;
+      min-height: 74px;
+      padding: 16px 18px;
       display: flex;
       align-items: center;
       justify-content: space-between;
       border-bottom: 1px solid rgba(255,255,255,.1);
       color: #fff;
+      background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.025));
     }
     .adnn-chat-head span {
       display: block;
@@ -848,9 +863,9 @@ function installChatStyles() {
       letter-spacing: -.02em;
     }
     .adnn-chat-close {
-      width: 36px;
-      height: 36px;
-      border: 0;
+      width: 38px;
+      height: 38px;
+      border: 1px solid rgba(255,255,255,.12);
       border-radius: 50%;
       background: rgba(255,255,255,.08);
       color: #fff;
@@ -858,14 +873,26 @@ function installChatStyles() {
       font-size: 22px;
       line-height: 1;
     }
+
     .adnn-chat-messages {
       min-height: 0;
       overflow: auto;
       display: flex;
       flex-direction: column;
-      gap: 10px;
-      padding: 16px;
+      gap: 12px;
+      padding: 20px;
       color: #fff;
+      background:
+        radial-gradient(circle at 18% 18%, rgba(255,255,255,.06), transparent 27%),
+        radial-gradient(circle at 85% 8%, rgba(39,45,207,.14), transparent 30%),
+        linear-gradient(180deg, rgba(255,255,255,.025), rgba(0,0,0,.08));
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255,255,255,.26) transparent;
+    }
+    .adnn-chat-messages::-webkit-scrollbar { width: 8px; }
+    .adnn-chat-messages::-webkit-scrollbar-thumb {
+      background: rgba(255,255,255,.2);
+      border-radius: 999px;
     }
     .adnn-chat-empty {
       margin: auto;
@@ -874,38 +901,70 @@ function installChatStyles() {
       font-size: 12px;
       text-align: center;
     }
+
     .adnn-chat-bubble {
-      max-width: 82%;
+      max-width: min(74%, 620px);
       align-self: flex-start;
-      border-radius: 18px 18px 18px 6px;
-      padding: 10px 12px;
-      background: rgba(255,255,255,.1);
-      border: 1px solid rgba(255,255,255,.08);
+      position: relative;
+      border-radius: 22px 22px 22px 7px;
+      padding: 11px 13px 9px;
+      background: rgba(255,255,255,.13);
+      border: 1px solid rgba(255,255,255,.11);
       color: #fff;
+      box-shadow: 0 12px 32px rgba(0,0,0,.18), inset 0 1px 0 rgba(255,255,255,.08);
+      backdrop-filter: blur(18px) saturate(150%);
+      -webkit-backdrop-filter: blur(18px) saturate(150%);
+    }
+    .adnn-chat-bubble::before {
+      content: "";
+      position: absolute;
+      left: -5px;
+      bottom: 0;
+      width: 13px;
+      height: 13px;
+      background: inherit;
+      border-left: 1px solid rgba(255,255,255,.09);
+      border-bottom: 1px solid rgba(255,255,255,.09);
+      transform: skew(-18deg);
+      border-bottom-left-radius: 4px;
     }
     .adnn-chat-bubble.is-mine {
       align-self: flex-end;
-      border-radius: 18px 18px 6px 18px;
-      background: #272dcf;
-      border-color: rgba(255,255,255,.14);
+      border-radius: 22px 22px 7px 22px;
+      background:
+        radial-gradient(circle at 18% 18%, rgba(255,255,255,.26), transparent 28%),
+        linear-gradient(135deg, #4c57ff, #272dcf 62%, #1d219a);
+      border-color: rgba(255,255,255,.18);
+      box-shadow: 0 14px 34px rgba(39,45,207,.26), inset 0 1px 0 rgba(255,255,255,.16);
+    }
+    .adnn-chat-bubble.is-mine::before {
+      left: auto;
+      right: -5px;
+      transform: skew(18deg);
+      border-left: 0;
+      border-right: 1px solid rgba(255,255,255,.1);
+      border-bottom-right-radius: 4px;
+      border-bottom-left-radius: 0;
     }
     .adnn-chat-bubble p {
       margin: 0;
       font-size: 14px;
-      line-height: 1.45;
+      line-height: 1.5;
+      letter-spacing: -.01em;
       overflow-wrap: anywhere;
     }
     .adnn-chat-bubble span {
       display: block;
       margin-top: 6px;
-      color: rgba(255,255,255,.56);
+      color: rgba(255,255,255,.58);
       font-family: var(--font-mono, ui-monospace, Menlo, monospace);
       font-size: 10px;
+      text-align: right;
     }
     .adnn-chat-sender {
       display: block;
       margin-bottom: 5px;
-      color: rgba(255,255,255,.7);
+      color: rgba(255,255,255,.72);
       font-family: var(--font-mono, ui-monospace, Menlo, monospace);
       font-size: 10px;
       font-weight: 500;
@@ -921,16 +980,14 @@ function installChatStyles() {
       overflow-wrap: anywhere;
       font-size: 13px;
     }
-    .adnn-chat-attachment.is-image {
-      text-decoration: none;
-    }
+    .adnn-chat-attachment.is-image { text-decoration: none; }
     .adnn-chat-attachment img {
       display: block;
       width: 100%;
-      max-height: 220px;
+      max-height: 240px;
       object-fit: cover;
-      border-radius: 14px;
-      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.14);
     }
     .adnn-chat-delete {
       width: 28px;
@@ -941,7 +998,7 @@ function installChatStyles() {
       display: grid;
       place-items: center;
       color: rgba(255,255,255,.78);
-      background: rgba(0,0,0,.16);
+      background: rgba(0,0,0,.18);
       cursor: pointer;
       opacity: 0;
       transform: scale(.92);
@@ -954,32 +1011,38 @@ function installChatStyles() {
     }
     .adnn-chat-delete:hover {
       color: #fff;
-      background: rgba(255,38,2,.5);
+      background: rgba(255,38,2,.58);
     }
     .adnn-chat-delete svg {
       width: 14px;
       height: 14px;
       display: block;
     }
+
     .adnn-chat-form {
       display: grid;
-      grid-template-columns: 42px minmax(0, 1fr) 42px;
-      gap: 8px;
-      padding: 12px;
+      grid-template-columns: 46px minmax(0, 1fr) 46px;
+      gap: 10px;
+      padding: 14px;
       border-top: 1px solid rgba(255,255,255,.1);
+      background: rgba(9,9,12,.28);
+      backdrop-filter: blur(22px) saturate(160%);
+      -webkit-backdrop-filter: blur(22px) saturate(160%);
     }
-	    .adnn-chat-media {
-	      width: 42px;
-	      height: 42px;
-	      border-radius: 50%;
-	      display: grid;
-	      place-items: center;
-	      position: relative;
-	      background: rgba(255,255,255,.08);
-	      color: #fff;
-	      cursor: pointer;
-	      border: 1px solid rgba(255,255,255,.08);
-	    }
+    .adnn-chat-media {
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      position: relative;
+      background: rgba(255,255,255,.09);
+      color: #fff;
+      cursor: pointer;
+      border: 1px solid rgba(255,255,255,.12);
+      transition: transform .2s ease, background .2s ease;
+    }
+    .adnn-chat-media:hover { background: rgba(255,255,255,.15); transform: translateY(-1px); }
     .adnn-chat-media input {
       position: absolute;
       width: 1px;
@@ -987,52 +1050,64 @@ function installChatStyles() {
       opacity: 0;
       pointer-events: none;
     }
-	    .adnn-chat-media svg {
-	      width: 18px;
-	      height: 18px;
-	      display: block;
-	    }
-	    .adnn-chat-file-name {
-	      position: absolute;
-	      left: 0;
-	      bottom: calc(100% + 8px);
-	      max-width: min(220px, calc(100vw - 48px));
-	      padding: 7px 10px;
-	      border-radius: 999px;
-	      color: #fff;
-	      background: rgba(39,45,207,.9);
-	      box-shadow: 0 14px 36px rgba(39,45,207,.26);
-	      font-family: var(--font-mono, ui-monospace, Menlo, monospace);
-	      font-size: 10px;
-	      line-height: 1;
-	      white-space: nowrap;
-	      overflow: hidden;
-	      text-overflow: ellipsis;
-	      pointer-events: none;
-	    }
-	    .adnn-chat-file-name[hidden] { display: none !important; }
-	    .adnn-chat-form input {
-	      min-width: 0;
-      border: 1px solid rgba(255,255,255,.1);
+    .adnn-chat-media svg {
+      width: 19px;
+      height: 19px;
+      display: block;
+    }
+    .adnn-chat-file-name {
+      position: absolute;
+      left: 0;
+      bottom: calc(100% + 8px);
+      max-width: min(220px, calc(100vw - 48px));
+      padding: 7px 10px;
       border-radius: 999px;
-      padding: 0 14px;
-      background: rgba(255,255,255,.08);
+      color: #fff;
+      background: rgba(39,45,207,.94);
+      box-shadow: 0 14px 36px rgba(39,45,207,.26);
+      font-family: var(--font-mono, ui-monospace, Menlo, monospace);
+      font-size: 10px;
+      line-height: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      pointer-events: none;
+    }
+    .adnn-chat-file-name[hidden] { display: none !important; }
+    .adnn-chat-form input {
+      min-width: 0;
+      border: 1px solid rgba(255,255,255,.13);
+      border-radius: 999px;
+      padding: 0 18px;
+      background: rgba(255,255,255,.095);
       color: #fff;
       outline: 0;
       font-size: 14px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
+    }
+    .adnn-chat-form input::placeholder { color: rgba(255,255,255,.42); }
+    .adnn-chat-form input:focus {
+      border-color: rgba(77,91,255,.64);
+      box-shadow: 0 0 0 4px rgba(39,45,207,.16), inset 0 1px 0 rgba(255,255,255,.08);
     }
     .adnn-chat-form button {
-      width: 42px;
-      height: 42px;
+      width: 46px;
+      height: 46px;
       border: 0;
       border-radius: 50%;
       display: grid;
       place-items: center;
-      background: #272dcf;
+      background:
+        radial-gradient(circle at 30% 20%, rgba(255,255,255,.28), transparent 30%),
+        linear-gradient(135deg, #535dff, #272dcf);
       color: #fff;
       cursor: pointer;
+      box-shadow: 0 16px 34px rgba(39,45,207,.32);
+      transition: transform .2s ease, filter .2s ease;
     }
+    .adnn-chat-form button:hover { transform: translateY(-1px) scale(1.03); filter: brightness(1.08); }
     .adnn-chat-form button svg { width: 18px; height: 18px; }
+
     .adnn-chat-alert {
       position: fixed;
       right: clamp(16px, 4vw, 34px);
@@ -1076,48 +1151,114 @@ function installChatStyles() {
       font-weight: 500;
       letter-spacing: -.02em;
     }
+
     .adnn-admin-chat-panel {
       margin-top: 22px;
+      border-radius: 34px !important;
+      padding: clamp(18px, 3vw, 34px) !important;
+      background:
+        radial-gradient(circle at 12% 4%, rgba(77,91,255,.18), transparent 28%),
+        radial-gradient(circle at 86% 18%, rgba(37,211,102,.08), transparent 30%),
+        linear-gradient(145deg, rgba(29,29,34,.78), rgba(11,11,14,.7)) !important;
+      border: 1px solid rgba(255,255,255,.14) !important;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.12), 0 30px 90px rgba(0,0,0,.32) !important;
+    }
+    .adnn-admin-chat-panel > .kicker {
+      margin-bottom: 18px;
+      color: #7e88ff !important;
     }
     .adnn-admin-chat-grid {
       display: grid;
-      grid-template-columns: minmax(220px, .38fr) minmax(0, 1fr);
-      gap: 16px;
-      margin-top: 22px;
+      grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
+      gap: 18px;
+      margin-top: 0;
+      min-height: min(680px, calc(100vh - 300px));
     }
     .adnn-admin-chat-list,
     .adnn-admin-chat-room {
-      min-height: 460px;
-      border: 1px solid var(--line, rgba(255,255,255,.08));
-      border-radius: 22px;
+      min-height: 520px;
+      border: 1px solid rgba(255,255,255,.13);
+      border-radius: 28px;
       overflow: hidden;
-      background: rgba(255,255,255,.04);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.035));
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.09), 0 18px 55px rgba(0,0,0,.22);
+      backdrop-filter: blur(26px) saturate(165%);
+      -webkit-backdrop-filter: blur(26px) saturate(165%);
     }
     .adnn-admin-chat-list {
       display: grid;
       align-content: start;
-      padding: 8px;
-      gap: 6px;
+      padding: 12px;
+      gap: 8px;
       overflow: auto;
+      background:
+        radial-gradient(circle at 12% 0%, rgba(255,255,255,.10), transparent 28%),
+        linear-gradient(180deg, rgba(255,255,255,.075), rgba(255,255,255,.025));
+    }
+    .adnn-admin-chat-list::before {
+      content: "Messages";
+      display: block;
+      padding: 8px 10px 10px;
+      color: rgba(255,255,255,.48);
+      font-family: var(--font-mono, ui-monospace, Menlo, monospace);
+      font-size: 10px;
+      letter-spacing: .14em;
+      text-transform: uppercase;
     }
     .adnn-admin-chat-item {
       width: 100%;
-      min-height: 62px;
-      border: 0;
-      border-radius: 16px;
-      padding: 10px 12px;
+      min-height: 72px;
+      border: 1px solid transparent;
+      border-radius: 22px;
+      padding: 12px 12px 12px 58px;
       display: grid;
-      grid-template-columns: 1fr auto;
+      grid-template-columns: minmax(0, 1fr) auto;
       gap: 10px;
       align-items: center;
       color: var(--text, #fff);
       background: transparent;
       text-align: left;
       cursor: pointer;
+      position: relative;
+      transition: background .2s ease, transform .2s ease, border-color .2s ease, box-shadow .2s ease;
+    }
+    .adnn-admin-chat-item::before {
+      content: "";
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      transform: translateY(-50%);
+      background:
+        radial-gradient(circle at 32% 26%, rgba(255,255,255,.32), transparent 30%),
+        linear-gradient(135deg, #515bff, #272dcf);
+      box-shadow: 0 10px 24px rgba(39,45,207,.28);
+    }
+    .adnn-admin-chat-item::after {
+      content: "";
+      position: absolute;
+      left: 38px;
+      bottom: 18px;
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--adnn-chat-green);
+      border: 2px solid #1c1c21;
     }
     .adnn-admin-chat-item:hover,
     .adnn-admin-chat-item.is-active {
-      background: rgba(39,45,207,.18);
+      background: rgba(255,255,255,.095);
+      border-color: rgba(255,255,255,.12);
+      transform: translateY(-1px);
+      box-shadow: 0 12px 30px rgba(0,0,0,.18);
+    }
+    .adnn-admin-chat-item.is-active {
+      background:
+        linear-gradient(135deg, rgba(39,45,207,.28), rgba(255,255,255,.075));
+      border-color: rgba(77,91,255,.35);
     }
     .adnn-admin-chat-item strong,
     .adnn-admin-chat-item small {
@@ -1127,11 +1268,19 @@ function installChatStyles() {
       text-overflow: ellipsis;
       white-space: nowrap;
     }
-    .adnn-admin-chat-item strong { font-size: 13px; font-weight: 500; }
-    .adnn-admin-chat-item small { margin-top: 4px; color: var(--muted, rgba(255,255,255,.58)); font-size: 11px; }
+    .adnn-admin-chat-item strong {
+      font-size: 14px;
+      font-weight: 500;
+      letter-spacing: -.02em;
+    }
+    .adnn-admin-chat-item small {
+      margin-top: 5px;
+      color: var(--muted, rgba(255,255,255,.58));
+      font-size: 12px;
+    }
     .adnn-admin-chat-item b {
-      min-width: 20px;
-      height: 20px;
+      min-width: 21px;
+      height: 21px;
       border-radius: 999px;
       display: grid;
       place-items: center;
@@ -1139,18 +1288,52 @@ function installChatStyles() {
       color: #fff;
       font-size: 10px;
       font-family: var(--font-mono, ui-monospace, Menlo, monospace);
+      box-shadow: 0 8px 18px rgba(255,38,2,.28);
     }
     .adnn-admin-chat-room {
       display: grid;
       grid-template-rows: auto 1fr auto;
+      background:
+        radial-gradient(circle at 10% 8%, rgba(255,255,255,.08), transparent 22%),
+        radial-gradient(circle at 92% 14%, rgba(39,45,207,.18), transparent 30%),
+        linear-gradient(180deg, rgba(18,18,23,.84), rgba(12,12,15,.76));
     }
     .adnn-admin-chat-title {
-      padding: 16px;
-      border-bottom: 1px solid var(--line, rgba(255,255,255,.08));
+      min-height: 70px;
+      padding: 18px 20px 18px 72px;
+      border-bottom: 1px solid rgba(255,255,255,.1);
       color: var(--text, #fff);
       font-size: 18px;
       letter-spacing: -.03em;
+      display: flex;
+      align-items: center;
+      position: relative;
+      background: linear-gradient(180deg, rgba(255,255,255,.075), rgba(255,255,255,.025));
     }
+    .adnn-admin-chat-title::before {
+      content: "";
+      position: absolute;
+      left: 22px;
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background:
+        radial-gradient(circle at 32% 26%, rgba(255,255,255,.32), transparent 30%),
+        linear-gradient(135deg, #515bff, #272dcf);
+      box-shadow: 0 10px 24px rgba(39,45,207,.28);
+    }
+    .adnn-admin-chat-room .adnn-chat-messages {
+      padding: 24px;
+      background:
+        radial-gradient(circle at 17% 12%, rgba(255,255,255,.05), transparent 28%),
+        radial-gradient(circle at 90% 18%, rgba(39,45,207,.13), transparent 34%),
+        linear-gradient(180deg, rgba(255,255,255,.018), rgba(0,0,0,.06));
+    }
+    .adnn-admin-chat-room .adnn-chat-form {
+      padding: 14px;
+      background: rgba(255,255,255,.045);
+    }
+
     .adnn-designer-chat-panel {
       margin-top: 34px;
       min-height: 440px;
@@ -1162,9 +1345,54 @@ function installChatStyles() {
       background: linear-gradient(135deg, rgba(16,16,20,.9), rgba(28,28,34,.78));
       box-shadow: inset 0 1px 0 rgba(255,255,255,.12), 0 24px 70px rgba(0,0,0,.1);
     }
+
+    :root.light-theme .adnn-admin-chat-panel,
+    :root.light-theme .adnn-chat-drawer {
+      background:
+        radial-gradient(circle at 12% 4%, rgba(77,91,255,.12), transparent 28%),
+        linear-gradient(145deg, rgba(255,255,255,.88), rgba(246,246,248,.72)) !important;
+      border-color: rgba(0,0,0,.08) !important;
+      color: #111;
+    }
+    :root.light-theme .adnn-admin-chat-list,
+    :root.light-theme .adnn-admin-chat-room {
+      background: rgba(255,255,255,.7);
+      border-color: rgba(0,0,0,.08);
+    }
+    :root.light-theme .adnn-chat-messages {
+      color: #111;
+      background:
+        radial-gradient(circle at 20% 10%, rgba(39,45,207,.08), transparent 30%),
+        linear-gradient(180deg, rgba(255,255,255,.44), rgba(245,245,247,.3));
+    }
+    :root.light-theme .adnn-chat-bubble {
+      color: #111;
+      background: rgba(255,255,255,.82);
+      border-color: rgba(0,0,0,.08);
+    }
+    :root.light-theme .adnn-chat-bubble.is-mine {
+      color: #fff;
+      background: linear-gradient(135deg, #4c57ff, #272dcf 62%, #1d219a);
+    }
+    :root.light-theme .adnn-chat-form {
+      background: rgba(255,255,255,.62);
+      border-top-color: rgba(0,0,0,.08);
+    }
+    :root.light-theme .adnn-chat-form input {
+      background: rgba(255,255,255,.86);
+      border-color: rgba(0,0,0,.1);
+      color: #111;
+    }
+    :root.light-theme .adnn-chat-form input::placeholder { color: rgba(0,0,0,.35); }
+    :root.light-theme .adnn-admin-chat-item { color: #111; }
+    :root.light-theme .adnn-admin-chat-title { color: #111; border-bottom-color: rgba(0,0,0,.08); }
+    :root.light-theme .adnn-chat-empty { color: rgba(0,0,0,.48); }
+
     @media (max-width: 760px) {
-      .adnn-admin-chat-grid { grid-template-columns: 1fr; }
-      .adnn-admin-chat-list, .adnn-admin-chat-room { min-height: 320px; }
+      .adnn-admin-chat-grid { grid-template-columns: 1fr; min-height: auto; }
+      .adnn-admin-chat-list, .adnn-admin-chat-room { min-height: 340px; }
+      .adnn-admin-chat-panel { border-radius: 26px !important; padding: 16px !important; }
+      .adnn-chat-bubble { max-width: 86%; }
     }
   `;
   document.head.appendChild(style);

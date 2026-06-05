@@ -1,23 +1,24 @@
 /*
-  Designer login data for the static designer preview.
-  Add more designers by copying the object format below.
+  Designer directory for the designer login screen.
+  Add more designers by copying the object format below, then create the
+  same authEmail + password in Firebase Authentication > Users.
 
   Example:
   {
-    designerid: "0002",
-    password: "NEWdesignerPassword",
+    designerid: "D0002",
+    authEmail: "d0002@adnnstudio.design",
     name: "Designer 0002",
     email: "designer0002@adnnstudio.com"
   }
 
-  Important: this is visible to anyone who can view website files.
-  Use Firebase or a backend before using this for real private accounts.
+  Do not put real production passwords here. The password should be created in
+  Firebase Authentication, so the website file only stores the friendly ID map.
 */
 window.ADNN_DESIGNER_USERS = [
   {
     designerid: "D0001",
-    password: "ADNNdesigner",
-    name: "Designer D0001",
-    email: "designer.d0001@adnnstudio.com"
+    authEmail: "d0001@adnnstudio.design",
+    name: "Adhnan NV",
+    email: "d0001@adnnstudio.design"
   }
 ];

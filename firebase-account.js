@@ -24,6 +24,7 @@ const config = window.ADNN_FIREBASE_CONFIG;
 const app = config ? (getApps()[0] || initializeApp(config)) : null;
 const auth = app ? getAuth(app) : null;
 const db = app ? getFirestore(app) : null;
+const ADMIN_EMAIL = "getavcollab@gmail.com";
 const provider = new GoogleAuthProvider();
 provider.addScope("email");
 provider.addScope("profile");
@@ -52,7 +53,7 @@ function userPayload(user) {
     name: user.displayName || "Account",
     email: user.email || "",
     picture: user.photoURL || "",
-    role: "client",
+    role: emailKey(user.email) === ADMIN_EMAIL ? "admin" : "client",
     uid: user.uid
   };
 }
@@ -95,7 +96,7 @@ async function firebaseGoogleLogin() {
     if (typeof window.hydrateUser === "function") window.hydrateUser();
     if (typeof window.setView === "function") window.setView(location.hash.replace("#", "") || "notifications");
     if (location.pathname.endsWith("index.html") || location.pathname === "/" || location.pathname === "") {
-      location.href = "account.html#notifications";
+      location.href = emailKey(result.user.email) === ADMIN_EMAIL ? "admin.html" : "account.html#notifications";
     }
   } catch (error) {
     const message = error?.code === "auth/unauthorized-domain"
@@ -111,10 +112,13 @@ async function firebaseGoogleLogin() {
 async function firebaseLogout(event) {
   if (event) event.preventDefault();
   localStorage.removeItem("adhnanPortfolioUser");
+  localStorage.removeItem("adnnDesignerUser");
   sessionStorage.removeItem("adnnGoogleAccessToken");
   if (auth) await signOut(auth).catch(() => {});
   if (typeof window.renderGoogleUser === "function") window.renderGoogleUser();
-  if (location.pathname.includes("account.html")) location.href = "index.html#home";
+  if (location.pathname.includes("account.html") || location.pathname.includes("designer-account.html")) {
+    location.href = "index.html#home";
+  }
 }
 
 window.startGoogleLogin = firebaseGoogleLogin;

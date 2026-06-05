@@ -149,6 +149,7 @@ function installClientChatShell() {
       <label class="adnn-chat-media" title="Add media" aria-label="Add media">
         <input id="adnnChatFile" type="file" accept="image/*,.pdf,.doc,.docx,.zip">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        <span class="adnn-chat-file-name" id="adnnChatFileName" hidden></span>
       </label>
       <input id="adnnChatInput" autocomplete="off" maxlength="1800" placeholder="Type a message">
       <button type="submit" aria-label="Send message">
@@ -161,18 +162,25 @@ function installClientChatShell() {
 
   document.body.appendChild(drawer);
   trigger.addEventListener("click", () => {
+    if (!activeUser) return;
     if (isAdminEmail(activeUser?.email)) {
       location.href = "admin.html#chat";
       return;
     }
-    if (activeDesignerProfile && !location.pathname.includes("designer-account.html")) {
+    if ((activeDesignerProfile || getCachedDesignerUser()) && !location.pathname.includes("designer-account.html")) {
       location.href = "designer-account.html#chat";
+      return;
+    }
+    if (isPublicIndexPage()) {
+      location.href = "account.html#chat";
       return;
     }
     openClientChat();
   });
   drawer.querySelector(".adnn-chat-close")?.addEventListener("click", closeClientChat);
   drawer.querySelector("#adnnChatForm")?.addEventListener("submit", sendClientMessage);
+  wireFilePreview("adnnChatFile", "adnnChatFileName");
+  window.addEventListener("hashchange", maybeOpenClientChatFromHash);
 }
 
 function updateClientChatVisibility(user) {
@@ -228,6 +236,7 @@ function startClientChat(user) {
     if (incoming.length) showChatAlert(incoming[incoming.length - 1], "New message");
     if (document.getElementById("adnnChatDrawer")?.classList.contains("is-open")) markClientChatRead();
   });
+  maybeOpenClientChatFromHash();
 }
 
 function stopClientChat() {
@@ -262,11 +271,9 @@ async function sendClientMessage(event) {
   const text = String(input?.value || "").trim();
   const file = fileInput?.files?.[0] || null;
   if (!text && !file) return;
-  input.value = "";
-  if (fileInput) fileInput.value = "";
   await ensureClientChat(activeUser);
   const media = await uploadChatFile(file, clientChatId).catch((error) => {
-    alert("The media could not be attached. Try a smaller file.");
+    alert(`The media could not be attached. ${error?.message || "Try a smaller file."}`);
     throw error;
   });
   const lastMessage = text || media.mediaName || "Media";
@@ -285,6 +292,9 @@ async function sendClientMessage(event) {
     updatedAt: serverTimestamp(),
     unreadForAdmin: increment(1)
   }, { merge: true });
+  input.value = "";
+  if (fileInput) fileInput.value = "";
+  clearFilePreview("adnnChatFileName");
 }
 
 function renderClientMessages(messages) {
@@ -337,6 +347,7 @@ function installAdminChatPanel() {
           <label class="adnn-chat-media" title="Add media" aria-label="Add media">
             <input id="adnnAdminChatFile" type="file" accept="image/*,.pdf,.doc,.docx,.zip">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            <span class="adnn-chat-file-name" id="adnnAdminChatFileName" hidden></span>
           </label>
           <input id="adnnAdminChatInput" autocomplete="off" maxlength="1800" placeholder="Reply to client">
           <button type="submit" aria-label="Send reply">
@@ -356,6 +367,7 @@ function installAdminChatPanel() {
     else document.querySelector(".shell")?.appendChild(panel);
   }
   document.getElementById("adnnAdminChatForm")?.addEventListener("submit", sendAdminMessage);
+  wireFilePreview("adnnAdminChatFile", "adnnAdminChatFileName");
 }
 
 async function startAdminChat() {
@@ -397,6 +409,7 @@ function installDesignerChatPanel() {
       <label class="adnn-chat-media" title="Add media" aria-label="Add media">
         <input id="adnnDesignerChatFile" type="file" accept="image/*,.pdf,.doc,.docx,.zip">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        <span class="adnn-chat-file-name" id="adnnDesignerChatFileName" hidden></span>
       </label>
       <input id="adnnDesignerChatInput" autocomplete="off" maxlength="1800" placeholder="Message designers">
       <button type="submit" aria-label="Send designer message">
@@ -406,6 +419,7 @@ function installDesignerChatPanel() {
   `;
   view.appendChild(panel);
   document.getElementById("adnnDesignerChatForm")?.addEventListener("submit", sendDesignerMessage);
+  wireFilePreview("adnnDesignerChatFile", "adnnDesignerChatFileName");
 }
 
 async function getDesignerProfile(user) {
@@ -481,10 +495,8 @@ async function sendDesignerMessage(event) {
   const text = String(input?.value || "").trim();
   const file = fileInput?.files?.[0] || null;
   if (!text && !file) return;
-  input.value = "";
-  if (fileInput) fileInput.value = "";
   const media = await uploadChatFile(file, designerChatId).catch((error) => {
-    alert("The media could not be attached. Try a smaller file.");
+    alert(`The media could not be attached. ${error?.message || "Try a smaller file."}`);
     throw error;
   });
   const lastMessage = text || media.mediaName || "Media";
@@ -502,6 +514,9 @@ async function sendDesignerMessage(event) {
     lastSenderUid: activeUser.uid,
     updatedAt: serverTimestamp()
   }, { merge: true });
+  input.value = "";
+  if (fileInput) fileInput.value = "";
+  clearFilePreview("adnnDesignerChatFileName");
 }
 
 function renderAdminChatStatus(text) {
@@ -581,10 +596,8 @@ async function sendAdminMessage(event) {
   const text = String(input?.value || "").trim();
   const file = fileInput?.files?.[0] || null;
   if (!text && !file) return;
-  input.value = "";
-  if (fileInput) fileInput.value = "";
   const media = await uploadChatFile(file, selectedAdminChatId).catch((error) => {
-    alert("The media could not be attached. Try a smaller file.");
+    alert(`The media could not be attached. ${error?.message || "Try a smaller file."}`);
     throw error;
   });
   const lastMessage = text || media.mediaName || "Media";
@@ -604,6 +617,9 @@ async function sendAdminMessage(event) {
     createdAt: serverTimestamp()
   });
   await setDoc(doc(db, "chats", selectedAdminChatId), chatUpdate, { merge: true });
+  input.value = "";
+  if (fileInput) fileInput.value = "";
+  clearFilePreview("adnnAdminChatFileName");
 }
 
 function messageBubble(message, mine, chatId) {
@@ -952,17 +968,18 @@ function installChatStyles() {
       padding: 12px;
       border-top: 1px solid rgba(255,255,255,.1);
     }
-    .adnn-chat-media {
-      width: 42px;
-      height: 42px;
-      border-radius: 50%;
-      display: grid;
-      place-items: center;
-      background: rgba(255,255,255,.08);
-      color: #fff;
-      cursor: pointer;
-      border: 1px solid rgba(255,255,255,.08);
-    }
+	    .adnn-chat-media {
+	      width: 42px;
+	      height: 42px;
+	      border-radius: 50%;
+	      display: grid;
+	      place-items: center;
+	      position: relative;
+	      background: rgba(255,255,255,.08);
+	      color: #fff;
+	      cursor: pointer;
+	      border: 1px solid rgba(255,255,255,.08);
+	    }
     .adnn-chat-media input {
       position: absolute;
       width: 1px;
@@ -970,13 +987,32 @@ function installChatStyles() {
       opacity: 0;
       pointer-events: none;
     }
-    .adnn-chat-media svg {
-      width: 18px;
-      height: 18px;
-      display: block;
-    }
-    .adnn-chat-form input {
-      min-width: 0;
+	    .adnn-chat-media svg {
+	      width: 18px;
+	      height: 18px;
+	      display: block;
+	    }
+	    .adnn-chat-file-name {
+	      position: absolute;
+	      left: 0;
+	      bottom: calc(100% + 8px);
+	      max-width: min(220px, calc(100vw - 48px));
+	      padding: 7px 10px;
+	      border-radius: 999px;
+	      color: #fff;
+	      background: rgba(39,45,207,.9);
+	      box-shadow: 0 14px 36px rgba(39,45,207,.26);
+	      font-family: var(--font-mono, ui-monospace, Menlo, monospace);
+	      font-size: 10px;
+	      line-height: 1;
+	      white-space: nowrap;
+	      overflow: hidden;
+	      text-overflow: ellipsis;
+	      pointer-events: none;
+	    }
+	    .adnn-chat-file-name[hidden] { display: none !important; }
+	    .adnn-chat-form input {
+	      min-width: 0;
       border: 1px solid rgba(255,255,255,.1);
       border-radius: 999px;
       padding: 0 14px;
@@ -1136,6 +1172,49 @@ function installChatStyles() {
 
 function supportChatId(uid) {
   return `support_${uid}`;
+}
+
+function isPublicIndexPage() {
+  const page = location.pathname.split("/").pop() || "index.html";
+  return page === "index.html" || page === "";
+}
+
+function getCachedDesignerUser() {
+  try {
+    return JSON.parse(localStorage.getItem("adnnDesignerUser") || "null");
+  } catch {
+    return null;
+  }
+}
+
+function maybeOpenClientChatFromHash() {
+  if (!activeUser || activeDesignerProfile || !location.pathname.includes("account.html")) return;
+  if (location.hash === "#chat") {
+    window.setTimeout(openClientChat, 180);
+  }
+}
+
+function wireFilePreview(inputId, labelId) {
+  const input = document.getElementById(inputId);
+  const label = document.getElementById(labelId);
+  if (!input || !label || input.dataset.filePreviewReady === "true") return;
+  input.dataset.filePreviewReady = "true";
+  input.addEventListener("change", () => {
+    const file = input.files?.[0] || null;
+    if (!file) {
+      clearFilePreview(labelId);
+      return;
+    }
+    label.textContent = file.name || "Attachment selected";
+    label.hidden = false;
+  });
+}
+
+function clearFilePreview(labelId) {
+  const label = document.getElementById(labelId);
+  if (!label) return;
+  label.textContent = "";
+  label.hidden = true;
 }
 
 function emailKey(email) {

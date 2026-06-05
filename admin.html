@@ -659,7 +659,7 @@
           <!-- Sun Icon (Rendered in Clean Light Mode Framework) -->
           <svg class="sun-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
         </button>
-        <a href="index.html#home" class="home-btn" onclick="sessionStorage.removeItem('adnn_admin_visited');">Back to Home</a>
+        <a href="index.html#home" class="home-btn" onclick="sessionStorage.setItem('adnn_allow_admin_home','true'); sessionStorage.removeItem('adnn_admin_visited');">Back to Home</a>
         <button type="button" class="apple-logout-btn" id="adminLogoutButton" title="Lock Workspace Panel" aria-label="Lock Workspace Panel">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px; display: block; margin: 0 auto;"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
         </button>
@@ -799,6 +799,11 @@
       const themeStorageKey = "adnn_portal_light_mode";
       const errorMsg = document.getElementById("gateError");
       const themeToggleBtn = document.getElementById("appleThemeToggle");
+      const passwordToggle = document.getElementById("gatePasswordToggle");
+      const gatePass = document.getElementById("gatePass");
+      const gateUser = document.getElementById("gateUser");
+      const localGateForm = document.getElementById("localGateForm");
+      const adminLogoutButton = document.getElementById("adminLogoutButton");
       
       // Theme Restoration Loop
       if (localStorage.getItem(themeStorageKey) === "true") {
@@ -869,14 +874,15 @@
       });
       
       // Gate Lock Restoration Loop
-      if (sessionStorage.getItem(storageSessionKey) === "true") {
+      if (sessionStorage.getItem(storageSessionKey) === "true" || hasAdminSession()) {
+        sessionStorage.setItem(storageSessionKey, "true");
         document.body.classList.add("portal-unlocked");
       }
 
-      document.getElementById("localGateForm").addEventListener("submit", function(e) {
+      localGateForm?.addEventListener("submit", function(e) {
         e.preventDefault();
-        const user = document.getElementById("gateUser").value;
-        const pass = document.getElementById("gatePass").value;
+        const user = String(gateUser?.value || "").trim().toLowerCase();
+        const pass = String(gatePass?.value || "");
 
         if (user === "adhnannv" && pass === "adhnan#77.as") {
           sessionStorage.setItem(storageSessionKey, "true");
@@ -888,12 +894,21 @@
       });
 
       // Clear layout variables cleanly to force a lock screen bounce upon clicking logout
-      document.getElementById("adminLogoutButton").addEventListener("click", function() {
+      adminLogoutButton?.addEventListener("click", function() {
         sessionStorage.removeItem(storageSessionKey);
         document.body.classList.remove("portal-unlocked");
-        document.getElementById("gateUser").value = "";
-        document.getElementById("gatePass").value = "";
+        if (gateUser) gateUser.value = "";
+        if (gatePass) gatePass.value = "";
       });
+
+      function hasAdminSession() {
+        try {
+          const user = JSON.parse(localStorage.getItem("adhnanPortfolioUser") || "null");
+          return String(user?.email || "").trim().toLowerCase() === "getavcollab@gmail.com";
+        } catch {
+          return false;
+        }
+      }
     })();
   </script>
 

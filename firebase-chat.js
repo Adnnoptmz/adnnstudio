@@ -9,6 +9,7 @@ import {
   deleteDoc,
   doc,
   getDoc,
+  getDocs,
   getFirestore,
   increment,
   arrayUnion,
@@ -157,7 +158,7 @@ function installClientChatShell() {
     <div class="adnn-admin-chat-grid adnn-user-chat-grid">
       <div class="adnn-admin-chat-list adnn-user-chat-list-shell">
         <div class="adnn-user-search-wrap">
-          <input id="adnnClientPeerSearch" class="adnn-user-search" type="search" autocomplete="off" placeholder="Search users by name">
+          <input id="adnnClientPeerSearch" class="adnn-user-search" type="search" autocomplete="off" placeholder="Search shared contacts">
         </div>
         <div class="adnn-user-chat-list" id="adnnClientPeerList"></div>
       </div>
@@ -267,7 +268,7 @@ function startClientChat(user) {
     setClientUnread(data.unreadForClient || 0);
   });
   subscribeClientMessages(user);
-  startUserDirectory(user, "client");
+  startSharedContacts(user, "client");
   renderClientPeerSelection();
   updateClientChatHeader();
   maybeOpenClientChatFromHash();
@@ -412,6 +413,11 @@ function installAdminChatPanel() {
             <strong id="adnnAdminChatTitle"></strong>
             <small id="adnnAdminChatSubtitle"></small>
           </span>
+          <button type="button" class="adnn-share-contact-toggle" id="adnnAdminShareContactToggle" hidden>Share contact</button>
+        </div>
+        <div class="adnn-share-contact-panel" id="adnnAdminShareContactPanel" hidden>
+          <input id="adnnAdminShareContactSearch" type="search" autocomplete="off" placeholder="Search contact to share">
+          <div id="adnnAdminShareContactResults" class="adnn-share-contact-results"></div>
         </div>
         <div class="adnn-chat-messages" id="adnnAdminMessages">
           <div class="adnn-chat-version-placeholder">studiochat v.1.0</div>
@@ -443,6 +449,8 @@ function installAdminChatPanel() {
   document.getElementById("adnnAdminChatBack")?.addEventListener("click", () => {
     document.body.classList.remove("adnn-admin-chat-open");
   });
+  document.getElementById("adnnAdminShareContactToggle")?.addEventListener("click", toggleAdminShareContactPanel);
+  document.getElementById("adnnAdminShareContactSearch")?.addEventListener("input", renderAdminShareContactResults);
   
   // Custom Desktop Escape Route Key Listener Injection
   window.addEventListener("keydown", (event) => {
@@ -521,7 +529,7 @@ function installDesignerChatPanel() {
     <div class="adnn-admin-chat-grid adnn-user-chat-grid">
       <div class="adnn-admin-chat-list adnn-user-chat-list-shell">
         <div class="adnn-user-search-wrap">
-          <input id="adnnDesignerPeerSearch" class="adnn-user-search" type="search" autocomplete="off" placeholder="Search users by name">
+          <input id="adnnDesignerPeerSearch" class="adnn-user-search" type="search" autocomplete="off" placeholder="Search shared contacts">
         </div>
         <div class="adnn-user-chat-list" id="adnnDesignerPeerList"></div>
       </div>
@@ -590,7 +598,7 @@ function startDesignerChat(user, designer) {
   designerChatMode = "lounge";
   selectedDesignerPeer = null;
   designerChatId = "designer_lounge";
-  startUserDirectory(user, "designer");
+  startSharedContacts(user, "designer");
   renderDesignerPeerSelection();
   updateDesignerChatHeader();
   subscribeDesignerMessages(user);
@@ -733,6 +741,7 @@ function selectAdminChat(chat) {
     avatarEl.style.display = "grid";
   }
   document.body.classList.add("adnn-admin-chat-open");
+  updateAdminShareContactButton();
   if (adminMessagesUnsubscribe) adminMessagesUnsubscribe();
   firstAdminMessagesSnapshot = true;
   knownAdminMessageIds = new Set();
@@ -809,6 +818,9 @@ function messageBubble(message, mine, chatId) {
   }
   if (isSafeUrl(message.mediaUrl)) {
     bubble.appendChild(createMediaAttachment(message));
+  }
+  if (message.contactCard) {
+    bubble.appendChild(contactCardElement(message.contactCard));
   }
   const text = document.createElement("p");
   const time = document.createElement("span");
@@ -1279,6 +1291,95 @@ function installChatStyles() {
       .admin-main-viewport:has(#adnnAdminChatPanel) { overflow:hidden; padding-bottom:0 !important; }
     }
   `;
+
+    .adnn-share-contact-toggle {
+      margin-left:auto;
+      min-height:34px;
+      border:1px solid var(--adnn-line);
+      border-radius:999px;
+      padding:0 14px;
+      background:rgba(83,96,255,.14);
+      color:var(--adnn-text);
+      font-family:var(--font-mono, ui-monospace, monospace);
+      font-size:11px;
+      cursor:pointer;
+    }
+    .adnn-share-contact-panel {
+      border-bottom:1px solid var(--adnn-line);
+      padding:10px 14px;
+      background:rgba(255,255,255,.025);
+      display:grid;
+      gap:10px;
+    }
+    .adnn-share-contact-panel[hidden] { display:none !important; }
+    .adnn-share-contact-panel input {
+      width:100%;
+      height:38px;
+      border:1px solid var(--adnn-line);
+      border-radius:14px;
+      padding:0 12px;
+      background:rgba(255,255,255,.05);
+      color:var(--adnn-text);
+      outline:0;
+    }
+    .adnn-share-contact-results {
+      max-height:190px;
+      overflow:auto;
+      display:grid;
+      gap:6px;
+    }
+    .adnn-share-contact-result {
+      width:100%;
+      border:1px solid var(--adnn-line);
+      border-radius:14px;
+      padding:10px 12px;
+      background:rgba(255,255,255,.04);
+      color:var(--adnn-text);
+      text-align:left;
+      cursor:pointer;
+    }
+    .adnn-share-contact-result strong,
+    .adnn-share-contact-result small { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .adnn-share-contact-result small { color:var(--adnn-muted); margin-top:3px; font-family:var(--font-mono, ui-monospace, monospace); font-size:10px; }
+    .adnn-contact-card {
+      min-width:220px;
+      display:grid;
+      grid-template-columns:42px 1fr;
+      gap:12px;
+      align-items:center;
+      border:1px solid rgba(83,96,255,.26);
+      border-radius:18px;
+      padding:12px;
+      background:rgba(83,96,255,.08);
+      margin-bottom:8px;
+    }
+    .adnn-contact-card-avatar {
+      width:42px;
+      height:42px;
+      border-radius:50%;
+      display:grid;
+      place-items:center;
+      background:var(--adnn-accent);
+      color:#fff;
+      font-family:var(--font-mono, ui-monospace, monospace);
+      font-size:12px;
+    }
+    .adnn-contact-card-copy { min-width:0; }
+    .adnn-contact-card-copy strong,
+    .adnn-contact-card-copy small { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .adnn-contact-card-copy small { color:var(--adnn-muted); margin-top:4px; font-family:var(--font-mono, ui-monospace, monospace); font-size:10px; }
+    .adnn-contact-card button {
+      grid-column:1 / -1;
+      min-height:34px;
+      border:0;
+      border-radius:999px;
+      background:var(--adnn-accent);
+      color:#fff;
+      cursor:pointer;
+      font-family:var(--font-mono, ui-monospace, monospace);
+      font-size:11px;
+    }
+
   document.head.appendChild(style);
 }
 
@@ -1288,6 +1389,7 @@ function initialsFromName(value) {
   const second = (parts.length > 1 ? parts[1]?.[0] : parts[0]?.[1]) || "D";
   return `${first}${second}`.toUpperCase();
 }
+
 
 
 async function syncChatUserProfile(user, role, profile) {
@@ -1305,42 +1407,20 @@ async function syncChatUserProfile(user, role, profile) {
   }, { merge: true });
 }
 
-function startUserDirectory(user, mode) {
+function startSharedContacts(user, mode) {
   stopUserDirectory();
   const render = () => mode === "designer" ? renderDesignerPeerSelection() : renderClientPeerSelection();
-  window.adnnChatDirectory = { chatUsers: [], clients: [], designers: [], users: [] };
-
-  const mergeAndRender = () => {
-    const source = window.adnnChatDirectory || {};
-    const allUsers = []
-      .concat(source.chatUsers || [])
-      .concat(source.clients || [])
-      .concat(source.designers || []);
-    const seen = new Set();
-    window.adnnChatDirectory.users = allUsers.filter((item) => {
-      const uid = String(item.uid || "").trim();
-      const email = emailKey(item.email || "");
-      const key = uid || email;
-      if (!key || seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-    render();
-  };
-
+  window.adnnChatDirectory = { shared: [], users: [] };
   userDirectoryUnsubscribes = [
-    onSnapshot(collection(db, "chatUsers"), (snapshot) => {
-      window.adnnChatDirectory.chatUsers = snapshot.docs.map((snap) => normalizeDirectoryUser(snap, "user"));
-      mergeAndRender();
-    }, () => mergeAndRender()),
-    onSnapshot(collection(db, "clients"), (snapshot) => {
-      window.adnnChatDirectory.clients = snapshot.docs.map((snap) => normalizeDirectoryUser(snap, "account"));
-      mergeAndRender();
-    }, () => mergeAndRender()),
-    onSnapshot(collection(db, "designers"), (snapshot) => {
-      window.adnnChatDirectory.designers = snapshot.docs.map((snap) => normalizeDirectoryUser(snap, "designer"));
-      mergeAndRender();
-    }, () => mergeAndRender())
+    onSnapshot(query(collection(db, "sharedContacts"), where("receiverUid", "==", user.uid)), (snapshot) => {
+      window.adnnChatDirectory.shared = snapshot.docs.map((snap) => normalizeSharedContact(snap));
+      window.adnnChatDirectory.users = window.adnnChatDirectory.shared;
+      render();
+    }, () => {
+      window.adnnChatDirectory.shared = [];
+      window.adnnChatDirectory.users = [];
+      render();
+    })
   ];
 }
 
@@ -1351,15 +1431,14 @@ function stopUserDirectory() {
   userDirectoryUnsubscribes = [];
 }
 
-function normalizeDirectoryUser(docSnap, role) {
+function normalizeSharedContact(docSnap) {
   const data = docSnap.data() || {};
-  const email = emailKey(data.email || data.authEmail || data.displayEmail || "");
-  const itemRole = data.role || role || "user";
   return {
-    uid: data.uid || data.authUid || data.userUid || docSnap.id,
-    email,
-    name: data.name || data.displayName || data.clientName || data.designerName || data.displayEmail || data.email || data.authEmail || (itemRole === "designer" ? "Designer" : "Account"),
-    role: itemRole
+    uid: data.contactUid || "",
+    email: emailKey(data.contactEmail || ""),
+    name: data.contactName || data.name || data.contactEmail || "Shared contact",
+    role: data.contactRole || "user",
+    sharedContactId: docSnap.id
   };
 }
 
@@ -1409,10 +1488,10 @@ function renderPeerButtons(wrap, mode) {
     onClick: () => mode === "designer" ? openDesignerLounge() : openClientSupport()
   }));
 
-  if (!users.length && term) {
+  if (!users.length) {
     const empty = document.createElement("div");
     empty.className = "adnn-chat-empty adnn-user-list-empty";
-    empty.textContent = "No matching users";
+    empty.textContent = term ? "No matching shared contacts" : "No contacts shared by admin yet";
     wrap.appendChild(empty);
     return;
   }
@@ -1421,7 +1500,7 @@ function renderPeerButtons(wrap, mode) {
     const active = mode === "designer" ? selectedDesignerPeer?.uid === peer.uid : selectedClientPeer?.uid === peer.uid;
     wrap.appendChild(createPeerListItem({
       label: peer.name || peer.email || "User",
-      preview: peer.role || peer.email || "user",
+      preview: `${peer.role || "user"} • shared by admin`,
       role: peer.role || "user",
       active,
       onClick: () => mode === "designer" ? openDesignerDirectChat(peer) : openClientDirectChat(peer)
@@ -1446,13 +1525,180 @@ function createPeerListItem({ label, preview, role, active, onClick }) {
   return button;
 }
 
+function selectedAdminReceiver() {
+  if (!selectedAdminChat) return null;
+  if (selectedAdminChat.clientUid) {
+    return {
+      uid: selectedAdminChat.clientUid,
+      email: selectedAdminChat.clientEmail || "",
+      name: selectedAdminChat.clientName || selectedAdminChat.clientEmail || "User"
+    };
+  }
+  const participants = Array.isArray(selectedAdminChat.participantUids) ? selectedAdminChat.participantUids : [];
+  const emails = Array.isArray(selectedAdminChat.participantEmails) ? selectedAdminChat.participantEmails : [];
+  const labels = Array.isArray(selectedAdminChat.participantLabels) ? selectedAdminChat.participantLabels : [];
+  const uid = participants.find((item) => item && item !== ADMIN_ALIAS_UID && item !== activeUser?.uid) || "";
+  if (!uid) return null;
+  const index = participants.indexOf(uid);
+  return { uid, email: emails[index] || "", name: labels[index] || emails[index] || "User" };
+}
+
+async function loadAdminShareDirectory() {
+  const all = [];
+  const addFromSnapshot = (snapshot, fallbackRole) => {
+    snapshot?.docs?.forEach((snap) => all.push(normalizeAdminDirectoryUser(snap, fallbackRole)));
+  };
+  const [chatUsersSnap, clientsSnap, designersSnap] = await Promise.all([
+    getDocs(collection(db, "chatUsers")).catch(() => null),
+    getDocs(collection(db, "clients")).catch(() => null),
+    getDocs(collection(db, "designers")).catch(() => null)
+  ]);
+  addFromSnapshot(chatUsersSnap, "user");
+  addFromSnapshot(clientsSnap, "account");
+  addFromSnapshot(designersSnap, "designer");
+  const seen = new Set();
+  return all.filter((item) => {
+    const key = item.uid || item.email;
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).sort((a, b) => String(a.name || a.email).localeCompare(String(b.name || b.email)));
+}
+
+function normalizeAdminDirectoryUser(docSnap, role) {
+  const data = docSnap.data() || {};
+  const itemRole = data.role || role || "user";
+  return {
+    uid: data.uid || data.authUid || data.userUid || docSnap.id,
+    email: emailKey(data.email || data.authEmail || data.displayEmail || ""),
+    name: data.name || data.displayName || data.clientName || data.designerName || data.displayEmail || data.email || data.authEmail || (itemRole === "designer" ? "Designer" : "Account"),
+    role: itemRole === "client" ? "account" : itemRole
+  };
+}
+
+async function toggleAdminShareContactPanel() {
+  const panel = document.getElementById("adnnAdminShareContactPanel");
+  if (!panel || !selectedAdminReceiver()) return;
+  panel.hidden = !panel.hidden;
+  if (!panel.hidden) {
+    const input = document.getElementById("adnnAdminShareContactSearch");
+    if (input) input.value = "";
+    window.adnnAdminShareDirectory = await loadAdminShareDirectory();
+    renderAdminShareContactResults();
+    setTimeout(() => input?.focus(), 80);
+  }
+}
+
+function updateAdminShareContactButton() {
+  const button = document.getElementById("adnnAdminShareContactToggle");
+  const panel = document.getElementById("adnnAdminShareContactPanel");
+  const receiver = selectedAdminReceiver();
+  if (button) button.hidden = !receiver;
+  if (panel && !receiver) panel.hidden = true;
+}
+
+function renderAdminShareContactResults() {
+  const wrap = document.getElementById("adnnAdminShareContactResults");
+  if (!wrap) return;
+  const receiver = selectedAdminReceiver();
+  if (!receiver) {
+    wrap.innerHTML = `<div class="adnn-chat-empty">Select a user chat first.</div>`;
+    return;
+  }
+  const term = String(document.getElementById("adnnAdminShareContactSearch")?.value || "").toLowerCase().trim();
+  const users = (window.adnnAdminShareDirectory || []).filter((item) => {
+    if (!item.uid || item.uid === receiver.uid) return false;
+    if (!term) return true;
+    return [item.name, item.email, item.role].some((value) => String(value || "").toLowerCase().includes(term));
+  }).slice(0, 40);
+  wrap.innerHTML = "";
+  if (!users.length) {
+    wrap.innerHTML = `<div class="adnn-chat-empty">No contacts found.</div>`;
+    return;
+  }
+  users.forEach((contact) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "adnn-share-contact-result";
+    btn.innerHTML = `<strong>${escapeHtml(contact.name || contact.email || "User")}</strong><small>${escapeHtml(contact.role || "user")}</small>`;
+    btn.addEventListener("click", () => shareContactToSelectedAdminChat(contact, btn));
+    wrap.appendChild(btn);
+  });
+}
+
+async function shareContactToSelectedAdminChat(contact, button) {
+  const receiver = selectedAdminReceiver();
+  if (!receiver || !contact?.uid || !selectedAdminChatId) return;
+  if (button) button.disabled = true;
+  const contactName = contact.name || contact.email || "User";
+  const sharedId = `${receiver.uid}_${contact.uid}`.replace(/[^a-zA-Z0-9_-]/g, "_");
+  await setDoc(doc(db, "sharedContacts", sharedId), {
+    receiverUid: receiver.uid,
+    receiverEmail: emailKey(receiver.email),
+    receiverName: receiver.name || "User",
+    contactUid: contact.uid,
+    contactEmail: emailKey(contact.email),
+    contactName,
+    contactRole: contact.role || "user",
+    sharedBy: activeUser.uid,
+    sharedByEmail: emailKey(activeUser.email),
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
+  }, { merge: true });
+  await addDoc(collection(db, "chats", selectedAdminChatId, "messages"), {
+    text: `Shared contact: ${contactName}`,
+    contactCard: {
+      uid: contact.uid,
+      email: emailKey(contact.email),
+      name: contactName,
+      role: contact.role || "user"
+    },
+    senderUid: activeUser.uid,
+    senderEmail: emailKey(activeUser.email),
+    senderName: "AdnnStudio",
+    senderRole: "admin",
+    createdAt: serverTimestamp()
+  });
+  await setDoc(doc(db, "chats", selectedAdminChatId), {
+    lastMessage: `Shared contact: ${contactName}`,
+    lastSenderUid: activeUser.uid,
+    updatedAt: serverTimestamp(),
+    unreadForClient: increment(1)
+  }, { merge: true }).catch(() => {});
+  const panel = document.getElementById("adnnAdminShareContactPanel");
+  if (panel) panel.hidden = true;
+}
+
+function contactCardElement(card) {
+  const article = document.createElement("div");
+  article.className = "adnn-contact-card";
+  article.innerHTML = `
+    <span class="adnn-contact-card-avatar">${escapeHtml(initialsFromName(card?.name || card?.email || "User"))}</span>
+    <span class="adnn-contact-card-copy">
+      <strong>${escapeHtml(card?.name || card?.email || "Shared contact")}</strong>
+      <small>${escapeHtml(card?.role || "user")}</small>
+    </span>
+  `;
+  if (!isAdminEmail(activeUser?.email) && card?.uid) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = "Start chat";
+    button.addEventListener("click", () => {
+      if (location.pathname.includes("designer-account.html")) openDesignerDirectChat(card);
+      else openClientDirectChat(card);
+    });
+    article.appendChild(button);
+  }
+  return article;
+}
+
 function updateClientChatHeader() {
   const title = document.getElementById("adnnClientChatTitle");
   const subtitle = document.getElementById("adnnClientChatSubtitle");
   const avatar = document.getElementById("adnnClientChatAvatar");
   const label = clientChatMode === "direct" && selectedClientPeer ? (selectedClientPeer.name || selectedClientPeer.email || "User") : "AdnnStudio";
   if (title) title.textContent = label;
-  if (subtitle) subtitle.textContent = clientChatMode === "direct" && selectedClientPeer ? `${selectedClientPeer.role || "user"} • direct message` : "Admin support";
+  if (subtitle) subtitle.textContent = clientChatMode === "direct" && selectedClientPeer ? `${selectedClientPeer.role || "user"} • shared contact` : "Admin support";
   if (avatar) avatar.textContent = initialsFromName(label);
 }
 
@@ -1462,7 +1708,7 @@ function updateDesignerChatHeader() {
   const avatar = document.getElementById("adnnDesignerChatAvatar");
   const label = designerChatMode === "direct" && selectedDesignerPeer ? (selectedDesignerPeer.name || selectedDesignerPeer.email || "User") : "Designer Lounge";
   if (title) title.textContent = label;
-  if (subtitle) subtitle.textContent = designerChatMode === "direct" && selectedDesignerPeer ? `${selectedDesignerPeer.role || "user"} • direct message` : "Designer group chat";
+  if (subtitle) subtitle.textContent = designerChatMode === "direct" && selectedDesignerPeer ? `${selectedDesignerPeer.role || "user"} • shared contact` : "Designer group chat";
   if (avatar) avatar.textContent = initialsFromName(label);
 }
 

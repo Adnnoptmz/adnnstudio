@@ -333,6 +333,10 @@
       justify-content:space-between;
       gap:18px;
     }
+    .section-refresh-button {
+      float:right;
+      margin:0 0 12px 16px;
+    }
     .refresh-account-button {
       width:42px;
       height:42px;
@@ -826,7 +830,11 @@
 	    .account-meta a,
 	    .account-meta .seen-btn,
 	    .account-meta .mark-read-button { color:#8d96ff !important; }
-	    .refresh-account-button {
+	    .section-refresh-button {
+      float:right;
+      margin:0 0 12px 16px;
+    }
+    .refresh-account-button {
 	      border-color:var(--line) !important;
 	      background:var(--input-bg) !important;
 	      color:var(--text) !important;
@@ -1325,30 +1333,20 @@
 	        </a>
 	      </div>
 	      <section id="notifications" class="view">
-        <div class="view-head">
-          <div>
-            <p class="kicker">Notifications</p>
-            <h1>Notifications</h1>
-          </div>
-          <button class="refresh-account-button" type="button" id="refreshAccountDataButton" aria-label="Refresh account data" title="Refresh">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M20 4.5v5h-5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </button>
-        </div>
+        <button class="refresh-account-button section-refresh-button" type="button" id="refreshAccountDataButton" aria-label="Refresh account data" title="Refresh">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M20 4.5v5h-5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
         <p class="lead">Private account updates, studio messages, and project alerts will appear here.</p>
         <p class="private-sync-status" id="accountDataStatus" aria-live="polite"></p>
         <div class="account-feed is-empty" id="notificationsList"><div class="empty-card"><span><strong>No notifications yet</strong><span>Nothing has been shared with this account yet.</span></span></div></div>
       </section>
 
       <section id="tasks" class="view active">
-        <p class="kicker">Tasks</p>
-        <h1>Tasks</h1>
         <p class="lead">Project work and active studio requests will appear here after they are added to your account.</p>
         <div class="account-feed is-empty" id="tasksList"><div class="empty-card"><span><strong>No ongoing task</strong><span>Nothing has been assigned yet.</span></span></div></div>
       </section>
 
 	      <section id="invoice" class="view">
-	        <p class="kicker">Invoice</p>
-	        <h1>Invoice</h1>
 	        <p class="lead">Invoices, payment summaries, and project billing notes will appear here once available.</p>
 	        <div class="account-feed is-empty" id="invoiceList"><div class="empty-card"><span><strong>Nothing here</strong><span>No invoice has been added yet.</span></span></div></div>
 	      </section>
@@ -1401,8 +1399,6 @@
       </section>
 
 	      <section id="notes" class="view">
-	        <p class="kicker">Notes</p>
-	        <h1>Notes</h1>
 	        <p class="lead">Keep quick project thoughts and references inside this browser.</p>
 	        <div class="notes-composer" style="margin-top:34px;">
 	          <textarea class="notes-input" id="notesInput" placeholder="Write a private note..."></textarea>

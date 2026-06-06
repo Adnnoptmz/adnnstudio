@@ -1308,12 +1308,39 @@ async function syncChatUserProfile(user, role, profile) {
 function startUserDirectory(user, mode) {
   stopUserDirectory();
   const render = () => mode === "designer" ? renderDesignerPeerSelection() : renderClientPeerSelection();
-  window.adnnChatDirectory = { users: [] };
+  window.adnnChatDirectory = { chatUsers: [], clients: [], designers: [], users: [] };
+
+  const mergeAndRender = () => {
+    const source = window.adnnChatDirectory || {};
+    const allUsers = []
+      .concat(source.chatUsers || [])
+      .concat(source.clients || [])
+      .concat(source.designers || []);
+    const seen = new Set();
+    window.adnnChatDirectory.users = allUsers.filter((item) => {
+      const uid = String(item.uid || "").trim();
+      const email = emailKey(item.email || "");
+      const key = uid || email;
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    render();
+  };
+
   userDirectoryUnsubscribes = [
     onSnapshot(collection(db, "chatUsers"), (snapshot) => {
-      window.adnnChatDirectory.users = snapshot.docs.map((snap) => normalizeDirectoryUser(snap, "user"));
-      render();
-    }, () => render())
+      window.adnnChatDirectory.chatUsers = snapshot.docs.map((snap) => normalizeDirectoryUser(snap, "user"));
+      mergeAndRender();
+    }, () => mergeAndRender()),
+    onSnapshot(collection(db, "clients"), (snapshot) => {
+      window.adnnChatDirectory.clients = snapshot.docs.map((snap) => normalizeDirectoryUser(snap, "account"));
+      mergeAndRender();
+    }, () => mergeAndRender()),
+    onSnapshot(collection(db, "designers"), (snapshot) => {
+      window.adnnChatDirectory.designers = snapshot.docs.map((snap) => normalizeDirectoryUser(snap, "designer"));
+      mergeAndRender();
+    }, () => mergeAndRender())
   ];
 }
 
@@ -1637,3 +1664,32 @@ function escapeHtml(value) {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
 }
+
+
+/* ADNN patch: keep account/designer chat panel inside its card after removing duplicate headings. */
+(() => {
+  const styleId = "adnnUserChatPanelFitPatch";
+  if (document.getElementById(styleId)) return;
+  const style = document.createElement("style");
+  style.id = styleId;
+  style.textContent = `
+    #chat #clientChatMount.adnn-designer-chat-panel,
+    #chat #adnnDesignerChatPanel.adnn-designer-chat-panel {
+      margin-top: 0 !important;
+      width: 100% !important;
+      min-height: min(680px, calc(100vh - 190px)) !important;
+      height: min(680px, calc(100vh - 190px)) !important;
+    }
+    #chat .adnn-chat-drawer.is-embedded,
+    #chat .adnn-user-chat-panel {
+      width: 100% !important;
+      height: 100% !important;
+      max-height: none !important;
+    }
+    #chat .adnn-user-chat-grid {
+      min-height: 0 !important;
+      height: calc(100% - 74px) !important;
+    }
+  `;
+  document.head.appendChild(style);
+})();

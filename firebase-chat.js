@@ -360,16 +360,12 @@ function installAdminChatPanel() {
     </div>
     <div class="adnn-admin-chat-grid" id="adnnAdminChatGrid">
       <div class="adnn-admin-chat-list-wrap">
-        <form class="adnn-connection-form" id="adnnConnectionForm">
-          <strong>Create message card</strong>
-          <small>Connect two approved users by Firebase UID. Emails/names are shown only to those users.</small>
-          <input id="adnnUserAUid" autocomplete="off" placeholder="User A UID" required>
-          <input id="adnnUserAEmail" autocomplete="off" placeholder="User A email">
-          <input id="adnnUserAName" autocomplete="off" placeholder="User A display name">
-          <input id="adnnUserBUid" autocomplete="off" placeholder="User B UID" required>
-          <input id="adnnUserBEmail" autocomplete="off" placeholder="User B email">
-          <input id="adnnUserBName" autocomplete="off" placeholder="User B display name">
-          <button type="submit">Generate message card</button>
+        <form class="adnn-connection-form adnn-contact-card-generator" id="adnnConnectionForm">
+          <strong>Contact card generator</strong>
+          <small>Enter two unique User IDs only. The system finds the users and adds the chat to both accounts.</small>
+          <input id="adnnUserAId" autocomplete="off" placeholder="User ID A" required>
+          <input id="adnnUserBId" autocomplete="off" placeholder="User ID B" required>
+          <button type="submit">Generate contact card</button>
           <span id="adnnConnectionStatus" aria-live="polite"></span>
         </form>
         <div class="adnn-admin-chat-list" id="adnnAdminChatList">
@@ -601,30 +597,72 @@ async function sendDesignerMessage(event) {
   clearFilePreview("adnnDesignerChatFileName");
 }
 
+function cleanUserId(value) {
+  return String(value || "").trim().toLowerCase().replace(/[^a-z0-9._-]/g, "");
+}
+
+async function resolveMessageCardUser(userId) {
+  const id = cleanUserId(userId);
+  if (!id) return null;
+  const usernameSnap = await getDoc(doc(db, "usernames", id)).catch(() => null);
+  if (usernameSnap?.exists()) {
+    const data = usernameSnap.data() || {};
+    return {
+      uid: cleanUid(data.uid),
+      userId: id,
+      name: data.name || data.displayName || id,
+      email: emailKey(data.email || data.authEmail || ""),
+      role: data.role || "user"
+    };
+  }
+  const clientSnap = await getDoc(doc(db, "clients", id)).catch(() => null);
+  if (clientSnap?.exists()) {
+    const data = clientSnap.data() || {};
+    return {
+      uid: cleanUid(data.uid || id),
+      userId: cleanUserId(data.userId || data.username || id),
+      name: data.name || data.displayName || data.userId || id,
+      email: emailKey(data.email || data.displayEmail || ""),
+      role: data.role || "client"
+    };
+  }
+  return null;
+}
+
 async function createAdminConnectionCard(event) {
   event.preventDefault();
   if (!activeUser || !isAdminEmail(activeUser.email)) return;
   const status = document.getElementById("adnnConnectionStatus");
-  const uidA = cleanUid(document.getElementById("adnnUserAUid")?.value);
-  const uidB = cleanUid(document.getElementById("adnnUserBUid")?.value);
-  const emailA = emailKey(document.getElementById("adnnUserAEmail")?.value);
-  const emailB = emailKey(document.getElementById("adnnUserBEmail")?.value);
-  const nameA = String(document.getElementById("adnnUserAName")?.value || emailA || "User A").trim();
-  const nameB = String(document.getElementById("adnnUserBName")?.value || emailB || "User B").trim();
-  if (!uidA || !uidB || uidA === uidB) {
-    if (status) status.textContent = "Add two different Firebase UIDs.";
+  const userIdA = cleanUserId(document.getElementById("adnnUserAId")?.value);
+  const userIdB = cleanUserId(document.getElementById("adnnUserBId")?.value);
+  if (!userIdA || !userIdB || userIdA === userIdB) {
+    if (status) status.textContent = "Add two different User IDs.";
     return;
   }
-  const chatId = directChatId(uidA, uidB);
+  if (status) status.textContent = "Checking User IDs...";
+  const [userA, userB] = await Promise.all([resolveMessageCardUser(userIdA), resolveMessageCardUser(userIdB)]);
+  if (!userA?.uid || !userB?.uid) {
+    if (status) status.textContent = "One or both User IDs were not found.";
+    return;
+  }
+  if (userA.uid === userB.uid) {
+    if (status) status.textContent = "Both User IDs belong to the same account.";
+    return;
+  }
+  const chatId = directChatId(userA.uid, userB.uid);
+  const nameA = userA.name || userA.userId;
+  const nameB = userB.name || userB.userId;
   await setDoc(doc(db, "chats", chatId), {
     type: "direct",
     title: `${nameA} ↔ ${nameB}`,
     createdByAdminUid: activeUser.uid,
-    participantUids: sortedPair(uidA, uidB),
-    participantEmails: [emailA, emailB].filter(Boolean),
-    participantNames: { [uidA]: nameA, [uidB]: nameB },
-    participantEmailMap: { [uidA]: emailA, [uidB]: emailB },
-    lastMessage: "Message card created by admin.",
+    participantUids: sortedPair(userA.uid, userB.uid),
+    participantUserIds: [userA.userId, userB.userId],
+    participantEmails: [userA.email, userB.email].filter(Boolean),
+    participantNames: { [userA.uid]: nameA, [userB.uid]: nameB },
+    participantUserIdMap: { [userA.uid]: userA.userId, [userB.uid]: userB.userId },
+    participantEmailMap: { [userA.uid]: userA.email, [userB.uid]: userB.email },
+    lastMessage: "Contact card created by admin.",
     lastSenderUid: activeUser.uid,
     updatedAt: serverTimestamp(),
     createdAt: serverTimestamp()
@@ -638,7 +676,7 @@ async function createAdminConnectionCard(event) {
     systemCard: true,
     createdAt: serverTimestamp()
   });
-  if (status) status.textContent = "Message card generated and added to both users.";
+  if (status) status.textContent = "Contact card generated and added to both users.";
   event.currentTarget.reset();
 }
 

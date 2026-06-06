@@ -414,13 +414,7 @@
       font-size: 18px !important;
       line-height: 1 !important;
     }
-    #newReminderTime, 
-    #newReminderTime::-webkit-datetime-edit,
-    #newReminderTime::-webkit-datetime-edit-fields-wrapper,
-    #newReminderTime::-webkit-datetime-edit-text,
-    #newReminderTime::-webkit-datetime-edit-hour-field,
-    #newReminderTime::-webkit-datetime-edit-minute-field,
-    #newReminderTime::-webkit-datetime-edit-ampm-field {
+    #newReminderTime {
       font-family: var(--font-mono) !important;
       font-size: 13px !important;
       font-weight: 400 !important;
@@ -564,8 +558,8 @@
   </div>
 
   <div class="mobile-header-bar">
-    <button type="button" class="mobile-menu-trigger apple-home-btn" id="mobileMenuTriggerBtn" aria-label="Open menu">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 7h14M5 12h14M5 17h14"/></svg>
+    <button type="button" class="mobile-menu-trigger" id="mobileMenuTriggerBtn" aria-label="Open menu">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
     </button>
     <a href="index.html#home" class="apple-home-btn" aria-label="Back home" title="Back home">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m4 10 8-7 8 7"/><path d="M6.5 9.5V21h5v-6h3v6h5V9.5"/></svg>
@@ -604,29 +598,29 @@
           <span>Tasks</span>
         </a>
         <a href="#chat" data-view-link="chat">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4C7.6 4 4 7.1 4 11c0 2.1 1 4 2.7 5.3L6 20l3.8-2.1c.7.1 1.4.2 2.2.2 4.4 0 8-3.1 8-7S16.4 4 12 4Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
           <span>Chats</span>
         </a>
         <a href="#calendar" data-view-link="calendar">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3v3M17 3v3M4.8 8.5h14.4M6.2 5h11.6A2.2 2.2 0 0 1 20 7.2v11.6a2.2 2.2 0 0 1-2.2 2.2H6.2A2.2 2.2 0 0 1 4 18.8V7.2A2.2 2.2 0 0 1 6.2 5Z" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4" width="17" height="17" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M8 2.5v4M16 2.5v4M3.5 10h9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
           <span>Calendar</span>
         </a>
         <a href="#notes" data-view-link="notes">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 3.5h8.7L19 7.3v13.2H6.5v-17Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M15 3.8V8h4M9 12h6M9 16h6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 3.5h8.7L19 7.3v13.2H6.5v-17Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M15 3.8V8h4M9 12h6M9 16h4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
           <span>Notes</span>
         </a>
         <a href="#invoice" data-view-link="invoice">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3.5h10A1.5 1.5 0 0 1 18.5 5v15.5l-2.3-1.4-2.1 1.4-2.1-1.4-2.1 1.4-2.4-1.4V5A1.5 1.5 0 0 1 7 3.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M9 8h6M9 12h6M9 16h3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3.5h10A1.5 1.5 0 0 1 18.5 5v15.5l-2.3-1.4-2.1 1.4-2.1-1.4-2.1 1.4-2.4-1.4V5A1.5 1.5 0 0 1 7 3.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M9 8h6M9 12h6M9 16h3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M9 8h6M9 12h6M9 16h3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
           <span>Invoice</span>
         </a>
       </nav>
       <div class="sidebar-bottom-utilities">
         <a href="#settings" data-view-link="settings">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.3a3.7 3.7 0 1 0 0 7.4 3.7 3.7 0 0 0 0-7.4Z" fill="none" stroke="currentColor" stroke-width="1.55"/><path d="m19 13.5 1.3 1-.9 2-1.6-.2a7.9 7.9 0 0 1-1.4 1.4l.2 1.6-2 .9-1-1.3a8.5 8.5 0 0 1-1.6 0l-1 1.3-2-.9.2-1.6a7.9 7.9 0 0 1-1.4-1.4l-1.6.2-.9-2 1.3-1a8.5 8.5 0 0 1 0-1.6l-1.3-1 .9-2 1.6.2c.4-.5.9-1 1.4-1.4L9 5.2l2-.9 1 1.3a8.5 8.5 0 0 1 1.6 0l1-1.3 2 .9-.2 1.6c.5.4 1 .9 1.4 1.4l1.6-.2.9 2-1.3 1a8.5 8.5 0 0 1 0 1.6Z" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linejoin="round"/></svg>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.14.31.22.65.22 1H21a2 2 0 0 1 0 4h-1.38c0 .35-.08.69-.22 1Z" fill="none" stroke="currentColor" stroke-width="1.45" stroke-linejoin="round"/></svg>
           <span>Settings</span>
         </a>
-        <button class="logout sidebar-logout-item" type="button" id="sidebarLogoutButton" aria-label="Log out">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+        <button class="sidebar-logout-item" type="button" id="sidebarLogoutButton" aria-label="Log out">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.5 5.5h-4v13h4M14 8l4 4-4 4M8.5 12H18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
           <span>Log out</span>
         </button>
       </div>
@@ -729,19 +723,19 @@
           <div class="settings-card">
             <div>
               <strong>Chat style</strong>
-              <span>Open the conversation panel for quick studio messages.</span>
+              <span>Private chat uses the same workspace glass style as the studio portal.</span>
             </div>
             <a href="#chat" class="apple-home-btn" data-view-link="chat" aria-label="Open chat">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4C7.6 4 4 7.1 4 11c0 2.1 1 4 2.7 5.3L6 20l3.8-2.1c.7.1 1.4.2 2.2.2 4.4 0 8-3.1 8-7S16.4 4 12 4Z"/></svg>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
             </a>
           </div>
           <div class="settings-card">
             <div>
               <strong>Reminder calendar</strong>
-              <span>Jump to your calendar and plan studio reminders.</span>
+              <span>Open your personal reminder calendar.</span>
             </div>
             <a href="#calendar" class="apple-home-btn" data-view-link="calendar" aria-label="Open calendar">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3v3M17 3v3M4.8 8.5h14.4M6.2 5h11.6A2.2 2.2 0 0 1 20 7.2v11.6a2.2 2.2 0 0 1-2.2 2.2H6.2A2.2 2.2 0 0 1 4 18.8V7.2A2.2 2.2 0 0 1 6.2 5Z"/></svg>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4" width="17" height="17" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M8 2.5v4M16 2.5v4M3.5 10h9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
             </a>
           </div>
         </div>

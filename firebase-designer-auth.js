@@ -9,6 +9,7 @@ import {
   doc,
   getDoc,
   getFirestore,
+  runTransaction,
   serverTimestamp,
   setDoc
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
@@ -41,6 +42,31 @@ function cleanId(value) {
   return String(value || "").trim().toUpperCase();
 }
 
+function cleanUsername(value) {
+  return String(value || "").trim().toLowerCase().replace(/[^a-z0-9._-]/g, "");
+}
+
+async function reserveDesignerUserId(user, designerId, name, email) {
+  const userId = cleanUsername(designerId);
+  if (!db || !user?.uid || !userId) return userId;
+  await runTransaction(db, async (transaction) => {
+    const ref = doc(db, "usernames", userId);
+    const snap = await transaction.get(ref);
+    if (snap.exists() && snap.data()?.uid !== user.uid) {
+      throw new Error(`User ID ${designerId} is already taken.`);
+    }
+    transaction.set(ref, {
+      uid: user.uid,
+      userId,
+      name,
+      email: email || "",
+      role: "designer",
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+  });
+  return userId;
+}
+
 function isPasswordUser(user) {
   return Boolean(user?.providerData?.some((providerData) => providerData.providerId === "password"));
 }
@@ -58,9 +84,12 @@ window.signInDesignerWithFirebase = async function signInDesignerWithFirebase(de
   const designerId = cleanId(designer.designerid || designer.designerId);
   const displayEmail = user.email || designer.authEmail || designer.email || "";
   const name = designer.name || `Designer ${designerId}`;
+  const userId = await reserveDesignerUserId(user, designerId, name, displayEmail);
 
   await setDoc(doc(db, "designers", user.uid), {
     uid: user.uid,
+    userId,
+    username: userId,
     designerId,
     authEmail: user.email || authEmail,
     email: displayEmail,

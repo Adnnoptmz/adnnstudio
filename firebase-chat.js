@@ -41,6 +41,12 @@ let adminChatsUnsubscribe = null;
 let adminMessagesUnsubscribe = null;
 let selectedAdminChatId = "";
 let selectedAdminChat = null;
+let directChatsUnsubscribe = null;
+let directMessagesUnsubscribe = null;
+let activeDirectChatId = "";
+let activeDirectChat = null;
+let knownDirectMessageIds = new Set();
+let firstDirectMessagesSnapshot = true;
 let designerMessagesUnsubscribe = null;
 let designerChatId = "designer_lounge";
 let activeDesignerProfile = null;
@@ -74,6 +80,7 @@ if (auth && db) {
       stopClientChat();
       stopAdminChat();
       stopDesignerChat();
+      stopDirectChats();
       return;
     }
 
@@ -88,9 +95,11 @@ if (auth && db) {
       if (designer) {
         await ensureDesignerRoom(user, designer).catch(() => {});
         startDesignerChat(user, designer);
+        startDirectChats(user);
       } else {
         activeDesignerProfile = null;
         renderDesignerChatStatus("Sign in to open designer chat.");
+        startDirectChats(user);
       }
       return;
     }
@@ -104,6 +113,7 @@ if (auth && db) {
       }
       await ensureClientChat(user).catch(() => {});
       startClientChat(user);
+      startDirectChats(user);
     }
   });
 }
@@ -349,8 +359,22 @@ function installAdminChatPanel() {
       <span>Private Console</span>
     </div>
     <div class="adnn-admin-chat-grid" id="adnnAdminChatGrid">
-      <div class="adnn-admin-chat-list" id="adnnAdminChatList">
-        <div class="adnn-chat-empty">Waiting for chats.</div>
+      <div class="adnn-admin-chat-list-wrap">
+        <form class="adnn-connection-form" id="adnnConnectionForm">
+          <strong>Create message card</strong>
+          <small>Connect two approved users by Firebase UID. Emails/names are shown only to those users.</small>
+          <input id="adnnUserAUid" autocomplete="off" placeholder="User A UID" required>
+          <input id="adnnUserAEmail" autocomplete="off" placeholder="User A email">
+          <input id="adnnUserAName" autocomplete="off" placeholder="User A display name">
+          <input id="adnnUserBUid" autocomplete="off" placeholder="User B UID" required>
+          <input id="adnnUserBEmail" autocomplete="off" placeholder="User B email">
+          <input id="adnnUserBName" autocomplete="off" placeholder="User B display name">
+          <button type="submit">Generate message card</button>
+          <span id="adnnConnectionStatus" aria-live="polite"></span>
+        </form>
+        <div class="adnn-admin-chat-list" id="adnnAdminChatList">
+          <div class="adnn-chat-empty">Waiting for chats.</div>
+        </div>
       </div>
       <div class="adnn-admin-chat-room" id="adnnAdminChatRoom">
         <div class="adnn-admin-chat-title">
@@ -388,6 +412,7 @@ function installAdminChatPanel() {
     else document.querySelector(".shell")?.appendChild(panel);
   }
   document.getElementById("adnnAdminChatForm")?.addEventListener("submit", sendAdminMessage);
+  document.getElementById("adnnConnectionForm")?.addEventListener("submit", createAdminConnectionCard);
   document.getElementById("adnnAdminChatBack")?.addEventListener("click", () => {
     document.body.classList.remove("adnn-admin-chat-open");
   });
@@ -574,6 +599,244 @@ async function sendDesignerMessage(event) {
   input.value = "";
   if (fileInput) fileInput.value = "";
   clearFilePreview("adnnDesignerChatFileName");
+}
+
+async function createAdminConnectionCard(event) {
+  event.preventDefault();
+  if (!activeUser || !isAdminEmail(activeUser.email)) return;
+  const status = document.getElementById("adnnConnectionStatus");
+  const uidA = cleanUid(document.getElementById("adnnUserAUid")?.value);
+  const uidB = cleanUid(document.getElementById("adnnUserBUid")?.value);
+  const emailA = emailKey(document.getElementById("adnnUserAEmail")?.value);
+  const emailB = emailKey(document.getElementById("adnnUserBEmail")?.value);
+  const nameA = String(document.getElementById("adnnUserAName")?.value || emailA || "User A").trim();
+  const nameB = String(document.getElementById("adnnUserBName")?.value || emailB || "User B").trim();
+  if (!uidA || !uidB || uidA === uidB) {
+    if (status) status.textContent = "Add two different Firebase UIDs.";
+    return;
+  }
+  const chatId = directChatId(uidA, uidB);
+  await setDoc(doc(db, "chats", chatId), {
+    type: "direct",
+    title: `${nameA} ↔ ${nameB}`,
+    createdByAdminUid: activeUser.uid,
+    participantUids: sortedPair(uidA, uidB),
+    participantEmails: [emailA, emailB].filter(Boolean),
+    participantNames: { [uidA]: nameA, [uidB]: nameB },
+    participantEmailMap: { [uidA]: emailA, [uidB]: emailB },
+    lastMessage: "Message card created by admin.",
+    lastSenderUid: activeUser.uid,
+    updatedAt: serverTimestamp(),
+    createdAt: serverTimestamp()
+  }, { merge: true });
+  await addDoc(collection(db, "chats", chatId, "messages"), {
+    text: `Admin connected ${nameA} and ${nameB}. You can now message directly here.`,
+    senderUid: activeUser.uid,
+    senderEmail: emailKey(activeUser.email),
+    senderName: "AdnnStudio",
+    senderRole: "admin",
+    systemCard: true,
+    createdAt: serverTimestamp()
+  });
+  if (status) status.textContent = "Message card generated and added to both users.";
+  event.currentTarget.reset();
+}
+
+function installDirectChatPanel() {
+  if (document.getElementById("adnnDirectChatPanel")) return;
+  const accountMount = document.getElementById("clientChatMount");
+  const designerView = document.getElementById("chat");
+  const host = accountMount || designerView;
+  if (!host) return;
+  if (accountMount) accountMount.classList.add("has-direct-chat");
+  const panel = document.createElement("section");
+  panel.id = "adnnDirectChatPanel";
+  panel.className = "adnn-direct-chat-panel";
+  panel.innerHTML = `
+    <header>
+      <div>
+        <strong>Approved contacts</strong>
+        <small>Only admin-created message cards appear here.</small>
+      </div>
+    </header>
+    <div class="adnn-direct-chat-list" id="adnnDirectChatList">
+      <div class="adnn-chat-empty">No approved contacts yet.</div>
+    </div>
+    <div class="adnn-direct-room" id="adnnDirectRoom" hidden>
+      <div class="adnn-chat-messages" id="adnnDirectMessages"></div>
+      <form class="adnn-chat-form" id="adnnDirectChatForm">
+        <label class="adnn-chat-media" title="Add media" aria-label="Add media">
+          <input id="adnnDirectChatFile" type="file" accept="image/*,.pdf,.doc,.docx,.zip">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          <span class="adnn-chat-file-name" id="adnnDirectChatFileName" hidden></span>
+        </label>
+        <input id="adnnDirectChatInput" autocomplete="off" maxlength="1800" placeholder="Message approved contact">
+        <button type="submit" aria-label="Send direct message">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12 20 5l-5.8 14-3-5.9L4 12Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+        </button>
+      </form>
+    </div>`;
+  host.insertBefore(panel, host.firstChild);
+  document.getElementById("adnnDirectChatForm")?.addEventListener("submit", sendDirectMessage);
+  wireFilePreview("adnnDirectChatFile", "adnnDirectChatFileName");
+}
+
+function startDirectChats(user) {
+  if (!user?.uid) return;
+  installDirectChatPanel();
+  if (directChatsUnsubscribe) directChatsUnsubscribe();
+  const directQuery = query(collection(db, "chats"), where("participantUids", "array-contains", user.uid));
+  directChatsUnsubscribe = onSnapshot(directQuery, (snapshot) => {
+    const chats = snapshot.docs
+      .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
+      .filter((chat) => chat.type === "direct")
+      .sort((a, b) => toMillis(b.updatedAt) - toMillis(a.updatedAt));
+    renderDirectChatList(chats);
+    if (activeDirectChatId && !chats.some((chat) => chat.id === activeDirectChatId)) closeDirectChatRoom();
+  }, () => renderDirectStatus("Approved contacts could not load."));
+}
+
+function stopDirectChats() {
+  if (directChatsUnsubscribe) directChatsUnsubscribe();
+  if (directMessagesUnsubscribe) directMessagesUnsubscribe();
+  directChatsUnsubscribe = null;
+  directMessagesUnsubscribe = null;
+  activeDirectChatId = "";
+  activeDirectChat = null;
+  knownDirectMessageIds = new Set();
+  firstDirectMessagesSnapshot = true;
+}
+
+function renderDirectChatList(chats) {
+  const list = document.getElementById("adnnDirectChatList");
+  if (!list) return;
+  list.innerHTML = "";
+  if (!chats.length) {
+    list.innerHTML = `<div class="adnn-chat-empty">No approved contacts yet.</div>`;
+    return;
+  }
+  chats.forEach((chat) => {
+    const other = getDirectOtherUser(chat);
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "adnn-direct-card";
+    button.dataset.chatId = chat.id;
+    button.classList.toggle("is-active", chat.id === activeDirectChatId);
+    button.innerHTML = `<strong>${escapeHtml(other.name)}</strong><small>${escapeHtml(chat.lastMessage || other.email || "Open direct chat")}</small>`;
+    button.addEventListener("click", () => selectDirectChat(chat));
+    list.appendChild(button);
+  });
+}
+
+function renderDirectStatus(text) {
+  const list = document.getElementById("adnnDirectChatList");
+  if (list) list.innerHTML = `<div class="adnn-chat-empty">${escapeHtml(text)}</div>`;
+}
+
+function selectDirectChat(chat) {
+  activeDirectChatId = chat.id;
+  activeDirectChat = chat;
+  document.querySelectorAll(".adnn-direct-card").forEach((el) => el.classList.toggle("is-active", el.dataset.chatId === chat.id));
+  const room = document.getElementById("adnnDirectRoom");
+  if (room) room.hidden = false;
+  if (directMessagesUnsubscribe) directMessagesUnsubscribe();
+  firstDirectMessagesSnapshot = true;
+  knownDirectMessageIds = new Set();
+  directMessagesUnsubscribe = onSnapshot(collection(db, "chats", chat.id, "messages"), (snapshot) => {
+    const messages = snapshot.docs
+      .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
+      .sort((a, b) => toMillis(a.createdAt) - toMillis(b.createdAt));
+    const nextIds = new Set(messages.map((message) => message.id));
+    const incoming = !firstDirectMessagesSnapshot
+      ? messages.filter((message) => message.senderUid !== activeUser?.uid && !knownDirectMessageIds.has(message.id))
+      : [];
+    firstDirectMessagesSnapshot = false;
+    knownDirectMessageIds = nextIds;
+    renderDirectMessages(messages);
+    if (incoming.length) showChatAlert(incoming[incoming.length - 1], "Direct message");
+  });
+}
+
+function closeDirectChatRoom() {
+  if (directMessagesUnsubscribe) directMessagesUnsubscribe();
+  directMessagesUnsubscribe = null;
+  activeDirectChatId = "";
+  activeDirectChat = null;
+  const room = document.getElementById("adnnDirectRoom");
+  if (room) room.hidden = true;
+}
+
+function renderDirectMessages(messages) {
+  const wrap = document.getElementById("adnnDirectMessages");
+  if (!wrap) return;
+  wrap.innerHTML = "";
+  if (!messages.length) {
+    wrap.innerHTML = `<div class="adnn-chat-empty">No direct messages yet.</div>`;
+    return;
+  }
+  messages.forEach((message) => wrap.appendChild(messageBubble(message, message.senderUid === activeUser?.uid, activeDirectChatId)));
+  wrap.scrollTop = wrap.scrollHeight;
+}
+
+async function sendDirectMessage(event) {
+  event.preventDefault();
+  if (!activeUser || !activeDirectChatId) return;
+  const input = document.getElementById("adnnDirectChatInput");
+  const fileInput = document.getElementById("adnnDirectChatFile");
+  const text = String(input?.value || "").trim();
+  const file = fileInput?.files?.[0] || null;
+  if (!text && !file) return;
+  const media = await uploadChatFile(file, activeDirectChatId).catch((error) => {
+    alert(`The media could not be attached. ${error?.message || "Try a smaller file."}`);
+    throw error;
+  });
+  const lastMessage = text || media.mediaName || "Media";
+  await addDoc(collection(db, "chats", activeDirectChatId, "messages"), {
+    text,
+    ...media,
+    senderUid: activeUser.uid,
+    senderEmail: emailKey(activeUser.email),
+    senderName: getOwnDirectName(activeDirectChat),
+    senderRole: "user",
+    createdAt: serverTimestamp()
+  });
+  await setDoc(doc(db, "chats", activeDirectChatId), {
+    lastMessage,
+    lastSenderUid: activeUser.uid,
+    updatedAt: serverTimestamp()
+  }, { merge: true });
+  input.value = "";
+  if (fileInput) fileInput.value = "";
+  clearFilePreview("adnnDirectChatFileName");
+}
+
+function getDirectOtherUser(chat) {
+  const uids = Array.isArray(chat?.participantUids) ? chat.participantUids : [];
+  const otherUid = uids.find((uid) => uid !== activeUser?.uid) || uids[0] || "";
+  const names = chat?.participantNames || {};
+  const emailMap = chat?.participantEmailMap || {};
+  return {
+    uid: otherUid,
+    name: names[otherUid] || emailMap[otherUid] || "Approved contact",
+    email: emailMap[otherUid] || ""
+  };
+}
+
+function getOwnDirectName(chat) {
+  const names = chat?.participantNames || {};
+  return names[activeUser?.uid] || activeUser?.displayName || activeUser?.email || "User";
+}
+
+function directChatId(uidA, uidB) {
+  return `direct_${sortedPair(uidA, uidB).join("_")}`;
+}
+
+function sortedPair(uidA, uidB) {
+  return [cleanUid(uidA), cleanUid(uidB)].sort();
+}
+
+function cleanUid(value) {
+  return String(value || "").trim().replace(/[^A-Za-z0-9_-]/g, "");
 }
 
 function renderAdminChatStatus(text) {
@@ -1005,9 +1268,15 @@ function installChatStyles() {
     .adnn-admin-chat-appbar > span { color:var(--adnn-muted); font-size:12px; font-family: var(--font-mono, monospace); }
     
     .adnn-admin-chat-grid { display:grid; grid-template-columns: minmax(280px, .35fr) minmax(0, 1fr); gap:0; margin:0; height:560px; min-height:0; }
-    .adnn-admin-chat-list, .adnn-admin-chat-room { min-height:0; border:0; border-radius:0; overflow:hidden; background: transparent; box-shadow:none; }
+    .adnn-admin-chat-list-wrap, .adnn-admin-chat-list, .adnn-admin-chat-room { min-height:0; border:0; border-radius:0; overflow:hidden; background: transparent; box-shadow:none; }
     
-    .adnn-admin-chat-list { display:block; overflow:auto; border-right:1px solid var(--adnn-line); padding:8px; }
+    .adnn-admin-chat-list-wrap { display:grid; grid-template-rows:auto minmax(0,1fr); border-right:1px solid var(--adnn-line); }
+    .adnn-admin-chat-list { display:block; overflow:auto; padding:8px; }
+    .adnn-connection-form { display:grid; gap:8px; padding:12px; border-bottom:1px solid var(--adnn-line); }
+    .adnn-connection-form strong { color:var(--adnn-text); font-size:14px; font-weight:500; }
+    .adnn-connection-form small, .adnn-connection-form span { color:var(--adnn-muted); font-size:11px; line-height:1.35; }
+    .adnn-connection-form input { min-width:0; height:36px; border:1px solid var(--adnn-line); border-radius:12px; padding:0 11px; background:rgba(0,0,0,.2); color:var(--adnn-text); outline:0; }
+    .adnn-connection-form button { height:38px; border:0; border-radius:12px; background:var(--adnn-accent); color:#fff; cursor:pointer; }
     .adnn-admin-chat-item { width:100%; min-height:64px; border:0; border-radius:16px; padding:10px 12px 10px 64px; display:grid; grid-template-columns:minmax(0,1fr) auto; gap:10px; align-items:center; color:var(--adnn-text); background:transparent; text-align:left; cursor:pointer; position:relative; margin-bottom: 4px; }
     .adnn-admin-chat-item::before { content:""; position:absolute; left:12px; top:50%; width:40px; height:40px; border-radius:50%; transform:translateY(-50%); background: rgba(255,255,255,0.06); border: 1px solid var(--adnn-line); }
     .adnn-admin-chat-item::after { content:""; position:absolute; left:42px; bottom:14px; width:8px; height:8px; border-radius:50%; background: var(--adnn-accent); border:2px solid rgba(22, 22, 26, 1); display: none; }
@@ -1028,6 +1297,18 @@ function installChatStyles() {
     .adnn-admin-chat-title-text strong { display:block; font-size:16px; font-weight:400; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; letter-spacing: -0.01em; }
     .adnn-admin-chat-title-text small { display:block; margin-top:2px; color:var(--adnn-muted); font-size:11px; font-family: var(--font-mono, monospace); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     
+    #clientChatMount.has-direct-chat { height:auto !important; grid-template-rows:auto auto !important; gap:18px; border:0 !important; overflow:visible !important; }
+    .adnn-direct-chat-panel { margin-bottom:18px; border:1px solid var(--adnn-line); border-radius:24px; overflow:hidden; background:transparent; color:var(--adnn-text); }
+    .adnn-direct-chat-panel header { display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:62px; padding:14px 16px; border-bottom:1px solid var(--adnn-line); }
+    .adnn-direct-chat-panel header strong { display:block; font-size:16px; font-weight:500; }
+    .adnn-direct-chat-panel header small { display:block; margin-top:3px; color:var(--adnn-muted); font-size:11px; }
+    .adnn-direct-chat-list { display:flex; gap:10px; overflow:auto; padding:12px; border-bottom:1px solid var(--adnn-line); }
+    .adnn-direct-card { min-width:190px; max-width:240px; border:1px solid var(--adnn-line); border-radius:18px; padding:12px; background:rgba(255,255,255,.04); color:var(--adnn-text); text-align:left; cursor:pointer; }
+    .adnn-direct-card.is-active { border-color:rgba(83,96,255,.7); background:rgba(39,45,207,.16); }
+    .adnn-direct-card strong, .adnn-direct-card small { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .adnn-direct-card small { margin-top:5px; color:var(--adnn-muted); }
+    .adnn-direct-room { display:grid; grid-template-rows:minmax(260px, 420px) auto; min-height:360px; }
+    .adnn-direct-room[hidden] { display:none !important; }
     .adnn-designer-chat-panel { margin-top:34px; min-height:440px; display:grid; grid-template-rows:minmax(320px,1fr) auto; border:1px solid var(--adnn-line); border-radius:24px; overflow:hidden; background: transparent; }
 
     :root.light-theme {
@@ -1046,9 +1327,10 @@ function installChatStyles() {
       .adnn-admin-chat-panel { height:calc(100vh - 89px); min-height:0; border-radius:0 !important; margin:0 calc(-1 * clamp(16px, 3.5vw, 44px)); border-left:0 !important; border-right:0 !important; border-bottom: 0 !important; }
       .adnn-admin-chat-appbar { display:none; }
       .adnn-admin-chat-grid { height:100%; grid-template-columns:1fr; }
-      .adnn-admin-chat-list { border-right:0; height:100%; display:block; }
+      .adnn-admin-chat-list-wrap { border-right:0; height:100%; }
+      .adnn-admin-chat-list { height:100%; display:block; }
       .adnn-admin-chat-room { height:100%; display:none; border-left: 0; }
-      body.adnn-admin-chat-open .adnn-admin-chat-list { display:none; }
+      body.adnn-admin-chat-open .adnn-admin-chat-list-wrap { display:none; }
       body.adnn-admin-chat-open .adnn-admin-chat-room { display:grid; }
       .adnn-admin-chat-back { display:grid; }
       .adnn-admin-chat-title { min-height:60px; padding:0 12px; gap:10px; }

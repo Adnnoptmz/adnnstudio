@@ -11,6 +11,7 @@ import {
   getDoc,
   getFirestore,
   increment,
+  arrayUnion,
   onSnapshot,
   query,
   serverTimestamp,
@@ -51,6 +52,11 @@ let knownClientMessageIds = new Set();
 let knownAdminMessageIds = new Set();
 let knownDesignerMessageIds = new Set();
 let chatAudio = null;
+let clientChatMode = "support";
+let designerChatMode = "lounge";
+let selectedClientPeer = null;
+let selectedDesignerPeer = null;
+let userDirectoryUnsubscribes = [];
 
 if (auth && db) {
   installChatStyles();
@@ -142,6 +148,7 @@ function installClientChatShell() {
       </div>
       <button type="button" class="adnn-chat-close" aria-label="Close chat">×</button>
     </div>
+    <div class="adnn-peer-list" id="adnnClientPeerList"></div>
     <div class="adnn-chat-messages" id="adnnChatMessages">
       <div class="adnn-chat-empty">No messages yet.</div>
     </div>
@@ -202,6 +209,8 @@ function updateClientChatVisibility(user) {
 }
 
 async function ensureClientChat(user) {
+  clientChatMode = "support";
+  selectedClientPeer = null;
   clientChatId = supportChatId(user.uid);
   const ref = doc(db, "chats", clientChatId);
   await setDoc(ref, {
@@ -222,13 +231,24 @@ async function ensureClientChat(user) {
 
 function startClientChat(user) {
   stopClientChat();
+  clientChatMode = "support";
+  selectedClientPeer = null;
   clientChatId = supportChatId(user.uid);
   const chatRef = doc(db, "chats", clientChatId);
   clientChatUnsubscribe = onSnapshot(chatRef, (snap) => {
     const data = snap.data() || {};
     setClientUnread(data.unreadForClient || 0);
   });
+  subscribeClientMessages(user);
+  startUserDirectory(user, "client");
+  renderClientPeerSelection();
+  maybeOpenClientChatFromHash();
+}
 
+function subscribeClientMessages(user) {
+  if (clientMessagesUnsubscribe) clientMessagesUnsubscribe();
+  firstClientMessagesSnapshot = true;
+  knownClientMessageIds = new Set();
   const messagesQuery = query(collection(db, "chats", clientChatId, "messages"));
   clientMessagesUnsubscribe = onSnapshot(messagesQuery, (snapshot) => {
     const messages = snapshot.docs
@@ -241,10 +261,9 @@ function startClientChat(user) {
     firstClientMessagesSnapshot = false;
     knownClientMessageIds = nextIds;
     renderClientMessages(messages);
-    if (incoming.length) showChatAlert(incoming[incoming.length - 1], "New message");
+    if (incoming.length) showChatAlert(incoming[incoming.length - 1], clientChatMode === "direct" ? "User message" : "New message");
     if (document.getElementById("adnnChatDrawer")?.classList.contains("is-open")) markClientChatRead();
   });
-  maybeOpenClientChatFromHash();
 }
 
 function stopClientChat() {
@@ -255,7 +274,9 @@ function stopClientChat() {
   firstClientMessagesSnapshot = true;
   knownClientMessageIds = new Set();
   setClientUnread(0);
+  stopUserDirectory();
 }
+
 
 function openClientChat() {
   const drawer = document.getElementById("adnnChatDrawer");
@@ -279,7 +300,8 @@ async function sendClientMessage(event) {
   const text = String(input?.value || "").trim();
   const file = fileInput?.files?.[0] || null;
   if (!text && !file) return;
-  await ensureClientChat(activeUser);
+  if (clientChatMode === "support") await ensureClientChat(activeUser);
+  else if (selectedClientPeer) await ensureDirectChat(activeUser, selectedClientPeer, "client");
   const media = await uploadChatFile(file, clientChatId).catch((error) => {
     alert(`The media could not be attached. ${error?.message || "Try a smaller file."}`);
     throw error;
@@ -294,12 +316,14 @@ async function sendClientMessage(event) {
     senderRole: "client",
     createdAt: serverTimestamp()
   });
-  await setDoc(doc(db, "chats", clientChatId), {
+  const chatUpdate = {
     lastMessage,
     lastSenderUid: activeUser.uid,
-    updatedAt: serverTimestamp(),
-    unreadForAdmin: increment(1)
-  }, { merge: true });
+    updatedAt: serverTimestamp()
+  };
+  if (clientChatMode === "support") chatUpdate.unreadForAdmin = increment(1);
+  else chatUpdate.unreadForPeer = increment(1);
+  await setDoc(doc(db, "chats", clientChatId), chatUpdate, { merge: true });
   input.value = "";
   if (fileInput) fileInput.value = "";
   clearFilePreview("adnnChatFileName");
@@ -459,6 +483,7 @@ function installDesignerChatPanel() {
   panel.id = "adnnDesignerChatPanel";
   panel.className = "adnn-designer-chat-panel";
   panel.innerHTML = `
+    <div class="adnn-peer-list" id="adnnDesignerPeerList"></div>
     <div class="adnn-chat-messages" id="adnnDesignerMessages">
       <div class="adnn-chat-empty">Sign in to open designer chat.</div>
     </div>
@@ -486,6 +511,9 @@ async function getDesignerProfile(user) {
 }
 
 async function ensureDesignerRoom(user, designer) {
+  designerChatMode = "lounge";
+  selectedDesignerPeer = null;
+  designerChatId = "designer_lounge";
   const ref = doc(db, "chats", designerChatId);
   await setDoc(ref, {
     type: "designer-room",
@@ -501,6 +529,18 @@ async function ensureDesignerRoom(user, designer) {
 function startDesignerChat(user, designer) {
   stopDesignerChat();
   activeDesignerProfile = designer;
+  designerChatMode = "lounge";
+  selectedDesignerPeer = null;
+  designerChatId = "designer_lounge";
+  startUserDirectory(user, "designer");
+  renderDesignerPeerSelection();
+  subscribeDesignerMessages(user);
+}
+
+function subscribeDesignerMessages(user) {
+  if (designerMessagesUnsubscribe) designerMessagesUnsubscribe();
+  firstDesignerMessagesSnapshot = true;
+  knownDesignerMessageIds = new Set();
   designerMessagesUnsubscribe = onSnapshot(collection(db, "chats", designerChatId, "messages"), (snapshot) => {
     const messages = snapshot.docs
       .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
@@ -512,7 +552,7 @@ function startDesignerChat(user, designer) {
     firstDesignerMessagesSnapshot = false;
     knownDesignerMessageIds = nextIds;
     renderDesignerMessages(messages);
-    if (incoming.length) showChatAlert(incoming[incoming.length - 1], "Designer chat");
+    if (incoming.length) showChatAlert(incoming[incoming.length - 1], designerChatMode === "direct" ? "User message" : "Designer chat");
   }, () => {
     renderDesignerChatStatus("Designer chat could not load.");
   });
@@ -524,14 +564,16 @@ function stopDesignerChat() {
   activeDesignerProfile = null;
   firstDesignerMessagesSnapshot = true;
   knownDesignerMessageIds = new Set();
+  stopUserDirectory();
 }
+
 
 function renderDesignerMessages(messages) {
   const wrap = document.getElementById("adnnDesignerMessages");
   if (!wrap) return;
   wrap.innerHTML = "";
   if (!messages.length) {
-    wrap.innerHTML = `<div class="adnn-chat-empty">No designer messages yet.</div>`;
+    wrap.innerHTML = `<div class="adnn-chat-empty">No messages yet.</div>`;
     return;
   }
   messages.forEach((message) => wrap.appendChild(messageBubble(message, message.senderUid === activeUser?.uid, designerChatId)));
@@ -552,6 +594,8 @@ async function sendDesignerMessage(event) {
   const text = String(input?.value || "").trim();
   const file = fileInput?.files?.[0] || null;
   if (!text && !file) return;
+  if (designerChatMode === "lounge") await ensureDesignerRoom(activeUser, activeDesignerProfile || {});
+  else if (selectedDesignerPeer) await ensureDirectChat(activeUser, selectedDesignerPeer, "designer");
   const media = await uploadChatFile(file, designerChatId).catch((error) => {
     alert(`The media could not be attached. ${error?.message || "Try a smaller file."}`);
     throw error;
@@ -566,11 +610,14 @@ async function sendDesignerMessage(event) {
     senderRole: "designer",
     createdAt: serverTimestamp()
   });
-  await setDoc(doc(db, "chats", designerChatId), {
+  const chatUpdate = {
     lastMessage,
     lastSenderUid: activeUser.uid,
     updatedAt: serverTimestamp()
-  }, { merge: true });
+  };
+  if (designerChatMode === "lounge") chatUpdate.unreadForAdmin = increment(1);
+  else chatUpdate.unreadForPeer = increment(1);
+  await setDoc(doc(db, "chats", designerChatId), chatUpdate, { merge: true });
   input.value = "";
   if (fileInput) fileInput.value = "";
   clearFilePreview("adnnDesignerChatFileName");
@@ -597,7 +644,7 @@ function renderAdminChatList(chats) {
     button.classList.toggle("is-active", chat.id === selectedAdminChatId);
     const unread = Number(chat.unreadForAdmin) || 0;
     const label = chat.title || chat.clientName || chat.clientEmail || "Chat";
-    const preview = chat.lastMessage || chat.clientEmail || "No messages yet";
+    const preview = chat.lastMessage || chat.lastClientEmail || chat.clientEmail || "No messages yet";
     button.innerHTML = `
       <span>
         <strong>${escapeHtml(label)}</strong>
@@ -619,7 +666,7 @@ function selectAdminChat(chat) {
   if (adminTitleEl) adminTitleEl.textContent = chatLabel;
 
   const adminSubEl = document.getElementById("adnnAdminChatSubtitle");
-  if (adminSubEl) adminSubEl.textContent = chat.clientEmail || (chat.type === "designer-room" ? "Designer lounge" : "online");
+  if (adminSubEl) adminSubEl.textContent = chat.clientEmail || chat.lastClientEmail || (chat.type === "all-users-room" ? "Account + Designer users" : (chat.type === "designer-room" ? "Designer lounge" : "online"));
 
   const avatarEl = document.getElementById("adnnAdminChatAvatar");
   if (avatarEl) {
@@ -641,7 +688,7 @@ function selectAdminChat(chat) {
     firstAdminMessagesSnapshot = false;
     knownAdminMessageIds = nextIds;
     renderAdminMessages(messages);
-    if (incoming.length) showChatAlert(incoming[incoming.length - 1], "Client message");
+    if (incoming.length) showChatAlert(incoming[incoming.length - 1], "User message");
   });
   setDoc(doc(db, "chats", chat.id), { unreadForAdmin: 0 }, { merge: true }).catch(() => {});
 }
@@ -1028,7 +1075,13 @@ function installChatStyles() {
     .adnn-admin-chat-title-text strong { display:block; font-size:16px; font-weight:400; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; letter-spacing: -0.01em; }
     .adnn-admin-chat-title-text small { display:block; margin-top:2px; color:var(--adnn-muted); font-size:11px; font-family: var(--font-mono, monospace); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     
-    .adnn-designer-chat-panel { margin-top:34px; min-height:440px; display:grid; grid-template-rows:minmax(320px,1fr) auto; border:1px solid var(--adnn-line); border-radius:24px; overflow:hidden; background: transparent; }
+    .adnn-designer-chat-panel { margin-top:34px; min-height:440px; display:grid; grid-template-rows:auto minmax(320px,1fr) auto; border:1px solid var(--adnn-line); border-radius:24px; overflow:hidden; background: transparent; }
+    .adnn-peer-list { display:flex; gap:8px; overflow-x:auto; padding:10px; border-bottom:1px solid var(--adnn-line); background:rgba(255,255,255,.025); }
+    .adnn-peer-chip { flex:0 0 auto; min-height:34px; border:1px solid var(--adnn-line); border-radius:999px; padding:0 12px; background:rgba(255,255,255,.05); color:var(--adnn-text); font-family:var(--font-mono, ui-monospace, monospace); font-size:11px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; }
+    .adnn-peer-chip strong { font-weight:500; }
+    .adnn-peer-chip small { color:var(--adnn-muted); text-transform:capitalize; }
+    .adnn-peer-chip.is-active { background:var(--accent, #272dcf); color:#fff; border-color:transparent; }
+    .adnn-peer-chip.is-active small { color:rgba(255,255,255,.72); }
 
     :root.light-theme {
       --adnn-muted: rgba(11, 11, 13, 0.62);
@@ -1071,6 +1124,146 @@ function initialsFromName(value) {
   const first = parts[0]?.[0] || "A";
   const second = (parts.length > 1 ? parts[1]?.[0] : parts[0]?.[1]) || "D";
   return `${first}${second}`.toUpperCase();
+}
+
+
+function startUserDirectory(user, mode) {
+  stopUserDirectory();
+  const render = () => mode === "designer" ? renderDesignerPeerSelection() : renderClientPeerSelection();
+  window.adnnChatDirectory = { clients: [], designers: [] };
+  userDirectoryUnsubscribes = [
+    onSnapshot(collection(db, "clients"), (snapshot) => {
+      window.adnnChatDirectory.clients = snapshot.docs.map((snap) => normalizeDirectoryUser(snap, "client"));
+      render();
+    }, () => render()),
+    onSnapshot(collection(db, "designers"), (snapshot) => {
+      window.adnnChatDirectory.designers = snapshot.docs.map((snap) => normalizeDirectoryUser(snap, "designer"));
+      render();
+    }, () => render())
+  ];
+}
+
+function stopUserDirectory() {
+  userDirectoryUnsubscribes.forEach((unsubscribe) => {
+    if (typeof unsubscribe === "function") unsubscribe();
+  });
+  userDirectoryUnsubscribes = [];
+}
+
+function normalizeDirectoryUser(docSnap, role) {
+  const data = docSnap.data() || {};
+  const email = emailKey(data.email || data.authEmail || data.displayEmail || "");
+  return {
+    uid: data.uid || data.authUid || data.userUid || docSnap.id,
+    email,
+    name: data.name || data.displayName || data.clientName || data.designerName || data.displayEmail || data.email || data.authEmail || (role === "designer" ? "Designer" : "Account"),
+    role
+  };
+}
+
+function getAvailableChatUsers() {
+  const directory = window.adnnChatDirectory || { clients: [], designers: [] };
+  const currentUid = activeUser?.uid || "";
+  const currentEmail = emailKey(activeUser?.email);
+  const merged = [...(directory.clients || []), ...(directory.designers || [])]
+    .filter((item) => item.uid && item.uid !== currentUid && emailKey(item.email) !== currentEmail);
+  const seen = new Set();
+  return merged.filter((item) => {
+    const key = item.uid || item.email;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).sort((a, b) => String(a.name || a.email).localeCompare(String(b.name || b.email)));
+}
+
+function renderClientPeerSelection() {
+  const wrap = document.getElementById("adnnClientPeerList");
+  if (!wrap) return;
+  renderPeerButtons(wrap, "client");
+}
+
+function renderDesignerPeerSelection() {
+  const wrap = document.getElementById("adnnDesignerPeerList");
+  if (!wrap) return;
+  renderPeerButtons(wrap, "designer");
+}
+
+function renderPeerButtons(wrap, mode) {
+  const users = getAvailableChatUsers();
+  const defaultLabel = mode === "designer" ? "Designer Lounge" : "Admin Support";
+  const activeDefault = mode === "designer" ? designerChatMode === "lounge" : clientChatMode === "support";
+  wrap.innerHTML = "";
+  const defaultButton = document.createElement("button");
+  defaultButton.type = "button";
+  defaultButton.className = `adnn-peer-chip${activeDefault ? " is-active" : ""}`;
+  defaultButton.textContent = defaultLabel;
+  defaultButton.addEventListener("click", () => mode === "designer" ? openDesignerLounge() : openClientSupport());
+  wrap.appendChild(defaultButton);
+  users.forEach((peer) => {
+    const active = mode === "designer" ? selectedDesignerPeer?.uid === peer.uid : selectedClientPeer?.uid === peer.uid;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `adnn-peer-chip${active ? " is-active" : ""}`;
+    button.innerHTML = `<strong>${escapeHtml(peer.name || peer.email || "User")}</strong><small>${escapeHtml(peer.role)}</small>`;
+    button.addEventListener("click", () => mode === "designer" ? openDesignerDirectChat(peer) : openClientDirectChat(peer));
+    wrap.appendChild(button);
+  });
+}
+
+async function openClientSupport() {
+  if (!activeUser) return;
+  await ensureClientChat(activeUser).catch(() => {});
+  subscribeClientMessages(activeUser);
+  renderClientPeerSelection();
+}
+
+async function openClientDirectChat(peer) {
+  if (!activeUser || !peer?.uid) return;
+  clientChatMode = "direct";
+  selectedClientPeer = peer;
+  clientChatId = directChatId(activeUser.uid, peer.uid);
+  await ensureDirectChat(activeUser, peer, "client").catch(() => {});
+  subscribeClientMessages(activeUser);
+  renderClientPeerSelection();
+}
+
+async function openDesignerLounge() {
+  if (!activeUser) return;
+  await ensureDesignerRoom(activeUser, activeDesignerProfile || {}).catch(() => {});
+  subscribeDesignerMessages(activeUser);
+  renderDesignerPeerSelection();
+}
+
+async function openDesignerDirectChat(peer) {
+  if (!activeUser || !peer?.uid) return;
+  designerChatMode = "direct";
+  selectedDesignerPeer = peer;
+  designerChatId = directChatId(activeUser.uid, peer.uid);
+  await ensureDirectChat(activeUser, peer, "designer").catch(() => {});
+  subscribeDesignerMessages(activeUser);
+  renderDesignerPeerSelection();
+}
+
+async function ensureDirectChat(user, peer, senderRole) {
+  const chatId = directChatId(user.uid, peer.uid);
+  const currentName = senderRole === "designer"
+    ? (activeDesignerProfile?.name || user.displayName || user.email || "Designer")
+    : (user.displayName || user.email || "Client");
+  await setDoc(doc(db, "chats", chatId), {
+    type: "direct",
+    title: `${currentName} / ${peer.name || peer.email || "User"}`,
+    participantUids: arrayUnion(user.uid, peer.uid),
+    participantEmails: arrayUnion(emailKey(user.email), emailKey(peer.email)),
+    participantLabels: arrayUnion(currentName, peer.name || peer.email || "User"),
+    adminEmail: ADMIN_EMAIL,
+    updatedAt: serverTimestamp(),
+    createdAt: serverTimestamp()
+  }, { merge: true });
+  return chatId;
+}
+
+function directChatId(uidA, uidB) {
+  return `direct_${[uidA, uidB].map((value) => String(value || "").replace(/[^a-zA-Z0-9_-]/g, "")).sort().join("_")}`;
 }
 
 function supportChatId(uid) {

@@ -394,11 +394,13 @@ function installAdminChatPanel() {
       selectedAdminChatId = "";
       selectedAdminChat = null;
       const titleEl = document.getElementById("adnnAdminChatTitle");
-      if (titleEl) titleEl.textContent = "Select a client";
+      if (titleEl) titleEl.textContent = "";
       const subtitleEl = document.getElementById("adnnAdminChatSubtitle");
-      if (subtitleEl) subtitleEl.textContent = "Choose a chat to reply";
+      if (subtitleEl) subtitleEl.textContent = "";
+      const avatarEl = document.getElementById("adnnAdminChatAvatar");
+      if (avatarEl) avatarEl.style.visibility = "hidden";
       const msgWrap = document.getElementById("adnnAdminMessages");
-      if (msgWrap) msgWrap.innerHTML = '<div class="adnn-chat-empty">Choose a chat to reply.</div>';
+      if (msgWrap) msgWrap.innerHTML = '<div class="adnn-chat-version-placeholder">studiochat v.1.0</div>';
       document.querySelectorAll(".adnn-admin-chat-item").forEach(el => el.classList.remove("is-active"));
       if (adminMessagesUnsubscribe) { adminMessagesUnsubscribe(); adminMessagesUnsubscribe = null; }
       
@@ -601,9 +603,13 @@ function selectAdminChat(chat) {
   selectedAdminChatId = chat.id;
   selectedAdminChat = chat;
   const chatLabel = chat.title || chat.clientName || chat.clientEmail || "Client";
-  document.getElementById("adnnAdminChatTitle").textContent = chatLabel;
-  document.getElementById("adnnAdminChatSubtitle").textContent = chat.clientEmail || (chat.type === "designer-room" ? "Designer lounge" : "online");
-  document.getElementById("adnnAdminChatAvatar").textContent = initialsFromName(chatLabel);
+  document.getElementById("adnnAdminChatTitle").textContent = chatLabel[cite: 4];
+  document.getElementById("adnnAdminChatSubtitle").textContent = chat.clientEmail || (chat.type === "designer-room" ? "Designer lounge" : "online")[cite: 4];
+  const avatarEl = document.getElementById("adnnAdminChatAvatar");
+  if (avatarEl) {
+    avatarEl.textContent = initialsFromName(chatLabel);
+    avatarEl.style.visibility = "visible";
+  }
   document.body.classList.add("adnn-admin-chat-open");
   if (adminMessagesUnsubscribe) adminMessagesUnsubscribe();
   firstAdminMessagesSnapshot = true;

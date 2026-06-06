@@ -347,10 +347,10 @@ function installAdminChatPanel() {
       <div class="adnn-admin-chat-room" id="adnnAdminChatRoom">
         <div class="adnn-admin-chat-title">
           <button type="button" class="adnn-admin-chat-back" id="adnnAdminChatBack" aria-label="Back to chats">‹</button>
-          <span class="adnn-admin-chat-avatar" id="adnnAdminChatAvatar" style="visibility:hidden;">AD</span>
+          <span class="adnn-admin-chat-avatar" id="adnnAdminChatAvatar" style="display: none;"></span>
           <span class="adnn-admin-chat-title-text">
-            <strong id="adnnAdminChatTitle">&nbsp;</strong>
-            <small id="adnnAdminChatSubtitle">&nbsp;</small>
+            <strong id="adnnAdminChatTitle"></strong>
+            <small id="adnnAdminChatSubtitle"></small>
           </span>
         </div>
         <div class="adnn-chat-messages" id="adnnAdminMessages">
@@ -393,12 +393,15 @@ function installAdminChatPanel() {
       }
       selectedAdminChatId = "";
       selectedAdminChat = null;
-      const titleEl = document.getElementById("adnnAdminChatTitle");
+     const titleEl = document.getElementById("adnnAdminChatTitle");
       if (titleEl) titleEl.textContent = "";
       const subtitleEl = document.getElementById("adnnAdminChatSubtitle");
       if (subtitleEl) subtitleEl.textContent = "";
       const avatarEl = document.getElementById("adnnAdminChatAvatar");
-      if (avatarEl) avatarEl.style.visibility = "hidden";
+      if (avatarEl) {
+        avatarEl.style.display = "none";
+        avatarEl.textContent = "";
+      }
       const msgWrap = document.getElementById("adnnAdminMessages");
       if (msgWrap) msgWrap.innerHTML = '<div class="adnn-chat-version-placeholder">studiochat v.1.0</div>';
       document.querySelectorAll(".adnn-admin-chat-item").forEach(el => el.classList.remove("is-active"));
@@ -603,9 +606,18 @@ function selectAdminChat(chat) {
   selectedAdminChatId = chat.id;
   selectedAdminChat = chat;
   const chatLabel = chat.title || chat.clientName || chat.clientEmail || "Client";
-  document.getElementById("adnnAdminChatTitle").textContent = chatLabel;
-  document.getElementById("adnnAdminChatSubtitle").textContent = chat.clientEmail || (chat.type === "designer-room" ? "Designer lounge" : "online");
-  document.getElementById("adnnAdminChatAvatar").textContent = initialsFromName(chatLabel);
+  
+  const adminTitleEl = document.getElementById("adnnAdminChatTitle");
+  if (adminTitleEl) adminTitleEl.textContent = chatLabel;
+
+  const adminSubEl = document.getElementById("adnnAdminChatSubtitle");
+  if (adminSubEl) adminSubEl.textContent = chat.clientEmail || (chat.type === "designer-room" ? "Designer lounge" : "online");
+
+  const avatarEl = document.getElementById("adnnAdminChatAvatar");
+  if (avatarEl) {
+    avatarEl.textContent = initialsFromName(chatLabel);
+    avatarEl.style.display = "grid";
+  }
   document.body.classList.add("adnn-admin-chat-open");
   if (adminMessagesUnsubscribe) adminMessagesUnsubscribe();
   firstAdminMessagesSnapshot = true;

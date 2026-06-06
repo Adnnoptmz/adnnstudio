@@ -63,17 +63,7 @@ if (auth && db) {
   installChatStyles();
   installClientChatShell();
   if (location.pathname.includes("admin.html")) installAdminChatPanel();
-  if (location.pathname.includes("designer-account.html")) installDesignerChatPanel();
-  window.addEventListener("adnnDesignerFirebaseReady", () => {
-    if (location.pathname.includes("designer-account.html") && auth.currentUser) {
-      getDesignerProfile(auth.currentUser).then((designer) => {
-        if (!designer) return;
-        ensureDesignerRoom(auth.currentUser, designer).catch(() => {});
-        startDesignerChat(auth.currentUser, designer);
-      }).catch(() => {});
-    }
-  });
-
+  // Designer/admin support now uses the shared support panel; user-to-user chats stay in the normal chat view.
   onAuthStateChanged(auth, async (user) => {
     activeUser = user;
     updateClientChatVisibility(user);
@@ -91,17 +81,12 @@ if (auth && db) {
     }
 
     if (location.pathname.includes("designer-account.html")) {
-      stopClientChat();
       const designer = await getDesignerProfile(user).catch(() => null);
-      if (designer) {
-        await ensureDesignerRoom(user, designer).catch(() => {});
-        startDesignerChat(user, designer);
-        startDirectChats(user);
-      } else {
-        activeDesignerProfile = null;
-        renderDesignerChatStatus("Sign in to open designer chat.");
-        startDirectChats(user);
-      }
+      activeDesignerProfile = designer || null;
+      await ensureClientChat(user).catch(() => {});
+      startClientChat(user);
+      stopDesignerChat();
+      startDirectChats(user);
       return;
     }
 
@@ -148,7 +133,7 @@ function installClientChatShell() {
   drawer.innerHTML = `
     <div class="adnn-chat-head">
       <div>
-        <span>Private chat</span>
+        <span>Admin Support</span>
         <strong>AdnnStudio</strong>
       </div>
       <button type="button" class="adnn-chat-close" aria-label="Close chat">×</button>
@@ -162,7 +147,7 @@ function installClientChatShell() {
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
         <span class="adnn-chat-file-name" id="adnnChatFileName" hidden></span>
       </label>
-      <input id="adnnChatInput" autocomplete="off" maxlength="1800" placeholder="Type a message">
+      <input id="adnnChatInput" autocomplete="off" maxlength="1800" placeholder="Message admin support">
       <button type="submit" aria-label="Send message">
         <svg viewBox="0 0 24 24" fill="currentColor" style="width: 14px; height: 14px; display: block;">
   <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
@@ -186,11 +171,11 @@ function installClientChatShell() {
       return;
     }
     if ((activeDesignerProfile || getCachedDesignerUser()) && !location.pathname.includes("designer-account.html")) {
-      location.href = "designer-account.html#chat";
+      location.href = "designer-account.html#admin-support";
       return;
     }
     if (isPublicIndexPage()) {
-      location.href = "account.html#chat";
+      location.href = "account.html#admin-support";
       return;
     }
     openClientChat();
@@ -451,6 +436,7 @@ async function startAdminChat() {
   adminChatsUnsubscribe = onSnapshot(collection(db, "chats"), (snapshot) => {
     const chats = snapshot.docs
       .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
+      .filter((chat) => chat.type !== "direct")
       .sort((a, b) => toMillis(b.updatedAt) - toMillis(a.updatedAt));
     renderAdminChatList(chats);
   }, () => renderAdminChatStatus("Could not load chats."));
@@ -730,19 +716,19 @@ async function createAdminConnectionCard(event) {
 
 function installDirectChatPanel() {
   if (document.getElementById("adnnDirectChatPanel")) return;
-  const accountMount = document.getElementById("clientChatMount");
+  const directMount = document.getElementById("directChatMount");
   const designerView = document.getElementById("chat");
-  const host = accountMount || designerView;
+  const host = directMount || designerView;
   if (!host) return;
-  if (accountMount) accountMount.classList.add("has-direct-chat");
+  if (directMount) directMount.classList.add("has-direct-chat");
   const panel = document.createElement("section");
   panel.id = "adnnDirectChatPanel";
   panel.className = "adnn-direct-chat-panel";
   panel.innerHTML = `
     <header>
       <div>
-        <strong>Approved contacts</strong>
-        <small>Only admin-created message cards appear here.</small>
+        <strong>User-to-user chats</strong>
+        <small>Only admin-approved contacts appear here.</small>
       </div>
     </header>
     <div class="adnn-direct-chat-list" id="adnnDirectChatList">
@@ -1459,8 +1445,8 @@ function getCachedDesignerUser() {
 }
 
 function maybeOpenClientChatFromHash() {
-  if (!activeUser || activeDesignerProfile || !location.pathname.includes("account.html")) return;
-  if (location.hash === "#chat") {
+  if (!activeUser || !(location.pathname.includes("account.html") || location.pathname.includes("designer-account.html"))) return;
+  if (location.hash === "#admin-support") {
     window.setTimeout(openClientChat, 180);
   }
 }

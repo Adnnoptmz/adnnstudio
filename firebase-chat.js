@@ -725,31 +725,47 @@ function installDirectChatPanel() {
   panel.id = "adnnDirectChatPanel";
   panel.className = "adnn-direct-chat-panel";
   panel.innerHTML = `
-    <header>
+    <div class="adnn-direct-chat-appbar">
       <div>
-        <strong>User-to-user chats</strong>
-        <small>Only admin-approved contacts appear here.</small>
+        <p>User chats</p>
+        <strong>Approved Contacts</strong>
       </div>
-    </header>
-    <div class="adnn-direct-chat-list" id="adnnDirectChatList">
-      <div class="adnn-chat-empty">No approved contacts yet.</div>
+      <span>Private Direct Messages</span>
     </div>
-    <div class="adnn-direct-room" id="adnnDirectRoom" hidden>
-      <div class="adnn-chat-messages" id="adnnDirectMessages"></div>
-      <form class="adnn-chat-form" id="adnnDirectChatForm">
-        <label class="adnn-chat-media" title="Add media" aria-label="Add media">
-          <input id="adnnDirectChatFile" type="file" accept="image/*,.pdf,.doc,.docx,.zip">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-          <span class="adnn-chat-file-name" id="adnnDirectChatFileName" hidden></span>
-        </label>
-        <input id="adnnDirectChatInput" autocomplete="off" maxlength="1800" placeholder="Message approved contact">
-        <button type="submit" aria-label="Send direct message">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12 20 5l-5.8 14-3-5.9L4 12Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
-        </button>
-      </form>
+    <div class="adnn-direct-chat-grid" id="adnnDirectChatGrid">
+      <div class="adnn-direct-chat-list-wrap">
+        <div class="adnn-direct-chat-list" id="adnnDirectChatList">
+          <div class="adnn-chat-empty">No approved contacts yet.</div>
+        </div>
+      </div>
+      <div class="adnn-direct-room" id="adnnDirectRoom">
+        <div class="adnn-direct-chat-title">
+          <button type="button" class="adnn-direct-chat-back" id="adnnDirectChatBack" aria-label="Back to contacts">‹</button>
+          <span class="adnn-direct-chat-avatar" id="adnnDirectChatAvatar" style="display:none;"></span>
+          <span class="adnn-direct-chat-title-text">
+            <strong id="adnnDirectChatTitle">Select a contact</strong>
+            <small id="adnnDirectChatSubtitle">Admin-approved user chats appear on the left.</small>
+          </span>
+        </div>
+        <div class="adnn-chat-messages" id="adnnDirectMessages">
+          <div class="adnn-chat-version-placeholder">Choose a contact to start messaging.</div>
+        </div>
+        <form class="adnn-chat-form" id="adnnDirectChatForm">
+          <label class="adnn-chat-media" title="Add media" aria-label="Add media">
+            <input id="adnnDirectChatFile" type="file" accept="image/*,.pdf,.doc,.docx,.zip">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            <span class="adnn-chat-file-name" id="adnnDirectChatFileName" hidden></span>
+          </label>
+          <input id="adnnDirectChatInput" autocomplete="off" maxlength="1800" placeholder="Message approved contact" disabled>
+          <button type="submit" aria-label="Send direct message" disabled>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12 20 5l-5.8 14-3-5.9L4 12Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+          </button>
+        </form>
+      </div>
     </div>`;
   host.insertBefore(panel, host.firstChild);
   document.getElementById("adnnDirectChatForm")?.addEventListener("submit", sendDirectMessage);
+  document.getElementById("adnnDirectChatBack")?.addEventListener("click", closeDirectChatRoom);
   wireFilePreview("adnnDirectChatFile", "adnnDirectChatFileName");
 }
 
@@ -791,10 +807,10 @@ function renderDirectChatList(chats) {
     const other = getDirectOtherUser(chat);
     const button = document.createElement("button");
     button.type = "button";
-    button.className = "adnn-direct-card";
+    button.className = "adnn-direct-chat-item";
     button.dataset.chatId = chat.id;
     button.classList.toggle("is-active", chat.id === activeDirectChatId);
-    button.innerHTML = `<strong>${escapeHtml(other.name)}</strong><small>${escapeHtml(chat.lastMessage || other.email || "Open direct chat")}</small>`;
+    button.innerHTML = `<span><strong>${escapeHtml(other.name)}</strong><small>${escapeHtml(chat.lastMessage || other.email || "Open direct chat")}</small></span>`;
     button.addEventListener("click", () => selectDirectChat(chat));
     list.appendChild(button);
   });
@@ -808,9 +824,24 @@ function renderDirectStatus(text) {
 function selectDirectChat(chat) {
   activeDirectChatId = chat.id;
   activeDirectChat = chat;
-  document.querySelectorAll(".adnn-direct-card").forEach((el) => el.classList.toggle("is-active", el.dataset.chatId === chat.id));
+  document.querySelectorAll(".adnn-direct-chat-item").forEach((el) => el.classList.toggle("is-active", el.dataset.chatId === chat.id));
+  document.body.classList.add("adnn-direct-chat-open");
+  const other = getDirectOtherUser(chat);
+  const title = document.getElementById("adnnDirectChatTitle");
+  const subtitle = document.getElementById("adnnDirectChatSubtitle");
+  const avatar = document.getElementById("adnnDirectChatAvatar");
+  const input = document.getElementById("adnnDirectChatInput");
+  const submit = document.querySelector("#adnnDirectChatForm button[type='submit']");
+  if (title) title.textContent = other.name || "Approved contact";
+  if (subtitle) subtitle.textContent = other.email || "Direct private chat";
+  if (avatar) {
+    avatar.textContent = initialsFromName(other.name || other.email || "AD");
+    avatar.style.display = "grid";
+  }
+  if (input) input.disabled = false;
+  if (submit) submit.disabled = false;
   const room = document.getElementById("adnnDirectRoom");
-  if (room) room.hidden = false;
+  if (room) room.classList.add("has-active-chat");
   if (directMessagesUnsubscribe) directMessagesUnsubscribe();
   firstDirectMessagesSnapshot = true;
   knownDirectMessageIds = new Set();
@@ -834,8 +865,22 @@ function closeDirectChatRoom() {
   directMessagesUnsubscribe = null;
   activeDirectChatId = "";
   activeDirectChat = null;
+  document.body.classList.remove("adnn-direct-chat-open");
+  document.querySelectorAll(".adnn-direct-chat-item").forEach((el) => el.classList.remove("is-active"));
   const room = document.getElementById("adnnDirectRoom");
-  if (room) room.hidden = true;
+  if (room) room.classList.remove("has-active-chat");
+  const wrap = document.getElementById("adnnDirectMessages");
+  if (wrap) wrap.innerHTML = `<div class="adnn-chat-version-placeholder">Choose a contact to start messaging.</div>`;
+  const title = document.getElementById("adnnDirectChatTitle");
+  const subtitle = document.getElementById("adnnDirectChatSubtitle");
+  const avatar = document.getElementById("adnnDirectChatAvatar");
+  const input = document.getElementById("adnnDirectChatInput");
+  const submit = document.querySelector("#adnnDirectChatForm button[type='submit']");
+  if (title) title.textContent = "Select a contact";
+  if (subtitle) subtitle.textContent = "Admin-approved user chats appear on the left.";
+  if (avatar) avatar.style.display = "none";
+  if (input) { input.value = ""; input.disabled = true; }
+  if (submit) submit.disabled = true;
 }
 
 function renderDirectMessages(messages) {
@@ -1370,17 +1415,32 @@ function installChatStyles() {
     .adnn-admin-chat-title-text small { display:block; margin-top:2px; color:var(--adnn-muted); font-size:11px; font-family: var(--font-mono, monospace); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     
     #clientChatMount.has-direct-chat { height:auto !important; grid-template-rows:auto auto !important; gap:18px; border:0 !important; overflow:visible !important; }
-    .adnn-direct-chat-panel { margin-bottom:18px; border:1px solid var(--adnn-line); border-radius:24px; overflow:hidden; background:transparent; color:var(--adnn-text); }
-    .adnn-direct-chat-panel header { display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:62px; padding:14px 16px; border-bottom:1px solid var(--adnn-line); }
-    .adnn-direct-chat-panel header strong { display:block; font-size:16px; font-weight:500; }
-    .adnn-direct-chat-panel header small { display:block; margin-top:3px; color:var(--adnn-muted); font-size:11px; }
-    .adnn-direct-chat-list { display:flex; gap:10px; overflow:auto; padding:12px; border-bottom:1px solid var(--adnn-line); }
-    .adnn-direct-card { min-width:190px; max-width:240px; border:1px solid var(--adnn-line); border-radius:18px; padding:12px; background:rgba(255,255,255,.04); color:var(--adnn-text); text-align:left; cursor:pointer; }
-    .adnn-direct-card.is-active { border-color:rgba(83,96,255,.7); background:rgba(39,45,207,.16); }
-    .adnn-direct-card strong, .adnn-direct-card small { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .adnn-direct-card small { margin-top:5px; color:var(--adnn-muted); }
-    .adnn-direct-room { display:grid; grid-template-rows:minmax(260px, 420px) auto; min-height:360px; }
-    .adnn-direct-room[hidden] { display:none !important; }
+    .adnn-direct-chat-panel { margin-bottom:18px; border:1px solid var(--adnn-line); border-radius:28px; overflow:hidden; background:transparent; color:var(--adnn-text); box-shadow:none; }
+    .adnn-direct-chat-appbar { height:72px; display:flex; align-items:center; justify-content:space-between; padding:0 24px; border-bottom:1px solid var(--adnn-line); }
+    .adnn-direct-chat-appbar p { margin:0; color:#5360ff; font-family:var(--font-mono, monospace); font-size:11px; letter-spacing:.16em; text-transform:uppercase; }
+    .adnn-direct-chat-appbar strong { display:block; margin-top:4px; font-size:22px; font-weight:400; letter-spacing:-.04em; }
+    .adnn-direct-chat-appbar > span { color:var(--adnn-muted); font-size:12px; font-family:var(--font-mono, monospace); }
+    .adnn-direct-chat-grid { display:grid; grid-template-columns:minmax(270px, .36fr) minmax(0, 1fr); height:560px; min-height:0; }
+    .adnn-direct-chat-list-wrap, .adnn-direct-chat-list, .adnn-direct-room { min-height:0; border:0; border-radius:0; overflow:hidden; background:transparent; box-shadow:none; }
+    .adnn-direct-chat-list-wrap { border-right:1px solid var(--adnn-line); }
+    .adnn-direct-chat-list { height:100%; display:block; overflow:auto; padding:8px; }
+    .adnn-direct-chat-item { width:100%; min-height:64px; border:0; border-radius:16px; padding:10px 12px 10px 64px; display:grid; grid-template-columns:minmax(0,1fr); align-items:center; color:var(--adnn-text); background:transparent; text-align:left; cursor:pointer; position:relative; margin-bottom:4px; }
+    .adnn-direct-chat-item::before { content:""; position:absolute; left:12px; top:50%; width:40px; height:40px; border-radius:50%; transform:translateY(-50%); background:rgba(255,255,255,.06); border:1px solid var(--adnn-line); }
+    .adnn-direct-chat-item::after { content:""; position:absolute; left:42px; bottom:14px; width:8px; height:8px; border-radius:50%; background:var(--adnn-accent); border:2px solid rgba(22,22,26,1); display:none; }
+    .adnn-direct-chat-item:hover, .adnn-direct-chat-item.is-active { background:rgba(255,255,255,.05); }
+    .adnn-direct-chat-item.is-active::after { display:block; }
+    .adnn-direct-chat-item strong, .adnn-direct-chat-item small { display:block; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .adnn-direct-chat-item strong { font-size:14px; font-weight:400; color:var(--adnn-text); }
+    .adnn-direct-chat-item small { margin-top:4px; color:var(--adnn-muted); font-size:12px; }
+    .adnn-direct-room { display:grid; grid-template-rows:64px minmax(0, 1fr) auto; border-left:1px solid var(--adnn-line); }
+    .adnn-direct-chat-title { min-height:64px; padding:0 20px; border-bottom:1px solid var(--adnn-line); display:flex; align-items:center; gap:14px; background:rgba(255,255,255,.01); }
+    .adnn-direct-chat-back { display:none; width:34px; height:34px; border:1px solid var(--adnn-line); border-radius:50%; background:rgba(255,255,255,.03); color:var(--adnn-text); font-size:24px; line-height:1; cursor:pointer; place-items:center; }
+    .adnn-direct-chat-avatar { width:40px; height:40px; border-radius:50%; display:grid; place-items:center; flex:0 0 auto; color:#fff; background:var(--adnn-accent); font-size:12px; font-family:var(--font-mono, monospace); font-weight:500; opacity:.85; }
+    .adnn-direct-chat-title-text { min-width:0; display:block; }
+    .adnn-direct-chat-title-text strong { display:block; font-size:16px; font-weight:400; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; letter-spacing:-.01em; }
+    .adnn-direct-chat-title-text small { display:block; margin-top:2px; color:var(--adnn-muted); font-size:11px; font-family:var(--font-mono, monospace); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .adnn-direct-room:not(.has-active-chat) .adnn-chat-form { opacity:.55; pointer-events:none; }
+    .adnn-chat-form input:disabled, .adnn-chat-form button:disabled { opacity:.55; cursor:not-allowed; }
     .adnn-designer-chat-panel { margin-top:34px; min-height:440px; display:grid; grid-template-rows:minmax(320px,1fr) auto; border:1px solid var(--adnn-line); border-radius:24px; overflow:hidden; background: transparent; }
 
     :root.light-theme {
@@ -1393,7 +1453,7 @@ function installChatStyles() {
     }
     :root.light-theme .adnn-chat-bubble.is-mine { color:#fff; }
     :root.light-theme .adnn-chat-form input { background: #fff; color:#111b21; border:1px solid rgba(17,27,33,.08); }
-    :root.light-theme .adnn-admin-chat-item.is-active { background: rgba(0, 0, 0, 0.03); }
+    :root.light-theme .adnn-admin-chat-item.is-active, :root.light-theme .adnn-direct-chat-item.is-active { background: rgba(0, 0, 0, 0.03); }
 
     @media (max-width: 760px) {
       .adnn-admin-chat-panel { height:calc(100vh - 89px); min-height:0; border-radius:0 !important; margin:0 calc(-1 * clamp(16px, 3.5vw, 44px)); border-left:0 !important; border-right:0 !important; border-bottom: 0 !important; }
@@ -1414,6 +1474,17 @@ function installChatStyles() {
       .adnn-chat-form { grid-template-columns:42px minmax(0,1fr) 42px; }
       .adnn-chat-form input { height:42px; border-radius: 14px; }
       .adnn-chat-form button, .adnn-chat-media { width:42px; height:42px; }
+      .adnn-direct-chat-panel { height:calc(100dvh - 108px); max-height:calc(100dvh - 108px); min-height:0; border-radius:0; margin:0 calc(-1 * clamp(16px, 3.5vw, 44px)) 18px; border-left:0; border-right:0; overflow:hidden; }
+      .adnn-direct-chat-appbar { display:none; }
+      .adnn-direct-chat-grid { height:100%; grid-template-columns:1fr; }
+      .adnn-direct-chat-list-wrap { border-right:0; height:100%; }
+      .adnn-direct-room { height:100%; display:none; border-left:0; grid-template-rows:60px minmax(0, 1fr) auto; }
+      body.adnn-direct-chat-open .adnn-direct-chat-list-wrap { display:none; }
+      body.adnn-direct-chat-open .adnn-direct-room { display:grid; }
+      .adnn-direct-chat-back { display:grid; }
+      .adnn-direct-chat-title { min-height:60px; padding:0 12px; gap:10px; }
+      .adnn-direct-chat-avatar { width:38px; height:38px; }
+      .adnn-direct-room .adnn-chat-form { position:sticky; bottom:0; z-index:4; padding-bottom:calc(10px + env(safe-area-inset-bottom)); }
       .admin-main-viewport:has(#adnnAdminChatPanel) { overflow:hidden; padding-bottom:0 !important; }
     }
   `;

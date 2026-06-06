@@ -532,32 +532,33 @@
         <div class="designer-feed" id="designerInvoiceList"><div class="empty-card"><span><strong>Nothing here</strong><span>No invoice has been added yet.</span></span></div></div>
       </section>
       <section id="calendar" class="view">
-        <p class="kicker">Calendar</p>
-        <h1>Calendar</h1>
-        <p class="lead">Plan reminders and keep your design schedule close.</p>
+        <p class="kicker">Schedule</p>
+        <h2>Reminder Studio Calendar</h2>
+        
         <div class="apple-cal-wrap">
-          <div class="settings-card">
-            <div style="width:100%">
-              <div class="cal-box-header">
-                <h3 id="calendarMonthYearLabel">Month</h3>
-                <div class="cal-arrows">
-                  <button class="cal-arrow-btn" type="button" id="prevMonthBtn" aria-label="Previous month">‹</button>
-                  <button class="cal-arrow-btn" type="button" id="nextMonthBtn" aria-label="Next month">›</button>
-                </div>
+          <div>
+            <div class="cal-box-header">
+              <h3 id="calendarMonthYearLabel">June 2026</h3>
+              <div class="cal-arrows">
+                <button type="button" class="cal-arrow-btn" id="prevMonthBtn">‹</button>
+                <button type="button" class="cal-arrow-btn" id="nextMonthBtn">›</button>
               </div>
-              <div class="cal-grid-mesh" id="calendarGridMesh"></div>
             </div>
+            <div class="cal-grid-mesh" id="calendarGridMesh"></div>
           </div>
+
           <div class="reminder-list-box">
-            <p class="kicker" style="letter-spacing:.18em">Reminder</p>
-            <div class="reminder-inputs">
-              <input id="newReminderInput" type="text" placeholder="Add a reminder">
-              <div class="reminder-inline">
-                <input id="newReminderTime" type="time">
-                <button id="addReminderBtn" type="button">Add</button>
+            <h3 style="margin:0 0 16px; font-size:16px; font-weight:400;">Reminders</h3>
+            <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:16px;">
+              <input type="text" id="newReminderInput" placeholder="New milestone action item..." style="border-radius:12px; padding:10px 14px;">
+              <div style="display:flex; gap:8px;">
+                <input type="time" id="newReminderTime" value="12:00">
+                <button type="button" id="addReminderBtn" style="flex-grow:1; border-radius:12px; background:var(--accent); color:#fff; border:0; padding:0 14px; font-size:12px; cursor:pointer;">Add Reminder</button>
               </div>
             </div>
-            <div id="remindersOutputContainer" class="notes-list"></div>
+            <div id="remindersOutputContainer">
+              <p class="help">Select a calendar date to view or insert system entries.</p>
+            </div>
           </div>
         </div>
       </section>
@@ -791,91 +792,131 @@
     }
 
     function setupCalendar(storageKey) {
-      const label = document.getElementById("calendarMonthYearLabel");
-      const grid = document.getElementById("calendarGridMesh");
-      const prev = document.getElementById("prevMonthBtn");
-      const next = document.getElementById("nextMonthBtn");
-      const input = document.getElementById("newReminderInput");
-      const timeInput = document.getElementById("newReminderTime");
-      const add = document.getElementById("addReminderBtn");
-      const output = document.getElementById("remindersOutputContainer");
-      if (!label || !grid || !prev || !next || !input || !timeInput || !add || !output) return;
-      let cursor = new Date();
-      let selected = dateKey(new Date());
-      const read = () => {
-        try { return JSON.parse(localStorage.getItem(storageKey) || "{}"); } catch { return {}; }
-      };
-      const write = (items) => localStorage.setItem(storageKey, JSON.stringify(items));
-      const renderReminders = () => {
-        const data = read();
-        const items = data[selected] || [];
-        if (!items.length) {
-          output.innerHTML = `<div class="empty-card"><span><strong>No reminder</strong><span>Select a day and add one.</span></span></div>`;
+      const mesh = document.getElementById("calendarGridMesh");
+      const monthLabel = document.getElementById("calendarMonthYearLabel");
+      const prevBtn = document.getElementById("prevMonthBtn");
+      const nextBtn = document.getElementById("nextMonthBtn");
+      const remInput = document.getElementById("newReminderInput");
+      const remTimeInput = document.getElementById("newReminderTime");
+      const remAddBtn = document.getElementById("addReminderBtn");
+      const remBox = document.getElementById("remindersOutputContainer");
+      if (!mesh || !monthLabel || !remInput || !remTimeInput || !remAddBtn || !remBox) return;
+
+      let currentDate = new Date();
+      const todayReal = new Date(); 
+      let selectedDateKey = `${todayReal.getFullYear()}-${String(todayReal.getMonth()+1).padStart(2,'0')}-${String(todayReal.getDate()).padStart(2,'0')}`;
+      
+      let reminderDatabase = {};
+      try { reminderDatabase = JSON.parse(localStorage.getItem(storageKey)) || {}; } catch { reminderDatabase = {}; }
+
+      const dayNames = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"];
+
+      function buildCalendarStructure() {
+        mesh.innerHTML = "";
+        const year = currentDate.getFullYear();
+        const month = currentDate.getMonth();
+        const monthStrings = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+        monthLabel.textContent = `${monthStrings[month]} ${year}`;
+
+        dayNames.forEach(d => {
+          const labelEl = document.createElement("div");
+          labelEl.className = "cal-day-label";
+          labelEl.textContent = d;
+          mesh.appendChild(labelEl);
+        });
+
+        const initialDayIndex = new Date(year, month, 1).getDay();
+        const runningDaysCount = new Date(year, month + 1, 0).getDate();
+
+        for(let i = 0; i < initialDayIndex; i++) {
+          const block = document.createElement("div");
+          block.className = "cal-cell empty-day";
+          mesh.appendChild(block);
+        }
+
+        for(let day = 1; day <= runningDaysCount; day++) {
+          const cell = document.createElement("div");
+          cell.className = "cal-cell";
+          cell.textContent = day;
+          const dateKey = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+          cell.dataset.dateKey = dateKey;
+
+          if (year === todayReal.getFullYear() && month === todayReal.getMonth() && day === todayReal.getDate()) {
+            cell.classList.add("is-today");
+          }
+          if (reminderDatabase[dateKey] && reminderDatabase[dateKey].length > 0) {
+            cell.classList.add("has-reminders");
+          }
+          if (selectedDateKey === dateKey) {
+            cell.classList.add("is-selected");
+          }
+
+          cell.addEventListener("click", () => {
+            document.querySelectorAll(".cal-cell").forEach(c => c.classList.remove("is-selected"));
+            cell.classList.add("is-selected");
+            selectedDateKey = dateKey;
+            renderRemindersForSelectedDate();
+          });
+          mesh.appendChild(cell);
+        }
+      }
+
+      function renderRemindersForSelectedDate() {
+        if(!selectedDateKey) {
+          remBox.innerHTML = '<p class="help">Select a calendar date to view or insert system entries.</p>';
           return;
         }
-        output.innerHTML = items.map((item) => `
-          <div class="reminder-entry-row">
-            <span>${escapeText(item.text)}</span>
-            <span class="reminder-time-tag">${escapeText(item.time || "Anytime")}</span>
-            <button class="reminder-del-btn" type="button" data-reminder-id="${item.id}">Delete</button>
-          </div>
-        `).join("");
-      };
-      const render = () => {
-        const data = read();
-        const year = cursor.getFullYear();
-        const month = cursor.getMonth();
-        const todayKey = dateKey(new Date());
-        label.textContent = cursor.toLocaleDateString(undefined, { month: "long", year: "numeric" });
-        const firstDay = new Date(year, month, 1).getDay();
-        const days = new Date(year, month + 1, 0).getDate();
-        const cells = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => `<div class="cal-day-label">${day}</div>`);
-        for (let i = 0; i < firstDay; i += 1) cells.push(`<div class="cal-cell empty-day"></div>`);
-        for (let day = 1; day <= days; day += 1) {
-          const key = dateKey(new Date(year, month, day));
-          const classes = ["cal-cell"];
-          if (key === selected) classes.push("is-selected");
-          if (key === todayKey) classes.push("is-today");
-          if (data[key]?.length) classes.push("has-reminders");
-          cells.push(`<button type="button" class="${classes.join(" ")}" data-date="${key}">${day}</button>`);
+        remBox.innerHTML = "";
+        const list = reminderDatabase[selectedDateKey] || [];
+        if(list.length === 0) {
+          remBox.innerHTML = '<p class="help" style="margin-top:4px;">No reminders set for this deadline date.</p>';
+          return;
         }
-        grid.innerHTML = cells.join("");
-        renderReminders();
-      };
-      grid.addEventListener("click", (event) => {
-        const target = event.target.closest("[data-date]");
-        if (!target) return;
-        selected = target.dataset.date;
-        render();
+        list.sort((a, b) => a.time.localeCompare(b.time));
+        list.forEach((item, index) => {
+          const row = document.createElement("div");
+          row.className = "reminder-entry-row";
+          row.innerHTML = `
+            <div style="display:flex; align-items:center; gap:4px; min-width:0;">
+              <span style="word-break: break-word;">${escapeText(item.text)}</span>
+              <span class="reminder-time-tag">${escapeText(item.time)}</span>
+            </div>
+            <button type="button" class="reminder-del-btn" data-index="${index}">Delete</button>
+          `;
+          row.querySelector(".reminder-del-btn").addEventListener("click", function() {
+            const idx = parseInt(this.dataset.index);
+            reminderDatabase[selectedDateKey].splice(idx, 1);
+            if(reminderDatabase[selectedDateKey].length === 0) delete reminderDatabase[selectedDateKey];
+            localStorage.setItem(storageKey, JSON.stringify(reminderDatabase));
+            renderRemindersForSelectedDate();
+            buildCalendarStructure();
+          });
+          remBox.appendChild(row);
+        });
+      }
+
+      prevBtn?.addEventListener("click", () => {
+        currentDate.setMonth(currentDate.getMonth() - 1);
+        buildCalendarStructure();
       });
-      prev.addEventListener("click", () => {
-        cursor = new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1);
-        render();
+      nextBtn?.addEventListener("click", () => {
+        currentDate.setMonth(currentDate.getMonth() + 1);
+        buildCalendarStructure();
       });
-      next.addEventListener("click", () => {
-        cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
-        render();
+      remAddBtn?.addEventListener("click", () => {
+        const val = remInput.value.trim();
+        const timeVal = remTimeInput.value || "12:00";
+        if(!val || !selectedDateKey) return;
+        if(!reminderDatabase[selectedDateKey]) reminderDatabase[selectedDateKey] = [];
+        reminderDatabase[selectedDateKey].push({ text: val, time: timeVal });
+        localStorage.setItem(storageKey, JSON.stringify(reminderDatabase));
+        remInput.value = "";
+        renderRemindersForSelectedDate();
+        buildCalendarStructure();
       });
-      add.addEventListener("click", () => {
-        const text = input.value.trim();
-        if (!text) return;
-        const data = read();
-        data[selected] = data[selected] || [];
-        data[selected].push({ id: String(Date.now()), text, time: timeInput.value });
-        write(data);
-        input.value = "";
-        timeInput.value = "";
-        render();
-      });
-      output.addEventListener("click", (event) => {
-        const id = event.target.closest("[data-reminder-id]")?.dataset.reminderId;
-        if (!id) return;
-        const data = read();
-        data[selected] = (data[selected] || []).filter((item) => item.id !== id);
-        write(data);
-        render();
-      });
-      render();
+
+      buildCalendarStructure();
+      renderRemindersForSelectedDate();
     }
 
     function dateKey(date) {

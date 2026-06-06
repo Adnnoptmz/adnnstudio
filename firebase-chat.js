@@ -11,6 +11,7 @@ import {
   getDoc,
   getFirestore,
   increment,
+  arrayUnion,
   onSnapshot,
   query,
   serverTimestamp,
@@ -27,6 +28,8 @@ import {
 
 const ADMIN_EMAIL = "getavcollab@gmail.com";
 const ADMIN_ALIAS_UID = "adnn-admin";
+const ALL_USERS_CHAT_ID = "all_users_lounge";
+const ALL_USERS_ROOM_TITLE = "All Users Chat";
 const config = window.ADNN_FIREBASE_CONFIG;
 const app = config ? (getApps()[0] || initializeApp(config)) : null;
 const auth = app ? getAuth(app) : null;
@@ -42,7 +45,7 @@ let adminMessagesUnsubscribe = null;
 let selectedAdminChatId = "";
 let selectedAdminChat = null;
 let designerMessagesUnsubscribe = null;
-let designerChatId = "designer_lounge";
+let designerChatId = ALL_USERS_CHAT_ID;
 let activeDesignerProfile = null;
 let firstClientMessagesSnapshot = true;
 let firstAdminMessagesSnapshot = true;
@@ -137,8 +140,8 @@ function installClientChatShell() {
   drawer.innerHTML = `
     <div class="adnn-chat-head">
       <div>
-        <span>Private chat</span>
-        <strong>AdnnStudio</strong>
+        <span>All users chat</span>
+        <strong>AdnnStudio Community</strong>
       </div>
       <button type="button" class="adnn-chat-close" aria-label="Close chat">×</button>
     </div>
@@ -151,7 +154,7 @@ function installClientChatShell() {
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
         <span class="adnn-chat-file-name" id="adnnChatFileName" hidden></span>
       </label>
-      <input id="adnnChatInput" autocomplete="off" maxlength="1800" placeholder="Type a message">
+      <input id="adnnChatInput" autocomplete="off" maxlength="1800" placeholder="Message all users">
       <button type="submit" aria-label="Send message">
         <svg viewBox="0 0 24 24" fill="currentColor" style="width: 14px; height: 14px; display: block;">
   <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
@@ -202,17 +205,18 @@ function updateClientChatVisibility(user) {
 }
 
 async function ensureClientChat(user) {
-  clientChatId = supportChatId(user.uid);
+  clientChatId = ALL_USERS_CHAT_ID;
   const ref = doc(db, "chats", clientChatId);
   await setDoc(ref, {
-    type: "support",
-    clientUid: user.uid,
-    clientEmail: emailKey(user.email),
-    clientName: user.displayName || user.email || "Client",
-    clientPhoto: user.photoURL || "",
+    type: "all-users-room",
+    roomKey: ALL_USERS_CHAT_ID,
+    title: ALL_USERS_ROOM_TITLE,
     adminEmail: ADMIN_EMAIL,
-    participantUids: [user.uid, ADMIN_ALIAS_UID],
-    participantEmails: [emailKey(user.email), ADMIN_EMAIL],
+    participantUids: arrayUnion(user.uid, ADMIN_ALIAS_UID),
+    participantEmails: arrayUnion(emailKey(user.email), ADMIN_EMAIL),
+    lastClientUid: user.uid,
+    lastClientEmail: emailKey(user.email),
+    lastClientName: user.displayName || user.email || "Client",
     unreadForClient: 0,
     unreadForAdmin: 0,
     updatedAt: serverTimestamp(),
@@ -222,7 +226,7 @@ async function ensureClientChat(user) {
 
 function startClientChat(user) {
   stopClientChat();
-  clientChatId = supportChatId(user.uid);
+  clientChatId = ALL_USERS_CHAT_ID;
   const chatRef = doc(db, "chats", clientChatId);
   clientChatUnsubscribe = onSnapshot(chatRef, (snap) => {
     const data = snap.data() || {};
@@ -468,7 +472,7 @@ function installDesignerChatPanel() {
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
         <span class="adnn-chat-file-name" id="adnnDesignerChatFileName" hidden></span>
       </label>
-      <input id="adnnDesignerChatInput" autocomplete="off" maxlength="1800" placeholder="Message designers">
+      <input id="adnnDesignerChatInput" autocomplete="off" maxlength="1800" placeholder="Message all users">
       <button type="submit" aria-label="Send designer message">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12 20 5l-5.8 14-3-5.9L4 12Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
       </button>
@@ -486,11 +490,15 @@ async function getDesignerProfile(user) {
 }
 
 async function ensureDesignerRoom(user, designer) {
+  designerChatId = ALL_USERS_CHAT_ID;
   const ref = doc(db, "chats", designerChatId);
   await setDoc(ref, {
-    type: "designer-room",
-    roomKey: "designer_lounge",
-    title: "Designer Lounge",
+    type: "all-users-room",
+    roomKey: ALL_USERS_CHAT_ID,
+    title: ALL_USERS_ROOM_TITLE,
+    adminEmail: ADMIN_EMAIL,
+    participantUids: arrayUnion(user.uid, ADMIN_ALIAS_UID),
+    participantEmails: arrayUnion(emailKey(user.email), ADMIN_EMAIL),
     lastDesignerUid: user.uid,
     lastDesignerId: designer.designerId || designer.designerid || "",
     updatedAt: serverTimestamp(),
@@ -512,7 +520,7 @@ function startDesignerChat(user, designer) {
     firstDesignerMessagesSnapshot = false;
     knownDesignerMessageIds = nextIds;
     renderDesignerMessages(messages);
-    if (incoming.length) showChatAlert(incoming[incoming.length - 1], "Designer chat");
+    if (incoming.length) showChatAlert(incoming[incoming.length - 1], "All users chat");
   }, () => {
     renderDesignerChatStatus("Designer chat could not load.");
   });
@@ -531,7 +539,7 @@ function renderDesignerMessages(messages) {
   if (!wrap) return;
   wrap.innerHTML = "";
   if (!messages.length) {
-    wrap.innerHTML = `<div class="adnn-chat-empty">No designer messages yet.</div>`;
+    wrap.innerHTML = `<div class="adnn-chat-empty">No messages yet.</div>`;
     return;
   }
   messages.forEach((message) => wrap.appendChild(messageBubble(message, message.senderUid === activeUser?.uid, designerChatId)));
@@ -569,7 +577,8 @@ async function sendDesignerMessage(event) {
   await setDoc(doc(db, "chats", designerChatId), {
     lastMessage,
     lastSenderUid: activeUser.uid,
-    updatedAt: serverTimestamp()
+    updatedAt: serverTimestamp(),
+    unreadForAdmin: increment(1)
   }, { merge: true });
   input.value = "";
   if (fileInput) fileInput.value = "";
@@ -597,7 +606,7 @@ function renderAdminChatList(chats) {
     button.classList.toggle("is-active", chat.id === selectedAdminChatId);
     const unread = Number(chat.unreadForAdmin) || 0;
     const label = chat.title || chat.clientName || chat.clientEmail || "Chat";
-    const preview = chat.lastMessage || chat.clientEmail || "No messages yet";
+    const preview = chat.lastMessage || chat.lastClientEmail || chat.clientEmail || "No messages yet";
     button.innerHTML = `
       <span>
         <strong>${escapeHtml(label)}</strong>
@@ -619,7 +628,7 @@ function selectAdminChat(chat) {
   if (adminTitleEl) adminTitleEl.textContent = chatLabel;
 
   const adminSubEl = document.getElementById("adnnAdminChatSubtitle");
-  if (adminSubEl) adminSubEl.textContent = chat.clientEmail || (chat.type === "designer-room" ? "Designer lounge" : "online");
+  if (adminSubEl) adminSubEl.textContent = chat.clientEmail || chat.lastClientEmail || (chat.type === "all-users-room" ? "Account + Designer users" : (chat.type === "designer-room" ? "Designer lounge" : "online"));
 
   const avatarEl = document.getElementById("adnnAdminChatAvatar");
   if (avatarEl) {
@@ -641,7 +650,7 @@ function selectAdminChat(chat) {
     firstAdminMessagesSnapshot = false;
     knownAdminMessageIds = nextIds;
     renderAdminMessages(messages);
-    if (incoming.length) showChatAlert(incoming[incoming.length - 1], "Client message");
+    if (incoming.length) showChatAlert(incoming[incoming.length - 1], "User message");
   });
   setDoc(doc(db, "chats", chat.id), { unreadForAdmin: 0 }, { merge: true }).catch(() => {});
 }

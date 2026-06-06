@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Account | AdnnStudio.com</title>
+  <title>Account | adnnstudio.com</title>
   <link rel="icon" type="image/svg+xml" href="adnn icon.svg" />
   <style>
     @import url("https://fonts.cdnfonts.com/css/aileron");
@@ -984,15 +984,26 @@
       gap: 6px;
     }
     .cal-arrow-btn {
-      width: 32px;
-      height: 32px;
-      border: 1px solid var(--line);
-      background: var(--input-bg);
-      color: var(--text);
-      border-radius: 50%;
-      cursor: pointer;
-      display: grid;
-      place-items: center;
+      width: 36px !important;
+      height: 36px !important;
+      min-height: 36px !important;
+      max-height: 36px !important;
+      padding: 0 !important;
+      border: 1px solid var(--line) !important;
+      background: var(--input-bg) !important;
+      color: var(--text) !important;
+      border-radius: 50% !important;
+      cursor: pointer !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      font-size: 18px !important;
+      line-height: 1 !important;
+    }
+    #newReminderTime {
+      font-family: var(--font-mono) !important;
+      font-size: 13px !important;
+      font-weight: 400 !important;
     }
     .cal-grid-mesh {
       display: grid;

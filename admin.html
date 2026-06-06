@@ -934,6 +934,10 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
           <span class="link-label">Chats</span>
         </button>
+        <button type="button" class="sidebar-link-item" data-target-view="message_cards_view">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M7 9h6"></path><path d="M7 13h10"></path><path d="M16 9h1"></path></svg>
+          <span class="link-label">Message Cards</span>
+        </button>
         <button type="button" class="sidebar-link-item" data-target-view="payments_view">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
           <span class="link-label">Invoices & Payments</span>
@@ -1091,6 +1095,14 @@
         <p class="kicker">Studio chat</p>
         <h2>Loading chat...</h2>
         <p class="help">The live Firebase chat panel loads from firebase-chat.js.</p>
+      </div>
+    </div>
+    
+    <div id="message_cards_view" class="admin-view-panel-container" style="display:none;">
+      <div class="panel glass">
+        <p class="kicker">Message Card Generator</p>
+        <h2>Loading generator...</h2>
+        <p class="help">The approved user-to-user message card generator loads from firebase-chat.js.</p>
       </div>
     </div>
     
@@ -1269,6 +1281,7 @@
           "projects_view": { sub: "Active Workflow Pipelines", main: "Creative Deliverables Node Matrix" },
           "composer_view": { sub: "Admin Portal", main: "Message Composer" },
           "chats_view": { sub: "Secure Workspace Streams", main: "Private Studio Chats" },
+          "message_cards_view": { sub: "Admin Approved Connections", main: "Message Card Generator" },
           "payments_view": { sub: "Finances & Ledger Records", main: "Invoices Ledger System" },
           "notifications_view": { sub: "Broadcast Matrix System", main: "Global Push Transmission" },
           "calendar_view": { sub: "Milestone Workspace Engine", main: "Reminder Studio Calendar" },

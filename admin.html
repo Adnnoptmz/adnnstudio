@@ -1,6 +1,5 @@
 <!doctype html>
-<html lang="en">
-<head>
+<html lang="en"><head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>adnnstudio Admin Portal</title>
@@ -420,7 +419,7 @@
 
     h1 {
       margin: 0;
-      font-size: clamp(38px, 6vw, 72px);
+      font-size: clamp(32px, 5.5vw, 64px);
       line-height: 0.95;
       letter-spacing: -0.055em;
       font-weight: 400;
@@ -861,7 +860,6 @@
 </head>
 <body>
 
-  <!-- Premium Apple-Inspired Fake Lock Credential Screen Gate -->
   <div class="portal-lock-gate" id="portalLockGate">
     <div class="lock-card glass">
       <p class="kicker">Security Gateway</p>
@@ -872,7 +870,7 @@
           <div class="password-wrap">
             <input type="password" id="gatePass" placeholder="Password" required autocomplete="current-password">
             <button type="button" class="password-toggle" id="gatePasswordToggle" aria-label="Show password" title="Show password">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.8"/></svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6|M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.8"/></svg>
             </button>
           </div>
         </div>
@@ -882,7 +880,6 @@
     </div>
   </div>
 
-  <!-- Mobile Top Bar Architecture -->
   <div class="mobile-header-bar glass">
     <div class="brand" style="gap:10px;">
       <img src="adnn icon.svg" alt="Studio Logo" style="width:30px; height:30px; border-radius:8px;">
@@ -893,7 +890,6 @@
     </button>
   </div>
 
-  <!-- Dynamic Structural Dim Backdrop Canvas Overlay -->
   <div class="sidebar-dim-overlay" id="sidebarDimOverlay"></div>
 
   <div class="admin-app-container">
@@ -952,7 +948,6 @@
         </button>
       </nav>
 
-      <!-- Separate Isolated Bottom Utilities Grid Row Node -->
       <div class="sidebar-bottom-utilities">
         <button type="button" class="sidebar-link-item" data-target-view="settings_view">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
@@ -977,12 +972,11 @@
       <div class="brand">
         <img src="adnn icon.svg" alt="Adnn Studio">
         <div>
-          <p class="kicker">Admin portal</p>
-          <h1>Send to account.</h1>
+          <p class="kicker" id="dynamicPortalSub">Admin Portal</p>
+          <h1 id="dynamicPortalHeading">Message Composer</h1>
         </div>
       </div>
       <div class="actions" style="margin-top:0; display: flex; align-items: center; gap: 12px;">
-        <!-- Apple-Inspired Minimalist Home Icon Button Link Component -->
         <a href="index.html#home" class="apple-home-btn" title="Back to Home Workspace" aria-label="Back to Home Workspace" onclick="sessionStorage.setItem('adnn_allow_admin_home','true'); sessionStorage.removeItem('adnn_admin_visited');">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
         </a>
@@ -1092,7 +1086,6 @@
     <div id="projects_view" class="admin-view-panel-container" style="display:none;">
       <div class="panel glass"><p class="kicker">Projects</p><h2>Creative Deliverables Directory</h2><p class="help">Slider datasets and active workspace node maps.</p></div>
     </div>
-    <!-- FIREBASE CHAT PANEL MOUNT POINT: firebase-chat.js renders the real Apple/WhatsApp chat UI here -->
     <div id="chats_view" class="admin-view-panel-container" style="display:none;">
       <div class="panel glass">
         <p class="kicker">Studio chat</p>
@@ -1105,7 +1098,6 @@
       <div class="panel glass"><p class="kicker">Finances</p><h2>Invoices Ledger System</h2><p class="help">Token dispatch metrics and transactional balance history.</p></div>
     </div>
     
-    <!-- NOTIFICATIONS DISPATCH BROADCST OVERVIEW MATRIX -->
     <div id="notifications_view" class="admin-view-panel-container" style="display:none;">
       <div class="panel glass">
         <p class="kicker">Broadcasts</p>
@@ -1118,7 +1110,6 @@
       </div>
     </div>
 
-    <!-- FULLY FUNCTIONAL APPLE-INSPIRED REMINDER CALENDAR COMPONENT -->
     <div id="calendar_view" class="admin-view-panel-container" style="display:none;">
       <div class="panel glass">
         <p class="kicker">Schedule</p>
@@ -1134,8 +1125,7 @@
               </div>
             </div>
             <div class="cal-grid-mesh" id="calendarGridMesh">
-              <!-- Rendered via setup calendar method loops -->
-            </div>
+              </div>
           </div>
 
           <div class="reminder-list-box">
@@ -1161,16 +1151,13 @@
         <h2>Global Environment Settings</h2>
         <p class="help">API Endpoint configurations and system variable fallback targets.</p>
         
-        <!-- Integrated Apple-Style Inline Theme Setting Node Row -->
         <div class="settings-theme-card-action">
           <div>
             <strong style="display: block; font-size: 14px; font-weight: 500; margin-bottom: 4px;">Workspace Theme Aesthetics</strong>
             <span style="font-size: 12px; color: var(--muted);">Switch between clean light mode or dark workspace layouts seamlessly.</span>
           </div>
           <button type="button" class="settings-inline-btn" id="settingsInlineThemeToggleBtn" title="Toggle Workspace Aesthetics" aria-label="Toggle Workspace Aesthetics">
-            <!-- Moon Icon -->
             <svg class="moon-icon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-            <!-- Sun Icon -->
             <svg class="sun-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
           </button>
         </div>
@@ -1179,7 +1166,6 @@
 
     </div> </main> </div>
 
-  <!-- Local Session Authentication Verification & Theme Switcher Engine Scripts -->
   <script>
     (function manageLocalGateAndThemeSession() {
       if (document.referrer.includes("index.html") && !sessionStorage.getItem("adnn_admin_visited")) {
@@ -1272,6 +1258,35 @@
         } else {
           const matchedTargetPanel = document.getElementById(targetViewId);
           if (matchedTargetPanel) matchedTargetPanel.style.display = "block";
+        }
+
+        // Map layout names logically to avoid the rigid static header
+        const headingMap = {
+          "dashboard_view": { sub: "Studio Performance Analytics", main: "Analytics Dashboard" },
+          "enquiries_view": { sub: "Inbound Pipeline Data Logs", main: "Client Forms Directory" },
+          "clients_view": { sub: "Access Directory Credentials", main: "Client Database Records" },
+          "designers_view": { sub: "System Access Generation", main: "Designers Workspace Setup" },
+          "projects_view": { sub: "Active Workflow Pipelines", main: "Creative Deliverables Node Matrix" },
+          "composer_view": { sub: "Admin Portal", main: "Message Composer" },
+          "chats_view": { sub: "Secure Workspace Streams", main: "Private Studio Chats" },
+          "payments_view": { sub: "Finances & Ledger Records", main: "Invoices Ledger System" },
+          "notifications_view": { sub: "Broadcast Matrix System", main: "Global Push Transmission" },
+          "calendar_view": { sub: "Milestone Workspace Engine", main: "Reminder Studio Calendar" },
+          "settings_view": { sub: "System Control Parameters", main: "Global Environment Settings" }
+        };
+        
+        // Safety Fallback override to strip unwanted static text strings from any global window containers
+        const badHeader = document.querySelector("h1");
+        if(badHeader && badHeader.textContent.includes("Send to account")) {
+          badHeader.textContent = "Message Composer";
+        }
+
+        const targetHeaderData = headingMap[targetViewId] || headingMap["composer_view"];
+        const headerSub = document.getElementById("dynamicPortalSub");
+        const headerMain = document.getElementById("dynamicPortalHeading");
+        if (headerSub && headerMain) {
+          headerSub.textContent = targetHeaderData.sub;
+          headerMain.textContent = targetHeaderData.main;
         }
 
         document.querySelectorAll(".sidebar-link-item").forEach(btn => {

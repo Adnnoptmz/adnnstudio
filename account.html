@@ -1278,7 +1278,11 @@
         </a>
 	        <a href="#chat" data-view-link="chat">
 	          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
-	          <span>Chats</span>
+	          <span>User Chats</span>
+	        </a>
+	        <a href="#admin-support" data-view-link="admin-support">
+	          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5c4.7 0 8.5 3.2 8.5 7.2s-3.8 7.2-8.5 7.2c-.9 0-1.8-.1-2.6-.4L4.5 20l1.4-4A6.6 6.6 0 0 1 3.5 10.7c0-4 3.8-7.2 8.5-7.2Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8 10.5h8M8 13.5h5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+	          <span>Admin Support</span>
 	        </a>
 	        <a href="#calendar" data-view-link="calendar">
 	          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4" width="17" height="17" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M8 2.5v4M16 2.5v4M3.5 10h9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
@@ -1350,6 +1354,17 @@
 	      </section>
 
 	      <section id="chat" class="view">
+	        <div id="directChatMount" class="adnn-designer-chat-panel" style="margin-top: 0;"></div>
+	      </section>
+
+	      <section id="admin-support" class="view">
+	        <div class="view-head">
+	          <div>
+	            <p class="kicker">Admin Support</p>
+	            <h1>Admin Support</h1>
+	          </div>
+	        </div>
+	        <p class="lead">Use this private support chat for messages directly with AdnnStudio admin.</p>
 	        <div id="clientChatMount" class="adnn-designer-chat-panel" style="margin-top: 0;"></div>
 	      </section>
 
@@ -1597,14 +1612,15 @@
       }
     }
 	    function setView(view) {
-	      const selected = ["notifications", "tasks", "chat", "calendar", "notes", "invoice", "settings", "terms"].includes(view) ? view : "tasks";
+	      const selected = ["notifications", "tasks", "chat", "admin-support", "calendar", "notes", "invoice", "settings", "terms"].includes(view) ? view : "tasks";
 	      document.querySelectorAll(".view").forEach((section) => section.classList.toggle("active", section.id === selected));
 	      document.querySelectorAll("[data-view-link]").forEach((link) => link.classList.toggle("active", link.dataset.viewLink === selected));
 	      if (location.hash.replace("#", "") !== selected) history.replaceState(null, "", `#${selected}`);
 	      const headingMap = {
 	        notifications: ["Private Account", "Notifications"],
 	        tasks: ["Project Workspace", "Tasks"],
-	        chat: ["Private Messages", "Private Chat"],
+	        chat: ["Approved Contacts", "User Chats"],
+	        "admin-support": ["Admin Support", "Admin Chat"],
 	        calendar: ["Personal Schedule", "Reminder Calendar"],
 	        notes: ["Personal Notes", "Notes"],
 	        invoice: ["Billing", "Invoice"],

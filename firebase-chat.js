@@ -997,6 +997,225 @@ function installChatStyles() {
   document.head.appendChild(style);
 }
 
+    .adnn-chat-trigger {
+      width: 44px;
+      height: 44px;
+      min-width: 44px;
+      padding: 0;
+      justify-content: center;
+      position: relative;
+      border: 1px solid var(--adnn-line);
+      border-radius: 16px;
+      color: #fff;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      line-height: 1;
+      text-decoration: none;
+      background: var(--adnn-panel-bg);
+      backdrop-filter: blur(26px) saturate(160%);
+      -webkit-backdrop-filter: blur(26px) saturate(160%);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 20px 70px rgba(0,0,0,.35);
+    }
+    .adnn-chat-trigger[hidden] { display: none !important; }
+    .adnn-chat-trigger svg { width: 19px; height: 19px; }
+    .adnn-chat-trigger.is-floating { position: fixed; right: 20px; bottom: 20px; z-index: 70; background: var(--adnn-accent); border-radius: 50%; }
+    .adnn-chat-count {
+      position: absolute;
+      right: -3px;
+      top: -3px;
+      min-width: 18px;
+      height: 18px;
+      padding: 0 5px;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      background: #ff2602;
+      color: #fff;
+      font-family: var(--font-mono, ui-monospace, Menlo, monospace);
+      font-size: 10px;
+      line-height: 1;
+    }
+    .adnn-chat-count[hidden] { display: none !important; }
+
+    .adnn-chat-drawer {
+      position: fixed;
+      right: clamp(12px, 3vw, 28px);
+      bottom: clamp(12px, 3vw, 28px);
+      z-index: 120;
+      width: min(390px, calc(100vw - 24px));
+      height: min(590px, calc(100vh - 24px));
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      border: 1px solid var(--adnn-line);
+      border-radius: 28px;
+      overflow: hidden;
+      background: linear-gradient(135deg, rgba(34, 34, 38, 0.88), rgba(14, 14, 18, 0.78));
+      backdrop-filter: blur(28px) saturate(160%);
+      -webkit-backdrop-filter: blur(28px) saturate(160%);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.12), 0 28px 90px rgba(0,0,0,.38);
+      opacity: 0;
+      transform: translateY(18px) scale(.98);
+      pointer-events: none;
+      transition: opacity .25s ease, transform .3s cubic-bezier(.16,1,.3,1);
+    }
+    .adnn-chat-drawer.is-open { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
+    .adnn-chat-head {
+      min-height: 72px;
+      padding: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--adnn-line);
+      color: var(--adnn-text);
+    }
+    .adnn-chat-head span { display:block; color: #8d96ff; font-family: var(--font-mono, monospace); font-size: 10px; letter-spacing: .16em; text-transform: uppercase; margin-bottom: 4px; }
+    .adnn-chat-head strong { font-size: 17px; font-weight: 500; letter-spacing: -.02em; }
+    .adnn-chat-close { width: 36px; height: 36px; border: 0; border-radius: 50%; background: rgba(255,255,255,.08); color: var(--adnn-text); cursor: pointer; font-size: 22px; line-height: 1; }
+
+    .adnn-chat-messages {
+      min-height: 0;
+      overflow: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 16px;
+      color: var(--adnn-text);
+      scrollbar-width: thin;
+    }
+    .adnn-chat-messages::-webkit-scrollbar { width: 4px; }
+    .adnn-chat-messages::-webkit-scrollbar-thumb { background: var(--adnn-line); border-radius: 999px; }
+    .adnn-chat-empty { margin: auto; color: var(--adnn-muted); font-size: 12px; text-align:center; font-family: var(--font-mono, monospace); }
+
+    .adnn-chat-bubble {
+      max-width: 82%;
+      align-self: flex-start;
+      position: relative;
+      border-radius: 18px 18px 18px 6px;
+      padding: 10px 12px;
+      background: var(--adnn-bubble-other);
+      border: 1px solid var(--adnn-line);
+      color: var(--adnn-text);
+      margin: 1px 0;
+    }
+    .adnn-chat-bubble.is-mine { align-self: flex-end; border-radius: 18px 18px 6px 18px; background: var(--adnn-bubble-mine); border-color: rgba(255,255,255,.14); box-shadow: 0 8px 24px rgba(39, 45, 207, 0.2); }
+    .adnn-chat-bubble p { margin: 0; font-size: 14px; line-height: 1.45; overflow-wrap: anywhere; }
+    .adnn-chat-bubble span { display:block; margin-top: 6px; color: rgba(245,245,247,.45); font-size: 10px; font-family: var(--font-mono, monospace); }
+    .adnn-chat-sender { display:block; margin-bottom: 5px; color: #8d96ff; font-family: var(--font-mono, monospace); font-size: 10px; font-weight: 500; letter-spacing: .05em; }
+    .adnn-chat-attachment { display:block; margin-bottom: 8px; max-width:100%; color: #5360ff; text-decoration: underline; text-underline-offset: 3px; overflow-wrap:anywhere; font-size:13px; }
+    .adnn-chat-attachment.is-image { text-decoration: none; }
+    .adnn-chat-attachment img { display:block; width:100%; max-height:240px; object-fit:cover; border-radius:14px; border: 1px solid var(--adnn-line); }
+    .adnn-chat-delete { width: 28px; height: 28px; margin-top: 8px; border:0; border-radius:50%; display:grid; place-items:center; color: rgba(255,255,255,.78); background: rgba(0,0,0,.16); cursor:pointer; opacity:0; transform: scale(.92); transition: opacity .2s ease, transform .2s ease, background .2s ease; }
+    .adnn-chat-bubble:hover .adnn-chat-delete, .adnn-chat-delete:focus-visible { opacity: 1; transform: scale(1); }
+    .adnn-chat-delete:hover { background: rgba(255,38,2,.5); color:#fff; }
+    .adnn-chat-delete svg { width:14px; height:14px; }
+
+    .adnn-chat-form {
+      display: grid;
+      grid-template-columns: 42px minmax(0, 1fr) 42px;
+      gap: 8px;
+      padding: 12px;
+      border-top: 1px solid var(--adnn-line);
+      align-items: end;
+    }
+    .adnn-chat-media { width:42px; height:42px; border-radius:50%; display:grid; place-items:center; position:relative; background: rgba(255,255,255,.05); color: var(--adnn-text); cursor:pointer; border: 1px solid var(--adnn-line); }
+    .adnn-chat-media input { position:absolute; width:1px; height:1px; opacity:0; pointer-events:none; }
+    .adnn-chat-media svg { width:18px; height:18px; display: block; transition: transform .22s ease; }
+    .adnn-chat-media.has-file { color:#fff; background: var(--adnn-accent); border-color: rgba(255,255,255,0.15); }
+    .adnn-chat-media.has-file svg { transform: rotate(45deg); }
+    .adnn-chat-file-name { position:absolute; left:0; bottom:calc(100% + 8px); width:max-content; max-width:min(280px, calc(100vw - 48px)); min-height:42px; padding:7px 10px; border-radius:16px; color:#fff; background: rgba(39,45,207,.9); font-size:10px; font-family: var(--font-mono, monospace); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; pointer-events:none; box-shadow:0 14px 34px rgba(39,45,207,.30); display:flex; align-items:center; gap:8px; }
+    .adnn-chat-file-name img { width:30px; height:30px; border-radius:10px; object-fit:cover; background:rgba(255,255,255,.16); }
+    .adnn-chat-file-name .adnn-file-icon { width:30px; height:30px; border-radius:10px; display:grid; place-items:center; background:rgba(255,255,255,.16); font-weight:700; }
+    .adnn-chat-file-name .adnn-file-copy { min-width:0; max-width:210px; display:flex; flex-direction:column; gap:2px; overflow:hidden; }
+    .adnn-chat-file-name .adnn-file-copy strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:11px; font-weight:600; }
+    .adnn-chat-file-name .adnn-file-copy small { opacity:.74; font-size:9px; }
+    .adnn-chat-file-name[hidden] { display:none !important; }
+    .adnn-chat-form input { min-width:0; height:44px; border: 1px solid var(--adnn-line); border-radius:16px; padding:0 16px; background: rgba(0,0,0,0.2); color:var(--adnn-text); outline:0; font-size:14px; }
+    .adnn-chat-form input::placeholder { color: var(--adnn-muted); }
+    .adnn-chat-form input:focus { border-color: var(--adnn-accent); }
+    .adnn-chat-form button { width:44px; height:44px; border:0; border-radius:50%; display:grid; place-items:center; background: var(--adnn-accent); color:#fff; cursor:pointer; }
+    .adnn-chat-form button svg { width:14px; height:14px; }
+
+    .adnn-chat-alert { position:fixed; right:clamp(16px,4vw,34px); bottom:clamp(18px,4vw,34px); z-index:10000; width:min(320px, calc(100vw - 32px)); border:1px solid var(--adnn-line); border-radius:22px; padding:14px 16px; color:var(--adnn-text); background: linear-gradient(135deg, rgba(34,34,38,.78), rgba(14,14,18,.68)); box-shadow: inset 0 1px 0 rgba(255,255,255,.12), 0 24px 70px rgba(0,0,0,.34), 0 0 34px rgba(39,45,207,.18); backdrop-filter: blur(24px) saturate(160%); -webkit-backdrop-filter: blur(24px) saturate(160%); opacity:0; transform:translateY(16px) scale(.98); pointer-events:none; transition:opacity .55s ease, transform .65s cubic-bezier(.16,1,.3,1); }
+    .adnn-chat-alert.is-visible { opacity:1; transform:translateY(0) scale(1); }
+    .adnn-chat-alert span, .adnn-chat-alert strong { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .adnn-chat-alert span { color: #8d96ff; font-family: var(--font-mono, monospace); font-size:10px; text-transform: uppercase; letter-spacing: .16em; margin-bottom: 6px; }
+    .adnn-chat-alert strong { font-size:15px; font-weight:500; letter-spacing:-.02em; }
+
+    .adnn-admin-chat-panel {
+      margin-top: 22px;
+      border: 1px solid var(--adnn-line) !important;
+      border-radius: 28px !important;
+      overflow: hidden;
+      background: transparent !important;
+      box-shadow: none !important;
+    }
+    .adnn-admin-chat-appbar { height: 72px; display:flex; align-items:center; justify-content:space-between; padding:0 24px; color:var(--adnn-text); border-bottom:1px solid var(--adnn-line); }
+    .adnn-admin-chat-appbar .kicker { margin:0; color:#5360ff !important; font-family: var(--font-mono, monospace); font-size:11px; letter-spacing: 0.16em; text-transform: uppercase; }
+    .adnn-admin-chat-appbar strong { font-size:22px; font-weight:400; letter-spacing:-.04em; }
+    .adnn-admin-chat-appbar > span { color:var(--adnn-muted); font-size:12px; font-family: var(--font-mono, monospace); }
+    
+    .adnn-admin-chat-grid { display:grid; grid-template-columns: minmax(280px, .35fr) minmax(0, 1fr); gap:0; margin:0; height:560px; min-height:0; }
+    .adnn-admin-chat-list, .adnn-admin-chat-room { min-height:0; border:0; border-radius:0; overflow:hidden; background: transparent; box-shadow:none; }
+    
+    .adnn-admin-chat-list { display:block; overflow:auto; border-right:1px solid var(--adnn-line); padding:8px; }
+    .adnn-admin-chat-item { width:100%; min-height:64px; border:0; border-radius:16px; padding:10px 12px 10px 64px; display:grid; grid-template-columns:minmax(0,1fr) auto; gap:10px; align-items:center; color:var(--adnn-text); background:transparent; text-align:left; cursor:pointer; position:relative; margin-bottom: 4px; }
+    .adnn-admin-chat-item::before { content:""; position:absolute; left:12px; top:50%; width:40px; height:40px; border-radius:50%; transform:translateY(-50%); background: rgba(255,255,255,0.06); border: 1px solid var(--adnn-line); }
+    .adnn-admin-chat-item::after { content:""; position:absolute; left:42px; bottom:14px; width:8px; height:8px; border-radius:50%; background: var(--adnn-accent); border:2px solid rgba(22, 22, 26, 1); display: none; }
+    
+    .adnn-admin-chat-item:hover, .adnn-admin-chat-item.is-active { background: rgba(255, 255, 255, 0.05); }
+    .adnn-admin-chat-item.is-active::after { display: block; }
+    .adnn-admin-chat-item strong, .adnn-admin-chat-item small { display:block; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .adnn-admin-chat-item strong { font-size:14px; font-weight:400; color:var(--adnn-text); }
+    .adnn-admin-chat-item small { margin-top:4px; color:var(--adnn-muted); font-size:12px; }
+    .adnn-admin-chat-item b { min-width:20px; height:20px; padding: 0 5px; border-radius: 999px; display:grid; place-items:center; background: var(--adnn-accent); color:#fff; font-size:10px; font-family: var(--font-mono, monospace); font-weight:400; }
+    
+    .adnn-admin-chat-room { display:grid; grid-template-rows:64px minmax(0,1fr) auto; border-left: 1px solid var(--adnn-line); }
+    .adnn-admin-chat-title { min-height:64px; padding:0 20px; border-bottom:1px solid var(--adnn-line); color:var(--adnn-text); display:flex; align-items:center; gap:14px; background: rgba(255, 255, 255, 0.01); }
+    .adnn-admin-chat-back { display:none; width:34px; height:34px; border: 1px solid var(--adnn-line); border-radius:50%; background:rgba(255,255,255,0.03); color:var(--adnn-text); font-size:24px; line-height:1; cursor:pointer; place-items: center; }
+    .adnn-admin-chat-avatar { width:40px; height:40px; border-radius:50%; display:grid; place-items:center; flex:0 0 auto; color:#fff; background: var(--adnn-accent); font-size:12px; font-family: var(--font-mono, monospace); font-weight:500; opacity: 0.85; }
+    .adnn-admin-chat-title-text { min-width:0; display:block; }
+    .adnn-admin-chat-title-text strong { display:block; font-size:16px; font-weight:400; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; letter-spacing: -0.01em; }
+    .adnn-admin-chat-title-text small { display:block; margin-top:2px; color:var(--adnn-muted); font-size:11px; font-family: var(--font-mono, monospace); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    
+    .adnn-designer-chat-panel { margin-top:34px; min-height:440px; display:grid; grid-template-rows:minmax(320px,1fr) auto; border:1px solid var(--adnn-line); border-radius:24px; overflow:hidden; background: transparent; }
+
+    :root.light-theme {
+      --adnn-muted: rgba(11, 11, 13, 0.62);
+      --adnn-line: rgba(0, 0, 0, 0.08);
+      --adnn-panel-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.56));
+      --adnn-bubble-mine: linear-gradient(135deg, rgba(39, 45, 207, 0.9), rgba(20, 25, 160, 0.8));
+      --adnn-bubble-other: rgba(0, 0, 0, 0.03);
+      --adnn-text: #0b0b0d;
+    }
+    :root.light-theme .adnn-chat-bubble.is-mine { color:#fff; }
+    :root.light-theme .adnn-chat-form input { background: #fff; color:#111b21; border:1px solid rgba(17,27,33,.08); }
+    :root.light-theme .adnn-admin-chat-item.is-active { background: rgba(0, 0, 0, 0.03); }
+
+    @media (max-width: 760px) {
+      .adnn-admin-chat-panel { height:calc(100vh - 89px); min-height:0; border-radius:0 !important; margin:0 calc(-1 * clamp(16px, 3.5vw, 44px)); border-left:0 !important; border-right:0 !important; border-bottom: 0 !important; }
+      .adnn-admin-chat-appbar { display:none; }
+      .adnn-admin-chat-grid { height:100%; grid-template-columns:1fr; }
+      .adnn-admin-chat-list { border-right:0; height:100%; display:block; }
+      .adnn-admin-chat-room { height:100%; display:none; border-left: 0; }
+      body.adnn-admin-chat-open .adnn-admin-chat-list { display:none; }
+      body.adnn-admin-chat-open .adnn-admin-chat-room { display:grid; }
+      .adnn-admin-chat-back { display:grid; }
+      .adnn-admin-chat-title { min-height:60px; padding:0 12px; gap:10px; }
+      .adnn-admin-chat-avatar { width:38px; height:38px; }
+      .adnn-chat-bubble { max-width:82%; }
+      .adnn-admin-chat-panel { height:calc(100dvh - 65px) !important; max-height:calc(100dvh - 65px) !important; min-height:0; overflow:hidden; }
+      .adnn-admin-chat-room { grid-template-rows:60px minmax(0,1fr) auto !important; min-height:0; }
+      .adnn-admin-chat-room .adnn-chat-form { position:sticky; bottom:0; z-index:4; padding-bottom:calc(10px + env(safe-area-inset-bottom)); }
+      .adnn-chat-form { grid-template-columns:42px minmax(0,1fr) 42px; }
+      .adnn-chat-form input { height:42px; border-radius: 14px; }
+      .adnn-chat-form button, .adnn-chat-media { width:42px; height:42px; }
+      .admin-main-viewport:has(#adnnAdminChatPanel) { overflow:hidden; padding-bottom:0 !important; }
+    }
+  `;
+  document.head.appendChild(style);
+}
+
 function initialsFromName(value) {
   const parts = String(value || "AD").trim().split(/\s+/).filter(Boolean);
   const first = parts[0]?.[0] || "A";

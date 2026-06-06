@@ -90,7 +90,7 @@ if (auth && db) {
         startDesignerChat(user, designer);
       } else {
         activeDesignerProfile = null;
-        renderDesignerChatStatus("Designer Firebase access is not connected yet.");
+        renderDesignerChatStatus("Sign in to open designer chat.");
       }
       return;
     }
@@ -160,7 +160,14 @@ function installClientChatShell() {
     </form>
   `;
 
-  document.body.appendChild(drawer);
+  const embeddedClientMount = document.getElementById("clientChatMount");
+  if (embeddedClientMount) {
+    drawer.classList.add("is-embedded", "is-open");
+    drawer.setAttribute("aria-hidden", "false");
+    embeddedClientMount.appendChild(drawer);
+  } else {
+    document.body.appendChild(drawer);
+  }
   trigger.addEventListener("click", () => {
     if (!activeUser) return;
     if (isAdminEmail(activeUser?.email)) {
@@ -189,7 +196,8 @@ function updateClientChatVisibility(user) {
   const hasUser = Boolean(user);
   const hideOnAdminPanel = location.pathname.includes("admin.html") && isAdminEmail(user?.email);
   const hideOnDesignerPanel = location.pathname.includes("designer-account.html");
-  trigger.hidden = !hasUser || hideOnAdminPanel || hideOnDesignerPanel;
+  const hideOnEmbeddedClientPanel = Boolean(document.getElementById("clientChatMount"));
+  trigger.hidden = !hasUser || hideOnAdminPanel || hideOnDesignerPanel || hideOnEmbeddedClientPanel;
   trigger.classList.toggle("is-admin", isAdminEmail(user?.email));
 }
 
@@ -422,7 +430,7 @@ function installAdminChatPanel() {
 async function startAdminChat() {
   const adminDoc = await getDoc(doc(db, "admins", activeUser.uid)).catch(() => null);
   if (!adminDoc?.exists()) {
-    renderAdminChatStatus("Admin Firebase access missing.");
+    renderAdminChatStatus("Admin chat access is not ready.");
     return;
   }
   if (adminChatsUnsubscribe) adminChatsUnsubscribe();
@@ -452,7 +460,7 @@ function installDesignerChatPanel() {
   panel.className = "adnn-designer-chat-panel";
   panel.innerHTML = `
     <div class="adnn-chat-messages" id="adnnDesignerMessages">
-      <div class="adnn-chat-empty">Designer chat connects after Firebase designer login.</div>
+      <div class="adnn-chat-empty">Sign in to open designer chat.</div>
     </div>
     <form class="adnn-chat-form" id="adnnDesignerChatForm">
       <label class="adnn-chat-media" title="Add media" aria-label="Add media">
@@ -755,7 +763,7 @@ function canDeleteMessage(message) {
 
 async function uploadChatFile(file, chatId) {
   if (!file) return {};
-  if (!storage) throw new Error("Firebase Storage is not connected.");
+  if (!storage) throw new Error("Media uploads are not available yet.");
   if (file.size > 10 * 1024 * 1024) throw new Error("Chat file is too large.");
   const safeName = sanitizeFileName(file.name || "attachment");
   const path = `chat-media/${chatId}/${activeUser.uid}/${Date.now()}-${safeName}`;
@@ -885,9 +893,23 @@ function installChatStyles() {
       transform: translateY(18px) scale(.98);
       pointer-events: none;
       transition: opacity .25s ease, transform .3s cubic-bezier(.16,1,.3,1);
-    }
-    .adnn-chat-drawer.is-open { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
-    .adnn-chat-head {
+	    }
+	    .adnn-chat-drawer.is-open { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
+	    .adnn-chat-drawer.is-embedded {
+	      position: relative;
+	      right: auto;
+	      bottom: auto;
+	      z-index: 1;
+	      width: 100%;
+	      height: min(640px, calc(100dvh - 260px));
+	      min-height: 460px;
+	      opacity: 1;
+	      transform: none;
+	      pointer-events: auto;
+	      box-shadow: none;
+	    }
+	    .adnn-chat-drawer.is-embedded .adnn-chat-close { display: none; }
+	    .adnn-chat-head {
       min-height: 72px;
       padding: 16px;
       display: flex;

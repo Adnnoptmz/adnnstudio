@@ -9,6 +9,7 @@ import {
   deleteDoc,
   doc,
   getDoc,
+  getDocs,
   getFirestore,
   increment,
   onSnapshot,
@@ -360,14 +361,6 @@ function installAdminChatPanel() {
     </div>
     <div class="adnn-admin-chat-grid" id="adnnAdminChatGrid">
       <div class="adnn-admin-chat-list-wrap">
-        <form class="adnn-connection-form adnn-contact-card-generator" id="adnnConnectionForm">
-          <strong>Contact card generator</strong>
-          <small>Enter two unique User IDs only. The system finds the users and adds the chat to both accounts.</small>
-          <input id="adnnUserAId" autocomplete="off" placeholder="User ID A" required>
-          <input id="adnnUserBId" autocomplete="off" placeholder="User ID B" required>
-          <button type="submit">Generate contact card</button>
-          <span id="adnnConnectionStatus" aria-live="polite"></span>
-        </form>
         <div class="adnn-admin-chat-list" id="adnnAdminChatList">
           <div class="adnn-chat-empty">Waiting for chats.</div>
         </div>
@@ -408,7 +401,7 @@ function installAdminChatPanel() {
     else document.querySelector(".shell")?.appendChild(panel);
   }
   document.getElementById("adnnAdminChatForm")?.addEventListener("submit", sendAdminMessage);
-  document.getElementById("adnnConnectionForm")?.addEventListener("submit", createAdminConnectionCard);
+  installAdminMessageCardPanel();
   document.getElementById("adnnAdminChatBack")?.addEventListener("click", () => {
     document.body.classList.remove("adnn-admin-chat-open");
   });
@@ -597,72 +590,127 @@ async function sendDesignerMessage(event) {
   clearFilePreview("adnnDesignerChatFileName");
 }
 
-function cleanUserId(value) {
-  return String(value || "").trim().toLowerCase().replace(/[^a-z0-9._-]/g, "");
+function cleanUserEmail(value) {
+  return emailKey(value);
 }
 
-async function resolveMessageCardUser(userId) {
-  const id = cleanUserId(userId);
-  if (!id) return null;
-  const usernameSnap = await getDoc(doc(db, "usernames", id)).catch(() => null);
-  if (usernameSnap?.exists()) {
-    const data = usernameSnap.data() || {};
-    return {
-      uid: cleanUid(data.uid),
-      userId: id,
-      name: data.name || data.displayName || id,
-      email: emailKey(data.email || data.authEmail || ""),
-      role: data.role || "user"
-    };
+function displayNameFromUserRecord(data, email) {
+  return data?.name || data?.displayName || data?.username || data?.userId || String(email || "User").split("@")[0] || "User";
+}
+
+function pickUserEmailFromRecord(data, fallbackEmail) {
+  const options = [data?.email, data?.authEmail, data?.clientEmail, data?.userEmail, data?.accountEmail, fallbackEmail];
+  return cleanUserEmail(options.find(Boolean));
+}
+
+function emailMatchesRecord(data, targetEmail) {
+  return [data?.email, data?.authEmail, data?.clientEmail, data?.userEmail, data?.accountEmail]
+    .map(cleanUserEmail)
+    .filter(Boolean)
+    .includes(targetEmail);
+}
+
+function userRecordFromDoc(docSnap, targetEmail, role) {
+  const data = docSnap.data() || {};
+  const uid = cleanUid(data.uid || data.userUid || data.authUid || docSnap.id);
+  const resolvedEmail = pickUserEmailFromRecord(data, targetEmail);
+  if (!uid || !resolvedEmail) return null;
+  return {
+    uid,
+    name: displayNameFromUserRecord(data, resolvedEmail),
+    email: resolvedEmail,
+    role: data.role || role || "user"
+  };
+}
+
+async function findUserByEmailInCollection(collectionName, targetEmail, role, emailFields = ["email"]) {
+  for (const field of emailFields) {
+    const directSnap = await getDocs(query(collection(db, collectionName), where(field, "==", targetEmail))).catch(() => null);
+    if (directSnap && !directSnap.empty) return userRecordFromDoc(directSnap.docs[0], targetEmail, role);
   }
-  const clientSnap = await getDoc(doc(db, "clients", id)).catch(() => null);
-  if (clientSnap?.exists()) {
-    const data = clientSnap.data() || {};
-    return {
-      uid: cleanUid(data.uid || id),
-      userId: cleanUserId(data.userId || data.username || id),
-      name: data.name || data.displayName || data.userId || id,
-      email: emailKey(data.email || data.displayEmail || ""),
-      role: data.role || "client"
-    };
-  }
+
+  // Fallback: scan the small login-data collections and compare emails in lowercase.
+  // This fixes cases where saved emails have uppercase letters or are stored under authEmail/clientEmail.
+  const allSnap = await getDocs(collection(db, collectionName)).catch(() => null);
+  if (!allSnap) return null;
+  const match = allSnap.docs.find((docSnap) => emailMatchesRecord(docSnap.data() || {}, targetEmail));
+  return match ? userRecordFromDoc(match, targetEmail, role) : null;
+}
+
+async function resolveMessageCardUserByEmail(email) {
+  const targetEmail = cleanUserEmail(email);
+  if (!targetEmail) return null;
+
+  const clientUser = await findUserByEmailInCollection("clients", targetEmail, "client", ["email", "clientEmail", "userEmail", "accountEmail"]);
+  if (clientUser) return clientUser;
+
+  const designerUser = await findUserByEmailInCollection("designers", targetEmail, "designer", ["authEmail", "email", "userEmail", "accountEmail"]);
+  if (designerUser) return designerUser;
+
   return null;
+}
+
+function installAdminMessageCardPanel() {
+  if (!location.pathname.includes("admin.html")) return;
+  const mount = document.getElementById("message_cards_view");
+  if (!mount || document.getElementById("adnnMessageCardGeneratorPanel")) return;
+  mount.innerHTML = `
+    <section class="panel glass adnn-message-card-panel" id="adnnMessageCardGeneratorPanel">
+      <p class="kicker">Message Card Generator</p>
+      <h2>User-to-user approved chat</h2>
+      <p class="help">Enter two registered user emails. This creates one private approved chat that appears permanently in both users' chat panel.</p>
+      <form class="adnn-connection-form adnn-contact-card-generator" id="adnnConnectionForm">
+        <label>User A Email
+          <input id="adnnUserAEmail" type="email" autocomplete="off" placeholder="client@example.com" required>
+        </label>
+        <label>User B Email
+          <input id="adnnUserBEmail" type="email" autocomplete="off" placeholder="designer@example.com" required>
+        </label>
+        <button type="submit">Generate message card</button>
+        <span id="adnnConnectionStatus" aria-live="polite"></span>
+      </form>
+      <div class="adnn-message-card-note">
+        <strong>How it works</strong>
+        <small>Admin approval creates the private chat once. Both users can return later and open it from their chat panel without clicking the card again.</small>
+      </div>
+    </section>
+  `;
+  document.getElementById("adnnConnectionForm")?.addEventListener("submit", createAdminConnectionCard);
 }
 
 async function createAdminConnectionCard(event) {
   event.preventDefault();
   if (!activeUser || !isAdminEmail(activeUser.email)) return;
   const status = document.getElementById("adnnConnectionStatus");
-  const userIdA = cleanUserId(document.getElementById("adnnUserAId")?.value);
-  const userIdB = cleanUserId(document.getElementById("adnnUserBId")?.value);
-  if (!userIdA || !userIdB || userIdA === userIdB) {
-    if (status) status.textContent = "Add two different User IDs.";
+  const emailA = cleanUserEmail(document.getElementById("adnnUserAEmail")?.value);
+  const emailB = cleanUserEmail(document.getElementById("adnnUserBEmail")?.value);
+  if (!emailA || !emailB || emailA === emailB) {
+    if (status) status.textContent = "Add two different user emails.";
     return;
   }
-  if (status) status.textContent = "Checking User IDs...";
-  const [userA, userB] = await Promise.all([resolveMessageCardUser(userIdA), resolveMessageCardUser(userIdB)]);
+  if (status) status.textContent = "Checking registered users...";
+  const [userA, userB] = await Promise.all([resolveMessageCardUserByEmail(emailA), resolveMessageCardUserByEmail(emailB)]);
   if (!userA?.uid || !userB?.uid) {
-    if (status) status.textContent = "One or both User IDs were not found.";
+    if (status) status.textContent = "One or both emails were not found. Check that the email is exactly the registered login email.";
     return;
   }
   if (userA.uid === userB.uid) {
-    if (status) status.textContent = "Both User IDs belong to the same account.";
+    if (status) status.textContent = "Both emails belong to the same account.";
     return;
   }
   const chatId = directChatId(userA.uid, userB.uid);
-  const nameA = userA.name || userA.userId;
-  const nameB = userB.name || userB.userId;
+  const nameA = userA.name || userA.email;
+  const nameB = userB.name || userB.email;
   await setDoc(doc(db, "chats", chatId), {
     type: "direct",
     title: `${nameA} ↔ ${nameB}`,
     createdByAdminUid: activeUser.uid,
     participantUids: sortedPair(userA.uid, userB.uid),
-    participantUserIds: [userA.userId, userB.userId],
-    participantEmails: [userA.email, userB.email].filter(Boolean),
+    participantEmails: [userA.email, userB.email],
     participantNames: { [userA.uid]: nameA, [userB.uid]: nameB },
-    participantUserIdMap: { [userA.uid]: userA.userId, [userB.uid]: userB.userId },
     participantEmailMap: { [userA.uid]: userA.email, [userB.uid]: userB.email },
-    lastMessage: "Contact card created by admin.",
+    participantRoles: { [userA.uid]: userA.role || "user", [userB.uid]: userB.role || "user" },
+    lastMessage: "Message card created by admin.",
     lastSenderUid: activeUser.uid,
     updatedAt: serverTimestamp(),
     createdAt: serverTimestamp()
@@ -676,7 +724,7 @@ async function createAdminConnectionCard(event) {
     systemCard: true,
     createdAt: serverTimestamp()
   });
-  if (status) status.textContent = "Contact card generated and added to both users.";
+  if (status) status.textContent = "Message card generated and added to both users.";
   event.currentTarget.reset();
 }
 

@@ -1274,6 +1274,12 @@
           "calendar_view": { sub: "Milestone Workspace Engine", main: "Reminder Studio Calendar" },
           "settings_view": { sub: "System Control Parameters", main: "Global Environment Settings" }
         };
+        
+        // Safety Fallback override to strip unwanted static text strings from any global window containers
+        const badHeader = document.querySelector("h1");
+        if(badHeader && badHeader.textContent.includes("Send to account")) {
+          badHeader.textContent = "Message Composer";
+        }
 
         const targetHeaderData = headingMap[targetViewId] || headingMap["composer_view"];
         const headerSub = document.getElementById("dynamicPortalSub");

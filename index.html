@@ -2617,25 +2617,15 @@
 
           <div class="account-popover glass edge" id="accountPopover" aria-label="Account menu">
             <span class="account-popover-user-badge" id="accountMenuName">username</span>
-            <a href="account.html#notifications" id="universalNotificationLink">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 9.8c0-3.1-2-5.3-5-5.8V3.2a1 1 0 0 0-2 0V4c-3 .5-5 2.7-5 5.8v3.4l-1.6 2.6v.9h17.2v-.9L18 13.2V9.8Z" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linejoin="round"/><path d="M9.5 18.8a2.6 2.6 0 0 0 5 0" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round"/></svg>
-              <span>Notifications</span>
-              <span class="account-notification-count" data-account-badge="notification" hidden>0</span>
+            <a href="account.html" id="universalDashboardLink">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1v-9.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+              <span>Dashboard</span>
             </a>
-            <a href="account.html#tasks" id="universalTaskLink">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 7h10M8 12h10M8 17h7M4.5 7h.01M4.5 12h.01M4.5 17h.01" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
-              <span>Tasks</span>
-              <span class="account-notification-count" data-account-badge="task" hidden>0</span>
-            </a>
-            <a href="account.html#invoice" id="universalInvoiceLink">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3.5h10A1.5 1.5 0 0 1 18.5 5v15.5l-2.3-1.4-2.1 1.4-2.1-1.4-2.1 1.4-2.4-1.4V5A1.5 1.5 0 0 1 7 3.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M9 8h6M9 12h6M9 16h3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-              <span>Invoice</span>
-              <span class="account-notification-count" data-account-badge="invoice" hidden>0</span>
-            </a>
-            <a href="Terms & Privacy adnnstudio.com 2026.html">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 3.5h8.7L19 7.3v13.2H6.5v-17Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M15 3.8V8h4M9 12h6M9 16h6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              <span>Terms & Privacy</span>
-            </a>
+            <button class="adnn-chat-trigger account-popover-chat" id="adnnChatTrigger" type="button" hidden aria-label="Open chat">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+              <span>Chat</span>
+              <span class="adnn-chat-count" hidden>0</span>
+            </button>
             <button class="account-logout" type="button" onclick="logoutGoogleAccount(event)">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.5 5.5h-4v13h4M14 8l4 4-4 4M8.5 12H18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
               <span>Log out</span>
@@ -3692,19 +3682,14 @@
 	    const isDesigner = designerUser && !googleUser;
 	    const displayName = getSavedDisplayName(isDesigner, activeUser);
 
-    // Auto-rewrite destination navigation routing parameters for matching active workspace files
-    const notificationLink = document.getElementById("universalNotificationLink");
-    const taskLink = document.getElementById("universalTaskLink");
-    const invoiceLink = document.getElementById("universalInvoiceLink");
-    
-    if (notificationLink) {
-      notificationLink.setAttribute("href", isDesigner ? "designer-account.html#notifications" : "account.html#notifications");
+    // Auto-rewrite destination navigation routing parameters for matching active workspace files.
+    const dashboardLink = document.getElementById("universalDashboardLink");
+    const chatLink = document.getElementById("adnnChatTrigger");
+    if (dashboardLink) {
+      dashboardLink.setAttribute("href", isDesigner ? "designer-account.html" : "account.html");
     }
-    if (taskLink) {
-      taskLink.setAttribute("href", isDesigner ? "designer-account.html#tasks" : "account.html#tasks");
-    }
-    if (invoiceLink) {
-      invoiceLink.setAttribute("href", isDesigner ? "designer-account.html#invoice" : "account.html#invoice");
+    if (chatLink) {
+      chatLink.dataset.chatHref = isDesigner ? "designer-account.html#chat" : "account.html#chat";
     }
 
 	    // Set up the dynamic typography parameters to populate the hover popover element
@@ -3731,7 +3716,7 @@
   window.startGoogleLogin = function startGoogleLogin() {
     if (getSavedGoogleUser() && getGoogleAccessToken()) {
       // Safely maintain view context on the home screen instead of loading separate files
-      location.href = "account.html#notifications";
+      location.href = "account.html";
       return;
     }
 		    if (!window.GOOGLE_CLIENT_ID) {
@@ -4854,6 +4839,20 @@
   .account-notification-count[hidden] {
     display: none !important;
   }
+  .account-popover .account-popover-chat {
+    width: 100% !important;
+    height: 36px !important;
+    border-radius: 12px !important;
+    background: transparent !important;
+    color: rgba(255,255,255,.78) !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    justify-content: flex-start !important;
+    gap: 10px !important;
+    padding: 0 12px !important;
+  }
+  .account-popover .account-popover-chat:hover { color:#fff !important; background:rgba(255,255,255,.08) !important; }
+  .account-popover .account-popover-chat .adnn-chat-count { margin-left:auto; }
   .account-popover .account-logout { color: #ff4d4d; margin-top: 4px; }
   .account-popover .account-logout:hover { color: #ff6b6b; background: rgba(255,38,2,.1); }
   @media (max-width: 680px) {

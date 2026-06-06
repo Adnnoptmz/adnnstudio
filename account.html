@@ -950,6 +950,23 @@
 	      font-family:var(--font-mono);
 	      font-size:11px;
 	    }
+	    
+	    /* Forces Client Mounted Container To Render Exactly As Designer Layout style */
+	    #clientChatMount.adnn-designer-chat-panel {
+	      display: grid !important;
+	      grid-template-rows: 1fr auto !important;
+	      height: 560px !important;
+	      min-height: 0 !important;
+	      border: 1px solid var(--line) !important;
+	      border-radius: 24px !important;
+	      overflow: hidden !important;
+	      background: transparent !important;
+	      box-shadow: none !important;
+	    }
+	    #clientChatMount.adnn-designer-chat-panel .adnn-chat-messages {
+	      height: 100% !important;
+	      min-height: 0 !important;
+	    }
 	    /* Unaltered Admin Studio Interactive Calendar Core UI */
     .apple-cal-wrap {
       display: grid;
@@ -1000,13 +1017,7 @@
       font-size: 18px !important;
       line-height: 1 !important;
     }
-    #newReminderTime, 
-    #newReminderTime::-webkit-datetime-edit,
-    #newReminderTime::-webkit-datetime-edit-fields-wrapper,
-    #newReminderTime::-webkit-datetime-edit-text,
-    #newReminderTime::-webkit-datetime-edit-hour-field,
-    #newReminderTime::-webkit-datetime-edit-minute-field,
-    #newReminderTime::-webkit-datetime-edit-ampm-field {
+    #newReminderTime {
       font-family: var(--font-mono) !important;
       font-size: 13px !important;
       font-weight: 400 !important;
@@ -1342,7 +1353,8 @@
 	        <p class="kicker">Chats</p>
 	        <h1>Private chat</h1>
 	        <p class="lead">Use this space for direct project conversation with the studio.</p>
-	        <div id="clientChatMount" style="margin-top:34px;"></div>
+	        
+	        <div id="clientChatMount" class="adnn-designer-chat-panel" style="margin-top: 34px;"></div>
 	      </section>
 
 	      <section id="calendar" class="view">

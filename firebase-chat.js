@@ -383,6 +383,34 @@ function installAdminChatPanel() {
   document.getElementById("adnnAdminChatBack")?.addEventListener("click", () => {
     document.body.classList.remove("adnn-admin-chat-open");
   });
+  
+  // Custom Desktop Escape Route Key Listener Injection
+  window.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" || event.keyCode === 27) {
+      // 1. Deselect active admin room conversation tracks
+      if (document.body.classList.contains("adnn-admin-chat-open")) {
+        document.body.classList.remove("adnn-admin-chat-open");
+      }
+      selectedAdminChatId = "";
+      selectedAdminChat = null;
+      const titleEl = document.getElementById("adnnAdminChatTitle");
+      if (titleEl) titleEl.textContent = "Select a client";
+      const subtitleEl = document.getElementById("adnnAdminChatSubtitle");
+      if (subtitleEl) subtitleEl.textContent = "Choose a chat to reply";
+      const msgWrap = document.getElementById("adnnAdminMessages");
+      if (msgWrap) msgWrap.innerHTML = '<div class="adnn-chat-empty">Choose a chat to reply.</div>';
+      document.querySelectorAll(".adnn-admin-chat-item").forEach(el => el.classList.remove("is-active"));
+      if (adminMessagesUnsubscribe) { adminMessagesUnsubscribe(); adminMessagesUnsubscribe = null; }
+      
+      // 2. Close floating customer popups if running on standard viewport
+      const drawer = document.getElementById("adnnChatDrawer");
+      if (drawer && drawer.classList.contains("is-open")) {
+        drawer.classList.remove("is-open");
+        drawer.setAttribute("aria-hidden", "true");
+      }
+    }
+  });
+  
   wireFilePreview("adnnAdminChatFile", "adnnAdminChatFileName");
 }
 
@@ -777,6 +805,10 @@ function installChatStyles() {
       --adnn-bubble-other: rgba(255, 255, 255, 0.05);
       --adnn-text: #f5f5f7;
     }
+
+    /* Apple Premium Conversational Panel Resets */
+    .adnn-admin-chat-item::after { display: none !important; }
+    .adnn-admin-chat-item.is-active { background: rgba(39, 45, 207, 0.15) !important; border-left: 3px solid var(--adnn-accent); border-radius: 4px 16px 16px 4px !important; }
 
     .adnn-chat-trigger {
       width: 44px;

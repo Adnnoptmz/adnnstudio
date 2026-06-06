@@ -763,7 +763,7 @@ function getChatAudio() {
   return chatAudio;
 }
 
-function installChatStyles() {
+ffunction installChatStyles() {
   if (document.getElementById("adnnChatStyles")) return;
   const style = document.createElement("style");
   style.id = "adnnChatStyles";
@@ -777,6 +777,12 @@ function installChatStyles() {
       --adnn-bubble-other: rgba(255, 255, 255, 0.05);
       --adnn-text: #f5f5f7;
     }
+
+    /* Override dynamic chat elements to match the Apple website design */
+    .adnn-admin-chat-appbar span { display: none !important; }
+    .adnn-admin-chat-item b { background: var(--adnn-accent) !important; }
+    .adnn-chat-bubble.is-mine { background: var(--adnn-bubble-mine) !important; }
+    .adnn-chat-file-name { background: rgba(39, 45, 207, 0.95) !important; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
 
     .adnn-chat-trigger {
       width: 44px;

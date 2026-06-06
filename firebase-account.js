@@ -15,6 +15,7 @@ import {
   getFirestore,
   onSnapshot,
   query,
+  runTransaction,
   serverTimestamp,
   setDoc,
   where
@@ -48,6 +49,55 @@ function emailKey(email) {
   return String(email || "").trim().toLowerCase();
 }
 
+function cleanUserId(value) {
+  const cleaned = String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]/g, "")
+    .replace(/^[._-]+|[._-]+$/g, "");
+  return cleaned || "user";
+}
+
+function baseUserIdFor(user) {
+  const fromName = cleanUserId(user.displayName || "");
+  if (fromName && fromName !== "user") return fromName.slice(0, 24);
+  const fromEmail = cleanUserId(String(user.email || "").split("@")[0]);
+  return (fromEmail && fromEmail !== "user" ? fromEmail : `user-${String(user.uid || "").slice(0, 8)}`).slice(0, 24);
+}
+
+async function reserveUniqueUserId(user) {
+  if (!db || !user?.uid) return "";
+  const base = baseUserIdFor(user);
+  return runTransaction(db, async (transaction) => {
+    for (let index = 0; index < 25; index += 1) {
+      const candidate = index ? `${base}${index + 1}` : base;
+      const ref = doc(db, "usernames", candidate);
+      const snap = await transaction.get(ref);
+      if (!snap.exists() || snap.data()?.uid === user.uid) {
+        transaction.set(ref, {
+          uid: user.uid,
+          userId: candidate,
+          name: user.displayName || "Account",
+          email: emailKey(user.email),
+          role: emailKey(user.email) === ADMIN_EMAIL ? "admin" : "client",
+          updatedAt: serverTimestamp()
+        }, { merge: true });
+        return candidate;
+      }
+    }
+    const fallback = `${base}-${String(user.uid).slice(0, 6).toLowerCase()}`;
+    transaction.set(doc(db, "usernames", fallback), {
+      uid: user.uid,
+      userId: fallback,
+      name: user.displayName || "Account",
+      email: emailKey(user.email),
+      role: emailKey(user.email) === ADMIN_EMAIL ? "admin" : "client",
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+    return fallback;
+  });
+}
+
 function userPayload(user) {
   return {
     name: user.displayName || "Account",
@@ -70,9 +120,12 @@ function isGoogleUser(user) {
 
 async function syncClientDoc(user) {
   if (!db || !user?.email) return;
+  const userId = await reserveUniqueUserId(user).catch(() => "");
   const ref = doc(db, "clients", user.uid);
   await setDoc(ref, {
     uid: user.uid,
+    userId,
+    username: userId,
     email: emailKey(user.email),
     displayEmail: user.email,
     name: user.displayName || "",

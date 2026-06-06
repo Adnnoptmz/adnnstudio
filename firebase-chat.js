@@ -347,14 +347,14 @@ function installAdminChatPanel() {
       <div class="adnn-admin-chat-room" id="adnnAdminChatRoom">
         <div class="adnn-admin-chat-title">
           <button type="button" class="adnn-admin-chat-back" id="adnnAdminChatBack" aria-label="Back to chats">‹</button>
-          <span class="adnn-admin-chat-avatar" id="adnnAdminChatAvatar">AD</span>
+          <span class="adnn-admin-chat-avatar" id="adnnAdminChatAvatar" style="visibility:hidden;">AD</span>
           <span class="adnn-admin-chat-title-text">
-            <strong id="adnnAdminChatTitle">Select a client</strong>
-            <small id="adnnAdminChatSubtitle">Choose a chat to reply</small>
+            <strong id="adnnAdminChatTitle">&nbsp;</strong>
+            <small id="adnnAdminChatSubtitle">&nbsp;</small>
           </span>
         </div>
         <div class="adnn-chat-messages" id="adnnAdminMessages">
-          <div class="adnn-chat-empty">Choose a chat to reply.</div>
+          <div class="adnn-chat-version-placeholder">studiochat v.1.0</div>
         </div>
         <form class="adnn-chat-form" id="adnnAdminChatForm">
           <label class="adnn-chat-media" title="Add media" aria-label="Add media">
@@ -984,6 +984,7 @@ function installChatStyles() {
     .adnn-admin-chat-item b { min-width:20px; height:20px; padding: 0 5px; border-radius: 999px; display:grid; place-items:center; background: var(--adnn-accent); color:#fff; font-size:10px; font-family: var(--font-mono, monospace); font-weight:400; }
     
     .adnn-admin-chat-room { display:grid; grid-template-rows:64px minmax(0,1fr) auto; border-left: 1px solid var(--adnn-line); }
+    .adnn-chat-version-placeholder { margin: auto; color: var(--adnn-muted); font-family: var(--font-mono, monospace); font-size: 13px; letter-spacing: 0.05em; opacity: 0.5; text-align: center; }
     .adnn-admin-chat-title { min-height:64px; padding:0 20px; border-bottom:1px solid var(--adnn-line); color:var(--adnn-text); display:flex; align-items:center; gap:14px; background: rgba(255, 255, 255, 0.01); }
     .adnn-admin-chat-back { display:none; width:34px; height:34px; border: 1px solid var(--adnn-line); border-radius:50%; background:rgba(255,255,255,0.03); color:var(--adnn-text); font-size:24px; line-height:1; cursor:pointer; place-items: center; }
     .adnn-admin-chat-avatar { width:40px; height:40px; border-radius:50%; display:grid; place-items:center; flex:0 0 auto; color:#fff; background: var(--adnn-accent); font-size:12px; font-family: var(--font-mono, monospace); font-weight:500; opacity: 0.85; }

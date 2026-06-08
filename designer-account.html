@@ -521,27 +521,21 @@
 	    body.locked > .shell, body.locked .mobile-header-bar { display:none !important; }
 	    body.locked .auth-gate { display:grid !important; }
 	
-    body.chat-view-active .portal-top {
-      display:none !important;
-    }
-    body.chat-view-active > .shell > main {
-      padding-top:0 !important;
-    }
-    body.chat-view-active > .shell > main > .view.active {
-      margin-top:0 !important;
-    }
     @media (max-width:760px) {
+      body.chat-view-active .portal-top {
+        display:none !important;
+      }
       body.chat-view-active > .shell > main {
-        height:100dvh !important;
-        min-height:100dvh !important;
+        height:100svh !important;
+        min-height:100svh !important;
         padding:0 !important;
         border-radius:0 !important;
         overflow:hidden !important;
       }
       body.chat-view-active > .shell > main > .view.active {
         width:100% !important;
-        height:100dvh !important;
-        min-height:100dvh !important;
+        height:100svh !important;
+        min-height:100svh !important;
         padding:0 !important;
         border-radius:0 !important;
         overflow:hidden !important;

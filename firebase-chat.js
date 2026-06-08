@@ -2240,8 +2240,8 @@ function installChatStyles() {
         inset:0 !important;
         z-index:99999 !important;
         width:100vw !important;
-        height:100dvh !important;
         height:100svh !important;
+        max-height:100svh !important;
         max-height:100dvh !important;
         min-height:0 !important;
         margin:0 !important;
@@ -2264,8 +2264,8 @@ function installChatStyles() {
       body.adnn-direct-chat-open #adnnDirectRoom,
       body.adnn-admin-chat-open #adnnAdminChatRoom {
         display:grid !important;
-        height:100dvh !important;
         height:100svh !important;
+        max-height:100svh !important;
         min-height:0 !important;
         grid-template-rows:56px minmax(0,1fr) auto !important;
         border:0 !important;
@@ -2343,16 +2343,18 @@ function installChatStyles() {
       .adnn-chat-drawer.is-embedded .adnn-chat-messages {
         min-height:0 !important;
         overflow:auto !important;
-        padding:10px 10px 8px !important;
+        padding:10px 10px calc(74px + env(safe-area-inset-bottom)) !important;
         overscroll-behavior:contain !important;
         -webkit-overflow-scrolling:touch !important;
       }
       body.adnn-direct-chat-open .adnn-chat-form,
       body.adnn-admin-chat-open .adnn-chat-form,
       .adnn-chat-drawer.is-embedded .adnn-chat-form {
-        position:sticky !important;
+        position:fixed !important;
+        left:0 !important;
+        right:0 !important;
         bottom:0 !important;
-        z-index:20 !important;
+        z-index:100002 !important;
         display:grid !important;
         grid-template-columns:42px minmax(0,1fr) 42px !important;
         gap:8px !important;
@@ -2388,14 +2390,14 @@ function installChatStyles() {
         inset:0 !important;
         z-index:99998 !important;
         width:100vw !important;
-        height:100dvh !important;
         height:100svh !important;
+        max-height:100svh !important;
         min-height:0 !important;
         max-height:100dvh !important;
         border:0 !important;
         border-radius:0 !important;
         display:grid !important;
-        grid-template-rows:56px minmax(0,1fr) auto !important;
+        grid-template-rows:56px minmax(0,1fr) !important;
         background:rgba(10,10,13,.99) !important;
         overflow:hidden !important;
       }

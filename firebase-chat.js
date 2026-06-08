@@ -28,6 +28,9 @@ import {
 
 const ADMIN_EMAIL = "getavcollab@gmail.com";
 const ADMIN_ALIAS_UID = "adnn-admin";
+const CALL_RING_TIMEOUT_MS = 45000;
+const CALL_SIGNAL_TTL_MS = 10 * 60 * 1000;
+const CALL_ENDED_TTL_MS = 2 * 60 * 1000;
 const config = window.ADNN_FIREBASE_CONFIG;
 const app = config ? (getApps()[0] || initializeApp(config)) : null;
 const auth = app ? getAuth(app) : null;
@@ -902,6 +905,33 @@ async function isUserOnline(uid) {
   return data.online !== false && seen && (Date.now() - seen) < 70000;
 }
 
+function callExpiresAtMs(ttl = CALL_SIGNAL_TTL_MS) {
+  return Date.now() + ttl;
+}
+
+function callIsExpired(data) {
+  const expiresAtMs = Number(data?.expiresAtMs || 0);
+  return !!expiresAtMs && Date.now() > expiresAtMs;
+}
+
+async function cleanupCallSignaling(callId, receiverUid = "") {
+  if (!db || !callId) return;
+  const deleteCollectionDocs = async (path) => {
+    const snap = await getDocs(collection(db, ...path)).catch(() => null);
+    if (!snap) return;
+    await Promise.all(snap.docs.map((item) => deleteDoc(item.ref).catch(() => {})));
+  };
+  await deleteCollectionDocs(["calls", callId, "offerCandidates"]);
+  await deleteCollectionDocs(["calls", callId, "answerCandidates"]);
+  if (receiverUid) await deleteDoc(doc(db, "callInbox", receiverUid)).catch(() => {});
+  await deleteDoc(doc(db, "calls", callId)).catch(() => {});
+}
+
+function scheduleCallCleanup(callId, receiverUid = "", delay = CALL_ENDED_TTL_MS) {
+  if (!callId) return;
+  window.setTimeout(() => cleanupCallSignaling(callId, receiverUid), Math.max(5000, delay));
+}
+
 function startIncomingCallListeners(user) {
   stopIncomingCallListeners();
   const receivers = [user.uid];
@@ -912,9 +942,20 @@ function startIncomingCallListeners(user) {
       if (!snapshot.exists()) return;
       const inbox = snapshot.data() || {};
       if (inbox.status !== "ringing" || !inbox.callId) return;
+      if (callIsExpired(inbox)) {
+        await updateCallInbox(receiverUid, inbox.callId, "missed");
+        scheduleCallCleanup(inbox.callId, receiverUid, 15000);
+        return;
+      }
       const callSnap = await getDoc(doc(db, "calls", inbox.callId)).catch(() => null);
       if (!callSnap?.exists()) return;
       const call = { id: callSnap.id, ...callSnap.data() };
+      if (callIsExpired(call)) {
+        await setDoc(doc(db, "calls", inbox.callId), { status: "missed", endedAt: serverTimestamp(), updatedAt: serverTimestamp(), expiresAtMs: callExpiresAtMs(CALL_ENDED_TTL_MS) }, { merge: true }).catch(() => {});
+        await updateCallInbox(receiverUid, inbox.callId, "missed");
+        scheduleCallCleanup(inbox.callId, receiverUid, 15000);
+        return;
+      }
       if (call.status !== "ringing") return;
       if (call.callerUid === ownCallUid() || call.callerRealUid === activeUser?.uid) return;
       showIncomingCall(call);
@@ -935,6 +976,7 @@ async function updateCallInbox(receiverUid, callId, status) {
     callId,
     receiverUid,
     status,
+    expiresAtMs: status === "ringing" ? callExpiresAtMs() : callExpiresAtMs(CALL_ENDED_TTL_MS),
     updatedAt: serverTimestamp()
   }, { merge: true }).catch(() => {});
 }
@@ -1065,6 +1107,7 @@ async function startRealtimeCall(kind = "audio", target = null) {
       participants: [ownCallUid(), target.receiverUid],
       kind,
       status: "ringing",
+      expiresAtMs: callExpiresAtMs(),
       startedAt: null,
       endedAt: null,
       createdAt: serverTimestamp(),
@@ -1079,6 +1122,7 @@ async function startRealtimeCall(kind = "audio", target = null) {
       chatId: target.chatId,
       kind,
       status: "ringing",
+      expiresAtMs: callExpiresAtMs(),
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     }, { merge: true });
@@ -1101,12 +1145,20 @@ async function startRealtimeCall(kind = "audio", target = null) {
       speakerOn: true,
       videoOn: wantsVideo,
       status: "ringing",
+      expiresAtMs: callExpiresAtMs(),
       startedAt: null,
       timer: null,
       summaryWritten: false,
       callerUid: ownCallUid(),
       receiverUid: target.receiverUid
     };
+    activeCallState.ringTimeout = window.setTimeout(async () => {
+      if (!activeCallState || activeCallState.callId !== callRef.id || activeCallState.status !== "ringing") return;
+      await setDoc(callRef, { status: "missed", endedAt: serverTimestamp(), updatedAt: serverTimestamp(), expiresAtMs: callExpiresAtMs(CALL_ENDED_TTL_MS) }, { merge: true }).catch(() => {});
+      await updateCallInbox(target.receiverUid, callRef.id, "missed");
+      endBrowserCall(false, "Call missed");
+      scheduleCallCleanup(callRef.id, target.receiverUid, 15000);
+    }, CALL_RING_TIMEOUT_MS);
     playCallRinger();
     renderCallOverlay();
     watchActiveCall(callRef.id, false);
@@ -1148,13 +1200,17 @@ function watchActiveCall(callId, isAnswerer) {
       if (!isAnswerer && call.answer && activeCallState.pc?.signalingState !== "stable") {
         await activeCallState.pc.setRemoteDescription(new RTCSessionDescription(call.answer)).catch(() => {});
       }
+      if (activeCallState.ringTimeout) window.clearTimeout(activeCallState.ringTimeout);
+      activeCallState.ringTimeout = null;
       activeCallState.status = "connected";
       activeCallState.startedAt = Date.now();
       stopCallRinger();
       renderCallOverlay();
     }
     if (["ended", "rejected", "missed"].includes(call.status)) {
-      endBrowserCall(false, call.status === "rejected" ? "Call rejected" : "Call ended");
+      const receiverUid = call.receiverUid || activeCallState?.receiverUid || "";
+      endBrowserCall(false, call.status === "rejected" ? "Call rejected" : call.status === "missed" ? "Call missed" : "Call ended");
+      scheduleCallCleanup(callId, receiverUid, 15000);
     }
   }));
   activeCallUnsubscribes.push(onSnapshot(collection(db, "calls", callId, isAnswerer ? "offerCandidates" : "answerCandidates"), (snapshot) => {
@@ -1195,6 +1251,11 @@ async function acceptIncomingCall() {
     const snap = await getDoc(callRef);
     if (!snap.exists()) return endBrowserCall(false);
     const call = snap.data() || {};
+    if (callIsExpired(call)) {
+      await updateCallInbox(call.receiverUid || activeUser?.uid, activeCallState.callId, "missed");
+      scheduleCallCleanup(activeCallState.callId, call.receiverUid || activeUser?.uid, 15000);
+      return endBrowserCall(false, "Call missed");
+    }
     const wantsVideo = call.kind === "video";
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: wantsVideo });
     const pc = createPeerConnection(activeCallState.callId, true);
@@ -1204,7 +1265,7 @@ async function acceptIncomingCall() {
     await pc.setLocalDescription(answer);
     Object.assign(activeCallState, { pc, stream, videoOn: wantsVideo, status: "connected", startedAt: Date.now(), mode: "active", callerUid: call.callerUid, receiverUid: call.receiverUid });
     stopCallRinger();
-    await setDoc(callRef, { answer: { type: answer.type, sdp: answer.sdp }, status: "accepted", answeredAt: serverTimestamp(), updatedAt: serverTimestamp() }, { merge: true });
+    await setDoc(callRef, { answer: { type: answer.type, sdp: answer.sdp }, status: "accepted", answeredAt: serverTimestamp(), updatedAt: serverTimestamp(), expiresAtMs: callExpiresAtMs(2 * 60 * 60 * 1000) }, { merge: true });
     await updateCallInbox(call.receiverUid, activeCallState.callId, "accepted");
     renderCallOverlay();
     watchActiveCall(activeCallState.callId, true);
@@ -1218,8 +1279,9 @@ async function rejectIncomingCall() {
   if (activeCallState?.callId) {
     const callSnap = await getDoc(doc(db, "calls", activeCallState.callId)).catch(() => null);
     const call = callSnap?.exists() ? callSnap.data() : {};
-    await setDoc(doc(db, "calls", activeCallState.callId), { status: "rejected", endedAt: serverTimestamp(), updatedAt: serverTimestamp() }, { merge: true }).catch(() => {});
+    await setDoc(doc(db, "calls", activeCallState.callId), { status: "rejected", endedAt: serverTimestamp(), updatedAt: serverTimestamp(), expiresAtMs: callExpiresAtMs(CALL_ENDED_TTL_MS) }, { merge: true }).catch(() => {});
     await updateCallInbox(call.receiverUid || activeUser?.uid, activeCallState.callId, "rejected");
+    scheduleCallCleanup(activeCallState.callId, call.receiverUid || activeUser?.uid, 15000);
   }
   endBrowserCall(false, "Call rejected");
 }
@@ -1447,13 +1509,15 @@ async function endBrowserCall(showNotice = true, notice = "Call ended") {
   const wasConnected = state?.status === "connected";
   stopCallRinger();
   if (state?.timer) window.clearInterval(state.timer);
+  if (state?.ringTimeout) window.clearTimeout(state.ringTimeout);
   clearActiveCallListeners();
   if (wasConnected) await writeCallSummaryFromState(state, notice);
   if (showNotice && callId) {
     const callSnap = await getDoc(doc(db, "calls", callId)).catch(() => null);
     const call = callSnap?.exists() ? callSnap.data() : {};
-    await setDoc(doc(db, "calls", callId), { status: "ended", endedAt: serverTimestamp(), updatedAt: serverTimestamp() }, { merge: true }).catch(() => {});
-    await updateCallInbox(call.receiverUid, callId, "ended");
+    await setDoc(doc(db, "calls", callId), { status: "ended", endedAt: serverTimestamp(), updatedAt: serverTimestamp(), expiresAtMs: callExpiresAtMs(CALL_ENDED_TTL_MS) }, { merge: true }).catch(() => {});
+    await updateCallInbox(call.receiverUid || state?.receiverUid, callId, "ended");
+    scheduleCallCleanup(callId, call.receiverUid || state?.receiverUid, 15000);
   }
   state?.pc?.close?.();
   state?.stream?.getTracks?.().forEach((track) => track.stop());
@@ -1939,7 +2003,7 @@ function installChatStyles() {
     .adnn-chat-bubble.is-call-event { align-self:center; max-width:min(360px, 92%); text-align:center; border:1px solid var(--adnn-line); background:rgba(255,255,255,.045); color:var(--adnn-text); border-radius:18px; }
     .adnn-chat-bubble.is-call-event p { font-family:var(--font-mono, monospace); font-size:11px; letter-spacing:.02em; color:var(--adnn-text); }
     .adnn-call-overlay { position:fixed; inset:0; z-index:99999; pointer-events:none; background:transparent; padding:0; }
-    .adnn-call-card { position:fixed; right:22px; bottom:22px; width:min(360px, calc(100vw - 28px)); border:1px solid var(--adnn-line); border-radius:28px; background:rgba(18,18,22,.96); color:var(--adnn-text); box-shadow:0 30px 90px rgba(0,0,0,.45); padding:18px; text-align:center; display:grid; gap:10px; pointer-events:auto; cursor:grab; }
+    .adnn-call-card { position:fixed; right:22px; bottom:22px; width:min(360px, calc(100vw - 28px)); max-height:min(680px, calc(100dvh - 28px)); overflow:auto; border:1px solid var(--adnn-line); border-radius:28px; background:rgba(18,18,22,.96); color:var(--adnn-text); box-shadow:0 30px 90px rgba(0,0,0,.45); padding:18px; text-align:center; display:grid; gap:10px; pointer-events:auto; cursor:grab; }
     .adnn-call-card.is-dragging { cursor:grabbing; user-select:none; }
     .adnn-call-drag-handle { color:var(--adnn-muted); font-family:var(--font-mono, monospace); font-size:10px; letter-spacing:.14em; text-transform:uppercase; }
     .adnn-call-avatar { width:70px; height:70px; margin:0 auto; border-radius:50%; display:grid; place-items:center; background:var(--adnn-accent); color:#fff; font-family:var(--font-mono, monospace); font-size:22px; letter-spacing:.08em; }
@@ -2012,6 +2076,12 @@ function installChatStyles() {
       .adnn-admin-chat-room { grid-template-rows:60px minmax(0,1fr) auto !important; min-height:0; }
       .adnn-admin-chat-room .adnn-chat-form { position:sticky; bottom:0; z-index:4; padding-bottom:calc(10px + env(safe-area-inset-bottom)); }
       .adnn-chat-form { grid-template-columns:42px minmax(0,1fr) 42px; }
+      .adnn-call-card { left:10px !important; right:auto !important; bottom:10px !important; top:auto !important; width:calc(100vw - 20px); max-height:calc(100dvh - 20px); border-radius:22px; padding:14px; gap:8px; }
+      .adnn-call-avatar { width:54px; height:54px; font-size:17px; }
+      .adnn-call-card strong { font-size:18px; }
+      .adnn-call-card video { border-radius:16px; aspect-ratio:16/9; max-height:36dvh; }
+      .adnn-call-controls, .adnn-call-incoming { gap:8px; flex-wrap:wrap; }
+      .adnn-call-control { width:min(74px, 28vw); min-height:56px; border-radius:16px; }
       .adnn-chat-form input { height:42px; border-radius: 14px; }
       .adnn-chat-form button, .adnn-chat-media { width:42px; height:42px; }
       .admin-main-viewport:has(#adnnAdminChatPanel) { overflow:hidden; padding-bottom:0 !important; }

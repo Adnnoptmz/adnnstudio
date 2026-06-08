@@ -58,6 +58,7 @@ let knownClientMessageIds = new Set();
 let knownAdminMessageIds = new Set();
 let knownDesignerMessageIds = new Set();
 let chatAudio = null;
+let activeCallState = null;
 
 if (auth && db) {
   installChatStyles();
@@ -820,14 +821,117 @@ function sortedPair(uidA, uidB) { return [cleanUid(uidA), cleanUid(uidB)].sort()
 function cleanUid(value) { return String(value || "").trim().replace(/[^A-Za-z0-9_-]/g, ""); }
 
 async function startBrowserCall(kind = "audio", label = "this user") {
+  if (!navigator.mediaDevices?.getUserMedia) {
+    showChatAlert({ text: "Calling is not supported in this browser." }, "Call blocked");
+    return;
+  }
+  const wantsVideo = kind === "video";
   try {
-    const wantsVideo = kind === "video";
+    endBrowserCall(false);
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: wantsVideo });
-    stream.getTracks().forEach((track) => track.stop());
-    showChatAlert({ text: `${wantsVideo ? "Video" : "Audio"} call ready with ${label}. Full live calling needs WebRTC signaling/TURN setup.` }, "Call option");
+    activeCallState = {
+      stream,
+      label: String(label || "this user"),
+      speakerOn: true,
+      videoOn: wantsVideo,
+      startedAt: Date.now(),
+      timer: null
+    };
+    renderCallOverlay();
+    showChatAlert({ text: `${wantsVideo ? "Video" : "Audio"} call started with ${label}.` }, "Call started");
   } catch (error) {
     showChatAlert({ text: "Microphone/camera permission is needed for calls." }, "Call blocked");
   }
+}
+
+function renderCallOverlay() {
+  if (!activeCallState) return;
+  let overlay = document.getElementById("adnnCallOverlay");
+  if (!overlay) {
+    overlay = document.createElement("div");
+    overlay.id = "adnnCallOverlay";
+    overlay.className = "adnn-call-overlay";
+    overlay.innerHTML = `
+      <div class="adnn-call-card" role="dialog" aria-modal="true" aria-label="Call controls">
+        <div class="adnn-call-avatar" id="adnnCallAvatar"></div>
+        <strong id="adnnCallName">Call</strong>
+        <small id="adnnCallStatus">Connecting...</small>
+        <video id="adnnCallVideo" autoplay muted playsinline></video>
+        <div class="adnn-call-controls">
+          <button type="button" id="adnnCallSpeaker" class="adnn-call-control" aria-label="Speaker">🔊<span>Speaker</span></button>
+          <button type="button" id="adnnCallVideoToggle" class="adnn-call-control" aria-label="Convert to video">🎥<span>Video</span></button>
+          <button type="button" id="adnnCallEnd" class="adnn-call-control is-end" aria-label="End call">✕<span>End</span></button>
+        </div>
+        <p class="adnn-call-note">Browser call preview is active. Full user-to-user live calling needs WebRTC signaling/TURN setup.</p>
+      </div>`;
+    document.body.appendChild(overlay);
+    document.getElementById("adnnCallEnd")?.addEventListener("click", () => endBrowserCall(true));
+    document.getElementById("adnnCallSpeaker")?.addEventListener("click", toggleCallSpeaker);
+    document.getElementById("adnnCallVideoToggle")?.addEventListener("click", convertCallToVideo);
+  }
+  const video = document.getElementById("adnnCallVideo");
+  if (video) {
+    video.srcObject = activeCallState.stream;
+    video.style.display = activeCallState.videoOn ? "block" : "none";
+  }
+  const name = document.getElementById("adnnCallName");
+  const status = document.getElementById("adnnCallStatus");
+  const avatar = document.getElementById("adnnCallAvatar");
+  const speaker = document.getElementById("adnnCallSpeaker");
+  const videoToggle = document.getElementById("adnnCallVideoToggle");
+  if (name) name.textContent = activeCallState.label;
+  if (avatar) avatar.textContent = initialsFromName(activeCallState.label);
+  if (speaker) speaker.classList.toggle("is-muted", !activeCallState.speakerOn);
+  if (videoToggle) videoToggle.classList.toggle("is-on", activeCallState.videoOn);
+  if (activeCallState.timer) window.clearInterval(activeCallState.timer);
+  activeCallState.timer = window.setInterval(() => {
+    if (!activeCallState || !status) return;
+    const seconds = Math.floor((Date.now() - activeCallState.startedAt) / 1000);
+    const mm = String(Math.floor(seconds / 60)).padStart(2, "0");
+    const ss = String(seconds % 60).padStart(2, "0");
+    status.textContent = `${activeCallState.videoOn ? "Video" : "Audio"} call • ${mm}:${ss}`;
+  }, 500);
+}
+
+function toggleCallSpeaker() {
+  if (!activeCallState) return;
+  activeCallState.speakerOn = !activeCallState.speakerOn;
+  const button = document.getElementById("adnnCallSpeaker");
+  if (button) {
+    button.classList.toggle("is-muted", !activeCallState.speakerOn);
+    button.firstChild.textContent = activeCallState.speakerOn ? "🔊" : "🔇";
+  }
+  showChatAlert({ text: activeCallState.speakerOn ? "Speaker enabled." : "Speaker muted." }, "Call");
+}
+
+async function convertCallToVideo() {
+  if (!activeCallState) return;
+  if (activeCallState.videoOn) {
+    activeCallState.stream.getVideoTracks().forEach((track) => {
+      track.stop();
+      activeCallState.stream.removeTrack(track);
+    });
+    activeCallState.videoOn = false;
+    renderCallOverlay();
+    return;
+  }
+  try {
+    const videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
+    videoStream.getVideoTracks().forEach((track) => activeCallState.stream.addTrack(track));
+    activeCallState.videoOn = true;
+    renderCallOverlay();
+  } catch (error) {
+    showChatAlert({ text: "Camera permission is needed to convert to video." }, "Video blocked");
+  }
+}
+
+function endBrowserCall(showNotice = true) {
+  if (activeCallState?.timer) window.clearInterval(activeCallState.timer);
+  activeCallState?.stream?.getTracks?.().forEach((track) => track.stop());
+  activeCallState = null;
+  const overlay = document.getElementById("adnnCallOverlay");
+  if (overlay) overlay.remove();
+  if (showNotice) showChatAlert({ text: "Call ended." }, "Call");
 }
 
 function updateSectionBadge(type, count) {
@@ -1296,6 +1400,21 @@ function installChatStyles() {
     .adnn-chat-head-actions { display:flex; align-items:center; gap:8px; }
     .adnn-chat-call { width:36px; height:36px; border:0; border-radius:50%; background:rgba(255,255,255,.08); color:var(--adnn-text); cursor:pointer; display:grid; place-items:center; font-size:15px; }
     .adnn-chat-call:hover { background:var(--adnn-accent); color:#fff; }
+    .adnn-call-overlay { position:fixed; inset:0; z-index:99999; display:grid; place-items:center; background:rgba(0,0,0,.68); backdrop-filter:blur(16px); padding:20px; }
+    .adnn-call-card { width:min(360px, 100%); border:1px solid var(--adnn-line); border-radius:28px; background:rgba(18,18,22,.94); color:var(--adnn-text); box-shadow:0 30px 90px rgba(0,0,0,.45); padding:24px; text-align:center; display:grid; gap:12px; }
+    .adnn-call-avatar { width:82px; height:82px; margin:0 auto; border-radius:50%; display:grid; place-items:center; background:var(--adnn-accent); color:#fff; font-family:var(--font-mono, monospace); font-size:24px; letter-spacing:.08em; }
+    .adnn-call-card strong { font-size:22px; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .adnn-call-card small, .adnn-call-note { color:var(--adnn-muted); font-family:var(--font-mono, monospace); font-size:11px; line-height:1.5; }
+    .adnn-call-card video { width:100%; aspect-ratio:16/10; object-fit:cover; border-radius:20px; background:#000; }
+    .adnn-call-controls { display:flex; justify-content:center; gap:10px; margin-top:4px; }
+    .adnn-call-control { width:74px; min-height:62px; border:1px solid var(--adnn-line); border-radius:18px; background:rgba(255,255,255,.07); color:var(--adnn-text); cursor:pointer; display:grid; place-items:center; gap:4px; font-size:18px; }
+    .adnn-call-control span { font-size:10px; font-family:var(--font-mono, monospace); color:var(--adnn-muted); }
+    .adnn-call-control:hover, .adnn-call-control.is-on { background:var(--adnn-accent); color:#fff; }
+    .adnn-call-control:hover span, .adnn-call-control.is-on span { color:rgba(255,255,255,.8); }
+    .adnn-call-control.is-muted { opacity:.58; }
+    .adnn-call-control.is-end { background:#ff3b30; color:#fff; border-color:rgba(255,59,48,.55); }
+    .adnn-call-control.is-end span { color:rgba(255,255,255,.82); }
+
     .adnn-direct-chat-panel { height:min(680px, calc(100dvh - 230px)); min-height:520px; display:grid; grid-template-columns:minmax(260px,.36fr) minmax(0,1fr); border:1px solid var(--adnn-line); border-radius:24px; overflow:hidden; background:transparent; }
     .adnn-direct-list { min-height:0; overflow:auto; padding:8px; border-right:1px solid var(--adnn-line); }
     .adnn-direct-user { width:100%; border:0; border-radius:16px; padding:10px 12px; display:grid; grid-template-columns:42px minmax(0,1fr); gap:12px; align-items:center; color:var(--adnn-text); background:transparent; text-align:left; cursor:pointer; margin-bottom:4px; }

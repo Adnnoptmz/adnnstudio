@@ -2414,6 +2414,82 @@ function installChatStyles() {
       }
     }
 
+
+
+    /* Final mobile composer visibility repair: keep the typer inside the chat grid, not off-screen. */
+    @media (max-width: 760px) {
+      body.adnn-direct-chat-open #adnnDirectChatPanel,
+      body.adnn-admin-chat-open #adnnAdminChatPanel,
+      .adnn-chat-drawer.is-embedded {
+        height:100dvh !important;
+        height:100svh !important;
+        max-height:100dvh !important;
+        max-height:100svh !important;
+        overflow:hidden !important;
+      }
+      body.adnn-direct-chat-open #adnnDirectRoom,
+      body.adnn-admin-chat-open #adnnAdminChatRoom,
+      .adnn-chat-drawer.is-embedded {
+        display:grid !important;
+        grid-template-rows:56px minmax(0, 1fr) auto !important;
+        min-height:0 !important;
+        height:100% !important;
+        overflow:hidden !important;
+      }
+      body.adnn-direct-chat-open .adnn-chat-messages,
+      body.adnn-admin-chat-open .adnn-chat-messages,
+      .adnn-chat-drawer.is-embedded .adnn-chat-messages {
+        grid-row:2 !important;
+        min-height:0 !important;
+        overflow:auto !important;
+        padding:10px 10px 12px !important;
+      }
+      body.adnn-direct-chat-open .adnn-chat-form,
+      body.adnn-admin-chat-open .adnn-chat-form,
+      .adnn-chat-drawer.is-embedded .adnn-chat-form {
+        grid-row:3 !important;
+        position:relative !important;
+        left:auto !important;
+        right:auto !important;
+        bottom:auto !important;
+        width:100% !important;
+        z-index:10 !important;
+        display:grid !important;
+        grid-template-columns:42px minmax(0, 1fr) 42px !important;
+        gap:8px !important;
+        padding:8px 10px calc(8px + env(safe-area-inset-bottom)) !important;
+        margin:0 !important;
+        visibility:visible !important;
+        opacity:1 !important;
+        transform:none !important;
+        border-top:1px solid var(--adnn-line) !important;
+        background:rgba(10,10,13,.98) !important;
+      }
+      body.adnn-direct-chat-open .adnn-chat-form input,
+      body.adnn-admin-chat-open .adnn-chat-form input,
+      .adnn-chat-drawer.is-embedded .adnn-chat-form input {
+        display:block !important;
+        width:100% !important;
+        min-width:0 !important;
+        height:42px !important;
+        min-height:42px !important;
+        font-size:16px !important;
+      }
+      body.adnn-direct-chat-open .adnn-chat-media,
+      body.adnn-direct-chat-open .adnn-chat-form button,
+      body.adnn-admin-chat-open .adnn-chat-media,
+      body.adnn-admin-chat-open .adnn-chat-form button,
+      .adnn-chat-drawer.is-embedded .adnn-chat-media,
+      .adnn-chat-drawer.is-embedded .adnn-chat-form button {
+        display:grid !important;
+        place-items:center !important;
+        width:42px !important;
+        height:42px !important;
+        min-width:42px !important;
+        min-height:42px !important;
+      }
+    }
+
     }
   `;
   document.head.appendChild(style);

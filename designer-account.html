@@ -600,14 +600,17 @@
         <a href="#chat" data-view-link="chat">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
           <span>User Chats</span>
+          <span class="side-notification-badge" data-account-badge="chat" hidden>0</span>
         </a>
         <a href="#admin-support" data-view-link="admin-support">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5c4.7 0 8.5 3.2 8.5 7.2s-3.8 7.2-8.5 7.2c-.9 0-1.8-.1-2.6-.4L4.5 20l1.4-4A6.6 6.6 0 0 1 3.5 10.7c0-4 3.8-7.2 8.5-7.2Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8 10.5h8M8 13.5h5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5c4.7 0 8.5 3.2 8.5 7.2s-3.8 7.2-8.5 7.2c-.9 0-1.8-.1-2.6-.4L4.5 20l1.4-4A6.6 6.6 0 0 1 3.5 10.7c0-4 3.8-7.2 8.5-7.2Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
           <span>Admin Support</span>
+          <span class="side-notification-badge" data-account-badge="support" hidden>0</span>
         </a>
         <a href="#calendar" data-view-link="calendar">
           <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4" width="17" height="17" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M8 2.5v4M16 2.5v4M3.5 10h9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
           <span>Calendar</span>
+          <span class="side-notification-badge" data-account-badge="calendar" hidden>0</span>
         </a>
         <a href="#notes" data-view-link="notes">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 3.5h8.7L19 7.3v13.2H6.5v-17Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M15 3.8V8h4M9 12h6M9 16h4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -689,6 +692,8 @@
         </div>
       </section>
       <section id="notes" class="view">
+        <p class="kicker">Studio Notes</p>
+        <h1>Notes</h1>
         <p class="lead">Keep quick private notes for your current design work.</p>
         <div class="notes-composer">
           <textarea class="notes-input" id="notesInput" placeholder="Write a note"></textarea>
@@ -696,12 +701,9 @@
           <div class="notes-list" id="notesList"></div>
         </div>
       </section>
-      <section id="chat" class="view"><div id="directChatMount" class="adnn-designer-chat-panel" style="margin-top: 0;"></div></section>
+      <section id="chat" class="view"><div id="directChatMount"></div></section>
       <section id="admin-support" class="view">
-        <p class="kicker">Admin Support</p>
-        <h1>Admin Support</h1>
-        <p class="lead">Use this private support chat for direct messages with AdnnStudio admin.</p>
-        <div id="clientChatMount" class="adnn-designer-chat-panel" style="margin-top: 0;"></div>
+        <div id="clientChatMount" class="adnn-designer-chat-panel" style="margin-top:0;"></div>
       </section>
       <section id="settings" class="view">
         <p class="kicker">Settings</p>
@@ -816,7 +818,7 @@
         notifications: ["Designer Workspace", "Notifications"],
         tasks: ["Designer Workspace", "Tasks"],
         chat: ["Designer Workspace", "User Chats"],
-        "admin-support": ["Designer Workspace", "Admin Support"],
+        "admin-support": ["", ""],
         calendar: ["Designer Workspace", "Calendar"],
         notes: ["Designer Workspace", "Notes"],
         invoice: ["Designer Workspace", "Invoice"],
@@ -936,6 +938,45 @@
       let reminderDatabase = {};
       try { reminderDatabase = JSON.parse(localStorage.getItem(storageKey)) || {}; } catch { reminderDatabase = {}; }
 
+
+      function adnnReminderNotify(title, body) {
+        try {
+          if ("Notification" in window && Notification.permission === "granted") {
+            new Notification(title, { body });
+          } else if ("Notification" in window && Notification.permission !== "denied") {
+            Notification.requestPermission().then((permission) => {
+              if (permission === "granted") new Notification(title, { body });
+              else alert(`${title}: ${body}`);
+            });
+          } else {
+            alert(`${title}: ${body}`);
+          }
+        } catch { alert(`${title}: ${body}`); }
+      }
+
+      function adnnScheduleReminder(dateKey, item) {
+        if (!dateKey || !item?.time) return;
+        const target = new Date(`${dateKey}T${item.time}:00`);
+        const wait = target.getTime() - Date.now();
+        if (wait <= 0 || wait > 2147483647) return;
+        setTimeout(() => adnnReminderNotify("Calendar Reminder", item.text || "Reminder"), wait);
+      }
+
+      function adnnScheduleAllReminders(reminderDatabase) {
+        Object.entries(reminderDatabase || {}).forEach(([dateKey, items]) => {
+          (items || []).forEach((item) => adnnScheduleReminder(dateKey, item));
+        });
+      }
+
+      function adnnUpdateCalendarBadge(reminderDatabase) {
+        const count = Object.values(reminderDatabase || {}).reduce((total, items) => total + ((items || []).length), 0);
+        document.querySelectorAll('[data-account-badge="calendar"]').forEach((badge) => {
+          badge.textContent = String(count);
+          badge.hidden = count <= 0;
+          badge.style.display = count > 0 ? 'grid' : 'none';
+        });
+      }
+
       const dayNames = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"];
 
       function buildCalendarStructure() {
@@ -1017,6 +1058,7 @@
             localStorage.setItem(storageKey, JSON.stringify(reminderDatabase));
             renderRemindersForSelectedDate();
             buildCalendarStructure();
+            adnnUpdateCalendarBadge(reminderDatabase);
           });
           remBox.appendChild(row);
         });
@@ -1035,15 +1077,21 @@
         const timeVal = remTimeInput.value || "12:00";
         if(!val || !selectedDateKey) return;
         if(!reminderDatabase[selectedDateKey]) reminderDatabase[selectedDateKey] = [];
-        reminderDatabase[selectedDateKey].push({ text: val, time: timeVal });
+        const newReminderItem = { text: val, time: timeVal };
+        reminderDatabase[selectedDateKey].push(newReminderItem);
         localStorage.setItem(storageKey, JSON.stringify(reminderDatabase));
+        adnnReminderNotify("Reminder saved", `${val} at ${timeVal}`);
+        adnnScheduleReminder(selectedDateKey, newReminderItem);
         remInput.value = "";
         renderRemindersForSelectedDate();
         buildCalendarStructure();
+        adnnUpdateCalendarBadge(reminderDatabase);
       });
 
       buildCalendarStructure();
       renderRemindersForSelectedDate();
+      adnnScheduleAllReminders(reminderDatabase);
+      adnnUpdateCalendarBadge(reminderDatabase);
     }
 
     function dateKey(date) {

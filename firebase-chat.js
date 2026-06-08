@@ -2191,6 +2191,186 @@ function installChatStyles() {
       .adnn-chat-form input { height:42px; border-radius: 14px; }
       .adnn-chat-form button, .adnn-chat-media { width:42px; height:42px; }
       .admin-main-viewport:has(#adnnAdminChatPanel) { overflow:hidden; padding-bottom:0 !important; }
+
+
+    /* Mobile app-style chat screens */
+    @media (max-width: 760px) {
+      body.adnn-direct-chat-open,
+      body.adnn-admin-chat-open {
+        overflow:hidden !important;
+        touch-action:pan-y;
+      }
+
+      body.adnn-direct-chat-open #adnnDirectChatPanel,
+      body.adnn-admin-chat-open #adnnAdminChatPanel {
+        position:fixed !important;
+        inset:0 !important;
+        z-index:99999 !important;
+        width:100vw !important;
+        height:100dvh !important;
+        height:100svh !important;
+        max-height:100dvh !important;
+        min-height:0 !important;
+        margin:0 !important;
+        border:0 !important;
+        border-radius:0 !important;
+        background:rgba(10,10,13,.99) !important;
+        overflow:hidden !important;
+      }
+
+      body.adnn-direct-chat-open #adnnDirectChatPanel {
+        display:grid !important;
+        grid-template-columns:1fr !important;
+      }
+      body.adnn-direct-chat-open #adnnDirectChatList,
+      body.adnn-direct-chat-open .adnn-direct-list,
+      body.adnn-admin-chat-open .adnn-admin-chat-appbar,
+      body.adnn-admin-chat-open .adnn-admin-chat-list {
+        display:none !important;
+      }
+      body.adnn-direct-chat-open #adnnDirectRoom,
+      body.adnn-admin-chat-open #adnnAdminChatRoom {
+        display:grid !important;
+        height:100dvh !important;
+        height:100svh !important;
+        min-height:0 !important;
+        grid-template-rows:56px minmax(0,1fr) auto !important;
+        border:0 !important;
+        overflow:hidden !important;
+        background:transparent !important;
+      }
+
+      body.adnn-direct-chat-open .adnn-direct-title,
+      body.adnn-admin-chat-open .adnn-admin-chat-title,
+      .adnn-chat-drawer.is-embedded .adnn-chat-head {
+        min-height:56px !important;
+        height:56px !important;
+        padding:0 10px !important;
+        gap:9px !important;
+        border-bottom:1px solid var(--adnn-line) !important;
+        background:rgba(10,10,13,.98) !important;
+        backdrop-filter:blur(14px) !important;
+        -webkit-backdrop-filter:blur(14px) !important;
+      }
+      body.adnn-direct-chat-open .adnn-direct-back,
+      body.adnn-admin-chat-open .adnn-admin-chat-back {
+        display:grid !important;
+        place-items:center !important;
+        width:36px !important;
+        height:36px !important;
+        flex:0 0 36px !important;
+        border:0 !important;
+        background:transparent !important;
+        font-size:30px !important;
+      }
+      body.adnn-direct-chat-open .adnn-direct-avatar,
+      body.adnn-admin-chat-open .adnn-admin-chat-avatar {
+        width:34px !important;
+        height:34px !important;
+        flex:0 0 34px !important;
+        font-size:11px !important;
+      }
+      body.adnn-direct-chat-open .adnn-direct-title-copy strong,
+      body.adnn-admin-chat-open .adnn-admin-chat-title-text strong,
+      .adnn-chat-drawer.is-embedded .adnn-chat-head strong {
+        font-size:15px !important;
+        line-height:1.15 !important;
+        max-width:38vw !important;
+      }
+      body.adnn-direct-chat-open .adnn-direct-title-copy small,
+      body.adnn-admin-chat-open .adnn-admin-chat-title-text small,
+      .adnn-chat-drawer.is-embedded .adnn-chat-head span {
+        display:none !important;
+      }
+      body.adnn-direct-chat-open .adnn-direct-actions,
+      body.adnn-admin-chat-open .adnn-chat-head-actions,
+      .adnn-chat-drawer.is-embedded .adnn-chat-head-actions {
+        margin-left:auto !important;
+        display:flex !important;
+        align-items:center !important;
+        gap:6px !important;
+      }
+      body.adnn-direct-chat-open .adnn-chat-call,
+      body.adnn-admin-chat-open .adnn-chat-call,
+      .adnn-chat-drawer.is-embedded .adnn-chat-call {
+        width:34px !important;
+        height:34px !important;
+        flex:0 0 34px !important;
+        border-radius:50% !important;
+      }
+      body.adnn-direct-chat-open .adnn-chat-call svg,
+      body.adnn-admin-chat-open .adnn-chat-call svg,
+      .adnn-chat-drawer.is-embedded .adnn-chat-call svg {
+        width:17px !important;
+        height:17px !important;
+      }
+
+      body.adnn-direct-chat-open .adnn-chat-messages,
+      body.adnn-admin-chat-open .adnn-chat-messages,
+      .adnn-chat-drawer.is-embedded .adnn-chat-messages {
+        min-height:0 !important;
+        overflow:auto !important;
+        padding:10px 10px 8px !important;
+        overscroll-behavior:contain !important;
+        -webkit-overflow-scrolling:touch !important;
+      }
+      body.adnn-direct-chat-open .adnn-chat-form,
+      body.adnn-admin-chat-open .adnn-chat-form,
+      .adnn-chat-drawer.is-embedded .adnn-chat-form {
+        position:sticky !important;
+        bottom:0 !important;
+        z-index:20 !important;
+        display:grid !important;
+        grid-template-columns:42px minmax(0,1fr) 42px !important;
+        gap:8px !important;
+        padding:8px 10px calc(8px + env(safe-area-inset-bottom)) !important;
+        border-top:1px solid var(--adnn-line) !important;
+        background:rgba(10,10,13,.98) !important;
+        backdrop-filter:blur(14px) !important;
+        -webkit-backdrop-filter:blur(14px) !important;
+      }
+      body.adnn-direct-chat-open .adnn-chat-form input,
+      body.adnn-admin-chat-open .adnn-chat-form input,
+      .adnn-chat-drawer.is-embedded .adnn-chat-form input {
+        height:42px !important;
+        min-height:42px !important;
+        font-size:16px !important;
+        border-radius:20px !important;
+      }
+      body.adnn-direct-chat-open .adnn-chat-form button,
+      body.adnn-admin-chat-open .adnn-chat-form button,
+      body.adnn-direct-chat-open .adnn-chat-media,
+      body.adnn-admin-chat-open .adnn-chat-media,
+      .adnn-chat-drawer.is-embedded .adnn-chat-form button,
+      .adnn-chat-drawer.is-embedded .adnn-chat-media {
+        width:42px !important;
+        height:42px !important;
+        min-width:42px !important;
+        border-radius:50% !important;
+        flex:0 0 42px !important;
+      }
+
+      .adnn-chat-drawer.is-embedded {
+        position:fixed !important;
+        inset:0 !important;
+        z-index:99998 !important;
+        width:100vw !important;
+        height:100dvh !important;
+        height:100svh !important;
+        min-height:0 !important;
+        max-height:100dvh !important;
+        border:0 !important;
+        border-radius:0 !important;
+        display:grid !important;
+        grid-template-rows:56px minmax(0,1fr) auto !important;
+        background:rgba(10,10,13,.99) !important;
+        overflow:hidden !important;
+      }
+      .adnn-chat-drawer.is-embedded .adnn-chat-close {
+        display:none !important;
+      }
+    }
+
     }
   `;
   document.head.appendChild(style);

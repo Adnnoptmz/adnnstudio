@@ -55,6 +55,7 @@ let directChatsUnsubscribe = null;
 let directMessagesUnsubscribe = null;
 let activeDirectChatId = "";
 let activeDirectChat = null;
+const ADNN_DIRECT_CHAT_RESET_AT = Date.parse("2026-06-08T18:50:22Z");
 let firstDirectMessagesSnapshot = true;
 let knownDirectMessageIds = new Set();
 let designerMessagesUnsubscribe = null;
@@ -688,9 +689,9 @@ function installDirectChatPanel() {
     <div class="adnn-direct-room" id="adnnDirectRoom">
       <div class="adnn-direct-title">
         <button type="button" class="adnn-direct-back" id="adnnDirectBack">‹</button>
-        <span class="adnn-direct-avatar" id="adnnDirectAvatar">AD</span>
+        <span class="adnn-direct-avatar" id="adnnDirectAvatar" hidden></span>
         <span class="adnn-direct-title-copy"><strong id="adnnDirectTitle"></strong><small id="adnnDirectSubtitle"></small></span>
-        <span class="adnn-direct-actions"><button type="button" class="adnn-chat-call" data-call-kind="audio" aria-label="Start audio call">${ADNN_ICON_PHONE}</button><button type="button" class="adnn-chat-call" data-call-kind="video" aria-label="Start video call">${ADNN_ICON_VIDEO}</button></span>
+        <span class="adnn-direct-actions"><button type="button" class="adnn-chat-call" data-call-kind="audio" aria-label="Start audio call" disabled>${ADNN_ICON_PHONE}</button><button type="button" class="adnn-chat-call" data-call-kind="video" aria-label="Start video call" disabled>${ADNN_ICON_VIDEO}</button></span>
       </div>
       <div class="adnn-chat-messages" id="adnnDirectMessages"></div>
       <form class="adnn-chat-form" id="adnnDirectChatForm">
@@ -712,8 +713,12 @@ function startDirectChats(user) {
   if (directChatsUnsubscribe) directChatsUnsubscribe();
   const directQuery = query(collection(db, "chats"), where("participantUids", "array-contains", user.uid));
   directChatsUnsubscribe = onSnapshot(directQuery, (snapshot) => {
-    const chats = snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() })).filter((chat) => chat.type === "direct").sort((a,b) => toMillis(b.updatedAt) - toMillis(a.updatedAt));
+    const chats = snapshot.docs
+      .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
+      .filter((chat) => chat.type === "direct" && toMillis(chat.createdAt || chat.updatedAt) >= ADNN_DIRECT_CHAT_RESET_AT)
+      .sort((a,b) => toMillis(b.updatedAt) - toMillis(a.updatedAt));
     renderDirectChatList(chats);
+    if (activeDirectChatId && !chats.some((chat) => chat.id === activeDirectChatId)) closeDirectChatRoom();
     updateSectionBadge("chat", chats.length);
   }, () => renderDirectChatStatus("User chats could not load."));
 }
@@ -779,7 +784,7 @@ function selectDirectChat(chat) {
   const submit = document.querySelector("#adnnDirectChatForm button[type='submit']");
   if (title) title.textContent = other.name || other.email || "";
   if (subtitle) subtitle.textContent = other.email || "";
-  if (avatar) avatar.textContent = initialsFromName(other.name || other.email || "");
+  if (avatar) { avatar.hidden = false; avatar.textContent = initialsFromName(other.name || other.email || ""); }
   if (!other.name || other.name === "User" || !other.email) {
     enrichDirectChatIdentity(chat).then((resolved) => {
       if (!resolved || activeDirectChatId !== chat.id) return;
@@ -790,6 +795,7 @@ function selectDirectChat(chat) {
   }
   if (input) input.disabled = false;
   if (submit) submit.disabled = false;
+  document.querySelectorAll("#adnnDirectRoom .adnn-chat-call").forEach((button) => { button.disabled = false; });
   if (directMessagesUnsubscribe) directMessagesUnsubscribe();
   firstDirectMessagesSnapshot = true;
   knownDirectMessageIds = new Set();
@@ -806,6 +812,24 @@ function selectDirectChat(chat) {
 
 function closeDirectChatRoom() {
   document.body.classList.remove("adnn-direct-chat-open");
+  activeDirectChatId = "";
+  activeDirectChat = null;
+  if (directMessagesUnsubscribe) directMessagesUnsubscribe();
+  directMessagesUnsubscribe = null;
+  document.querySelectorAll(".adnn-direct-user").forEach((el) => el.classList.remove("is-active"));
+  const wrap = document.getElementById("adnnDirectMessages");
+  if (wrap) wrap.innerHTML = "";
+  const title = document.getElementById("adnnDirectTitle");
+  const subtitle = document.getElementById("adnnDirectSubtitle");
+  const avatar = document.getElementById("adnnDirectAvatar");
+  const input = document.getElementById("adnnDirectChatInput");
+  const submit = document.querySelector("#adnnDirectChatForm button[type='submit']");
+  if (title) title.textContent = "";
+  if (subtitle) subtitle.textContent = "";
+  if (avatar) { avatar.hidden = true; avatar.textContent = ""; }
+  if (input) { input.value = ""; input.disabled = true; }
+  if (submit) submit.disabled = true;
+  document.querySelectorAll("#adnnDirectRoom .adnn-chat-call").forEach((button) => { button.disabled = true; });
 }
 
 function renderDirectMessages(messages) {
@@ -2020,7 +2044,7 @@ function installChatStyles() {
     .adnn-chat-file-name .adnn-file-copy strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:11px; font-weight:600; }
     .adnn-chat-file-name .adnn-file-copy small { opacity:.74; font-size:9px; }
     .adnn-chat-file-name[hidden] { display:none !important; }
-    .adnn-chat-form input { min-width:0; height:44px; border: 1px solid var(--adnn-line); border-radius:16px; padding:0 16px; background: rgba(0,0,0,0.2); color:var(--adnn-text); outline:0; font-size:14px; }
+    .adnn-chat-form input { min-width:0; height:44px; border: 1px solid var(--adnn-line); border-radius:16px; padding:0 16px; background: rgba(0,0,0,0.2); color:var(--adnn-text); outline:0; font-size:16px; }
     .adnn-chat-form input::placeholder { color: var(--adnn-muted); }
     .adnn-chat-form input:focus { border-color: var(--adnn-accent); }
     .adnn-chat-form button { width:44px; height:44px; border:0; border-radius:50%; display:grid; place-items:center; background: var(--adnn-accent); color:#fff; cursor:pointer; }
@@ -2099,16 +2123,17 @@ function installChatStyles() {
     .adnn-call-control.is-end { background:#ff3b30; color:#fff; border-color:rgba(255,59,48,.55); }
     .adnn-call-control.is-end span { color:rgba(255,255,255,.82); }
 
-    .adnn-direct-chat-panel { height:min(680px, calc(100dvh - 230px)); min-height:520px; display:grid; grid-template-columns:minmax(260px,.36fr) minmax(0,1fr); border:1px solid var(--adnn-line); border-radius:24px; overflow:hidden; background:transparent; }
-    .adnn-direct-list { min-height:0; overflow:auto; padding:8px; border-right:1px solid var(--adnn-line); }
+    .adnn-direct-chat-panel { height:min(680px, calc(100dvh - 230px)); min-height:520px; display:grid; grid-template-columns:minmax(260px,.36fr) minmax(0,1fr); border:0; border-radius:0; overflow:hidden; background:transparent; }
+    .adnn-direct-list { min-height:0; overflow:auto; padding:0 8px 8px; border-right:1px solid var(--adnn-line); }
     .adnn-direct-user { width:100%; border:0; border-radius:16px; padding:10px 12px; display:grid; grid-template-columns:42px minmax(0,1fr); gap:12px; align-items:center; color:var(--adnn-text); background:transparent; text-align:left; cursor:pointer; margin-bottom:4px; }
     .adnn-direct-user:hover, .adnn-direct-user.is-active { background:rgba(255,255,255,.055); }
     .adnn-direct-user-avatar, .adnn-direct-avatar { width:40px; height:40px; border-radius:50%; display:grid; place-items:center; background:var(--adnn-accent); color:#fff; font-family:var(--font-mono, monospace); font-size:12px; }
     .adnn-direct-user strong, .adnn-direct-user small { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .adnn-direct-user strong { font-size:14px; font-weight:500; }
     .adnn-direct-user small { margin-top:3px; color:var(--adnn-muted); font-size:11px; }
-    .adnn-direct-room { min-width:0; min-height:0; display:grid; grid-template-rows:64px minmax(0,1fr) auto; }
+    .adnn-direct-room { min-width:0; min-height:0; display:grid; grid-template-rows:64px minmax(0,1fr) auto; overflow:hidden; }
     .adnn-direct-title { min-height:64px; padding:0 16px; display:flex; align-items:center; gap:12px; border-bottom:1px solid var(--adnn-line); color:var(--adnn-text); }
+    .adnn-direct-title:has(#adnnDirectAvatar[hidden]) { opacity:0; pointer-events:none; }
     .adnn-direct-title-copy { min-width:0; flex:1; display:block; }
     .adnn-direct-title-copy strong, .adnn-direct-title-copy small { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .adnn-direct-title-copy strong { font-size:16px; font-weight:500; }
@@ -2122,12 +2147,17 @@ function installChatStyles() {
       .adnn-call-card video { border-radius:16px; max-height:34dvh; }
       .adnn-call-control { width:64px; min-height:56px; border-radius:16px; }
       .adnn-call-control svg { width:20px; height:20px; }
-      .adnn-direct-chat-panel { height:calc(100dvh - 110px); min-height:0; grid-template-columns:1fr; border-radius:0; border-left:0; border-right:0; margin:0 calc(-1 * clamp(16px, 3.5vw, 44px)); }
-      .adnn-direct-list { border-right:0; }
-      .adnn-direct-room { display:none; }
+      .adnn-direct-chat-panel { height:calc(100dvh - 86px); height:calc(100svh - 86px); min-height:0; grid-template-columns:1fr; border-radius:0; border:0; margin:0 calc(-1 * clamp(16px, 3.5vw, 44px)); overflow:hidden; }
+      .adnn-direct-list { border-right:0; padding:0 10px 10px; }
+      .adnn-direct-room { display:none; height:100%; grid-template-rows:58px minmax(0,1fr) auto; overflow:hidden; }
       body.adnn-direct-chat-open .adnn-direct-list { display:none; }
       body.adnn-direct-chat-open .adnn-direct-room { display:grid; }
+      .adnn-direct-title { min-height:58px; padding:0 10px; }
       .adnn-direct-back { display:grid; place-items:center; }
+      .adnn-direct-room .adnn-chat-messages { min-height:0; overflow:auto; padding:12px 12px 10px; overscroll-behavior:contain; }
+      .adnn-direct-room .adnn-chat-form { position:sticky; bottom:0; z-index:5; border-top:1px solid var(--adnn-line); padding:8px 10px calc(8px + env(safe-area-inset-bottom)); background:rgba(10,10,13,.96); backdrop-filter:blur(14px); }
+      .adnn-direct-room .adnn-chat-form input { height:42px; font-size:16px; border-radius:18px; }
+      .adnn-direct-room .adnn-chat-form button, .adnn-direct-room .adnn-chat-media { width:42px; height:42px; border-radius:50%; flex:0 0 42px; }
     }
 
     :root.light-theme {

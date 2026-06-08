@@ -610,18 +610,60 @@ function installAdminMessageCardTools() {
   form.addEventListener("submit", createAdminEmailMessageCard);
 }
 
+function isGenericDirectName(value) {
+  const text = String(value || "").trim().toLowerCase();
+  return !text || text === "user" || text === "account" || text === "approved contact" || text === "direct chat" || text === "designer" || text === "client";
+}
+
+function nameFromEmail(email) {
+  const value = emailKey(email);
+  if (!value || !value.includes("@")) return "";
+  return value.split("@")[0]
+    .replace(/[._-]+/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase())
+    .trim();
+}
+
+function bestDisplayName(data, fallbackEmail, fallbackText = "User") {
+  const choices = [
+    data?.name,
+    data?.displayName,
+    data?.fullName,
+    data?.clientName,
+    data?.designerName,
+    data?.displayEmail && !String(data.displayEmail).includes("@") ? data.displayEmail : "",
+    data?.designerId,
+    nameFromEmail(fallbackEmail),
+    fallbackEmail,
+    fallbackText
+  ];
+  return choices.map((item) => String(item || "").trim()).find((item) => item && !isGenericDirectName(item)) || fallbackText;
+}
+
 async function resolveUserByEmail(email) {
   const value = emailKey(email);
   if (!value) return null;
   const clientSnap = await getDocs(query(collection(db, "clients"), where("email", "==", value))).catch(() => null);
   if (clientSnap && !clientSnap.empty) {
     const data = clientSnap.docs[0].data() || {};
-    return { uid: data.uid || clientSnap.docs[0].id, email: data.email || value, name: data.name || data.displayName || data.displayEmail || value, role: "client" };
+    const resolvedEmail = emailKey(data.email || data.displayEmail || value);
+    return {
+      uid: data.uid || clientSnap.docs[0].id,
+      email: resolvedEmail,
+      name: bestDisplayName(data, resolvedEmail, resolvedEmail || value),
+      role: "client"
+    };
   }
   const designerSnap = await getDocs(query(collection(db, "designers"), where("authEmail", "==", value))).catch(() => null);
   if (designerSnap && !designerSnap.empty) {
     const data = designerSnap.docs[0].data() || {};
-    return { uid: data.uid || designerSnap.docs[0].id, email: data.authEmail || value, name: data.name || data.designerId || value, role: "designer" };
+    const resolvedEmail = emailKey(data.authEmail || data.email || value);
+    return {
+      uid: data.uid || designerSnap.docs[0].id,
+      email: resolvedEmail,
+      name: bestDisplayName(data, resolvedEmail, resolvedEmail || value),
+      role: "designer"
+    };
   }
   return null;
 }
@@ -825,12 +867,28 @@ function getDirectOtherUser(chat) {
   const otherUid = uids.find((uid) => uid !== activeUser?.uid) || uids[0] || "";
   const names = chat.participantNames || {};
   const emails = chat.participantEmailMap || {};
-  return { uid: otherUid, name: names[otherUid] || emails[otherUid] || "User", email: emails[otherUid] || "" };
+  const participantEmails = Array.isArray(chat.participantEmails) ? chat.participantEmails.map(emailKey).filter(Boolean) : [];
+  const ownEmail = emailKey(activeUser?.email);
+  let email = emailKey(emails[otherUid]) || participantEmails.find((item) => item && item !== ownEmail) || "";
+  const titleNames = String(chat.title || "").split("↔").map((item) => item.trim()).filter(Boolean);
+  const ownName = String(names[activeUser?.uid] || activeUser?.displayName || ownEmail || "").trim().toLowerCase();
+  const titleOther = titleNames.find((item) => {
+    const lowered = item.toLowerCase();
+    return lowered && lowered !== ownName && lowered !== ownEmail;
+  }) || "";
+  let name = String(names[otherUid] || "").trim();
+  if (isGenericDirectName(name) || name.toLowerCase() === email) {
+    name = titleOther || nameFromEmail(email) || email || "User";
+  }
+  return { uid: otherUid, name, email };
 }
 
 function getOwnDirectName(chat) {
   const names = chat?.participantNames || {};
-  return names[activeUser?.uid] || activeUser?.displayName || activeUser?.email || "User";
+  const ownEmail = emailKey(activeUser?.email);
+  const mappedName = String(names[activeUser?.uid] || "").trim();
+  if (mappedName && !isGenericDirectName(mappedName) && mappedName.toLowerCase() !== ownEmail) return mappedName;
+  return activeUser?.displayName || nameFromEmail(ownEmail) || activeUser?.email || "User";
 }
 
 function directChatId(uidA, uidB) { return `direct_${sortedPair(uidA, uidB).join("_")}`; }

@@ -164,7 +164,6 @@ function installClientChatShell() {
       </div>
     </div>
     <div class="adnn-chat-messages" id="adnnChatMessages">
-      <div class="adnn-chat-empty">No messages yet.</div>
     </div>
     <form class="adnn-chat-form" id="adnnChatForm">
       <label class="adnn-chat-media" title="Add media" aria-label="Add media">
@@ -334,7 +333,7 @@ function renderClientMessages(messages) {
   if (!messages.length) {
     const empty = document.createElement("div");
     empty.className = "adnn-chat-empty";
-    empty.textContent = "No messages yet.";
+    empty.textContent = "";
     wrap.appendChild(empty);
     return;
   }
@@ -558,7 +557,7 @@ function renderDesignerMessages(messages) {
   if (!wrap) return;
   wrap.innerHTML = "";
   if (!messages.length) {
-    wrap.innerHTML = `<div class="adnn-chat-empty">No designer messages yet.</div>`;
+    wrap.innerHTML = "";
     return;
   }
   messages.forEach((message) => wrap.appendChild(messageBubble(message, message.senderUid === activeUser?.uid, designerChatId)));
@@ -610,60 +609,26 @@ function installAdminMessageCardTools() {
   form.addEventListener("submit", createAdminEmailMessageCard);
 }
 
-function isGenericDirectName(value) {
-  const text = String(value || "").trim().toLowerCase();
-  return !text || text === "user" || text === "account" || text === "approved contact" || text === "direct chat" || text === "designer" || text === "client";
-}
-
-function nameFromEmail(email) {
-  const value = emailKey(email);
-  if (!value || !value.includes("@")) return "";
-  return value.split("@")[0]
-    .replace(/[._-]+/g, " ")
-    .replace(/\b\w/g, (char) => char.toUpperCase())
-    .trim();
-}
-
-function bestDisplayName(data, fallbackEmail, fallbackText = "User") {
-  const choices = [
-    data?.name,
-    data?.displayName,
-    data?.fullName,
-    data?.clientName,
-    data?.designerName,
-    data?.displayEmail && !String(data.displayEmail).includes("@") ? data.displayEmail : "",
-    data?.designerId,
-    nameFromEmail(fallbackEmail),
-    fallbackEmail,
-    fallbackText
-  ];
-  return choices.map((item) => String(item || "").trim()).find((item) => item && !isGenericDirectName(item)) || fallbackText;
-}
-
 async function resolveUserByEmail(email) {
   const value = emailKey(email);
   if (!value) return null;
   const clientSnap = await getDocs(query(collection(db, "clients"), where("email", "==", value))).catch(() => null);
   if (clientSnap && !clientSnap.empty) {
     const data = clientSnap.docs[0].data() || {};
-    const resolvedEmail = emailKey(data.email || data.displayEmail || value);
-    return {
-      uid: data.uid || clientSnap.docs[0].id,
-      email: resolvedEmail,
-      name: bestDisplayName(data, resolvedEmail, resolvedEmail || value),
-      role: "client"
-    };
+    return { uid: data.uid || clientSnap.docs[0].id, email: data.email || value, name: data.name || data.displayName || data.displayEmail || value, role: "client" };
   }
-  const designerSnap = await getDocs(query(collection(db, "designers"), where("authEmail", "==", value))).catch(() => null);
-  if (designerSnap && !designerSnap.empty) {
-    const data = designerSnap.docs[0].data() || {};
-    const resolvedEmail = emailKey(data.authEmail || data.email || value);
-    return {
-      uid: data.uid || designerSnap.docs[0].id,
-      email: resolvedEmail,
-      name: bestDisplayName(data, resolvedEmail, resolvedEmail || value),
-      role: "designer"
-    };
+  const designerFields = ["authEmail", "email", "displayEmail"];
+  for (const field of designerFields) {
+    const designerSnap = await getDocs(query(collection(db, "designers"), where(field, "==", value))).catch(() => null);
+    if (designerSnap && !designerSnap.empty) {
+      const data = designerSnap.docs[0].data() || {};
+      return {
+        uid: data.uid || designerSnap.docs[0].id,
+        email: emailKey(data.authEmail || data.email || data.displayEmail || value),
+        name: data.name || data.displayName || data.designerName || data.designerId || data.displayEmail || value,
+        role: "designer"
+      };
+    }
   }
   return null;
 }
@@ -719,15 +684,15 @@ function installDirectChatPanel() {
   panel.id = "adnnDirectChatPanel";
   panel.className = "adnn-direct-chat-panel";
   panel.innerHTML = `
-    <div class="adnn-direct-list" id="adnnDirectChatList"><div class="adnn-chat-empty">No user chats yet.</div></div>
+    <div class="adnn-direct-list" id="adnnDirectChatList"></div>
     <div class="adnn-direct-room" id="adnnDirectRoom">
       <div class="adnn-direct-title">
         <button type="button" class="adnn-direct-back" id="adnnDirectBack">‹</button>
         <span class="adnn-direct-avatar" id="adnnDirectAvatar">AD</span>
-        <span class="adnn-direct-title-copy"><strong id="adnnDirectTitle">Select a user</strong><small id="adnnDirectSubtitle">Admin-created message cards appear here.</small></span>
+        <span class="adnn-direct-title-copy"><strong id="adnnDirectTitle"></strong><small id="adnnDirectSubtitle"></small></span>
         <span class="adnn-direct-actions"><button type="button" class="adnn-chat-call" data-call-kind="audio" aria-label="Start audio call">${ADNN_ICON_PHONE}</button><button type="button" class="adnn-chat-call" data-call-kind="video" aria-label="Start video call">${ADNN_ICON_VIDEO}</button></span>
       </div>
-      <div class="adnn-chat-messages" id="adnnDirectMessages"><div class="adnn-chat-empty">Select a user to open chat.</div></div>
+      <div class="adnn-chat-messages" id="adnnDirectMessages"></div>
       <form class="adnn-chat-form" id="adnnDirectChatForm">
         <label class="adnn-chat-media" title="Add media" aria-label="Add media"><input id="adnnDirectChatFile" type="file" accept="image/*,.pdf,.doc,.docx,.zip"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span class="adnn-chat-file-name" id="adnnDirectChatFileName" hidden></span></label>
         <input id="adnnDirectChatInput" autocomplete="off" maxlength="1800" placeholder="Message user" disabled>
@@ -774,7 +739,7 @@ function renderDirectChatList(chats) {
   if (!list) return;
   list.innerHTML = "";
   if (!chats.length) {
-    list.innerHTML = `<div class="adnn-chat-empty">No user chats yet.</div>`;
+    list.innerHTML = "";
     return;
   }
   chats.forEach((chat) => {
@@ -784,9 +749,20 @@ function renderDirectChatList(chats) {
     button.className = "adnn-direct-user";
     button.dataset.chatId = chat.id;
     button.classList.toggle("is-active", chat.id === activeDirectChatId);
-    button.innerHTML = `<span class="adnn-direct-user-avatar">${escapeHtml(initialsFromName(other.name || other.email))}</span><span><strong>${escapeHtml(other.name || other.email || "User")}</strong><small>${escapeHtml(other.email || chat.lastMessage || "Direct chat")}</small></span>`;
+    button.innerHTML = `<span class="adnn-direct-user-avatar">${escapeHtml(initialsFromName(other.name || other.email || ""))}</span><span><strong>${escapeHtml(other.name || other.email || "")}</strong><small>${escapeHtml(other.email || chat.lastMessage || "")}</small></span>`;
     button.addEventListener("click", () => selectDirectChat(chat));
     list.appendChild(button);
+    if (!other.name || other.name === "User" || !other.email) {
+      enrichDirectChatIdentity(chat).then((resolved) => {
+        if (!resolved || button.dataset.chatId !== chat.id) return;
+        const strong = button.querySelector("strong");
+        const small = button.querySelector("small");
+        const avatar = button.querySelector(".adnn-direct-user-avatar");
+        if (strong) strong.textContent = resolved.name || resolved.email || "";
+        if (small) small.textContent = resolved.email || chat.lastMessage || "";
+        if (avatar) avatar.textContent = initialsFromName(resolved.name || resolved.email || "");
+      }).catch(() => {});
+    }
   });
 }
 
@@ -801,9 +777,17 @@ function selectDirectChat(chat) {
   const avatar = document.getElementById("adnnDirectAvatar");
   const input = document.getElementById("adnnDirectChatInput");
   const submit = document.querySelector("#adnnDirectChatForm button[type='submit']");
-  if (title) title.textContent = other.name || other.email || "User";
-  if (subtitle) subtitle.textContent = other.email || "Direct chat";
-  if (avatar) avatar.textContent = initialsFromName(other.name || other.email);
+  if (title) title.textContent = other.name || other.email || "";
+  if (subtitle) subtitle.textContent = other.email || "";
+  if (avatar) avatar.textContent = initialsFromName(other.name || other.email || "");
+  if (!other.name || other.name === "User" || !other.email) {
+    enrichDirectChatIdentity(chat).then((resolved) => {
+      if (!resolved || activeDirectChatId !== chat.id) return;
+      if (title) title.textContent = resolved.name || resolved.email || "";
+      if (subtitle) subtitle.textContent = resolved.email || "";
+      if (avatar) avatar.textContent = initialsFromName(resolved.name || resolved.email || "");
+    }).catch(() => {});
+  }
   if (input) input.disabled = false;
   if (submit) submit.disabled = false;
   if (directMessagesUnsubscribe) directMessagesUnsubscribe();
@@ -829,7 +813,7 @@ function renderDirectMessages(messages) {
   if (!wrap) return;
   wrap.innerHTML = "";
   if (!messages.length) {
-    wrap.innerHTML = `<div class="adnn-chat-empty">No messages yet.</div>`;
+    wrap.innerHTML = "";
     return;
   }
   messages.forEach((message) => wrap.appendChild(messageBubble(message, message.senderUid === activeUser?.uid, activeDirectChatId)));
@@ -861,34 +845,68 @@ async function sendDirectMessage(event) {
   clearFilePreview("adnnDirectChatFileName");
 }
 
+
+function directChatEmailForUid(chat, uid) {
+  const emailMap = chat?.participantEmailMap || {};
+  if (emailMap[uid]) return emailKey(emailMap[uid]);
+  const uids = Array.isArray(chat?.participantUids) ? chat.participantUids : [];
+  const emails = Array.isArray(chat?.participantEmails) ? chat.participantEmails : [];
+  const index = uids.indexOf(uid);
+  return emailKey(index >= 0 ? emails[index] : "");
+}
+
+async function findUserProfileByUid(uid, fallbackEmail = "") {
+  if (!uid) return null;
+  const clientDoc = await getDoc(doc(db, "clients", uid)).catch(() => null);
+  if (clientDoc?.exists()) {
+    const data = clientDoc.data() || {};
+    return { uid, email: emailKey(data.email || data.displayEmail || fallbackEmail), name: data.name || data.displayName || data.displayEmail || data.email || fallbackEmail || "" };
+  }
+  const designerDoc = await getDoc(doc(db, "designers", uid)).catch(() => null);
+  if (designerDoc?.exists()) {
+    const data = designerDoc.data() || {};
+    return { uid, email: emailKey(data.authEmail || data.email || data.displayEmail || fallbackEmail), name: data.name || data.displayName || data.designerName || data.designerId || data.displayEmail || data.authEmail || fallbackEmail || "" };
+  }
+  const email = emailKey(fallbackEmail);
+  if (email) {
+    const resolved = await resolveUserByEmail(email).catch(() => null);
+    if (resolved?.uid) return resolved;
+  }
+  return null;
+}
+
+async function enrichDirectChatIdentity(chat) {
+  const current = getDirectOtherUser(chat);
+  if (!current.uid) return current;
+  const fallbackEmail = current.email || directChatEmailForUid(chat, current.uid);
+  const profile = await findUserProfileByUid(current.uid, fallbackEmail).catch(() => null);
+  if (!profile) return current;
+  const name = profile.name || current.name || profile.email || current.email || "";
+  const email = emailKey(profile.email || current.email || fallbackEmail);
+  if ((name && name !== current.name) || (email && email !== current.email)) {
+    await setDoc(doc(db, "chats", chat.id), {
+      participantNames: { ...(chat.participantNames || {}), [current.uid]: name },
+      participantEmailMap: { ...(chat.participantEmailMap || {}), [current.uid]: email }
+    }, { merge: true }).catch(() => {});
+    chat.participantNames = { ...(chat.participantNames || {}), [current.uid]: name };
+    chat.participantEmailMap = { ...(chat.participantEmailMap || {}), [current.uid]: email };
+  }
+  return { uid: current.uid, name, email };
+}
+
 function getDirectOtherUser(chat) {
-  if (!chat) return { uid:"", name:"User", email:"" };
+  if (!chat) return { uid:"", name:"", email:"" };
   const uids = Array.isArray(chat.participantUids) ? chat.participantUids : [];
   const otherUid = uids.find((uid) => uid !== activeUser?.uid) || uids[0] || "";
   const names = chat.participantNames || {};
-  const emails = chat.participantEmailMap || {};
-  const participantEmails = Array.isArray(chat.participantEmails) ? chat.participantEmails.map(emailKey).filter(Boolean) : [];
-  const ownEmail = emailKey(activeUser?.email);
-  let email = emailKey(emails[otherUid]) || participantEmails.find((item) => item && item !== ownEmail) || "";
-  const titleNames = String(chat.title || "").split("↔").map((item) => item.trim()).filter(Boolean);
-  const ownName = String(names[activeUser?.uid] || activeUser?.displayName || ownEmail || "").trim().toLowerCase();
-  const titleOther = titleNames.find((item) => {
-    const lowered = item.toLowerCase();
-    return lowered && lowered !== ownName && lowered !== ownEmail;
-  }) || "";
-  let name = String(names[otherUid] || "").trim();
-  if (isGenericDirectName(name) || name.toLowerCase() === email) {
-    name = titleOther || nameFromEmail(email) || email || "User";
-  }
+  const email = directChatEmailForUid(chat, otherUid);
+  const name = names[otherUid] || email || "";
   return { uid: otherUid, name, email };
 }
 
 function getOwnDirectName(chat) {
   const names = chat?.participantNames || {};
-  const ownEmail = emailKey(activeUser?.email);
-  const mappedName = String(names[activeUser?.uid] || "").trim();
-  if (mappedName && !isGenericDirectName(mappedName) && mappedName.toLowerCase() !== ownEmail) return mappedName;
-  return activeUser?.displayName || nameFromEmail(ownEmail) || activeUser?.email || "User";
+  return names[activeUser?.uid] || activeUser?.displayName || activeUser?.email || "";
 }
 
 function directChatId(uidA, uidB) { return `direct_${sortedPair(uidA, uidB).join("_")}`; }
@@ -1614,7 +1632,7 @@ function renderAdminChatList(chats) {
     button.classList.toggle("is-active", chat.id === selectedAdminChatId);
     const unread = Number(chat.unreadForAdmin) || 0;
     const label = chat.title || chat.clientName || chat.clientEmail || "Chat";
-    const preview = chat.lastMessage || chat.clientEmail || "No messages yet";
+    const preview = chat.lastMessage || chat.clientEmail || "";
     button.innerHTML = `
       <span>
         <strong>${escapeHtml(label)}</strong>
@@ -1668,7 +1686,7 @@ function renderAdminMessages(messages) {
   if (!wrap) return;
   wrap.innerHTML = "";
   if (!messages.length) {
-    wrap.innerHTML = `<div class="adnn-chat-empty">No messages yet.</div>`;
+    wrap.innerHTML = "";
     return;
   }
   messages.forEach((message) => wrap.appendChild(messageBubble(message, message.senderUid === activeUser?.uid, selectedAdminChatId)));

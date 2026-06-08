@@ -2493,6 +2493,107 @@ function installChatStyles() {
     }
   `;
   document.head.appendChild(style);
+
+  const mobileComposerStyle = document.createElement("style");
+  mobileComposerStyle.id = "adnn-mobile-composer-hard-fix";
+  mobileComposerStyle.textContent = `
+    @media (max-width: 760px) {
+      body.adnn-direct-chat-open, body.adnn-admin-chat-open { overflow:hidden !important; height:var(--adnn-chat-vh, 100dvh) !important; }
+      body.adnn-direct-chat-open #adnnDirectChatPanel,
+      body.adnn-admin-chat-open #adnnAdminChatPanel,
+      .adnn-chat-drawer.is-embedded {
+        position:fixed !important;
+        inset:0 !important;
+        z-index:99990 !important;
+        width:100vw !important;
+        height:var(--adnn-chat-vh, 100dvh) !important;
+        min-height:0 !important;
+        max-height:var(--adnn-chat-vh, 100dvh) !important;
+        margin:0 !important;
+        border:0 !important;
+        border-radius:0 !important;
+        overflow:hidden !important;
+        background:rgba(10,10,13,.99) !important;
+      }
+      body.adnn-direct-chat-open #adnnDirectRoom,
+      body.adnn-admin-chat-open #adnnAdminChatRoom,
+      .adnn-chat-drawer.is-embedded {
+        display:grid !important;
+        grid-template-rows:56px minmax(0, 1fr) 62px !important;
+        height:var(--adnn-chat-vh, 100dvh) !important;
+        min-height:0 !important;
+        overflow:hidden !important;
+      }
+      body.adnn-direct-chat-open .adnn-chat-messages,
+      body.adnn-admin-chat-open .adnn-chat-messages,
+      .adnn-chat-drawer.is-embedded .adnn-chat-messages {
+        grid-row:2 !important;
+        min-height:0 !important;
+        height:auto !important;
+        overflow-y:auto !important;
+        padding:10px 10px 78px !important;
+        -webkit-overflow-scrolling:touch !important;
+        overscroll-behavior:contain !important;
+      }
+      body.adnn-direct-chat-open #adnnDirectChatForm,
+      body.adnn-admin-chat-open #adnnAdminChatForm,
+      .adnn-chat-drawer.is-embedded #adnnChatForm {
+        position:fixed !important;
+        left:0 !important;
+        right:0 !important;
+        bottom:0 !important;
+        width:100vw !important;
+        min-height:62px !important;
+        z-index:2147483000 !important;
+        display:grid !important;
+        grid-template-columns:44px minmax(0, 1fr) 44px !important;
+        align-items:center !important;
+        gap:8px !important;
+        padding:8px 10px calc(8px + env(safe-area-inset-bottom)) !important;
+        margin:0 !important;
+        border-top:1px solid var(--adnn-line) !important;
+        background:rgba(10,10,13,.99) !important;
+        backdrop-filter:blur(16px) !important;
+        -webkit-backdrop-filter:blur(16px) !important;
+        visibility:visible !important;
+        opacity:1 !important;
+        transform:none !important;
+        pointer-events:auto !important;
+      }
+      body.adnn-direct-chat-open #adnnDirectChatInput,
+      body.adnn-admin-chat-open #adnnAdminChatInput,
+      .adnn-chat-drawer.is-embedded #adnnChatInput {
+        display:block !important;
+        width:100% !important;
+        min-width:0 !important;
+        height:44px !important;
+        min-height:44px !important;
+        font-size:16px !important;
+        line-height:44px !important;
+        opacity:1 !important;
+        visibility:visible !important;
+      }
+      body.adnn-direct-chat-open #adnnDirectChatForm .adnn-chat-media,
+      body.adnn-direct-chat-open #adnnDirectChatForm button,
+      body.adnn-admin-chat-open #adnnAdminChatForm .adnn-chat-media,
+      body.adnn-admin-chat-open #adnnAdminChatForm button,
+      .adnn-chat-drawer.is-embedded #adnnChatForm .adnn-chat-media,
+      .adnn-chat-drawer.is-embedded #adnnChatForm button {
+        display:grid !important;
+        place-items:center !important;
+        width:44px !important;
+        height:44px !important;
+        min-width:44px !important;
+        min-height:44px !important;
+        max-width:44px !important;
+        border-radius:50% !important;
+        opacity:1 !important;
+        visibility:visible !important;
+      }
+    }
+  `;
+  document.head.appendChild(mobileComposerStyle);
+
 }
 
 function initialsFromName(value) {

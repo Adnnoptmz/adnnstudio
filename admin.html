@@ -935,7 +935,7 @@
           <span class="link-label">Chats</span>
         </button>
         <button type="button" class="sidebar-link-item" data-target-view="message_cards_view">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M7 9h6"></path><path d="M7 13h10"></path><path d="M16 9h1"></path></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M7 10h6M7 14h10"></path></svg>
           <span class="link-label">Message Cards</span>
         </button>
         <button type="button" class="sidebar-link-item" data-target-view="payments_view">
@@ -1097,12 +1097,17 @@
         <p class="help">The live Firebase chat panel loads from firebase-chat.js.</p>
       </div>
     </div>
-    
     <div id="message_cards_view" class="admin-view-panel-container" style="display:none;">
       <div class="panel glass">
-        <p class="kicker">Message Card Generator</p>
-        <h2>Loading generator...</h2>
-        <p class="help">The approved user-to-user message card generator loads from firebase-chat.js.</p>
+        <p class="kicker">Controlled connections</p>
+        <h2>Message Card Generator</h2>
+        <p class="help">Enter two existing user emails. Admin approval creates one private user-to-user chat and shows real names/emails to those users only.</p>
+        <form id="adnnMessageCardForm" style="display:grid;gap:14px;max-width:680px;margin-top:22px;">
+          <label>User email A<input id="adnnCardEmailA" type="email" placeholder="client@example.com" required></label>
+          <label>User email B<input id="adnnCardEmailB" type="email" placeholder="designer@example.com" required></label>
+          <div class="actions"><button type="submit">Generate Message Card</button><button type="reset" class="secondary">Clear</button></div>
+          <p class="status" id="adnnMessageCardStatus" aria-live="polite"></p>
+        </form>
       </div>
     </div>
     
@@ -1281,7 +1286,7 @@
           "projects_view": { sub: "Active Workflow Pipelines", main: "Creative Deliverables Node Matrix" },
           "composer_view": { sub: "Admin Portal", main: "Message Composer" },
           "chats_view": { sub: "Secure Workspace Streams", main: "Private Studio Chats" },
-          "message_cards_view": { sub: "Admin Approved Connections", main: "Message Card Generator" },
+          "message_cards_view": { sub: "Controlled Connections", main: "Message Card Generator" },
           "payments_view": { sub: "Finances & Ledger Records", main: "Invoices Ledger System" },
           "notifications_view": { sub: "Broadcast Matrix System", main: "Global Push Transmission" },
           "calendar_view": { sub: "Milestone Workspace Engine", main: "Reminder Studio Calendar" },

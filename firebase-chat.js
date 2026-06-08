@@ -59,6 +59,9 @@ let knownAdminMessageIds = new Set();
 let knownDesignerMessageIds = new Set();
 let chatAudio = null;
 let activeCallState = null;
+let presenceTimer = null;
+let incomingCallsUnsubscribes = [];
+let activeCallUnsubscribes = [];
 
 if (auth && db) {
   installChatStyles();
@@ -75,8 +78,14 @@ if (auth && db) {
       stopAdminChat();
       stopDesignerChat();
       stopDirectChats();
+      stopPresence();
+      stopIncomingCallListeners();
+      endBrowserCall(false);
       return;
     }
+
+    startPresence(user);
+    startIncomingCallListeners(user);
 
     if (isAdminEmail(user.email) && location.pathname.includes("admin.html")) {
       startAdminChat();
@@ -88,7 +97,6 @@ if (auth && db) {
       activeDesignerProfile = designer || null;
       await ensureClientChat(user).catch(() => {});
       startClientChat(user);
-      startDirectChats(user);
       startDirectChats(user);
       stopDesignerChat();
       return;
@@ -189,7 +197,7 @@ function installClientChatShell() {
     openClientChat();
   });
   drawer.querySelector(".adnn-chat-close")?.addEventListener("click", closeClientChat);
-  drawer.querySelectorAll(".adnn-chat-call").forEach((button) => button.addEventListener("click", () => startBrowserCall(button.dataset.callKind || "audio", "Admin Support")));
+  drawer.querySelectorAll(".adnn-chat-call").forEach((button) => button.addEventListener("click", () => startRealtimeCall(button.dataset.callKind || "audio", getSupportCallTarget())));
   drawer.querySelector("#adnnChatForm")?.addEventListener("submit", sendClientMessage);
   wireFilePreview("adnnChatFile", "adnnChatFileName");
   window.addEventListener("hashchange", maybeOpenClientChatFromHash);
@@ -396,7 +404,7 @@ function installAdminChatPanel() {
     else document.querySelector(".shell")?.appendChild(panel);
   }
   document.getElementById("adnnAdminChatForm")?.addEventListener("submit", sendAdminMessage);
-  panel.querySelectorAll(".adnn-admin-chat-title .adnn-chat-call").forEach((button) => button.addEventListener("click", () => startBrowserCall(button.dataset.callKind || "audio", selectedAdminChat?.clientName || selectedAdminChat?.title || "user")));
+  panel.querySelectorAll(".adnn-admin-chat-title .adnn-chat-call").forEach((button) => button.addEventListener("click", () => startRealtimeCall(button.dataset.callKind || "audio", getAdminCallTarget())));
   document.getElementById("adnnAdminChatBack")?.addEventListener("click", () => {
     document.body.classList.remove("adnn-admin-chat-open");
   });
@@ -678,7 +686,7 @@ function installDirectChatPanel() {
   mount.appendChild(panel);
   document.getElementById("adnnDirectChatForm")?.addEventListener("submit", sendDirectMessage);
   document.getElementById("adnnDirectBack")?.addEventListener("click", closeDirectChatRoom);
-  panel.querySelectorAll(".adnn-chat-call").forEach((button) => button.addEventListener("click", () => startBrowserCall(button.dataset.callKind || "audio", getDirectOtherUser(activeDirectChat).name || "User")));
+  panel.querySelectorAll(".adnn-chat-call").forEach((button) => button.addEventListener("click", () => startRealtimeCall(button.dataset.callKind || "audio", getDirectCallTarget())));
   wireFilePreview("adnnDirectChatFile", "adnnDirectChatFileName");
 }
 
@@ -820,28 +828,260 @@ function directChatId(uidA, uidB) { return `direct_${sortedPair(uidA, uidB).join
 function sortedPair(uidA, uidB) { return [cleanUid(uidA), cleanUid(uidB)].sort(); }
 function cleanUid(value) { return String(value || "").trim().replace(/[^A-Za-z0-9_-]/g, ""); }
 
-async function startBrowserCall(kind = "audio", label = "this user") {
-  if (!navigator.mediaDevices?.getUserMedia) {
+
+function getSupportCallTarget() {
+  return { chatId: clientChatId, receiverUid: ADMIN_ALIAS_UID, label: "AdnnStudio Admin Support" };
+}
+
+function getAdminCallTarget() {
+  if (!selectedAdminChat) return null;
+  return {
+    chatId: selectedAdminChatId,
+    receiverUid: selectedAdminChat.clientUid || "",
+    label: selectedAdminChat.clientName || selectedAdminChat.title || selectedAdminChat.clientEmail || "User"
+  };
+}
+
+function getDirectCallTarget() {
+  const other = getDirectOtherUser(activeDirectChat);
+  return { chatId: activeDirectChatId, receiverUid: other.uid, label: other.name || other.email || "User" };
+}
+
+function ownCallUid() {
+  return isAdminEmail(activeUser?.email) ? ADMIN_ALIAS_UID : activeUser?.uid;
+}
+
+async function startPresence(user) {
+  if (!db || !user?.uid) return;
+  stopPresence();
+  const writePresence = async () => {
+    const payload = {
+      uid: user.uid,
+      email: emailKey(user.email),
+      name: user.displayName || user.email || "User",
+      online: true,
+      lastSeen: serverTimestamp(),
+      page: location.pathname,
+      updatedAt: serverTimestamp()
+    };
+    await setDoc(doc(db, "presence", user.uid), payload, { merge: true }).catch(() => {});
+    if (isAdminEmail(user.email)) {
+      await setDoc(doc(db, "presence", ADMIN_ALIAS_UID), { ...payload, uid: ADMIN_ALIAS_UID, realUid: user.uid, name: "AdnnStudio Admin" }, { merge: true }).catch(() => {});
+    }
+  };
+  await writePresence();
+  presenceTimer = window.setInterval(writePresence, 25000);
+  window.addEventListener("beforeunload", markOfflineOnce);
+}
+
+function stopPresence() {
+  if (presenceTimer) window.clearInterval(presenceTimer);
+  presenceTimer = null;
+  window.removeEventListener("beforeunload", markOfflineOnce);
+}
+
+function markOfflineOnce() {
+  if (!db || !activeUser?.uid) return;
+  setDoc(doc(db, "presence", activeUser.uid), { online: false, lastSeen: serverTimestamp(), updatedAt: serverTimestamp() }, { merge: true }).catch(() => {});
+  if (isAdminEmail(activeUser.email)) setDoc(doc(db, "presence", ADMIN_ALIAS_UID), { online: false, lastSeen: serverTimestamp(), updatedAt: serverTimestamp() }, { merge: true }).catch(() => {});
+}
+
+async function isUserOnline(uid) {
+  if (!uid) return false;
+  const snap = await getDoc(doc(db, "presence", uid)).catch(() => null);
+  if (!snap?.exists()) return false;
+  const data = snap.data() || {};
+  const seen = toMillis(data.lastSeen || data.updatedAt);
+  return data.online !== false && seen && (Date.now() - seen) < 70000;
+}
+
+function startIncomingCallListeners(user) {
+  stopIncomingCallListeners();
+  const receivers = [user.uid];
+  if (isAdminEmail(user.email)) receivers.push(ADMIN_ALIAS_UID);
+  receivers.forEach((receiverUid) => {
+    const callQuery = query(collection(db, "calls"), where("receiverUid", "==", receiverUid), where("status", "==", "ringing"));
+    incomingCallsUnsubscribes.push(onSnapshot(callQuery, (snapshot) => {
+      snapshot.docChanges().forEach((change) => {
+        if (change.type !== "added" && change.type !== "modified") return;
+        const call = { id: change.doc.id, ...change.doc.data() };
+        if (call.callerUid === ownCallUid()) return;
+        showIncomingCall(call);
+      });
+    }));
+  });
+}
+
+function stopIncomingCallListeners() {
+  incomingCallsUnsubscribes.forEach((unsub) => unsub?.());
+  incomingCallsUnsubscribes = [];
+}
+
+function clearActiveCallListeners() {
+  activeCallUnsubscribes.forEach((unsub) => unsub?.());
+  activeCallUnsubscribes = [];
+}
+
+async function startRealtimeCall(kind = "audio", target = null) {
+  if (!target?.receiverUid || !target?.chatId) {
+    showChatAlert({ text: "Select a chat before calling." }, "Call");
+    return;
+  }
+  if (!navigator.mediaDevices?.getUserMedia || typeof RTCPeerConnection === "undefined") {
     showChatAlert({ text: "Calling is not supported in this browser." }, "Call blocked");
     return;
   }
-  const wantsVideo = kind === "video";
+  const online = await isUserOnline(target.receiverUid);
+  if (!online) {
+    activeCallState = { mode: "outgoing", status: "offline", label: target.label || "User", kind, chatId: target.chatId, receiverUid: target.receiverUid };
+    renderCallOverlay();
+    window.setTimeout(() => endBrowserCall(false), 2200);
+    return;
+  }
+
   try {
     endBrowserCall(false);
+    const wantsVideo = kind === "video";
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: wantsVideo });
+    const callRef = await addDoc(collection(db, "calls"), {
+      chatId: target.chatId,
+      callerUid: ownCallUid(),
+      callerRealUid: activeUser.uid,
+      callerName: activeUser.displayName || activeUser.email || "User",
+      receiverUid: target.receiverUid,
+      receiverName: target.label || "User",
+      participants: [ownCallUid(), target.receiverUid],
+      kind,
+      status: "ringing",
+      startedAt: null,
+      endedAt: null,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
+    const pc = createPeerConnection(callRef.id, false);
+    stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    await setDoc(callRef, { offer: { type: offer.type, sdp: offer.sdp }, updatedAt: serverTimestamp() }, { merge: true });
     activeCallState = {
+      mode: "outgoing",
+      callId: callRef.id,
+      chatId: target.chatId,
+      receiverUid: target.receiverUid,
+      label: target.label || "User",
+      kind,
+      pc,
       stream,
-      label: String(label || "this user"),
+      remoteStream: new MediaStream(),
       speakerOn: true,
       videoOn: wantsVideo,
-      startedAt: Date.now(),
-      timer: null
+      status: "ringing",
+      startedAt: null,
+      timer: null,
+      summaryWritten: false
     };
     renderCallOverlay();
-    showChatAlert({ text: `${wantsVideo ? "Video" : "Audio"} call started with ${label}.` }, "Call started");
+    watchActiveCall(callRef.id, false);
   } catch (error) {
+    endBrowserCall(false);
     showChatAlert({ text: "Microphone/camera permission is needed for calls." }, "Call blocked");
   }
+}
+
+function createPeerConnection(callId, isAnswerer) {
+  const pc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }, { urls: "stun:stun1.l.google.com:19302" }] });
+  pc.onicecandidate = (event) => {
+    if (event.candidate) addDoc(collection(db, "calls", callId, isAnswerer ? "answerCandidates" : "offerCandidates"), event.candidate.toJSON()).catch(() => {});
+  };
+  pc.ontrack = (event) => {
+    if (!activeCallState) return;
+    if (!activeCallState.remoteStream) activeCallState.remoteStream = new MediaStream();
+    event.streams?.[0]?.getTracks?.().forEach((track) => {
+      if (!activeCallState.remoteStream.getTracks().some((existing) => existing.id === track.id)) activeCallState.remoteStream.addTrack(track);
+    });
+    attachCallMedia();
+  };
+  pc.onconnectionstatechange = () => {
+    if (["failed", "disconnected", "closed"].includes(pc.connectionState) && activeCallState?.status === "connected") {
+      endBrowserCall(true, "Call disconnected");
+    }
+  };
+  return pc;
+}
+
+function watchActiveCall(callId, isAnswerer) {
+  clearActiveCallListeners();
+  const callRef = doc(db, "calls", callId);
+  activeCallUnsubscribes.push(onSnapshot(callRef, async (snap) => {
+    if (!snap.exists() || !activeCallState || activeCallState.callId !== callId) return;
+    const call = snap.data() || {};
+    if (call.status === "accepted" && activeCallState.status !== "connected") {
+      if (!isAnswerer && call.answer && activeCallState.pc?.signalingState !== "stable") {
+        await activeCallState.pc.setRemoteDescription(new RTCSessionDescription(call.answer)).catch(() => {});
+      }
+      activeCallState.status = "connected";
+      activeCallState.startedAt = Date.now();
+      renderCallOverlay();
+    }
+    if (["ended", "rejected", "missed"].includes(call.status)) {
+      endBrowserCall(false, call.status === "rejected" ? "Call rejected" : "Call ended");
+    }
+  }));
+  activeCallUnsubscribes.push(onSnapshot(collection(db, "calls", callId, isAnswerer ? "offerCandidates" : "answerCandidates"), (snapshot) => {
+    snapshot.docChanges().forEach((change) => {
+      if (change.type === "added" && activeCallState?.pc) activeCallState.pc.addIceCandidate(new RTCIceCandidate(change.doc.data())).catch(() => {});
+    });
+  }));
+}
+
+function showIncomingCall(call) {
+  if (activeCallState?.callId === call.id) return;
+  if (activeCallState) return;
+  activeCallState = {
+    mode: "incoming",
+    callId: call.id,
+    chatId: call.chatId,
+    label: call.callerName || "Incoming call",
+    kind: call.kind || "audio",
+    status: "incoming",
+    stream: null,
+    remoteStream: new MediaStream(),
+    speakerOn: true,
+    videoOn: false,
+    startedAt: null,
+    timer: null,
+    summaryWritten: false
+  };
+  renderCallOverlay();
+}
+
+async function acceptIncomingCall() {
+  if (!activeCallState?.callId || activeCallState.mode !== "incoming") return;
+  try {
+    const callRef = doc(db, "calls", activeCallState.callId);
+    const snap = await getDoc(callRef);
+    if (!snap.exists()) return endBrowserCall(false);
+    const call = snap.data() || {};
+    const wantsVideo = call.kind === "video";
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: wantsVideo });
+    const pc = createPeerConnection(activeCallState.callId, true);
+    stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+    await pc.setRemoteDescription(new RTCSessionDescription(call.offer));
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    Object.assign(activeCallState, { pc, stream, videoOn: wantsVideo, status: "connected", startedAt: Date.now(), mode: "active" });
+    await setDoc(callRef, { answer: { type: answer.type, sdp: answer.sdp }, status: "accepted", answeredAt: serverTimestamp(), updatedAt: serverTimestamp() }, { merge: true });
+    renderCallOverlay();
+    watchActiveCall(activeCallState.callId, true);
+  } catch (error) {
+    showChatAlert({ text: "Microphone/camera permission is needed to answer." }, "Call blocked");
+    rejectIncomingCall();
+  }
+}
+
+async function rejectIncomingCall() {
+  if (activeCallState?.callId) await setDoc(doc(db, "calls", activeCallState.callId), { status: "rejected", endedAt: serverTimestamp(), updatedAt: serverTimestamp() }, { merge: true }).catch(() => {});
+  endBrowserCall(false, "Call rejected");
 }
 
 function renderCallOverlay() {
@@ -855,61 +1095,106 @@ function renderCallOverlay() {
       <div class="adnn-call-card" role="dialog" aria-modal="true" aria-label="Call controls">
         <div class="adnn-call-avatar" id="adnnCallAvatar"></div>
         <strong id="adnnCallName">Call</strong>
-        <small id="adnnCallStatus">Connecting...</small>
+        <small id="adnnCallStatus">Ringing...</small>
+        <video id="adnnCallRemoteVideo" autoplay playsinline></video>
         <video id="adnnCallVideo" autoplay muted playsinline></video>
-        <div class="adnn-call-controls">
+        <div class="adnn-call-incoming" id="adnnCallIncomingControls">
+          <button type="button" id="adnnCallAccept" class="adnn-call-control is-accept">✓<span>Accept</span></button>
+          <button type="button" id="adnnCallReject" class="adnn-call-control is-end">✕<span>Reject</span></button>
+        </div>
+        <div class="adnn-call-controls" id="adnnCallActiveControls">
           <button type="button" id="adnnCallSpeaker" class="adnn-call-control" aria-label="Speaker">🔊<span>Speaker</span></button>
           <button type="button" id="adnnCallVideoToggle" class="adnn-call-control" aria-label="Convert to video">🎥<span>Video</span></button>
           <button type="button" id="adnnCallEnd" class="adnn-call-control is-end" aria-label="End call">✕<span>End</span></button>
         </div>
-        <p class="adnn-call-note">Browser call preview is active. Full user-to-user live calling needs WebRTC signaling/TURN setup.</p>
       </div>`;
     document.body.appendChild(overlay);
     document.getElementById("adnnCallEnd")?.addEventListener("click", () => endBrowserCall(true));
+    document.getElementById("adnnCallAccept")?.addEventListener("click", acceptIncomingCall);
+    document.getElementById("adnnCallReject")?.addEventListener("click", rejectIncomingCall);
     document.getElementById("adnnCallSpeaker")?.addEventListener("click", toggleCallSpeaker);
     document.getElementById("adnnCallVideoToggle")?.addEventListener("click", convertCallToVideo);
   }
-  const video = document.getElementById("adnnCallVideo");
-  if (video) {
-    video.srcObject = activeCallState.stream;
-    video.style.display = activeCallState.videoOn ? "block" : "none";
-  }
+  attachCallMedia();
   const name = document.getElementById("adnnCallName");
   const status = document.getElementById("adnnCallStatus");
   const avatar = document.getElementById("adnnCallAvatar");
   const speaker = document.getElementById("adnnCallSpeaker");
   const videoToggle = document.getElementById("adnnCallVideoToggle");
-  if (name) name.textContent = activeCallState.label;
-  if (avatar) avatar.textContent = initialsFromName(activeCallState.label);
+  const incomingControls = document.getElementById("adnnCallIncomingControls");
+  const activeControls = document.getElementById("adnnCallActiveControls");
+  if (name) name.textContent = activeCallState.label || "Call";
+  if (avatar) avatar.textContent = initialsFromName(activeCallState.label || "Call");
   if (speaker) speaker.classList.toggle("is-muted", !activeCallState.speakerOn);
   if (videoToggle) videoToggle.classList.toggle("is-on", activeCallState.videoOn);
+  if (incomingControls) incomingControls.style.display = activeCallState.mode === "incoming" ? "flex" : "none";
+  if (activeControls) activeControls.style.display = activeCallState.mode === "incoming" || activeCallState.status === "offline" ? "none" : "flex";
+  updateCallStatusText();
+}
+
+function attachCallMedia() {
+  const localVideo = document.getElementById("adnnCallVideo");
+  const remoteVideo = document.getElementById("adnnCallRemoteVideo");
+  if (localVideo) {
+    localVideo.srcObject = activeCallState?.stream || null;
+    localVideo.style.display = activeCallState?.videoOn ? "block" : "none";
+  }
+  if (remoteVideo) {
+    remoteVideo.srcObject = activeCallState?.remoteStream || null;
+    remoteVideo.style.display = activeCallState?.remoteStream?.getVideoTracks?.().length ? "block" : "none";
+  }
+}
+
+function updateCallStatusText() {
+  if (!activeCallState) return;
+  const status = document.getElementById("adnnCallStatus");
+  if (!status) return;
   if (activeCallState.timer) window.clearInterval(activeCallState.timer);
-  activeCallState.timer = window.setInterval(() => {
-    if (!activeCallState || !status) return;
-    const seconds = Math.floor((Date.now() - activeCallState.startedAt) / 1000);
-    const mm = String(Math.floor(seconds / 60)).padStart(2, "0");
-    const ss = String(seconds % 60).padStart(2, "0");
-    status.textContent = `${activeCallState.videoOn ? "Video" : "Audio"} call • ${mm}:${ss}`;
-  }, 500);
+  activeCallState.timer = null;
+  if (activeCallState.status === "offline") {
+    status.textContent = "Not Online";
+    return;
+  }
+  if (activeCallState.status === "incoming") {
+    status.textContent = `${activeCallState.kind === "video" ? "Video" : "Audio"} call incoming`;
+    return;
+  }
+  if (activeCallState.status === "ringing") {
+    status.textContent = "Ringing...";
+    return;
+  }
+  if (activeCallState.status === "connected") {
+    const tick = () => {
+      if (!activeCallState || !status) return;
+      const seconds = Math.max(0, Math.floor((Date.now() - (activeCallState.startedAt || Date.now())) / 1000));
+      const mm = String(Math.floor(seconds / 60)).padStart(2, "0");
+      const ss = String(seconds % 60).padStart(2, "0");
+      status.textContent = `${activeCallState.videoOn ? "Video" : "Audio"} call • ${mm}:${ss}`;
+    };
+    tick();
+    activeCallState.timer = window.setInterval(tick, 1000);
+  }
 }
 
 function toggleCallSpeaker() {
   if (!activeCallState) return;
   activeCallState.speakerOn = !activeCallState.speakerOn;
   const button = document.getElementById("adnnCallSpeaker");
+  const remoteVideo = document.getElementById("adnnCallRemoteVideo");
+  if (remoteVideo) remoteVideo.muted = !activeCallState.speakerOn;
   if (button) {
     button.classList.toggle("is-muted", !activeCallState.speakerOn);
     button.firstChild.textContent = activeCallState.speakerOn ? "🔊" : "🔇";
   }
-  showChatAlert({ text: activeCallState.speakerOn ? "Speaker enabled." : "Speaker muted." }, "Call");
 }
 
 async function convertCallToVideo() {
-  if (!activeCallState) return;
+  if (!activeCallState?.stream) return;
   if (activeCallState.videoOn) {
     activeCallState.stream.getVideoTracks().forEach((track) => {
       track.stop();
       activeCallState.stream.removeTrack(track);
+      activeCallState.pc?.getSenders?.().find((sender) => sender.track === track)?.replaceTrack(null).catch(() => {});
     });
     activeCallState.videoOn = false;
     renderCallOverlay();
@@ -917,7 +1202,10 @@ async function convertCallToVideo() {
   }
   try {
     const videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
-    videoStream.getVideoTracks().forEach((track) => activeCallState.stream.addTrack(track));
+    const track = videoStream.getVideoTracks()[0];
+    activeCallState.stream.addTrack(track);
+    const sender = activeCallState.pc?.getSenders?.().find((s) => s.track?.kind === "video");
+    if (sender) await sender.replaceTrack(track); else activeCallState.pc?.addTrack(track, activeCallState.stream);
     activeCallState.videoOn = true;
     renderCallOverlay();
   } catch (error) {
@@ -925,13 +1213,46 @@ async function convertCallToVideo() {
   }
 }
 
-function endBrowserCall(showNotice = true) {
+function formatDuration(seconds) {
+  const safe = Math.max(0, Number(seconds) || 0);
+  const mm = String(Math.floor(safe / 60)).padStart(2, "0");
+  const ss = String(safe % 60).padStart(2, "0");
+  return `${mm}:${ss}`;
+}
+
+async function writeCallSummary(reason = "Call ended") {
+  if (!activeCallState?.chatId || activeCallState.summaryWritten) return;
+  activeCallState.summaryWritten = true;
+  const durationSeconds = activeCallState.startedAt ? Math.floor((Date.now() - activeCallState.startedAt) / 1000) : 0;
+  const duration = formatDuration(durationSeconds);
+  const text = durationSeconds > 0 ? `Call ended • Duration ${duration}` : reason;
+  await addDoc(collection(db, "chats", activeCallState.chatId, "messages"), {
+    text,
+    callEvent: true,
+    callDurationSeconds: durationSeconds,
+    callDuration: duration,
+    senderUid: activeUser?.uid || ownCallUid(),
+    senderEmail: emailKey(activeUser?.email),
+    senderName: activeUser?.displayName || activeUser?.email || "User",
+    senderRole: isAdminEmail(activeUser?.email) ? "admin" : "user",
+    createdAt: serverTimestamp()
+  }).catch(() => {});
+  await setDoc(doc(db, "chats", activeCallState.chatId), { lastMessage: text, lastSenderUid: activeUser?.uid || ownCallUid(), updatedAt: serverTimestamp() }, { merge: true }).catch(() => {});
+}
+
+async function endBrowserCall(showNotice = true, notice = "Call ended") {
+  const callId = activeCallState?.callId;
+  const wasConnected = activeCallState?.status === "connected";
   if (activeCallState?.timer) window.clearInterval(activeCallState.timer);
+  if (showNotice && callId) await setDoc(doc(db, "calls", callId), { status: "ended", endedAt: serverTimestamp(), updatedAt: serverTimestamp() }, { merge: true }).catch(() => {});
+  if (wasConnected && showNotice) await writeCallSummary(notice);
+  clearActiveCallListeners();
+  activeCallState?.pc?.close?.();
   activeCallState?.stream?.getTracks?.().forEach((track) => track.stop());
   activeCallState = null;
   const overlay = document.getElementById("adnnCallOverlay");
   if (overlay) overlay.remove();
-  if (showNotice) showChatAlert({ text: "Call ended." }, "Call");
+  if (showNotice) showChatAlert({ text: notice }, "Call");
 }
 
 function updateSectionBadge(type, count) {
@@ -1406,12 +1727,14 @@ function installChatStyles() {
     .adnn-call-card strong { font-size:22px; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .adnn-call-card small, .adnn-call-note { color:var(--adnn-muted); font-family:var(--font-mono, monospace); font-size:11px; line-height:1.5; }
     .adnn-call-card video { width:100%; aspect-ratio:16/10; object-fit:cover; border-radius:20px; background:#000; }
-    .adnn-call-controls { display:flex; justify-content:center; gap:10px; margin-top:4px; }
+    .adnn-call-controls, .adnn-call-incoming { display:flex; justify-content:center; gap:10px; margin-top:4px; }
     .adnn-call-control { width:74px; min-height:62px; border:1px solid var(--adnn-line); border-radius:18px; background:rgba(255,255,255,.07); color:var(--adnn-text); cursor:pointer; display:grid; place-items:center; gap:4px; font-size:18px; }
     .adnn-call-control span { font-size:10px; font-family:var(--font-mono, monospace); color:var(--adnn-muted); }
     .adnn-call-control:hover, .adnn-call-control.is-on { background:var(--adnn-accent); color:#fff; }
     .adnn-call-control:hover span, .adnn-call-control.is-on span { color:rgba(255,255,255,.8); }
     .adnn-call-control.is-muted { opacity:.58; }
+    .adnn-call-control.is-accept { background:#25d366; color:#fff; border-color:rgba(37,211,102,.55); }
+    .adnn-call-control.is-accept span { color:rgba(255,255,255,.82); }
     .adnn-call-control.is-end { background:#ff3b30; color:#fff; border-color:rgba(255,59,48,.55); }
     .adnn-call-control.is-end span { color:rgba(255,255,255,.82); }
 

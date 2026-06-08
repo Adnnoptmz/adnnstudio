@@ -944,6 +944,96 @@ function clearActiveCallListeners() {
   activeCallUnsubscribes = [];
 }
 
+function getCallRinger() {
+  let audio = document.getElementById("adnnCallRinger");
+  if (!audio) {
+    audio = document.createElement("audio");
+    audio.id = "adnnCallRinger";
+    audio.src = "call ringer_01.mp3";
+    audio.loop = true;
+    audio.preload = "auto";
+    audio.hidden = true;
+    document.body.appendChild(audio);
+  }
+  return audio;
+}
+
+function playCallRinger() {
+  const audio = getCallRinger();
+  audio.currentTime = 0;
+  audio.play?.().catch(() => {});
+}
+
+function stopCallRinger() {
+  const audio = document.getElementById("adnnCallRinger");
+  if (!audio) return;
+  audio.pause?.();
+  audio.currentTime = 0;
+}
+
+function makeCallWindowDraggable(card) {
+  if (!card || card.dataset.dragReady === "true") return;
+  card.dataset.dragReady = "true";
+  let dragging = false;
+  let startX = 0;
+  let startY = 0;
+  let left = 0;
+  let top = 0;
+  const start = (event) => {
+    if (event.target.closest("button, video, audio")) return;
+    dragging = true;
+    const point = event.touches?.[0] || event;
+    const rect = card.getBoundingClientRect();
+    startX = point.clientX;
+    startY = point.clientY;
+    left = rect.left;
+    top = rect.top;
+    card.style.left = `${left}px`;
+    card.style.top = `${top}px`;
+    card.style.right = "auto";
+    card.style.bottom = "auto";
+    card.classList.add("is-dragging");
+    event.preventDefault?.();
+  };
+  const move = (event) => {
+    if (!dragging) return;
+    const point = event.touches?.[0] || event;
+    const nextLeft = Math.min(Math.max(8, left + point.clientX - startX), window.innerWidth - card.offsetWidth - 8);
+    const nextTop = Math.min(Math.max(8, top + point.clientY - startY), window.innerHeight - card.offsetHeight - 8);
+    card.style.left = `${nextLeft}px`;
+    card.style.top = `${nextTop}px`;
+  };
+  const end = () => {
+    dragging = false;
+    card.classList.remove("is-dragging");
+  };
+  card.addEventListener("mousedown", start);
+  card.addEventListener("touchstart", start, { passive: false });
+  window.addEventListener("mousemove", move);
+  window.addEventListener("touchmove", move, { passive: true });
+  window.addEventListener("mouseup", end);
+  window.addEventListener("touchend", end);
+}
+
+function ensureVideoTransceiver(pc) {
+  if (!pc?.addTransceiver) return;
+  const hasVideo = pc.getTransceivers?.().some((transceiver) => transceiver.receiver?.track?.kind === "video" || transceiver.sender?.track?.kind === "video");
+  if (!hasVideo) pc.addTransceiver("video", { direction: "sendrecv" });
+}
+
+function getVideoSender(pc) {
+  const transceiver = pc?.getTransceivers?.().find((item) => item.receiver?.track?.kind === "video" || item.sender?.track?.kind === "video");
+  return transceiver?.sender || pc?.getSenders?.().find((sender) => sender.track?.kind === "video") || null;
+}
+
+async function announceCallMediaUpdate(videoOn) {
+  if (!activeCallState?.callId) return;
+  await setDoc(doc(db, "calls", activeCallState.callId), {
+    [`media.${ownCallUid()}`]: { videoOn: !!videoOn, updatedAt: Date.now() },
+    updatedAt: serverTimestamp()
+  }, { merge: true }).catch(() => {});
+}
+
 async function startRealtimeCall(kind = "audio", target = null) {
   if (!target?.receiverUid || !target?.chatId) {
     showChatAlert({ text: "Select a chat before calling." }, "Call");
@@ -994,6 +1084,7 @@ async function startRealtimeCall(kind = "audio", target = null) {
     }, { merge: true });
     const pc = createPeerConnection(callRef.id, false);
     stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+    ensureVideoTransceiver(pc);
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
     await setDoc(callRef, { offer: { type: offer.type, sdp: offer.sdp }, updatedAt: serverTimestamp() }, { merge: true });
@@ -1012,8 +1103,11 @@ async function startRealtimeCall(kind = "audio", target = null) {
       status: "ringing",
       startedAt: null,
       timer: null,
-      summaryWritten: false
+      summaryWritten: false,
+      callerUid: ownCallUid(),
+      receiverUid: target.receiverUid
     };
+    playCallRinger();
     renderCallOverlay();
     watchActiveCall(callRef.id, false);
   } catch (error) {
@@ -1056,6 +1150,7 @@ function watchActiveCall(callId, isAnswerer) {
       }
       activeCallState.status = "connected";
       activeCallState.startedAt = Date.now();
+      stopCallRinger();
       renderCallOverlay();
     }
     if (["ended", "rejected", "missed"].includes(call.status)) {
@@ -1085,8 +1180,11 @@ function showIncomingCall(call) {
     videoOn: false,
     startedAt: null,
     timer: null,
-    summaryWritten: false
+    summaryWritten: false,
+    callerUid: call.callerUid,
+    receiverUid: call.receiverUid
   };
+  playCallRinger();
   renderCallOverlay();
 }
 
@@ -1104,7 +1202,8 @@ async function acceptIncomingCall() {
     await pc.setRemoteDescription(new RTCSessionDescription(call.offer));
     const answer = await pc.createAnswer();
     await pc.setLocalDescription(answer);
-    Object.assign(activeCallState, { pc, stream, videoOn: wantsVideo, status: "connected", startedAt: Date.now(), mode: "active" });
+    Object.assign(activeCallState, { pc, stream, videoOn: wantsVideo, status: "connected", startedAt: Date.now(), mode: "active", callerUid: call.callerUid, receiverUid: call.receiverUid });
+    stopCallRinger();
     await setDoc(callRef, { answer: { type: answer.type, sdp: answer.sdp }, status: "accepted", answeredAt: serverTimestamp(), updatedAt: serverTimestamp() }, { merge: true });
     await updateCallInbox(call.receiverUid, activeCallState.callId, "accepted");
     renderCallOverlay();
@@ -1133,7 +1232,8 @@ function renderCallOverlay() {
     overlay.id = "adnnCallOverlay";
     overlay.className = "adnn-call-overlay";
     overlay.innerHTML = `
-      <div class="adnn-call-card" role="dialog" aria-modal="true" aria-label="Call controls">
+      <div class="adnn-call-card" role="dialog" aria-modal="false" aria-label="Call controls">
+        <div class="adnn-call-drag-handle">Drag call window</div>
         <div class="adnn-call-avatar" id="adnnCallAvatar"></div>
         <strong id="adnnCallName">Call</strong>
         <small id="adnnCallStatus">Ringing...</small>
@@ -1157,6 +1257,7 @@ function renderCallOverlay() {
     document.getElementById("adnnCallSpeaker")?.addEventListener("click", toggleCallSpeaker);
     document.getElementById("adnnCallVideoToggle")?.addEventListener("click", convertCallToVideo);
   }
+  makeCallWindowDraggable(overlay.querySelector(".adnn-call-card"));
   attachCallMedia();
   const name = document.getElementById("adnnCallName");
   const status = document.getElementById("adnnCallStatus");
@@ -1206,18 +1307,22 @@ function updateCallStatusText() {
   if (activeCallState.timer) window.clearInterval(activeCallState.timer);
   activeCallState.timer = null;
   if (activeCallState.status === "offline") {
+    stopCallRinger();
     status.textContent = "Not Online";
     return;
   }
   if (activeCallState.status === "incoming") {
+    playCallRinger();
     status.textContent = `${activeCallState.kind === "video" ? "Video" : "Audio"} call incoming`;
     return;
   }
   if (activeCallState.status === "ringing") {
+    playCallRinger();
     status.textContent = "Ringing...";
     return;
   }
   if (activeCallState.status === "connected") {
+    stopCallRinger();
     const tick = () => {
       if (!activeCallState || !status) return;
       const seconds = Math.max(0, Math.floor((Date.now() - (activeCallState.startedAt || Date.now())) / 1000));
@@ -1242,24 +1347,36 @@ function toggleCallSpeaker() {
 }
 
 async function convertCallToVideo() {
-  if (!activeCallState?.stream) return;
+  if (!activeCallState?.stream || !activeCallState?.pc) return;
+  const button = document.getElementById("adnnCallVideoToggle");
   if (activeCallState.videoOn) {
     activeCallState.stream.getVideoTracks().forEach((track) => {
       track.stop();
       activeCallState.stream.removeTrack(track);
-      activeCallState.pc?.getSenders?.().find((sender) => sender.track === track)?.replaceTrack(null).catch(() => {});
+      const sender = activeCallState.pc?.getSenders?.().find((candidate) => candidate.track === track);
+      sender?.replaceTrack?.(null).catch(() => {});
     });
     activeCallState.videoOn = false;
+    await announceCallMediaUpdate(false);
+    if (button) button.innerHTML = `${ADNN_ICON_VIDEO}<span>Video</span>`;
     renderCallOverlay();
     return;
   }
   try {
     const videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
     const track = videoStream.getVideoTracks()[0];
+    if (!track) throw new Error("No camera track");
     activeCallState.stream.addTrack(track);
-    const sender = activeCallState.pc?.getSenders?.().find((s) => s.track?.kind === "video");
-    if (sender) await sender.replaceTrack(track); else activeCallState.pc?.addTrack(track, activeCallState.stream);
+    ensureVideoTransceiver(activeCallState.pc);
+    let sender = getVideoSender(activeCallState.pc);
+    if (sender?.replaceTrack) {
+      await sender.replaceTrack(track);
+    } else {
+      activeCallState.pc.addTrack(track, activeCallState.stream);
+    }
     activeCallState.videoOn = true;
+    await announceCallMediaUpdate(true);
+    if (button) button.innerHTML = `${ADNN_ICON_VIDEO}<span>Video On</span>`;
     renderCallOverlay();
   } catch (error) {
     showChatAlert({ text: "Camera permission is needed to convert to video." }, "Video blocked");
@@ -1277,6 +1394,15 @@ function formatCallTime(date = new Date()) {
   return date.toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
+function callDirectionForUser(callState) {
+  const mine = ownCallUid();
+  return callState?.callerUid === mine || callState?.callerRealUid === activeUser?.uid ? "outgoing" : "incoming";
+}
+
+function callIconText(kind) {
+  return kind === "video" ? "📹" : "☎";
+}
+
 async function writeCallSummaryFromState(callState, reason = "Call ended") {
   if (!callState?.chatId || callState.summaryWritten) return;
   callState.summaryWritten = true;
@@ -1284,15 +1410,20 @@ async function writeCallSummaryFromState(callState, reason = "Call ended") {
   const duration = formatDuration(durationSeconds);
   const endedDate = new Date();
   const callTime = formatCallTime(endedDate);
-  const label = callState.label || "Call";
+  const direction = callDirectionForUser(callState);
+  const kind = callState.kind || (callState.videoOn ? "video" : "audio");
   const text = durationSeconds > 0
-    ? `Call with ${label} • ${duration} • ${callTime}`
-    : `${reason} • ${callTime}`;
+    ? `${callIconText(kind)} ${direction === "outgoing" ? "Outgoing" : "Incoming"} ${kind} call • ${duration} • ${callTime}`
+    : `${callIconText(kind)} ${reason} • ${callTime}`;
   const messageId = callState.callId ? `call_${callState.callId}` : undefined;
   const messageData = {
     text,
     callEvent: true,
-    callWith: label,
+    callDirection: direction,
+    callKind: kind,
+    callWith: callState.label || "Call",
+    callerUid: callState.callerUid || null,
+    receiverUid: callState.receiverUid || null,
     callDurationSeconds: durationSeconds,
     callDuration: duration,
     callTime,
@@ -1314,6 +1445,7 @@ async function endBrowserCall(showNotice = true, notice = "Call ended") {
   const state = activeCallState;
   const callId = state?.callId;
   const wasConnected = state?.status === "connected";
+  stopCallRinger();
   if (state?.timer) window.clearInterval(state.timer);
   clearActiveCallListeners();
   if (wasConnected) await writeCallSummaryFromState(state, notice);
@@ -1469,9 +1601,15 @@ function messageBubble(message, mine, chatId) {
   }
   const text = document.createElement("p");
   const time = document.createElement("span");
-  text.textContent = message.text || "";
+  if (message.callEvent) {
+    const direction = message.callerUid === ownCallUid() ? "Outgoing" : "Incoming";
+    const kind = message.callKind || "audio";
+    text.textContent = `${callIconText(kind)} ${direction} ${kind} call • ${message.callDuration || formatDuration(message.callDurationSeconds || 0)} • ${message.callTime || relativeTime(message.createdAt)}`;
+  } else {
+    text.textContent = message.text || "";
+  }
   time.textContent = relativeTime(message.createdAt);
-  if (message.text) bubble.appendChild(text);
+  if (text.textContent) bubble.appendChild(text);
   bubble.appendChild(time);
   if (canDeleteMessage(message)) {
     const deleteButton = document.createElement("button");
@@ -1800,9 +1938,11 @@ function installChatStyles() {
     .adnn-chat-call:hover { background:var(--adnn-accent); color:#fff; }
     .adnn-chat-bubble.is-call-event { align-self:center; max-width:min(360px, 92%); text-align:center; border:1px solid var(--adnn-line); background:rgba(255,255,255,.045); color:var(--adnn-text); border-radius:18px; }
     .adnn-chat-bubble.is-call-event p { font-family:var(--font-mono, monospace); font-size:11px; letter-spacing:.02em; color:var(--adnn-text); }
-    .adnn-call-overlay { position:fixed; inset:0; z-index:99999; display:grid; place-items:center; background:rgba(0,0,0,.68); backdrop-filter:blur(16px); padding:20px; }
-    .adnn-call-card { width:min(360px, 100%); border:1px solid var(--adnn-line); border-radius:28px; background:rgba(18,18,22,.94); color:var(--adnn-text); box-shadow:0 30px 90px rgba(0,0,0,.45); padding:24px; text-align:center; display:grid; gap:12px; }
-    .adnn-call-avatar { width:82px; height:82px; margin:0 auto; border-radius:50%; display:grid; place-items:center; background:var(--adnn-accent); color:#fff; font-family:var(--font-mono, monospace); font-size:24px; letter-spacing:.08em; }
+    .adnn-call-overlay { position:fixed; inset:0; z-index:99999; pointer-events:none; background:transparent; padding:0; }
+    .adnn-call-card { position:fixed; right:22px; bottom:22px; width:min(360px, calc(100vw - 28px)); border:1px solid var(--adnn-line); border-radius:28px; background:rgba(18,18,22,.96); color:var(--adnn-text); box-shadow:0 30px 90px rgba(0,0,0,.45); padding:18px; text-align:center; display:grid; gap:10px; pointer-events:auto; cursor:grab; }
+    .adnn-call-card.is-dragging { cursor:grabbing; user-select:none; }
+    .adnn-call-drag-handle { color:var(--adnn-muted); font-family:var(--font-mono, monospace); font-size:10px; letter-spacing:.14em; text-transform:uppercase; }
+    .adnn-call-avatar { width:70px; height:70px; margin:0 auto; border-radius:50%; display:grid; place-items:center; background:var(--adnn-accent); color:#fff; font-family:var(--font-mono, monospace); font-size:22px; letter-spacing:.08em; }
     .adnn-call-card strong { font-size:22px; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .adnn-call-card small, .adnn-call-note { color:var(--adnn-muted); font-family:var(--font-mono, monospace); font-size:11px; line-height:1.5; }
     .adnn-call-card video { width:100%; aspect-ratio:16/10; object-fit:cover; border-radius:20px; background:#000; }

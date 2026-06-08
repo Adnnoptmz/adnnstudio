@@ -34,6 +34,13 @@ const auth = app ? getAuth(app) : null;
 const db = app ? getFirestore(app) : null;
 const storage = app ? getStorage(app) : null;
 
+const ADNN_ICON_PHONE = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.5 4.8 10 7.2c.6.6.7 1.5.2 2.2l-1 1.5a11.8 11.8 0 0 0 4.9 4.9l1.5-1c.7-.5 1.6-.4 2.2.2l2.4 2.5c.5.5.6 1.3.2 1.9-.8 1.3-2.4 2-4 1.5C9.6 18.8 5.2 14.4 3.1 7.6c-.5-1.6.2-3.2 1.5-4 .6-.4 1.4-.3 1.9.2Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+const ADNN_ICON_VIDEO = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5A2.5 2.5 0 0 1 6.5 5h7A2.5 2.5 0 0 1 16 7.5v9A2.5 2.5 0 0 1 13.5 19h-7A2.5 2.5 0 0 1 4 16.5v-9Z" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="m16 10 4-2.4v8.8L16 14v-4Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>`;
+const ADNN_ICON_END = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 14.5c3.5-3.1 7.5-3.1 11 0l1.7-1.7c.7-.7.7-1.8 0-2.5-4.5-4.2-9.9-4.2-14.4 0-.7.7-.7 1.8 0 2.5l1.7 1.7Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M9 15.5h6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>`;
+const ADNN_ICON_ACCEPT = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 13 4 4L19 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+const ADNN_ICON_SPEAKER = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9v6h4l5 4V5L9 9H5Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M17 9.5a4 4 0 0 1 0 5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M19.5 7a7.5 7.5 0 0 1 0 10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>`;
+const ADNN_ICON_MUTED = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9v6h4l5 4V5L9 9H5Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="m18 9 4 4m0-4-4 4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>`;
+
 let activeUser = null;
 let clientChatId = "";
 let clientChatUnsubscribe = null;
@@ -149,9 +156,9 @@ function installClientChatShell() {
         <strong>AdnnStudio</strong>
       </div>
       <div class="adnn-chat-head-actions">
-        <button type="button" class="adnn-chat-call" data-call-kind="audio" aria-label="Start audio call">â˜Ž</button>
-        <button type="button" class="adnn-chat-call" data-call-kind="video" aria-label="Start video call">â—‰</button>
-        <button type="button" class="adnn-chat-close" aria-label="Close chat">Ã—</button>
+        <button type="button" class="adnn-chat-call" data-call-kind="audio" aria-label="Start audio call">${ADNN_ICON_PHONE}</button>
+        <button type="button" class="adnn-chat-call" data-call-kind="video" aria-label="Start video call">${ADNN_ICON_VIDEO}</button>
+        <button type="button" class="adnn-chat-close" aria-label="Close chat">×</button>
       </div>
     </div>
     <div class="adnn-chat-messages" id="adnnChatMessages">
@@ -369,13 +376,13 @@ function installAdminChatPanel() {
       </div>
       <div class="adnn-admin-chat-room" id="adnnAdminChatRoom">
         <div class="adnn-admin-chat-title">
-          <button type="button" class="adnn-admin-chat-back" id="adnnAdminChatBack" aria-label="Back to chats">â€¹</button>
+          <button type="button" class="adnn-admin-chat-back" id="adnnAdminChatBack" aria-label="Back to chats">‹</button>
           <span class="adnn-admin-chat-avatar" id="adnnAdminChatAvatar" style="display: none;"></span>
           <span class="adnn-admin-chat-title-text">
             <strong id="adnnAdminChatTitle"></strong>
             <small id="adnnAdminChatSubtitle"></small>
           </span>
-          <span class="adnn-direct-actions"><button type="button" class="adnn-chat-call" data-call-kind="audio">â˜Ž</button><button type="button" class="adnn-chat-call" data-call-kind="video">â—‰</button></span>
+          <span class="adnn-direct-actions"><button type="button" class="adnn-chat-call" data-call-kind="audio" aria-label="Start audio call">${ADNN_ICON_PHONE}</button><button type="button" class="adnn-chat-call" data-call-kind="video" aria-label="Start video call">${ADNN_ICON_VIDEO}</button></span>
         </div>
         <div class="adnn-chat-messages" id="adnnAdminMessages">
           <div class="adnn-chat-version-placeholder">studiochat v.1.0</div>
@@ -636,7 +643,7 @@ async function createAdminEmailMessageCard(event) {
   const chatId = directChatId(userA.uid, userB.uid);
   await setDoc(doc(db, "chats", chatId), {
     type: "direct",
-    title: `${userA.name} â†” ${userB.name}`,
+    title: `${userA.name} ↔ ${userB.name}`,
     createdByAdminUid: activeUser.uid,
     participantUids: sortedPair(userA.uid, userB.uid),
     participantEmails: [userA.email, userB.email],
@@ -671,10 +678,10 @@ function installDirectChatPanel() {
     <div class="adnn-direct-list" id="adnnDirectChatList"><div class="adnn-chat-empty">No user chats yet.</div></div>
     <div class="adnn-direct-room" id="adnnDirectRoom">
       <div class="adnn-direct-title">
-        <button type="button" class="adnn-direct-back" id="adnnDirectBack">â€¹</button>
+        <button type="button" class="adnn-direct-back" id="adnnDirectBack">‹</button>
         <span class="adnn-direct-avatar" id="adnnDirectAvatar">AD</span>
         <span class="adnn-direct-title-copy"><strong id="adnnDirectTitle">Select a user</strong><small id="adnnDirectSubtitle">Admin-created message cards appear here.</small></span>
-        <span class="adnn-direct-actions"><button type="button" class="adnn-chat-call" data-call-kind="audio">â˜Ž</button><button type="button" class="adnn-chat-call" data-call-kind="video">â—‰</button></span>
+        <span class="adnn-direct-actions"><button type="button" class="adnn-chat-call" data-call-kind="audio" aria-label="Start audio call">${ADNN_ICON_PHONE}</button><button type="button" class="adnn-chat-call" data-call-kind="video" aria-label="Start video call">${ADNN_ICON_VIDEO}</button></span>
       </div>
       <div class="adnn-chat-messages" id="adnnDirectMessages"><div class="adnn-chat-empty">Select a user to open chat.</div></div>
       <form class="adnn-chat-form" id="adnnDirectChatForm">
@@ -1023,7 +1030,8 @@ function createPeerConnection(callId, isAnswerer) {
   pc.ontrack = (event) => {
     if (!activeCallState) return;
     if (!activeCallState.remoteStream) activeCallState.remoteStream = new MediaStream();
-    event.streams?.[0]?.getTracks?.().forEach((track) => {
+    const tracks = event.streams?.[0]?.getTracks?.() || (event.track ? [event.track] : []);
+    tracks.forEach((track) => {
       if (!activeCallState.remoteStream.getTracks().some((existing) => existing.id === track.id)) activeCallState.remoteStream.addTrack(track);
     });
     attachCallMedia();
@@ -1131,14 +1139,15 @@ function renderCallOverlay() {
         <small id="adnnCallStatus">Ringing...</small>
         <video id="adnnCallRemoteVideo" autoplay playsinline></video>
         <video id="adnnCallVideo" autoplay muted playsinline></video>
+        <audio id="adnnCallRemoteAudio" autoplay playsinline></audio>
         <div class="adnn-call-incoming" id="adnnCallIncomingControls">
-          <button type="button" id="adnnCallAccept" class="adnn-call-control is-accept">âœ“<span>Accept</span></button>
-          <button type="button" id="adnnCallReject" class="adnn-call-control is-end">âœ•<span>Reject</span></button>
+          <button type="button" id="adnnCallAccept" class="adnn-call-control is-accept">${ADNN_ICON_ACCEPT}<span>Accept</span></button>
+          <button type="button" id="adnnCallReject" class="adnn-call-control is-end">${ADNN_ICON_END}<span>Reject</span></button>
         </div>
         <div class="adnn-call-controls" id="adnnCallActiveControls">
-          <button type="button" id="adnnCallSpeaker" class="adnn-call-control" aria-label="Speaker">ðŸ”Š<span>Speaker</span></button>
-          <button type="button" id="adnnCallVideoToggle" class="adnn-call-control" aria-label="Convert to video">ðŸŽ¥<span>Video</span></button>
-          <button type="button" id="adnnCallEnd" class="adnn-call-control is-end" aria-label="End call">âœ•<span>End</span></button>
+          <button type="button" id="adnnCallSpeaker" class="adnn-call-control" aria-label="Speaker">${ADNN_ICON_SPEAKER}<span>Speaker</span></button>
+          <button type="button" id="adnnCallVideoToggle" class="adnn-call-control" aria-label="Convert to video">${ADNN_ICON_VIDEO}<span>Video</span></button>
+          <button type="button" id="adnnCallEnd" class="adnn-call-control is-end" aria-label="End call">${ADNN_ICON_END}<span>End</span></button>
         </div>
       </div>`;
     document.body.appendChild(overlay);
@@ -1168,13 +1177,25 @@ function renderCallOverlay() {
 function attachCallMedia() {
   const localVideo = document.getElementById("adnnCallVideo");
   const remoteVideo = document.getElementById("adnnCallRemoteVideo");
+  const remoteAudio = document.getElementById("adnnCallRemoteAudio");
+  const remoteStream = activeCallState?.remoteStream || null;
   if (localVideo) {
-    localVideo.srcObject = activeCallState?.stream || null;
+    if (localVideo.srcObject !== (activeCallState?.stream || null)) localVideo.srcObject = activeCallState?.stream || null;
     localVideo.style.display = activeCallState?.videoOn ? "block" : "none";
+    localVideo.play?.().catch(() => {});
   }
   if (remoteVideo) {
-    remoteVideo.srcObject = activeCallState?.remoteStream || null;
-    remoteVideo.style.display = activeCallState?.remoteStream?.getVideoTracks?.().length ? "block" : "none";
+    if (remoteVideo.srcObject !== remoteStream) remoteVideo.srcObject = remoteStream;
+    remoteVideo.muted = !activeCallState?.speakerOn;
+    remoteVideo.volume = activeCallState?.speakerOn ? 1 : 0;
+    remoteVideo.style.display = remoteStream?.getVideoTracks?.().length ? "block" : "none";
+    remoteVideo.play?.().catch(() => {});
+  }
+  if (remoteAudio) {
+    if (remoteAudio.srcObject !== remoteStream) remoteAudio.srcObject = remoteStream;
+    remoteAudio.muted = !activeCallState?.speakerOn;
+    remoteAudio.volume = activeCallState?.speakerOn ? 1 : 0;
+    remoteAudio.play?.().catch(() => {});
   }
 }
 
@@ -1202,7 +1223,7 @@ function updateCallStatusText() {
       const seconds = Math.max(0, Math.floor((Date.now() - (activeCallState.startedAt || Date.now())) / 1000));
       const mm = String(Math.floor(seconds / 60)).padStart(2, "0");
       const ss = String(seconds % 60).padStart(2, "0");
-      status.textContent = `${activeCallState.videoOn ? "Video" : "Audio"} call â€¢ ${mm}:${ss}`;
+      status.textContent = `${activeCallState.videoOn ? "Video" : "Audio"} call • ${mm}:${ss}`;
     };
     tick();
     activeCallState.timer = window.setInterval(tick, 1000);
@@ -1213,12 +1234,11 @@ function toggleCallSpeaker() {
   if (!activeCallState) return;
   activeCallState.speakerOn = !activeCallState.speakerOn;
   const button = document.getElementById("adnnCallSpeaker");
-  const remoteVideo = document.getElementById("adnnCallRemoteVideo");
-  if (remoteVideo) remoteVideo.muted = !activeCallState.speakerOn;
   if (button) {
     button.classList.toggle("is-muted", !activeCallState.speakerOn);
-    button.firstChild.textContent = activeCallState.speakerOn ? "ðŸ”Š" : "ðŸ”‡";
+    button.innerHTML = `${activeCallState.speakerOn ? ADNN_ICON_SPEAKER : ADNN_ICON_MUTED}<span>${activeCallState.speakerOn ? "Speaker" : "Muted"}</span>`;
   }
+  attachCallMedia();
 }
 
 async function convertCallToVideo() {
@@ -1253,40 +1273,58 @@ function formatDuration(seconds) {
   return `${mm}:${ss}`;
 }
 
-async function writeCallSummary(reason = "Call ended") {
-  if (!activeCallState?.chatId || activeCallState.summaryWritten) return;
-  activeCallState.summaryWritten = true;
-  const durationSeconds = activeCallState.startedAt ? Math.floor((Date.now() - activeCallState.startedAt) / 1000) : 0;
+function formatCallTime(date = new Date()) {
+  return date.toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
+async function writeCallSummaryFromState(callState, reason = "Call ended") {
+  if (!callState?.chatId || callState.summaryWritten) return;
+  callState.summaryWritten = true;
+  const durationSeconds = callState.startedAt ? Math.max(0, Math.floor((Date.now() - callState.startedAt) / 1000)) : 0;
   const duration = formatDuration(durationSeconds);
-  const text = durationSeconds > 0 ? `Call ended â€¢ Duration ${duration}` : reason;
-  await addDoc(collection(db, "chats", activeCallState.chatId, "messages"), {
+  const endedDate = new Date();
+  const callTime = formatCallTime(endedDate);
+  const label = callState.label || "Call";
+  const text = durationSeconds > 0
+    ? `Call with ${label} • ${duration} • ${callTime}`
+    : `${reason} • ${callTime}`;
+  const messageId = callState.callId ? `call_${callState.callId}` : undefined;
+  const messageData = {
     text,
     callEvent: true,
+    callWith: label,
     callDurationSeconds: durationSeconds,
     callDuration: duration,
+    callTime,
     senderUid: activeUser?.uid || ownCallUid(),
     senderEmail: emailKey(activeUser?.email),
     senderName: activeUser?.displayName || activeUser?.email || "User",
     senderRole: isAdminEmail(activeUser?.email) ? "admin" : "user",
     createdAt: serverTimestamp()
-  }).catch(() => {});
-  await setDoc(doc(db, "chats", activeCallState.chatId), { lastMessage: text, lastSenderUid: activeUser?.uid || ownCallUid(), updatedAt: serverTimestamp() }, { merge: true }).catch(() => {});
+  };
+  if (messageId) {
+    await setDoc(doc(db, "chats", callState.chatId, "messages", messageId), messageData, { merge: true }).catch(() => {});
+  } else {
+    await addDoc(collection(db, "chats", callState.chatId, "messages"), messageData).catch(() => {});
+  }
+  await setDoc(doc(db, "chats", callState.chatId), { lastMessage: text, lastSenderUid: activeUser?.uid || ownCallUid(), updatedAt: serverTimestamp() }, { merge: true }).catch(() => {});
 }
 
 async function endBrowserCall(showNotice = true, notice = "Call ended") {
-  const callId = activeCallState?.callId;
-  const wasConnected = activeCallState?.status === "connected";
-  if (activeCallState?.timer) window.clearInterval(activeCallState.timer);
+  const state = activeCallState;
+  const callId = state?.callId;
+  const wasConnected = state?.status === "connected";
+  if (state?.timer) window.clearInterval(state.timer);
+  clearActiveCallListeners();
+  if (wasConnected) await writeCallSummaryFromState(state, notice);
   if (showNotice && callId) {
     const callSnap = await getDoc(doc(db, "calls", callId)).catch(() => null);
     const call = callSnap?.exists() ? callSnap.data() : {};
     await setDoc(doc(db, "calls", callId), { status: "ended", endedAt: serverTimestamp(), updatedAt: serverTimestamp() }, { merge: true }).catch(() => {});
     await updateCallInbox(call.receiverUid, callId, "ended");
   }
-  if (wasConnected && showNotice) await writeCallSummary(notice);
-  clearActiveCallListeners();
-  activeCallState?.pc?.close?.();
-  activeCallState?.stream?.getTracks?.().forEach((track) => track.stop());
+  state?.pc?.close?.();
+  state?.stream?.getTracks?.().forEach((track) => track.stop());
   activeCallState = null;
   const overlay = document.getElementById("adnnCallOverlay");
   if (overlay) overlay.remove();
@@ -1419,7 +1457,7 @@ async function sendAdminMessage(event) {
 
 function messageBubble(message, mine, chatId) {
   const bubble = document.createElement("article");
-  bubble.className = `adnn-chat-bubble${mine ? " is-mine" : ""}`;
+  bubble.className = `adnn-chat-bubble${mine ? " is-mine" : ""}${message.callEvent ? " is-call-event" : ""}`;
   if (message.senderName && !mine) {
     const name = document.createElement("strong");
     name.className = "adnn-chat-sender";
@@ -1758,15 +1796,20 @@ function installChatStyles() {
 
     .adnn-chat-head-actions { display:flex; align-items:center; gap:8px; }
     .adnn-chat-call { width:36px; height:36px; border:0; border-radius:50%; background:rgba(255,255,255,.08); color:var(--adnn-text); cursor:pointer; display:grid; place-items:center; font-size:15px; }
+    .adnn-chat-call svg { width:18px; height:18px; display:block; }
     .adnn-chat-call:hover { background:var(--adnn-accent); color:#fff; }
+    .adnn-chat-bubble.is-call-event { align-self:center; max-width:min(360px, 92%); text-align:center; border:1px solid var(--adnn-line); background:rgba(255,255,255,.045); color:var(--adnn-text); border-radius:18px; }
+    .adnn-chat-bubble.is-call-event p { font-family:var(--font-mono, monospace); font-size:11px; letter-spacing:.02em; color:var(--adnn-text); }
     .adnn-call-overlay { position:fixed; inset:0; z-index:99999; display:grid; place-items:center; background:rgba(0,0,0,.68); backdrop-filter:blur(16px); padding:20px; }
     .adnn-call-card { width:min(360px, 100%); border:1px solid var(--adnn-line); border-radius:28px; background:rgba(18,18,22,.94); color:var(--adnn-text); box-shadow:0 30px 90px rgba(0,0,0,.45); padding:24px; text-align:center; display:grid; gap:12px; }
     .adnn-call-avatar { width:82px; height:82px; margin:0 auto; border-radius:50%; display:grid; place-items:center; background:var(--adnn-accent); color:#fff; font-family:var(--font-mono, monospace); font-size:24px; letter-spacing:.08em; }
     .adnn-call-card strong { font-size:22px; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .adnn-call-card small, .adnn-call-note { color:var(--adnn-muted); font-family:var(--font-mono, monospace); font-size:11px; line-height:1.5; }
     .adnn-call-card video { width:100%; aspect-ratio:16/10; object-fit:cover; border-radius:20px; background:#000; }
+    .adnn-call-card audio { display:none; }
     .adnn-call-controls, .adnn-call-incoming { display:flex; justify-content:center; gap:10px; margin-top:4px; }
     .adnn-call-control { width:74px; min-height:62px; border:1px solid var(--adnn-line); border-radius:18px; background:rgba(255,255,255,.07); color:var(--adnn-text); cursor:pointer; display:grid; place-items:center; gap:4px; font-size:18px; }
+    .adnn-call-control svg { width:22px; height:22px; display:block; }
     .adnn-call-control span { font-size:10px; font-family:var(--font-mono, monospace); color:var(--adnn-muted); }
     .adnn-call-control:hover, .adnn-call-control.is-on { background:var(--adnn-accent); color:#fff; }
     .adnn-call-control:hover span, .adnn-call-control.is-on span { color:rgba(255,255,255,.8); }
@@ -1904,7 +1947,7 @@ function wireFilePreview(inputId, labelId) {
       preview = `<img src="${url}" alt="Selected file preview">`;
     }
 
-    label.innerHTML = `${preview}<span class="adnn-file-copy"><strong>${safeName}</strong><small>Tap Ã— to remove Â· ${sizeMb}</small></span>`;
+    label.innerHTML = `${preview}<span class="adnn-file-copy"><strong>${safeName}</strong><small>Tap × to remove · ${sizeMb}</small></span>`;
     label.hidden = false;
     mediaButton?.classList.add("has-file");
     mediaButton?.setAttribute("title", "Remove selected file");

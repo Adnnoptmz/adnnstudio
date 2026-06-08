@@ -149,9 +149,9 @@ function installClientChatShell() {
         <strong>AdnnStudio</strong>
       </div>
       <div class="adnn-chat-head-actions">
-        <button type="button" class="adnn-chat-call" data-call-kind="audio" aria-label="Start audio call">☎</button>
-        <button type="button" class="adnn-chat-call" data-call-kind="video" aria-label="Start video call">◉</button>
-        <button type="button" class="adnn-chat-close" aria-label="Close chat">×</button>
+        <button type="button" class="adnn-chat-call" data-call-kind="audio" aria-label="Start audio call">â˜Ž</button>
+        <button type="button" class="adnn-chat-call" data-call-kind="video" aria-label="Start video call">â—‰</button>
+        <button type="button" class="adnn-chat-close" aria-label="Close chat">Ã—</button>
       </div>
     </div>
     <div class="adnn-chat-messages" id="adnnChatMessages">
@@ -369,13 +369,13 @@ function installAdminChatPanel() {
       </div>
       <div class="adnn-admin-chat-room" id="adnnAdminChatRoom">
         <div class="adnn-admin-chat-title">
-          <button type="button" class="adnn-admin-chat-back" id="adnnAdminChatBack" aria-label="Back to chats">‹</button>
+          <button type="button" class="adnn-admin-chat-back" id="adnnAdminChatBack" aria-label="Back to chats">â€¹</button>
           <span class="adnn-admin-chat-avatar" id="adnnAdminChatAvatar" style="display: none;"></span>
           <span class="adnn-admin-chat-title-text">
             <strong id="adnnAdminChatTitle"></strong>
             <small id="adnnAdminChatSubtitle"></small>
           </span>
-          <span class="adnn-direct-actions"><button type="button" class="adnn-chat-call" data-call-kind="audio">☎</button><button type="button" class="adnn-chat-call" data-call-kind="video">◉</button></span>
+          <span class="adnn-direct-actions"><button type="button" class="adnn-chat-call" data-call-kind="audio">â˜Ž</button><button type="button" class="adnn-chat-call" data-call-kind="video">â—‰</button></span>
         </div>
         <div class="adnn-chat-messages" id="adnnAdminMessages">
           <div class="adnn-chat-version-placeholder">studiochat v.1.0</div>
@@ -636,7 +636,7 @@ async function createAdminEmailMessageCard(event) {
   const chatId = directChatId(userA.uid, userB.uid);
   await setDoc(doc(db, "chats", chatId), {
     type: "direct",
-    title: `${userA.name} ↔ ${userB.name}`,
+    title: `${userA.name} â†” ${userB.name}`,
     createdByAdminUid: activeUser.uid,
     participantUids: sortedPair(userA.uid, userB.uid),
     participantEmails: [userA.email, userB.email],
@@ -671,10 +671,10 @@ function installDirectChatPanel() {
     <div class="adnn-direct-list" id="adnnDirectChatList"><div class="adnn-chat-empty">No user chats yet.</div></div>
     <div class="adnn-direct-room" id="adnnDirectRoom">
       <div class="adnn-direct-title">
-        <button type="button" class="adnn-direct-back" id="adnnDirectBack">‹</button>
+        <button type="button" class="adnn-direct-back" id="adnnDirectBack">â€¹</button>
         <span class="adnn-direct-avatar" id="adnnDirectAvatar">AD</span>
         <span class="adnn-direct-title-copy"><strong id="adnnDirectTitle">Select a user</strong><small id="adnnDirectSubtitle">Admin-created message cards appear here.</small></span>
-        <span class="adnn-direct-actions"><button type="button" class="adnn-chat-call" data-call-kind="audio">☎</button><button type="button" class="adnn-chat-call" data-call-kind="video">◉</button></span>
+        <span class="adnn-direct-actions"><button type="button" class="adnn-chat-call" data-call-kind="audio">â˜Ž</button><button type="button" class="adnn-chat-call" data-call-kind="video">â—‰</button></span>
       </div>
       <div class="adnn-chat-messages" id="adnnDirectMessages"><div class="adnn-chat-empty">Select a user to open chat.</div></div>
       <form class="adnn-chat-form" id="adnnDirectChatForm">
@@ -900,14 +900,19 @@ function startIncomingCallListeners(user) {
   const receivers = [user.uid];
   if (isAdminEmail(user.email)) receivers.push(ADMIN_ALIAS_UID);
   receivers.forEach((receiverUid) => {
-    const callQuery = query(collection(db, "calls"), where("receiverUid", "==", receiverUid), where("status", "==", "ringing"));
-    incomingCallsUnsubscribes.push(onSnapshot(callQuery, (snapshot) => {
-      snapshot.docChanges().forEach((change) => {
-        if (change.type !== "added" && change.type !== "modified") return;
-        const call = { id: change.doc.id, ...change.doc.data() };
-        if (call.callerUid === ownCallUid()) return;
-        showIncomingCall(call);
-      });
+    const inboxRef = doc(db, "callInbox", receiverUid);
+    incomingCallsUnsubscribes.push(onSnapshot(inboxRef, async (snapshot) => {
+      if (!snapshot.exists()) return;
+      const inbox = snapshot.data() || {};
+      if (inbox.status !== "ringing" || !inbox.callId) return;
+      const callSnap = await getDoc(doc(db, "calls", inbox.callId)).catch(() => null);
+      if (!callSnap?.exists()) return;
+      const call = { id: callSnap.id, ...callSnap.data() };
+      if (call.status !== "ringing") return;
+      if (call.callerUid === ownCallUid() || call.callerRealUid === activeUser?.uid) return;
+      showIncomingCall(call);
+    }, () => {
+      showChatAlert({ text: "Incoming call listener could not start. Check Firestore rules." }, "Call");
     }));
   });
 }
@@ -915,6 +920,16 @@ function startIncomingCallListeners(user) {
 function stopIncomingCallListeners() {
   incomingCallsUnsubscribes.forEach((unsub) => unsub?.());
   incomingCallsUnsubscribes = [];
+}
+
+async function updateCallInbox(receiverUid, callId, status) {
+  if (!receiverUid || !callId) return;
+  await setDoc(doc(db, "callInbox", receiverUid), {
+    callId,
+    receiverUid,
+    status,
+    updatedAt: serverTimestamp()
+  }, { merge: true }).catch(() => {});
 }
 
 function clearActiveCallListeners() {
@@ -958,6 +973,18 @@ async function startRealtimeCall(kind = "audio", target = null) {
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     });
+    await setDoc(doc(db, "callInbox", target.receiverUid), {
+      callId: callRef.id,
+      receiverUid: target.receiverUid,
+      callerUid: ownCallUid(),
+      callerRealUid: activeUser.uid,
+      callerName: activeUser.displayName || activeUser.email || "User",
+      chatId: target.chatId,
+      kind,
+      status: "ringing",
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    }, { merge: true });
     const pc = createPeerConnection(callRef.id, false);
     stream.getTracks().forEach((track) => pc.addTrack(track, stream));
     const offer = await pc.createOffer();
@@ -1071,6 +1098,7 @@ async function acceptIncomingCall() {
     await pc.setLocalDescription(answer);
     Object.assign(activeCallState, { pc, stream, videoOn: wantsVideo, status: "connected", startedAt: Date.now(), mode: "active" });
     await setDoc(callRef, { answer: { type: answer.type, sdp: answer.sdp }, status: "accepted", answeredAt: serverTimestamp(), updatedAt: serverTimestamp() }, { merge: true });
+    await updateCallInbox(call.receiverUid, activeCallState.callId, "accepted");
     renderCallOverlay();
     watchActiveCall(activeCallState.callId, true);
   } catch (error) {
@@ -1080,7 +1108,12 @@ async function acceptIncomingCall() {
 }
 
 async function rejectIncomingCall() {
-  if (activeCallState?.callId) await setDoc(doc(db, "calls", activeCallState.callId), { status: "rejected", endedAt: serverTimestamp(), updatedAt: serverTimestamp() }, { merge: true }).catch(() => {});
+  if (activeCallState?.callId) {
+    const callSnap = await getDoc(doc(db, "calls", activeCallState.callId)).catch(() => null);
+    const call = callSnap?.exists() ? callSnap.data() : {};
+    await setDoc(doc(db, "calls", activeCallState.callId), { status: "rejected", endedAt: serverTimestamp(), updatedAt: serverTimestamp() }, { merge: true }).catch(() => {});
+    await updateCallInbox(call.receiverUid || activeUser?.uid, activeCallState.callId, "rejected");
+  }
   endBrowserCall(false, "Call rejected");
 }
 
@@ -1099,13 +1132,13 @@ function renderCallOverlay() {
         <video id="adnnCallRemoteVideo" autoplay playsinline></video>
         <video id="adnnCallVideo" autoplay muted playsinline></video>
         <div class="adnn-call-incoming" id="adnnCallIncomingControls">
-          <button type="button" id="adnnCallAccept" class="adnn-call-control is-accept">✓<span>Accept</span></button>
-          <button type="button" id="adnnCallReject" class="adnn-call-control is-end">✕<span>Reject</span></button>
+          <button type="button" id="adnnCallAccept" class="adnn-call-control is-accept">âœ“<span>Accept</span></button>
+          <button type="button" id="adnnCallReject" class="adnn-call-control is-end">âœ•<span>Reject</span></button>
         </div>
         <div class="adnn-call-controls" id="adnnCallActiveControls">
-          <button type="button" id="adnnCallSpeaker" class="adnn-call-control" aria-label="Speaker">🔊<span>Speaker</span></button>
-          <button type="button" id="adnnCallVideoToggle" class="adnn-call-control" aria-label="Convert to video">🎥<span>Video</span></button>
-          <button type="button" id="adnnCallEnd" class="adnn-call-control is-end" aria-label="End call">✕<span>End</span></button>
+          <button type="button" id="adnnCallSpeaker" class="adnn-call-control" aria-label="Speaker">ðŸ”Š<span>Speaker</span></button>
+          <button type="button" id="adnnCallVideoToggle" class="adnn-call-control" aria-label="Convert to video">ðŸŽ¥<span>Video</span></button>
+          <button type="button" id="adnnCallEnd" class="adnn-call-control is-end" aria-label="End call">âœ•<span>End</span></button>
         </div>
       </div>`;
     document.body.appendChild(overlay);
@@ -1169,7 +1202,7 @@ function updateCallStatusText() {
       const seconds = Math.max(0, Math.floor((Date.now() - (activeCallState.startedAt || Date.now())) / 1000));
       const mm = String(Math.floor(seconds / 60)).padStart(2, "0");
       const ss = String(seconds % 60).padStart(2, "0");
-      status.textContent = `${activeCallState.videoOn ? "Video" : "Audio"} call • ${mm}:${ss}`;
+      status.textContent = `${activeCallState.videoOn ? "Video" : "Audio"} call â€¢ ${mm}:${ss}`;
     };
     tick();
     activeCallState.timer = window.setInterval(tick, 1000);
@@ -1184,7 +1217,7 @@ function toggleCallSpeaker() {
   if (remoteVideo) remoteVideo.muted = !activeCallState.speakerOn;
   if (button) {
     button.classList.toggle("is-muted", !activeCallState.speakerOn);
-    button.firstChild.textContent = activeCallState.speakerOn ? "🔊" : "🔇";
+    button.firstChild.textContent = activeCallState.speakerOn ? "ðŸ”Š" : "ðŸ”‡";
   }
 }
 
@@ -1225,7 +1258,7 @@ async function writeCallSummary(reason = "Call ended") {
   activeCallState.summaryWritten = true;
   const durationSeconds = activeCallState.startedAt ? Math.floor((Date.now() - activeCallState.startedAt) / 1000) : 0;
   const duration = formatDuration(durationSeconds);
-  const text = durationSeconds > 0 ? `Call ended • Duration ${duration}` : reason;
+  const text = durationSeconds > 0 ? `Call ended â€¢ Duration ${duration}` : reason;
   await addDoc(collection(db, "chats", activeCallState.chatId, "messages"), {
     text,
     callEvent: true,
@@ -1244,7 +1277,12 @@ async function endBrowserCall(showNotice = true, notice = "Call ended") {
   const callId = activeCallState?.callId;
   const wasConnected = activeCallState?.status === "connected";
   if (activeCallState?.timer) window.clearInterval(activeCallState.timer);
-  if (showNotice && callId) await setDoc(doc(db, "calls", callId), { status: "ended", endedAt: serverTimestamp(), updatedAt: serverTimestamp() }, { merge: true }).catch(() => {});
+  if (showNotice && callId) {
+    const callSnap = await getDoc(doc(db, "calls", callId)).catch(() => null);
+    const call = callSnap?.exists() ? callSnap.data() : {};
+    await setDoc(doc(db, "calls", callId), { status: "ended", endedAt: serverTimestamp(), updatedAt: serverTimestamp() }, { merge: true }).catch(() => {});
+    await updateCallInbox(call.receiverUid, callId, "ended");
+  }
   if (wasConnected && showNotice) await writeCallSummary(notice);
   clearActiveCallListeners();
   activeCallState?.pc?.close?.();
@@ -1866,7 +1904,7 @@ function wireFilePreview(inputId, labelId) {
       preview = `<img src="${url}" alt="Selected file preview">`;
     }
 
-    label.innerHTML = `${preview}<span class="adnn-file-copy"><strong>${safeName}</strong><small>Tap × to remove · ${sizeMb}</small></span>`;
+    label.innerHTML = `${preview}<span class="adnn-file-copy"><strong>${safeName}</strong><small>Tap Ã— to remove Â· ${sizeMb}</small></span>`;
     label.hidden = false;
     mediaButton?.classList.add("has-file");
     mediaButton?.setAttribute("title", "Remove selected file");

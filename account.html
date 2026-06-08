@@ -1180,7 +1180,34 @@
 	    body.auth-pending > .shell, body.auth-pending .mobile-header-bar, body.auth-pending .auth-gate { visibility:hidden !important; }
 	    body.locked > .shell, body.locked .mobile-header-bar { display:none !important; }
 	    body.locked .auth-gate { display:grid !important; }
-	    @media (max-width:900px) {
+	
+      body.chat-view-active .portal-top {
+        display:none !important;
+      }
+      body.chat-view-active > .shell > main {
+        padding-top:0 !important;
+      }
+      body.chat-view-active > .shell > main > .view.active {
+        margin-top:0 !important;
+      }
+      @media (max-width:760px) {
+        body.chat-view-active > .shell > main {
+          height:100dvh !important;
+          min-height:100dvh !important;
+          padding:0 !important;
+          border-radius:0 !important;
+          overflow:hidden !important;
+        }
+        body.chat-view-active > .shell > main > .view.active {
+          width:100% !important;
+          height:100dvh !important;
+          min-height:100dvh !important;
+          padding:0 !important;
+          border-radius:0 !important;
+          overflow:hidden !important;
+        }
+      }
+    @media (max-width:900px) {
 	      .mobile-header-bar { display:flex; }
 	      body > .shell { grid-template-columns:1fr !important; }
 	      body.sidebar-collapsed > .shell { grid-template-columns:1fr !important; }
@@ -1604,12 +1631,13 @@
 	      const selected = ["notifications", "tasks", "chat", "admin-support", "calendar", "notes", "invoice", "settings", "terms"].includes(view) ? view : "tasks";
 	      document.querySelectorAll(".view").forEach((section) => section.classList.toggle("active", section.id === selected));
 	      document.querySelectorAll("[data-view-link]").forEach((link) => link.classList.toggle("active", link.dataset.viewLink === selected));
+	      document.body.classList.toggle("chat-view-active", selected === "chat" || selected === "admin-support");
 	      if (location.hash.replace("#", "") !== selected) history.replaceState(null, "", `#${selected}`);
 	      const headingMap = {
 	        notifications: ["Private Account", "Notifications"],
 	        tasks: ["Project Workspace", "Tasks"],
-	        chat: ["User Messages", "User Chats"],
-        "admin-support": ["Admin Support", "Support Chat"],
+	        chat: ["", ""],
+        "admin-support": ["", ""],
 	        calendar: ["Personal Schedule", "Reminder Calendar"],
 	        notes: ["Personal Notes", "Notes"],
 	        invoice: ["Billing", "Invoice"],

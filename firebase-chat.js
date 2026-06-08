@@ -705,6 +705,61 @@ function installDirectChatPanel() {
   document.getElementById("adnnDirectBack")?.addEventListener("click", closeDirectChatRoom);
   panel.querySelectorAll(".adnn-chat-call").forEach((button) => button.addEventListener("click", () => startRealtimeCall(button.dataset.callKind || "audio", getDirectCallTarget())));
   wireFilePreview("adnnDirectChatFile", "adnnDirectChatFileName");
+  installMobileDirectComposer();
+}
+
+
+function installMobileDirectComposer() {
+  if (document.getElementById("adnnMobileDirectComposer")) return;
+  const form = document.createElement("form");
+  form.id = "adnnMobileDirectComposer";
+  form.className = "adnn-mobile-direct-composer";
+  form.hidden = true;
+  form.innerHTML = `
+    <label class="adnn-mobile-direct-upload" title="Add media" aria-label="Add media">
+      <input id="adnnMobileDirectFile" type="file" accept="image/*,.pdf,.doc,.docx,.zip">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
+    </label>
+    <input id="adnnMobileDirectInput" autocomplete="off" maxlength="1800" placeholder="Message" inputmode="text">
+    <button type="submit" aria-label="Send message"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg></button>
+  `;
+  form.addEventListener("submit", sendMobileDirectMessage);
+  document.body.appendChild(form);
+}
+
+function setMobileDirectComposerVisible(visible) {
+  const form = document.getElementById("adnnMobileDirectComposer");
+  if (!form) return;
+  form.hidden = !visible;
+  form.classList.toggle("is-visible", !!visible);
+  const input = document.getElementById("adnnMobileDirectInput");
+  const button = form.querySelector("button[type='submit']");
+  if (input) input.disabled = !visible;
+  if (button) button.disabled = !visible;
+}
+
+async function sendMobileDirectMessage(event) {
+  event.preventDefault();
+  if (!activeUser || !activeDirectChatId) return;
+  const input = document.getElementById("adnnMobileDirectInput");
+  const fileInput = document.getElementById("adnnMobileDirectFile");
+  const text = String(input?.value || "").trim();
+  const file = fileInput?.files?.[0] || null;
+  if (!text && !file) return;
+  const media = await uploadChatFile(file, activeDirectChatId).catch((error) => { alert(`The media could not be attached. ${error?.message || "Try a smaller file."}`); throw error; });
+  const lastMessage = text || media.mediaName || "Media";
+  await addDoc(collection(db, "chats", activeDirectChatId, "messages"), {
+    text,
+    ...media,
+    senderUid: activeUser.uid,
+    senderEmail: emailKey(activeUser.email),
+    senderName: getOwnDirectName(activeDirectChat),
+    senderRole: "user",
+    createdAt: serverTimestamp()
+  });
+  await setDoc(doc(db, "chats", activeDirectChatId), { lastMessage, lastSenderUid: activeUser.uid, updatedAt: serverTimestamp() }, { merge: true });
+  if (input) input.value = "";
+  if (fileInput) fileInput.value = "";
 }
 
 function startDirectChats(user) {
@@ -795,6 +850,7 @@ function selectDirectChat(chat) {
   }
   if (input) input.disabled = false;
   if (submit) submit.disabled = false;
+  setMobileDirectComposerVisible(true);
   document.querySelectorAll("#adnnDirectRoom .adnn-chat-call").forEach((button) => { button.disabled = false; });
   if (directMessagesUnsubscribe) directMessagesUnsubscribe();
   firstDirectMessagesSnapshot = true;
@@ -829,6 +885,7 @@ function closeDirectChatRoom() {
   if (avatar) { avatar.hidden = true; avatar.textContent = ""; }
   if (input) { input.value = ""; input.disabled = true; }
   if (submit) submit.disabled = true;
+  setMobileDirectComposerVisible(false);
   document.querySelectorAll("#adnnDirectRoom .adnn-chat-call").forEach((button) => { button.disabled = true; });
 }
 
@@ -2593,6 +2650,77 @@ function installChatStyles() {
     }
   `;
   document.head.appendChild(mobileComposerStyle);
+
+  const mobileComposerMarkupFix = document.createElement("style");
+  mobileComposerMarkupFix.id = "adnn-mobile-direct-composer-visible-fix";
+  mobileComposerMarkupFix.textContent = `
+    .adnn-mobile-direct-composer { display:none; }
+    @media (max-width: 760px) {
+      body.adnn-direct-chat-open #adnnDirectChatForm { display:none !important; }
+      body.adnn-direct-chat-open .adnn-mobile-direct-composer.is-visible {
+        position:fixed !important;
+        left:0 !important;
+        right:0 !important;
+        bottom:0 !important;
+        z-index:2147483640 !important;
+        display:grid !important;
+        grid-template-columns:44px minmax(0, 1fr) 44px !important;
+        align-items:center !important;
+        gap:8px !important;
+        width:100vw !important;
+        min-height:64px !important;
+        padding:8px 10px calc(10px + env(safe-area-inset-bottom)) !important;
+        margin:0 !important;
+        border:0 !important;
+        border-top:1px solid rgba(255,255,255,.12) !important;
+        background:rgba(7,7,10,.99) !important;
+        box-shadow:0 -18px 34px rgba(0,0,0,.45) !important;
+        visibility:visible !important;
+        opacity:1 !important;
+        pointer-events:auto !important;
+      }
+      body.adnn-direct-chat-open .adnn-mobile-direct-composer input[type="file"] { display:none !important; }
+      body.adnn-direct-chat-open .adnn-mobile-direct-composer input[type="text"],
+      body.adnn-direct-chat-open #adnnMobileDirectInput {
+        width:100% !important;
+        min-width:0 !important;
+        height:44px !important;
+        min-height:44px !important;
+        border:1px solid rgba(255,255,255,.12) !important;
+        border-radius:22px !important;
+        padding:0 16px !important;
+        background:rgba(255,255,255,.07) !important;
+        color:#fff !important;
+        outline:0 !important;
+        font-size:16px !important;
+        line-height:44px !important;
+        -webkit-text-size-adjust:100% !important;
+      }
+      body.adnn-direct-chat-open .adnn-mobile-direct-upload,
+      body.adnn-direct-chat-open .adnn-mobile-direct-composer button {
+        width:44px !important;
+        height:44px !important;
+        min-width:44px !important;
+        min-height:44px !important;
+        border:0 !important;
+        border-radius:50% !important;
+        display:grid !important;
+        place-items:center !important;
+        background:rgba(255,255,255,.08) !important;
+        color:#fff !important;
+        padding:0 !important;
+      }
+      body.adnn-direct-chat-open .adnn-mobile-direct-composer button { background:var(--adnn-accent) !important; }
+      body.adnn-direct-chat-open .adnn-mobile-direct-upload svg,
+      body.adnn-direct-chat-open .adnn-mobile-direct-composer button svg { width:18px !important; height:18px !important; display:block !important; }
+      body.adnn-direct-chat-open #adnnDirectMessages,
+      body.adnn-direct-chat-open .adnn-chat-messages {
+        padding-bottom:92px !important;
+        max-height:calc(var(--adnn-chat-vh, 100dvh) - 58px) !important;
+      }
+    }
+  `;
+  document.head.appendChild(mobileComposerMarkupFix);
 
 }
 

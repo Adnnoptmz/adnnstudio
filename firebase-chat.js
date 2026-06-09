@@ -1246,6 +1246,22 @@ function getAudioSender(pc) {
   return pc?.getSenders?.().find((sender) => sender.track?.kind === "audio") || null;
 }
 
+async function sendLocalVideoTrack(track) {
+  if (!activeCallState?.pc || !track) return false;
+  const pc = activeCallState.pc;
+  let sender = pc.getSenders?.().find((item) => item.track?.kind === "video");
+  if (!sender) sender = pc.getTransceivers?.().find((item) => item.sender && item.receiver?.track?.kind === "video")?.sender;
+  if (!sender) sender = pc.getTransceivers?.().find((item) => item.sender && !item.sender.track && item.receiver?.track?.kind === "video")?.sender;
+  if (sender?.replaceTrack) {
+    await sender.replaceTrack(track);
+    setVideoTransceiverDirection(pc, "sendrecv");
+    return true;
+  }
+  pc.addTrack(track, activeCallState.stream);
+  setVideoTransceiverDirection(pc, "sendrecv");
+  return true;
+}
+
 function setVideoTransceiverDirection(pc, direction = "sendrecv") {
   const transceiver = getVideoTransceiver(pc);
   if (transceiver) {
@@ -1275,6 +1291,27 @@ function getRemoteCallUid() {
 
 function getLiveVideoTracks(stream) {
   return (stream?.getVideoTracks?.() || []).filter((track) => track.readyState !== "ended");
+}
+
+function getVisibleRemoteVideoTracks(stream) {
+  return getLiveVideoTracks(stream).filter((track) => track.muted !== true);
+}
+
+function markRemoteVideoActive(track = null) {
+  if (!activeCallState) return;
+  activeCallState.remoteVideoOn = true;
+  activeCallState.remoteVideoDisabledByPeer = false;
+  activeCallState.remoteVideoLastUnmutedAt = Date.now();
+  if (track) activeCallState.remoteVideoTrackId = track.id || activeCallState.remoteVideoTrackId;
+}
+
+function markRemoteVideoInactive(force = false) {
+  if (!activeCallState) return;
+  const visibleTracks = getVisibleRemoteVideoTracks(activeCallState.remoteStream);
+  if (!force && visibleTracks.length) return;
+  activeCallState.remoteVideoOn = false;
+  activeCallState.remoteVideoDisabledByPeer = true;
+  attachCallMedia();
 }
 
 async function renegotiateActiveCall(reason = "media", options = {}) {
@@ -1423,6 +1460,8 @@ async function startRealtimeCall(kind = "audio", target = null) {
       maximized: false,
       videoOn: wantsVideo,
       remoteVideoOn: false,
+      remoteVideoDisabledByPeer: true,
+      remoteVideoLastUnmutedAt: 0,
       status: "ringing",
       media: { [ownCallUid()]: { videoOn: wantsVideo, updatedAt: Date.now() }, [target.receiverUid]: { videoOn: false, updatedAt: Date.now() } },
       startedAt: null,
@@ -1460,15 +1499,25 @@ function createPeerConnection(callId, isAnswerer) {
     if (!activeCallState.remoteStream) activeCallState.remoteStream = new MediaStream();
     const incoming = event.streams?.[0]?.getTracks?.()?.length ? event.streams[0].getTracks() : (event.track ? [event.track] : []);
     incoming.forEach((track) => {
-      if (!activeCallState.remoteStream.getTracks().some((existing) => existing.id === track.id || existing.kind === track.kind && existing.readyState === "ended")) {
-        const oldSameKind = activeCallState.remoteStream.getTracks().filter((existing) => existing.kind === track.kind && existing.readyState === "ended");
-        oldSameKind.forEach((oldTrack) => activeCallState.remoteStream.removeTrack(oldTrack));
+      const sameTrackExists = activeCallState.remoteStream.getTracks().some((existing) => existing.id === track.id);
+      if (!sameTrackExists) {
+        activeCallState.remoteStream.getTracks()
+          .filter((existing) => existing.kind === track.kind && existing.readyState === "ended")
+          .forEach((oldTrack) => activeCallState.remoteStream.removeTrack(oldTrack));
         activeCallState.remoteStream.addTrack(track);
       }
-      if (track.kind === "video") activeCallState.remoteVideoOn = track.readyState !== "ended" && track.enabled !== false;
-      track.onunmute = () => { if (track.kind === "video") activeCallState.remoteVideoOn = true; attachCallMedia(); };
-      track.onmute = () => { if (track.kind === "video") attachCallMedia(); };
-      track.onended = () => { if (track.kind === "video") activeCallState.remoteVideoOn = false; attachCallMedia(); };
+      if (track.kind === "video") {
+        markRemoteVideoActive(track);
+        track.onunmute = () => { markRemoteVideoActive(track); attachCallMedia(); };
+        track.onmute = () => {
+          window.setTimeout(() => {
+            if (!activeCallState || track.readyState === "ended") return;
+            if (track.muted && activeCallState.remoteVideoDisabledByPeer) markRemoteVideoInactive(true);
+            else attachCallMedia();
+          }, 900);
+        };
+        track.onended = () => markRemoteVideoInactive(true);
+      }
     });
     attachCallMedia();
   };
@@ -1497,9 +1546,19 @@ function watchActiveCall(callId, isAnswerer) {
       renderCallOverlay();
     }
     const remoteMedia = call.media?.[getRemoteCallUid()];
-    if (remoteMedia && activeCallState.remoteVideoOn !== !!remoteMedia.videoOn) {
-      activeCallState.remoteVideoOn = !!remoteMedia.videoOn;
-      attachCallMedia();
+    if (remoteMedia) {
+      if (remoteMedia.videoOn) {
+        activeCallState.remoteVideoDisabledByPeer = false;
+        activeCallState.remoteVideoOn = true;
+        attachCallMedia();
+      } else {
+        const visibleTracks = getVisibleRemoteVideoTracks(activeCallState.remoteStream);
+        const recentlySeen = Date.now() - (activeCallState.remoteVideoLastUnmutedAt || 0) < 2500;
+        if (!visibleTracks.length && !recentlySeen) {
+          activeCallState.remoteVideoDisabledByPeer = true;
+          markRemoteVideoInactive(true);
+        }
+      }
     }
     await handleRemoteRenegotiateOffer(call, callRef);
     await handleRemoteRenegotiateAnswer(call);
@@ -1527,6 +1586,8 @@ function showIncomingCall(call) {
     status: "incoming",
     stream: null,
     remoteStream: new MediaStream(),
+    remoteVideoDisabledByPeer: false,
+    remoteVideoLastUnmutedAt: 0,
     speakerOn: true,
     micMuted: false,
     holdOn: false,
@@ -1567,7 +1628,7 @@ async function acceptIncomingCall() {
     await pc.setRemoteDescription(new RTCSessionDescription(call.offer));
     const answer = await pc.createAnswer();
     await pc.setLocalDescription(answer);
-    Object.assign(activeCallState, { pc, stream, videoOn: wantsVideo, remoteVideoOn: wantsVideo, status: "connected", startedAt: Date.now(), mode: "active", callerUid: call.callerUid, receiverUid: call.receiverUid });
+    Object.assign(activeCallState, { pc, stream, videoOn: wantsVideo, remoteVideoOn: true, remoteVideoDisabledByPeer: false, remoteVideoLastUnmutedAt: Date.now(), status: "connected", startedAt: Date.now(), mode: "active", callerUid: call.callerUid, receiverUid: call.receiverUid });
     stopCallRinger();
     await setDoc(callRef, { answer: { type: answer.type, sdp: answer.sdp }, status: "accepted", [`media.${ownCallUid()}`]: { videoOn: wantsVideo, updatedAt: Date.now() }, answeredAt: serverTimestamp(), updatedAt: serverTimestamp() }, { merge: true });
     await updateCallInbox(call.receiverUid, activeCallState.callId, "accepted");
@@ -1672,7 +1733,8 @@ function attachCallMedia() {
   const localStream = activeCallState?.stream || null;
   const localHasVideo = !!activeCallState?.videoOn && !activeCallState?.holdOn && getLiveVideoTracks(localStream).length > 0;
   const remoteLiveVideoTracks = getLiveVideoTracks(remoteStream);
-  const remoteHasVideo = !!activeCallState?.remoteVideoOn && remoteLiveVideoTracks.length > 0;
+  const remoteVisibleTracks = getVisibleRemoteVideoTracks(remoteStream);
+  const remoteHasVideo = !activeCallState?.remoteVideoDisabledByPeer && remoteLiveVideoTracks.length > 0 && (!!activeCallState?.remoteVideoOn || remoteVisibleTracks.length > 0);
 
   if (stage) {
     stage.classList.toggle("has-remote-video", remoteHasVideo);
@@ -1805,9 +1867,7 @@ async function switchCallCamera() {
     newTrack.enabled = !activeCallState.holdOn;
     activeCallState.stream.getVideoTracks().forEach((track) => { track.stop(); activeCallState.stream.removeTrack(track); });
     activeCallState.stream.addTrack(newTrack);
-    const sender = getVideoSender(activeCallState.pc);
-    if (sender?.replaceTrack) await sender.replaceTrack(newTrack);
-    setVideoTransceiverDirection(activeCallState.pc, "sendrecv");
+    await sendLocalVideoTrack(newTrack);
     applyLocalVideoState();
     await announceCallMediaUpdate(true);
     attachCallMedia();
@@ -1828,7 +1888,7 @@ async function convertCallToVideo() {
       track.stop();
       activeCallState.stream.removeTrack(track);
     });
-    const sender = getVideoSender(activeCallState.pc);
+    const sender = activeCallState.pc.getSenders?.().find((item) => item.track?.kind === "video") || getVideoSender(activeCallState.pc);
     await sender?.replaceTrack?.(null).catch(() => {});
     setVideoTransceiverDirection(activeCallState.pc, "sendrecv");
     activeCallState.videoOn = false;
@@ -1848,13 +1908,7 @@ async function convertCallToVideo() {
       activeCallState.stream.removeTrack(oldTrack);
     });
     activeCallState.stream.addTrack(track);
-    const transceiver = setVideoTransceiverDirection(activeCallState.pc, "sendrecv");
-    const sender = transceiver?.sender || getVideoSender(activeCallState.pc);
-    if (sender?.replaceTrack) {
-      await sender.replaceTrack(track);
-    } else {
-      activeCallState.pc.addTrack(track, activeCallState.stream);
-    }
+    await sendLocalVideoTrack(track);
     activeCallState.videoOn = true;
     activeCallState.kind = "video";
     await announceCallMediaUpdate(true);

@@ -218,6 +218,7 @@ function installClientChatShell() {
   drawer.querySelector(".adnn-chat-close")?.addEventListener("click", closeClientChat);
   drawer.querySelectorAll(".adnn-chat-call").forEach((button) => button.addEventListener("click", () => startRealtimeCall(button.dataset.callKind || "audio", getSupportCallTarget())));
   drawer.querySelector("#adnnChatForm")?.addEventListener("submit", sendClientMessage);
+  enhanceWhatsappComposer(drawer.querySelector("#adnnChatForm"), "support");
   wireFilePreview("adnnChatFile", "adnnChatFileName");
   window.addEventListener("hashchange", maybeOpenClientChatFromHash);
 }
@@ -423,7 +424,10 @@ function installAdminChatPanel() {
     else document.querySelector(".shell")?.appendChild(panel);
   }
   document.getElementById("adnnAdminChatForm")?.addEventListener("submit", sendAdminMessage);
+  enhanceWhatsappComposer(document.getElementById("adnnAdminChatForm"), "admin");
   panel.querySelectorAll(".adnn-admin-chat-title .adnn-chat-call").forEach((button) => button.addEventListener("click", () => startRealtimeCall(button.dataset.callKind || "audio", getAdminCallTarget())));
+  document.getElementById("adnnAdminChatTitle")?.addEventListener("click", () => openWhatsappProfilePanel("admin"));
+  document.getElementById("adnnAdminChatAvatar")?.addEventListener("click", () => openWhatsappProfilePanel("admin"));
   document.getElementById("adnnAdminChatBack")?.addEventListener("click", () => {
     document.body.classList.remove("adnn-admin-chat-open");
   });
@@ -513,6 +517,7 @@ function installDesignerChatPanel() {
   `;
   view.appendChild(panel);
   document.getElementById("adnnDesignerChatForm")?.addEventListener("submit", sendDesignerMessage);
+  enhanceWhatsappComposer(document.getElementById("adnnDesignerChatForm"), "designer");
   wireFilePreview("adnnDesignerChatFile", "adnnDesignerChatFileName");
 }
 
@@ -712,8 +717,11 @@ function installDirectChatPanel() {
     </div>`;
   mount.appendChild(panel);
   document.getElementById("adnnDirectChatForm")?.addEventListener("submit", sendDirectMessage);
+  enhanceWhatsappComposer(document.getElementById("adnnDirectChatForm"), "direct");
   document.getElementById("adnnDirectBack")?.addEventListener("click", closeDirectChatRoom);
   panel.querySelectorAll(".adnn-chat-call").forEach((button) => button.addEventListener("click", () => startRealtimeCall(button.dataset.callKind || "audio", getDirectCallTarget())));
+  document.getElementById("adnnDirectTitle")?.addEventListener("click", () => openWhatsappProfilePanel("direct"));
+  document.getElementById("adnnDirectAvatar")?.addEventListener("click", () => openWhatsappProfilePanel("direct"));
   wireFilePreview("adnnDirectChatFile", "adnnDirectChatFileName");
   installMobileDirectComposer();
 }
@@ -734,6 +742,7 @@ function installMobileDirectComposer() {
     <button type="submit" aria-label="Send message"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg></button>
   `;
   form.addEventListener("submit", sendMobileDirectMessage);
+  enhanceWhatsappComposer(form, "direct-mobile");
   document.body.appendChild(form);
 }
 
@@ -812,7 +821,7 @@ function renderDirectChatList(chats) {
     list.innerHTML = "";
     return;
   }
-  chats.forEach((chat) => {
+  chats.filter((chat) => !isWhatsappChatBlocked(chat.id)).forEach((chat) => {
     const other = getDirectOtherUser(chat);
     const button = document.createElement("button");
     button.type = "button";
@@ -898,6 +907,203 @@ function closeDirectChatRoom() {
   setMobileDirectComposerVisible(false);
   document.querySelectorAll("#adnnDirectRoom .adnn-chat-call").forEach((button) => { button.disabled = true; });
 }
+
+function getWhatsappChatContext(kind = "auto") {
+  if (kind === "direct" || kind === "direct-mobile" || (kind === "auto" && activeDirectChatId)) return { chatId: activeDirectChatId, role: "direct", peer: getDirectOtherUser(activeDirectChat || {}) };
+  if (kind === "admin" || (kind === "auto" && selectedAdminChatId)) return { chatId: selectedAdminChatId, role: "admin", peer: selectedAdminChat || {} };
+  if (kind === "designer") return { chatId: designerChatId, role: "designer", peer: { name: "Designer lounge", email: "" } };
+  if (kind === "support" || kind === "auto") return { chatId: clientChatId, role: "support", peer: { name: "AdnnStudio", email: ADMIN_EMAIL } };
+  return { chatId: "", role: kind, peer: {} };
+}
+
+function enhanceWhatsappComposer(form, kind) {
+  if (!form || form.dataset.whatsappReady === "true") return;
+  form.dataset.whatsappReady = "true";
+  const input = form.querySelector('input[type="text"], input:not([type]), #adnnDirectChatInput, #adnnChatInput, #adnnAdminChatInput, #adnnDesignerChatInput, #adnnMobileDirectInput');
+  const sendButton = form.querySelector('button[type="submit"]');
+  if (!input || !sendButton) return;
+  const emojiButton = document.createElement("button");
+  emojiButton.type = "button";
+  emojiButton.className = "adnn-whatsapp-tool adnn-whatsapp-emoji";
+  emojiButton.title = "Emoji";
+  emojiButton.setAttribute("aria-label", "Emoji");
+  emojiButton.innerHTML = ADNN_ICON_EMOJI;
+  emojiButton.addEventListener("click", () => toggleEmojiTray(form, input));
+  const voiceButton = document.createElement("button");
+  voiceButton.type = "button";
+  voiceButton.className = "adnn-whatsapp-tool adnn-whatsapp-voice";
+  voiceButton.title = "Voice message";
+  voiceButton.setAttribute("aria-label", "Voice message");
+  voiceButton.innerHTML = ADNN_ICON_MIC;
+  voiceButton.addEventListener("click", () => toggleVoiceRecording(kind, voiceButton));
+  input.insertAdjacentElement("beforebegin", emojiButton);
+  sendButton.insertAdjacentElement("beforebegin", voiceButton);
+}
+
+function toggleEmojiTray(form, input) {
+  let tray = form.querySelector(".adnn-emoji-tray");
+  if (tray) { tray.remove(); return; }
+  tray = document.createElement("div");
+  tray.className = "adnn-emoji-tray";
+  const emojis = ["😀","😂","😍","🙏","👍","🔥","❤️","✅","🎉","😎","🥲","👌","👏","💯","📌","⏰","📎","🚀"];
+  tray.innerHTML = emojis.map((emoji) => `<button type="button">${emoji}</button>`).join("");
+  tray.querySelectorAll("button").forEach((button) => button.addEventListener("click", () => {
+    input.value += button.textContent;
+    input.focus();
+  }));
+  form.appendChild(tray);
+}
+
+let whatsappRecorder = null;
+let whatsappVoiceChunks = [];
+let whatsappVoiceKind = "";
+
+async function toggleVoiceRecording(kind, button) {
+  if (whatsappRecorder?.state === "recording") {
+    whatsappRecorder.stop();
+    button?.classList.remove("is-recording");
+    return;
+  }
+  if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+    showChatAlert({ text: "Voice messages are not supported in this browser." }, "Voice");
+    return;
+  }
+  const context = getWhatsappChatContext(kind);
+  if (!context.chatId) return;
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: true }).catch(() => null);
+  if (!stream) {
+    showChatAlert({ text: "Microphone permission is needed." }, "Voice");
+    return;
+  }
+  whatsappVoiceKind = kind;
+  whatsappVoiceChunks = [];
+  whatsappRecorder = new MediaRecorder(stream);
+  whatsappRecorder.ondataavailable = (event) => { if (event.data?.size) whatsappVoiceChunks.push(event.data); };
+  whatsappRecorder.onstop = async () => {
+    stream.getTracks().forEach((track) => track.stop());
+    const blob = new Blob(whatsappVoiceChunks, { type: whatsappRecorder.mimeType || "audio/webm" });
+    await sendWhatsappVoiceMessage(whatsappVoiceKind, blob).catch((error) => console.warn("Voice message failed", error));
+    whatsappRecorder = null;
+    whatsappVoiceChunks = [];
+  };
+  button?.classList.add("is-recording");
+  whatsappRecorder.start();
+  window.setTimeout(() => { if (whatsappRecorder?.state === "recording") whatsappRecorder.stop(); }, 120000);
+}
+
+async function sendWhatsappVoiceMessage(kind, blob) {
+  const context = getWhatsappChatContext(kind);
+  if (!activeUser || !context.chatId || !blob?.size) return;
+  const file = new File([blob], `voice-${Date.now()}.webm`, { type: blob.type || "audio/webm" });
+  const media = await uploadChatFile(file, context.chatId);
+  await addDoc(collection(db, "chats", context.chatId, "messages"), {
+    text: "",
+    ...media,
+    isVoiceMessage: true,
+    senderUid: activeUser.uid,
+    senderEmail: emailKey(activeUser.email),
+    senderName: activeUser.displayName || activeUser.email || "User",
+    senderRole: context.role,
+    createdAt: serverTimestamp()
+  });
+  await setDoc(doc(db, "chats", context.chatId), { lastMessage: "Voice message", lastSenderUid: activeUser.uid, updatedAt: serverTimestamp() }, { merge: true });
+}
+
+function openWhatsappProfilePanel(kind = "auto") {
+  const context = getWhatsappChatContext(kind);
+  if (!context.chatId) return;
+  const peer = context.peer || {};
+  let panel = document.getElementById("adnnWhatsappProfilePanel");
+  if (!panel) {
+    panel = document.createElement("aside");
+    panel.id = "adnnWhatsappProfilePanel";
+    panel.className = "adnn-whatsapp-profile";
+    document.body.appendChild(panel);
+  }
+  const name = peer.name || peer.title || peer.clientName || peer.email || "User";
+  const email = peer.email || peer.clientEmail || "";
+  panel.innerHTML = `
+    <div class="adnn-whatsapp-profile-card">
+      <button type="button" class="adnn-whatsapp-profile-close" aria-label="Close">×</button>
+      <span class="adnn-whatsapp-profile-avatar">${escapeHtml(initialsFromName(name || email))}</span>
+      <strong>${escapeHtml(getWhatsappNickname(context.chatId) || name)}</strong>
+      <small>${escapeHtml(email)}</small>
+      <div class="adnn-whatsapp-profile-actions">
+        <button type="button" data-action="search">${ADNN_ICON_SEARCH}<span>Search</span></button>
+        <button type="button" data-action="media">${ADNN_ICON_IMAGE}<span>Media</span></button>
+        <button type="button" data-action="rename">${ADNN_ICON_EDIT}<span>Rename</span></button>
+        <button type="button" data-action="block">${ADNN_ICON_BLOCK}<span>Block</span></button>
+        <button type="button" data-action="delete">${ADNN_ICON_TRASH}<span>Delete</span></button>
+      </div>
+      <div class="adnn-whatsapp-profile-body" id="adnnWhatsappProfileBody">Choose an option.</div>
+    </div>`;
+  panel.classList.add("is-open");
+  panel.querySelector(".adnn-whatsapp-profile-close")?.addEventListener("click", () => panel.classList.remove("is-open"));
+  panel.querySelectorAll("[data-action]").forEach((button) => button.addEventListener("click", () => handleWhatsappProfileAction(button.dataset.action, context)));
+}
+
+function handleWhatsappProfileAction(action, context) {
+  const body = document.getElementById("adnnWhatsappProfileBody");
+  if (!body) return;
+  if (action === "search") {
+    body.innerHTML = `<input class="adnn-whatsapp-search-input" placeholder="Search messages" autocomplete="off">`;
+    body.querySelector("input")?.addEventListener("input", (event) => filterWhatsappMessages(context.chatId, event.target.value));
+  }
+  if (action === "media") renderWhatsappMediaList(context.chatId, body);
+  if (action === "rename") {
+    const current = getWhatsappNickname(context.chatId) || "";
+    body.innerHTML = `<input class="adnn-whatsapp-search-input" value="${escapeHtml(current)}" placeholder="Custom chat name"><button class="adnn-whatsapp-save-name" type="button">Save name</button>`;
+    body.querySelector("button")?.addEventListener("click", () => {
+      const value = body.querySelector("input")?.value || "";
+      localStorage.setItem(`adnn_chat_nickname_${context.chatId}`, value.trim());
+      showChatAlert({ text: "Chat name saved on this device." }, "Saved");
+    });
+  }
+  if (action === "block") {
+    localStorage.setItem(`adnn_chat_blocked_${context.chatId}`, "1");
+    body.textContent = "This chat is hidden on this device. Refresh to apply.";
+  }
+  if (action === "delete") {
+    if (confirm("Hide this chat on this device? Firestore data will not be deleted.")) {
+      localStorage.setItem(`adnn_chat_blocked_${context.chatId}`, "1");
+      closeDirectChatRoom();
+      body.textContent = "Chat hidden on this device.";
+    }
+  }
+}
+
+function getWhatsappNickname(chatId) { return localStorage.getItem(`adnn_chat_nickname_${chatId}`) || ""; }
+function isWhatsappChatBlocked(chatId) { return localStorage.getItem(`adnn_chat_blocked_${chatId}`) === "1"; }
+
+function filterWhatsappMessages(chatId, value) {
+  const term = String(value || "").toLowerCase().trim();
+  const wraps = ["adnnDirectMessages", "adnnAdminMessages", "adnnChatMessages", "adnnDesignerMessages"].map((id) => document.getElementById(id)).filter(Boolean);
+  wraps.forEach((wrap) => wrap.querySelectorAll(".adnn-chat-bubble").forEach((bubble) => {
+    bubble.style.display = !term || bubble.textContent.toLowerCase().includes(term) ? "" : "none";
+  }));
+}
+
+function renderWhatsappMediaList(chatId, body) {
+  const wraps = ["adnnDirectMessages", "adnnAdminMessages", "adnnChatMessages", "adnnDesignerMessages"].map((id) => document.getElementById(id)).filter(Boolean);
+  const links = wraps.flatMap((wrap) => Array.from(wrap.querySelectorAll(".adnn-chat-attachment")));
+  body.innerHTML = links.length ? links.map((link) => `<a href="${link.href}" target="_blank" rel="noopener noreferrer">${escapeHtml(link.textContent || "Media file")}</a>`).join("") : "No media in the loaded messages.";
+}
+
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape") return;
+  closeDirectChatRoom();
+  closeClientChat?.();
+  document.body.classList.remove("adnn-admin-chat-open");
+  document.getElementById("adnnWhatsappProfilePanel")?.classList.remove("is-open");
+});
+
+const ADNN_ICON_EMOJI = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M8.5 10h.01M15.5 10h.01M8.7 14.2c1.9 2 4.7 2 6.6 0" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>`;
+const ADNN_ICON_MIC = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3Z" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>`;
+const ADNN_ICON_SEARCH = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m20 20-4-4m2-5a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>`;
+const ADNN_ICON_IMAGE = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4z" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="m4 16 4-4 4 4 3-3 5 5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>`;
+const ADNN_ICON_EDIT = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>`;
+const ADNN_ICON_BLOCK = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18ZM6 6l12 12" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>`;
+const ADNN_ICON_TRASH = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4h6m-8.5 4h11M9 8v10m6-10v10M7.5 8l.7 12h7.6l.7-12" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
 function renderDirectMessages(messages) {
   const wrap = document.getElementById("adnnDirectMessages");
@@ -2196,6 +2402,15 @@ function messageBubble(message, mine, chatId) {
 
 function createMediaAttachment(message) {
   const mediaType = String(message.mediaType || "");
+  if (mediaType.startsWith("audio/") || message.isVoiceMessage) {
+    const wrap = document.createElement("div");
+    wrap.className = "adnn-chat-attachment is-voice";
+    const audio = document.createElement("audio");
+    audio.controls = true;
+    audio.src = message.mediaUrl;
+    wrap.appendChild(audio);
+    return wrap;
+  }
   if (mediaType.startsWith("image/")) {
     const link = document.createElement("a");
     link.className = "adnn-chat-attachment is-image";
@@ -2612,6 +2827,42 @@ function installChatStyles() {
       .adnn-call-control { width:50px; min-height:50px; border-radius:16px; }
       .adnn-call-control svg { width:18px; height:18px; }
       .adnn-call-control span { font-size:7.5px; }
+    }
+
+
+    .adnn-chat-form { position:relative; }
+    .adnn-whatsapp-tool { width:38px; height:38px; border:0; border-radius:50%; background:rgba(255,255,255,.055); color:var(--adnn-text); display:grid; place-items:center; cursor:pointer; flex:0 0 38px; }
+    .adnn-whatsapp-tool svg { width:18px; height:18px; display:block; }
+    .adnn-whatsapp-tool:hover { background:rgba(83,96,255,.22); color:#fff; }
+    .adnn-whatsapp-tool.is-recording { background:#ff2602; color:#fff; animation:adnnVoicePulse 1s infinite; }
+    @keyframes adnnVoicePulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.08)} }
+    .adnn-emoji-tray { position:absolute; left:54px; bottom:calc(100% + 8px); z-index:20; display:grid; grid-template-columns:repeat(6,32px); gap:6px; padding:10px; border:1px solid var(--adnn-line); border-radius:18px; background:rgba(14,14,18,.96); box-shadow:0 22px 70px rgba(0,0,0,.42); }
+    .adnn-emoji-tray button { width:32px; height:32px; border:0; border-radius:10px; background:rgba(255,255,255,.05); cursor:pointer; font-size:17px; }
+    .adnn-chat-attachment.is-voice { min-width:min(260px, 72vw); margin-bottom:8px; }
+    .adnn-chat-attachment.is-voice audio { width:100%; height:38px; display:block; }
+    .adnn-whatsapp-profile { position:fixed; inset:0; z-index:100002; display:none; align-items:center; justify-content:flex-end; pointer-events:none; }
+    .adnn-whatsapp-profile.is-open { display:flex; pointer-events:auto; }
+    .adnn-whatsapp-profile-card { width:min(380px, calc(100vw - 24px)); height:min(640px, calc(100svh - 24px)); margin:12px; padding:18px; border:1px solid var(--adnn-line); border-radius:28px; background:rgba(13,13,18,.96); color:var(--adnn-text); box-shadow:0 30px 90px rgba(0,0,0,.5); overflow:auto; }
+    .adnn-whatsapp-profile-close { float:right; width:34px; height:34px; border:0; border-radius:50%; background:rgba(255,255,255,.06); color:var(--adnn-text); font-size:22px; cursor:pointer; }
+    .adnn-whatsapp-profile-avatar { width:72px; height:72px; border-radius:24px; display:grid; place-items:center; background:var(--adnn-accent); color:#fff; font-family:var(--font-mono, monospace); margin:8px 0 14px; }
+    .adnn-whatsapp-profile-card strong, .adnn-whatsapp-profile-card small { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .adnn-whatsapp-profile-card strong { font-size:20px; font-weight:500; }
+    .adnn-whatsapp-profile-card small { color:var(--adnn-muted); margin-top:4px; }
+    .adnn-whatsapp-profile-actions { display:grid; grid-template-columns:repeat(5,1fr); gap:8px; margin:18px 0; }
+    .adnn-whatsapp-profile-actions button { min-height:62px; border:1px solid var(--adnn-line); border-radius:16px; background:rgba(255,255,255,.045); color:var(--adnn-text); display:grid; gap:5px; place-items:center; cursor:pointer; font-size:10px; }
+    .adnn-whatsapp-profile-actions svg { width:20px; height:20px; }
+    .adnn-whatsapp-profile-body { color:var(--adnn-muted); font-size:13px; line-height:1.5; }
+    .adnn-whatsapp-profile-body a { display:block; color:#8d96ff; padding:9px 0; border-bottom:1px solid var(--adnn-line); text-decoration:none; overflow-wrap:anywhere; }
+    .adnn-whatsapp-search-input { width:100%; height:42px; border:1px solid var(--adnn-line); border-radius:14px; background:rgba(255,255,255,.05); color:var(--adnn-text); padding:0 12px; outline:0; }
+    .adnn-whatsapp-save-name { margin-top:10px; height:38px; border:0; border-radius:13px; background:var(--adnn-accent); color:#fff; padding:0 16px; }
+    .adnn-direct-title-copy, .adnn-admin-chat-title-text { cursor:pointer; }
+    @media (max-width:760px) {
+      .adnn-whatsapp-profile { align-items:flex-end; justify-content:center; }
+      .adnn-whatsapp-profile-card { width:100vw; height:min(82svh, 680px); margin:0; border-radius:28px 28px 0 0; }
+      .adnn-whatsapp-profile-actions { grid-template-columns:repeat(3,1fr); }
+      .adnn-chat-form { grid-template-columns:42px 42px minmax(0,1fr) 42px 42px !important; gap:7px; }
+      .adnn-mobile-direct-composer { grid-template-columns:42px 42px minmax(0,1fr) 42px 42px !important; }
+      .adnn-emoji-tray { left:8px; right:8px; grid-template-columns:repeat(6,1fr); }
     }
 
     :root.light-theme {

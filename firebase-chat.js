@@ -1233,6 +1233,32 @@ function getVideoSender(pc) {
   return transceiver?.sender || pc?.getSenders?.().find((sender) => sender.track?.kind === "video") || null;
 }
 
+
+function getRemoteCallUid() {
+  if (!activeCallState) return "";
+  const mine = ownCallUid();
+  return activeCallState.callerUid === mine ? activeCallState.receiverUid : activeCallState.callerUid;
+}
+
+function getLiveVideoTracks(stream) {
+  return (stream?.getVideoTracks?.() || []).filter((track) => track.readyState !== "ended");
+}
+
+async function renegotiateActiveCall(reason = "media") {
+  if (!activeCallState?.pc || !activeCallState?.callId) return;
+  if (activeCallState.pc.signalingState !== "stable") return;
+  try {
+    const offer = await activeCallState.pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
+    await activeCallState.pc.setLocalDescription(offer);
+    await setDoc(doc(db, "calls", activeCallState.callId), {
+      renegotiateOffer: { type: offer.type, sdp: offer.sdp, from: ownCallUid(), at: Date.now(), reason },
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+  } catch (error) {
+    console.warn("Call renegotiation failed", error);
+  }
+}
+
 async function announceCallMediaUpdate(videoOn) {
   if (!activeCallState?.callId) return;
   await setDoc(doc(db, "calls", activeCallState.callId), {
@@ -1273,6 +1299,7 @@ async function startRealtimeCall(kind = "audio", target = null) {
       participants: [ownCallUid(), target.receiverUid],
       kind,
       status: "ringing",
+      media: { [ownCallUid()]: { videoOn: wantsVideo, updatedAt: Date.now() }, [target.receiverUid]: { videoOn: false, updatedAt: Date.now() } },
       startedAt: null,
       endedAt: null,
       expiresAtMs,
@@ -1315,7 +1342,9 @@ async function startRealtimeCall(kind = "audio", target = null) {
       minimized: false,
       maximized: false,
       videoOn: wantsVideo,
+      remoteVideoOn: false,
       status: "ringing",
+      media: { [ownCallUid()]: { videoOn: wantsVideo, updatedAt: Date.now() }, [target.receiverUid]: { videoOn: false, updatedAt: Date.now() } },
       startedAt: null,
       timer: null,
       ringTimeout: null,
@@ -1350,7 +1379,13 @@ function createPeerConnection(callId, isAnswerer) {
     if (!activeCallState.remoteStream) activeCallState.remoteStream = new MediaStream();
     const tracks = event.streams?.[0]?.getTracks?.() || (event.track ? [event.track] : []);
     tracks.forEach((track) => {
-      if (!activeCallState.remoteStream.getTracks().some((existing) => existing.id === track.id)) activeCallState.remoteStream.addTrack(track);
+      if (!activeCallState.remoteStream.getTracks().some((existing) => existing.id === track.id)) {
+        activeCallState.remoteStream.addTrack(track);
+      }
+      if (track.kind === "video") activeCallState.remoteVideoOn = track.readyState !== "ended";
+      track.onunmute = () => { if (track.kind === "video") activeCallState.remoteVideoOn = true; attachCallMedia(); };
+      track.onmute = () => { attachCallMedia(); };
+      track.onended = () => { if (track.kind === "video") activeCallState.remoteVideoOn = false; attachCallMedia(); };
     });
     attachCallMedia();
   };
@@ -1377,21 +1412,23 @@ function watchActiveCall(callId, isAnswerer) {
       stopCallRinger();
       renderCallOverlay();
     }
-    const remoteMedia = call.media?.[activeCallState.callerUid === ownCallUid() ? activeCallState.receiverUid : activeCallState.callerUid];
+    const remoteMedia = call.media?.[getRemoteCallUid()];
     if (remoteMedia && activeCallState.remoteVideoOn !== !!remoteMedia.videoOn) {
       activeCallState.remoteVideoOn = !!remoteMedia.videoOn;
       attachCallMedia();
     }
-    if (call.renegotiateOffer && call.renegotiateOffer.from !== ownCallUid() && activeCallState.pc?.signalingState === "stable") {
-      await activeCallState.pc.setRemoteDescription(new RTCSessionDescription(call.renegotiateOffer)).catch(() => {});
+    if (call.renegotiateOffer && call.renegotiateOffer.from !== ownCallUid() && activeCallState.lastRemoteOfferAt !== call.renegotiateOffer.at && activeCallState.pc?.signalingState === "stable") {
+      activeCallState.lastRemoteOfferAt = call.renegotiateOffer.at;
+      await activeCallState.pc.setRemoteDescription(new RTCSessionDescription({ type: call.renegotiateOffer.type, sdp: call.renegotiateOffer.sdp })).catch(() => {});
       const answer = await activeCallState.pc.createAnswer().catch(() => null);
       if (answer) {
         await activeCallState.pc.setLocalDescription(answer).catch(() => {});
         await setDoc(callRef, { renegotiateAnswer: { type: answer.type, sdp: answer.sdp, from: ownCallUid(), at: Date.now() }, updatedAt: serverTimestamp() }, { merge: true }).catch(() => {});
       }
     }
-    if (call.renegotiateAnswer && call.renegotiateAnswer.from !== ownCallUid() && activeCallState.pc?.signalingState === "have-local-offer") {
-      await activeCallState.pc.setRemoteDescription(new RTCSessionDescription(call.renegotiateAnswer)).catch(() => {});
+    if (call.renegotiateAnswer && call.renegotiateAnswer.from !== ownCallUid() && activeCallState.lastRemoteAnswerAt !== call.renegotiateAnswer.at && activeCallState.pc?.signalingState === "have-local-offer") {
+      activeCallState.lastRemoteAnswerAt = call.renegotiateAnswer.at;
+      await activeCallState.pc.setRemoteDescription(new RTCSessionDescription({ type: call.renegotiateAnswer.type, sdp: call.renegotiateAnswer.sdp })).catch(() => {});
     }
     if (["ended", "rejected", "missed"].includes(call.status)) {
       scheduleCallSignalingCleanup(callId, call.receiverUid, CALL_SIGNAL_CLEANUP_DELAY_MS);
@@ -1459,7 +1496,7 @@ async function acceptIncomingCall() {
     await pc.setLocalDescription(answer);
     Object.assign(activeCallState, { pc, stream, videoOn: wantsVideo, remoteVideoOn: wantsVideo, status: "connected", startedAt: Date.now(), mode: "active", callerUid: call.callerUid, receiverUid: call.receiverUid });
     stopCallRinger();
-    await setDoc(callRef, { answer: { type: answer.type, sdp: answer.sdp }, status: "accepted", answeredAt: serverTimestamp(), updatedAt: serverTimestamp() }, { merge: true });
+    await setDoc(callRef, { answer: { type: answer.type, sdp: answer.sdp }, status: "accepted", [`media.${ownCallUid()}`]: { videoOn: wantsVideo, updatedAt: Date.now() }, answeredAt: serverTimestamp(), updatedAt: serverTimestamp() }, { merge: true });
     await updateCallInbox(call.receiverUid, activeCallState.callId, "accepted");
     renderCallOverlay();
     watchActiveCall(activeCallState.callId, true);
@@ -1557,25 +1594,35 @@ function attachCallMedia() {
   const localVideo = document.getElementById("adnnCallVideo");
   const remoteVideo = document.getElementById("adnnCallRemoteVideo");
   const remoteAudio = document.getElementById("adnnCallRemoteAudio");
+  const stage = document.getElementById("adnnCallVideoStage");
   const remoteStream = activeCallState?.remoteStream || null;
+  const localStream = activeCallState?.stream || null;
+  const localHasVideo = !!activeCallState?.videoOn && !activeCallState?.holdOn && getLiveVideoTracks(localStream).length > 0;
+  const remoteLiveVideoTracks = getLiveVideoTracks(remoteStream);
+  const remoteHasVideo = !!activeCallState?.remoteVideoOn && remoteLiveVideoTracks.length > 0;
+
+  if (stage) {
+    stage.classList.toggle("has-remote-video", remoteHasVideo);
+    stage.classList.toggle("has-local-video", localHasVideo);
+    stage.classList.toggle("is-video-active", localHasVideo || remoteHasVideo);
+  }
   if (localVideo) {
-    if (localVideo.srcObject !== (activeCallState?.stream || null)) localVideo.srcObject = activeCallState?.stream || null;
-    localVideo.style.display = activeCallState?.videoOn && !activeCallState?.holdOn ? "block" : "none";
-    localVideo.play?.().catch(() => {});
+    if (localVideo.srcObject !== localStream) localVideo.srcObject = localStream;
+    localVideo.muted = true;
+    localVideo.style.display = localHasVideo ? "block" : "none";
+    if (localHasVideo) localVideo.play?.().catch(() => {});
   }
   if (remoteVideo) {
     if (remoteVideo.srcObject !== remoteStream) remoteVideo.srcObject = remoteStream;
     remoteVideo.muted = true;
     remoteVideo.volume = 0;
-    const remoteVideoTracks = remoteStream?.getVideoTracks?.().filter((track) => track.readyState === "live" && !track.muted) || [];
-    const shouldShowRemoteVideo = !!remoteVideoTracks.length && activeCallState?.remoteVideoOn !== false;
-    remoteVideo.style.display = shouldShowRemoteVideo ? "block" : "none";
-    if (shouldShowRemoteVideo) remoteVideo.play?.().catch(() => {});
+    remoteVideo.style.display = remoteHasVideo ? "block" : "none";
+    if (remoteHasVideo) remoteVideo.play?.().catch(() => {});
   }
   if (remoteAudio) {
     if (remoteAudio.srcObject !== remoteStream) remoteAudio.srcObject = remoteStream;
-    remoteAudio.muted = !activeCallState?.speakerOn;
-    remoteAudio.volume = activeCallState?.speakerOn ? 1 : 0;
+    remoteAudio.muted = !activeCallState?.speakerOn || !!activeCallState?.holdOn;
+    remoteAudio.volume = activeCallState?.speakerOn && !activeCallState?.holdOn ? 1 : 0;
     if (activeCallState?.speakerDeviceId && typeof remoteAudio.setSinkId === "function") remoteAudio.setSinkId(activeCallState.speakerDeviceId).catch(() => {});
     remoteAudio.play?.().catch(() => {});
   }
@@ -1686,6 +1733,8 @@ async function switchCallCamera() {
     const sender = getVideoSender(activeCallState.pc);
     if (sender?.replaceTrack) await sender.replaceTrack(newTrack);
     applyLocalVideoState();
+    await announceCallMediaUpdate(true);
+    await renegotiateActiveCall("camera-switch");
     attachCallMedia();
   } catch (error) {
     showChatAlert({ text: "Camera switch is not available on this device." }, "Camera");
@@ -1696,20 +1745,22 @@ async function convertCallToVideo() {
   if (!activeCallState?.stream || !activeCallState?.pc) return;
   const button = document.getElementById("adnnCallVideoToggle");
   if (activeCallState.videoOn) {
-    activeCallState.stream.getVideoTracks().forEach((track) => {
+    const oldTracks = activeCallState.stream.getVideoTracks();
+    oldTracks.forEach((track) => {
       track.stop();
       activeCallState.stream.removeTrack(track);
-      const sender = activeCallState.pc?.getSenders?.().find((candidate) => candidate.track === track);
-      sender?.replaceTrack?.(null).catch(() => {});
     });
+    const sender = getVideoSender(activeCallState.pc) || activeCallState.pc.getSenders?.().find((candidate) => candidate.track?.kind === "video");
+    await sender?.replaceTrack?.(null).catch(() => {});
     activeCallState.videoOn = false;
     await announceCallMediaUpdate(false);
+    await renegotiateActiveCall("video-off");
     if (button) button.innerHTML = `${ADNN_ICON_VIDEO}<span>Video</span>`;
     renderCallOverlay();
     return;
   }
   try {
-    const videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: callCameraFacingMode } } });
+    const videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: activeCallState.facingMode || "user" } });
     const track = videoStream.getVideoTracks()[0];
     if (!track) throw new Error("No camera track");
     activeCallState.stream.addTrack(track);
@@ -1721,14 +1772,15 @@ async function convertCallToVideo() {
       activeCallState.pc.addTrack(track, activeCallState.stream);
     }
     activeCallState.videoOn = true;
-    applyLocalVideoState();
     await announceCallMediaUpdate(true);
+    await renegotiateActiveCall("video-on");
     if (button) button.innerHTML = `${ADNN_ICON_VIDEO}<span>Video On</span>`;
     renderCallOverlay();
   } catch (error) {
     showChatAlert({ text: "Camera permission is needed to convert to video." }, "Video blocked");
   }
 }
+
 
 function formatDuration(seconds) {
   const safe = Math.max(0, Number(seconds) || 0);
@@ -2288,21 +2340,27 @@ function installChatStyles() {
     .adnn-chat-bubble.is-call-event { align-self:center; max-width:min(360px, 92%); text-align:center; border:1px solid var(--adnn-line); background:rgba(255,255,255,.045); color:var(--adnn-text); border-radius:18px; }
     .adnn-chat-bubble.is-call-event p { font-family:var(--font-mono, monospace); font-size:11px; letter-spacing:.02em; color:var(--adnn-text); }
     .adnn-call-overlay { position:fixed; inset:0; z-index:99999; pointer-events:none; background:transparent; padding:0; }
-    .adnn-call-card { position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); width:min(392px, calc(100vw - 28px)); max-height:calc(100dvh - 28px); overflow:auto; border:1px solid var(--adnn-line); border-radius:28px; background:rgba(18,18,22,.96); color:var(--adnn-text); box-shadow:0 30px 90px rgba(0,0,0,.45); padding:14px; text-align:center; display:grid; gap:10px; pointer-events:auto; cursor:default; }
+    .adnn-call-card { position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); width:min(420px, calc(100vw - 28px)); max-height:calc(100dvh - 28px); overflow:hidden; border:1px solid rgba(255,255,255,.11); border-radius:30px; background:linear-gradient(145deg, rgba(25,25,32,.98), rgba(10,10,16,.96)); color:var(--adnn-text); box-shadow:0 32px 100px rgba(0,0,0,.55), 0 0 50px rgba(83,96,255,.18), inset 0 1px 0 rgba(255,255,255,.08); padding:14px; text-align:center; display:grid; gap:10px; pointer-events:auto; cursor:default; backdrop-filter:blur(22px) saturate(150%); -webkit-backdrop-filter:blur(22px) saturate(150%); }
     .adnn-call-card.is-dragging { cursor:grabbing; user-select:none; }
     .adnn-call-topbar { display:grid; grid-template-columns:38px 1fr 38px; align-items:center; gap:8px; }
-    .adnn-call-drag-handle { cursor:grab; color:var(--adnn-muted); font-family:var(--font-mono, monospace); font-size:10px; letter-spacing:.14em; text-transform:uppercase; }
-    .adnn-call-window-btn { width:34px; height:34px; border:1px solid var(--adnn-line); border-radius:12px; background:rgba(255,255,255,.06); color:var(--adnn-text); display:grid; place-items:center; cursor:pointer; }
+    .adnn-call-drag-handle { cursor:grab; color:#7f86ff; font-family:var(--font-mono, monospace); font-size:10px; letter-spacing:.16em; text-transform:uppercase; }
+    .adnn-call-window-btn { width:34px; height:34px; border:1px solid rgba(255,255,255,.1); border-radius:13px; background:rgba(255,255,255,.055); color:var(--adnn-text); display:grid; place-items:center; cursor:pointer; }
+    .adnn-call-window-btn:hover { background:rgba(83,96,255,.24); }
     .adnn-call-window-btn svg { width:18px; height:18px; }
-    .adnn-call-avatar { width:64px; height:64px; margin:0 auto; border-radius:50%; display:grid; place-items:center; background:var(--adnn-accent); color:#fff; font-family:var(--font-mono, monospace); font-size:20px; letter-spacing:.08em; }
-    .adnn-call-card strong { font-size:21px; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .adnn-call-avatar { width:66px; height:66px; margin:0 auto; border-radius:22px; display:grid; place-items:center; background:linear-gradient(145deg, #5360ff, #252bd8); color:#fff; font-family:var(--font-mono, monospace); font-size:20px; letter-spacing:.08em; box-shadow:0 16px 34px rgba(39,45,207,.38); }
+    .adnn-call-card strong { font-size:21px; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; letter-spacing:-.02em; }
     .adnn-call-card small, .adnn-call-note { color:var(--adnn-muted); font-family:var(--font-mono, monospace); font-size:11px; line-height:1.5; }
-    .adnn-call-video-stage { display:grid; gap:8px; }
-    .adnn-call-card video { width:100%; aspect-ratio:16/10; object-fit:cover; border-radius:20px; background:#000; }
-    #adnnCallVideo { width:34%; justify-self:end; margin-top:-30%; border:1px solid var(--adnn-line); box-shadow:0 12px 30px rgba(0,0,0,.35); }
+    .adnn-call-video-stage { display:none; position:relative; min-height:0; border-radius:22px; overflow:hidden; background:radial-gradient(circle at 50% 25%, rgba(83,96,255,.24), rgba(0,0,0,.94) 55%); border:1px solid rgba(255,255,255,.08); }
+    .adnn-call-video-stage.is-video-active { display:block; aspect-ratio:16/10; }
+    .adnn-call-card video { width:100%; height:100%; object-fit:cover; border-radius:0; background:#050507; }
+    #adnnCallRemoteVideo { display:none; }
+    #adnnCallVideo { display:none; }
+    .adnn-call-video-stage.has-remote-video #adnnCallRemoteVideo { display:block !important; }
+    .adnn-call-video-stage.has-local-video #adnnCallVideo { display:block !important; position:absolute; right:10px; bottom:10px; width:30%; height:auto; aspect-ratio:9/12; border-radius:16px; border:1px solid rgba(255,255,255,.18); box-shadow:0 14px 34px rgba(0,0,0,.42); }
+    .adnn-call-video-stage.has-local-video:not(.has-remote-video) #adnnCallVideo { position:static; width:100%; aspect-ratio:16/10; border:0; border-radius:0; box-shadow:none; }
     .adnn-call-card audio { display:none; }
     .adnn-call-controls, .adnn-call-incoming { display:flex; justify-content:center; gap:8px; margin-top:4px; flex-wrap:wrap; }
-    .adnn-call-control { width:58px; min-height:54px; border:1px solid var(--adnn-line); border-radius:17px; background:rgba(255,255,255,.07); color:var(--adnn-text); cursor:pointer; display:grid; place-items:center; gap:3px; font-size:18px; }
+    .adnn-call-control { width:58px; min-height:54px; border:1px solid rgba(255,255,255,.1); border-radius:17px; background:rgba(255,255,255,.07); color:var(--adnn-text); cursor:pointer; display:grid; place-items:center; gap:3px; font-size:18px; }
     .adnn-call-control svg { width:21px; height:21px; display:block; }
     .adnn-call-control span { font-size:9px; font-family:var(--font-mono, monospace); color:var(--adnn-muted); }
     .adnn-call-control:hover, .adnn-call-control.is-on { background:var(--adnn-accent); color:#fff; }
@@ -2342,7 +2400,8 @@ function installChatStyles() {
       .adnn-call-card { width:min(360px, calc(100vw - 16px)); padding:12px; border-radius:22px; gap:8px; }
       .adnn-call-avatar { width:52px; height:52px; font-size:16px; }
       .adnn-call-card strong { font-size:18px; }
-      .adnn-call-card video { border-radius:16px; max-height:34dvh; }
+      .adnn-call-video-stage.is-video-active { aspect-ratio:4/5; max-height:52svh; }
+      .adnn-call-card video { max-height:52svh; }
       #adnnCallVideo { width:38%; }
       .adnn-call-control { width:54px; min-height:52px; border-radius:15px; }
       .adnn-call-control svg { width:19px; height:19px; }

@@ -1782,17 +1782,16 @@ function attachCallMedia() {
     remoteTile.classList.toggle("is-on-hold", remoteOnHold);
   }
   if (localBlank) {
-    localBlank.textContent = localOnHold ? "You're on hold" : "Camera off";
-    localBlank.style.display = (localHasVideo && !localOnHold) ? "none" : "grid";
+    localBlank.textContent = localOnHold ? "On hold" : "Camera off";
+    localBlank.style.display = localHasVideo && !localOnHold ? "none" : "grid";
   }
   if (remoteBlank) {
-    const remoteLbl = activeCallState?.label || "User";
-    remoteBlank.textContent = remoteOnHold ? `${remoteLbl} is on hold` : "Camera off";
-    remoteBlank.style.display = (remoteHasVideo && !remoteOnHold) ? "none" : "grid";
+    remoteBlank.textContent = remoteOnHold ? "On hold" : "Camera off";
+    remoteBlank.style.display = remoteHasVideo && !remoteOnHold ? "none" : "grid";
   }
 
   if (localVideo) {
-    if (localHasVideo && !localOnHold) {
+    if (localHasVideo) {
       if (localVideo.srcObject !== localStream) localVideo.srcObject = localStream;
       localVideo.muted = true;
       localVideo.volume = 0;
@@ -1804,7 +1803,7 @@ function attachCallMedia() {
     }
   }
   if (remoteVideo) {
-    if (remoteHasVideo && !remoteOnHold) {
+    if (remoteHasVideo) {
       if (remoteVideo.srcObject !== remoteStream) remoteVideo.srcObject = remoteStream;
       remoteVideo.muted = true;
       remoteVideo.volume = 0;
@@ -1831,10 +1830,7 @@ function applyLocalAudioState() {
 
 function applyLocalVideoState() {
   if (!activeCallState?.stream) return;
-  // When on hold, disable video track even if videoOn is true — this sends
-  // black/silence to the remote peer instead of a frozen last frame.
-  const videoActive = !!activeCallState.videoOn && !activeCallState.holdOn;
-  activeCallState.stream.getVideoTracks().forEach((track) => { track.enabled = videoActive; });
+  activeCallState.stream.getVideoTracks().forEach((track) => { track.enabled = !!activeCallState.videoOn; });
 }
 
 function updateCallStatusText() {

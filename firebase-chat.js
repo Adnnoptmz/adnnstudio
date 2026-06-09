@@ -1821,8 +1821,28 @@ function applyLocalAudioState() {
 }
 
 function applyLocalVideoState() {
-  if (!activeCallState?.stream) return;
-  activeCallState.stream.getVideoTracks().forEach((track) => { track.enabled = activeCallState.videoOn && !activeCallState.holdOn; });
+  if (!activeCallState?.stream || !activeCallState?.pc) return;
+  const shouldSendVideo = activeCallState.videoOn && !activeCallState.holdOn;
+  if (shouldSendVideo) {
+    activeCallState.stream.getVideoTracks().forEach((track) => { track.enabled = true; });
+    const sender = getVideoSender(activeCallState.pc);
+    const realTrack = activeCallState.stream.getVideoTracks().find((t) => t.readyState !== "ended");
+    if (sender && realTrack && sender.track?.id !== realTrack.id) sender.replaceTrack(realTrack).catch(() => {});
+  } else {
+    activeCallState.stream.getVideoTracks().forEach((track) => { track.enabled = false; });
+    try {
+      const canvas = document.createElement("canvas");
+      canvas.width = 2; canvas.height = 2;
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = "#000"; ctx.fillRect(0, 0, 2, 2);
+      const blackStream = canvas.captureStream(1);
+      const blackTrack = blackStream.getVideoTracks()[0];
+      if (blackTrack) {
+        const sender = getVideoSender(activeCallState.pc);
+        if (sender) sender.replaceTrack(blackTrack).catch(() => {});
+      }
+    } catch(e) {}
+  }
 }
 
 function updateCallStatusText() {

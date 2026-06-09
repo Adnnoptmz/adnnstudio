@@ -1222,15 +1222,48 @@ function makeCallWindowDraggable(card) {
   window.addEventListener("touchend", end);
 }
 
+function getVideoTransceiver(pc) {
+  if (!pc) return null;
+  let transceiver = pc.getTransceivers?.().find((item) => item.sender?.track?.kind === "video");
+  if (!transceiver) transceiver = pc.getTransceivers?.().find((item) => item.receiver?.track?.kind === "video");
+  if (!transceiver && pc.addTransceiver) transceiver = pc.addTransceiver("video", { direction: "sendrecv" });
+  if (transceiver) {
+    try { transceiver.direction = "sendrecv"; } catch (error) {}
+  }
+  return transceiver || null;
+}
+
 function ensureVideoTransceiver(pc) {
-  if (!pc?.addTransceiver) return;
-  const hasVideo = pc.getTransceivers?.().some((transceiver) => transceiver.receiver?.track?.kind === "video" || transceiver.sender?.track?.kind === "video");
-  if (!hasVideo) pc.addTransceiver("video", { direction: "sendrecv" });
+  getVideoTransceiver(pc);
 }
 
 function getVideoSender(pc) {
-  const transceiver = pc?.getTransceivers?.().find((item) => item.receiver?.track?.kind === "video" || item.sender?.track?.kind === "video");
+  const transceiver = getVideoTransceiver(pc);
   return transceiver?.sender || pc?.getSenders?.().find((sender) => sender.track?.kind === "video") || null;
+}
+
+function getAudioSender(pc) {
+  return pc?.getSenders?.().find((sender) => sender.track?.kind === "audio") || null;
+}
+
+function setVideoTransceiverDirection(pc, direction = "sendrecv") {
+  const transceiver = getVideoTransceiver(pc);
+  if (transceiver) {
+    try { transceiver.direction = direction; } catch (error) {}
+  }
+  return transceiver;
+}
+
+function wait(ms = 0) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+async function waitForStablePeer(pc, tries = 16) {
+  for (let index = 0; index < tries; index += 1) {
+    if (!pc || pc.signalingState === "stable") return true;
+    await wait(140);
+  }
+  return !!pc && pc.signalingState === "stable";
 }
 
 
@@ -1244,20 +1277,67 @@ function getLiveVideoTracks(stream) {
   return (stream?.getVideoTracks?.() || []).filter((track) => track.readyState !== "ended");
 }
 
-async function renegotiateActiveCall(reason = "media") {
-  if (!activeCallState?.pc || !activeCallState?.callId) return;
-  if (activeCallState.pc.signalingState !== "stable") return;
+async function renegotiateActiveCall(reason = "media", options = {}) {
+  if (!activeCallState?.pc || !activeCallState?.callId) return false;
+  const pc = activeCallState.pc;
+  if (activeCallState.makingOffer) return false;
+  const stable = await waitForStablePeer(pc, options.force ? 24 : 10);
+  if (!stable) return false;
   try {
-    const offer = await activeCallState.pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
-    await activeCallState.pc.setLocalDescription(offer);
+    activeCallState.makingOffer = true;
+    setVideoTransceiverDirection(pc, "sendrecv");
+    const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
+    await pc.setLocalDescription(offer);
+    const stamp = Date.now();
+    activeCallState.lastLocalOfferAt = stamp;
     await setDoc(doc(db, "calls", activeCallState.callId), {
-      renegotiateOffer: { type: offer.type, sdp: offer.sdp, from: ownCallUid(), at: Date.now(), reason },
+      renegotiateOffer: { type: offer.type, sdp: offer.sdp, from: ownCallUid(), at: stamp, reason },
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+    return true;
+  } catch (error) {
+    console.warn("Call renegotiation failed", error);
+    return false;
+  } finally {
+    activeCallState.makingOffer = false;
+  }
+}
+
+async function handleRemoteRenegotiateOffer(call, callRef) {
+  if (!activeCallState?.pc || !call?.renegotiateOffer || call.renegotiateOffer.from === ownCallUid()) return;
+  if (activeCallState.lastRemoteOfferAt === call.renegotiateOffer.at) return;
+  const pc = activeCallState.pc;
+  activeCallState.lastRemoteOfferAt = call.renegotiateOffer.at;
+  try {
+    if (pc.signalingState !== "stable") {
+      await pc.setLocalDescription({ type: "rollback" }).catch(() => {});
+    }
+    setVideoTransceiverDirection(pc, "sendrecv");
+    await pc.setRemoteDescription(new RTCSessionDescription({ type: call.renegotiateOffer.type, sdp: call.renegotiateOffer.sdp }));
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    await setDoc(callRef, {
+      renegotiateAnswer: { type: answer.type, sdp: answer.sdp, from: ownCallUid(), at: Date.now(), forOfferAt: call.renegotiateOffer.at },
       updatedAt: serverTimestamp()
     }, { merge: true });
   } catch (error) {
-    console.warn("Call renegotiation failed", error);
+    console.warn("Remote call media negotiation failed", error);
   }
 }
+
+async function handleRemoteRenegotiateAnswer(call) {
+  if (!activeCallState?.pc || !call?.renegotiateAnswer || call.renegotiateAnswer.from === ownCallUid()) return;
+  if (activeCallState.lastRemoteAnswerAt === call.renegotiateAnswer.at) return;
+  activeCallState.lastRemoteAnswerAt = call.renegotiateAnswer.at;
+  try {
+    if (activeCallState.pc.signalingState === "have-local-offer") {
+      await activeCallState.pc.setRemoteDescription(new RTCSessionDescription({ type: call.renegotiateAnswer.type, sdp: call.renegotiateAnswer.sdp }));
+    }
+  } catch (error) {
+    console.warn("Remote call media answer failed", error);
+  }
+}
+
 
 async function announceCallMediaUpdate(videoOn) {
   if (!activeCallState?.callId) return;
@@ -1320,7 +1400,7 @@ async function startRealtimeCall(kind = "audio", target = null) {
       updatedAt: serverTimestamp()
     }, { merge: true });
     const pc = createPeerConnection(callRef.id, false);
-    ensureVideoTransceiver(pc);
+    setVideoTransceiverDirection(pc, "sendrecv");
     stream.getTracks().forEach((track) => pc.addTrack(track, stream));
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
@@ -1371,20 +1451,23 @@ async function startRealtimeCall(kind = "audio", target = null) {
 
 function createPeerConnection(callId, isAnswerer) {
   const pc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }, { urls: "stun:stun1.l.google.com:19302" }] });
+  ensureVideoTransceiver(pc);
   pc.onicecandidate = (event) => {
     if (event.candidate) addDoc(collection(db, "calls", callId, isAnswerer ? "answerCandidates" : "offerCandidates"), event.candidate.toJSON()).catch(() => {});
   };
   pc.ontrack = (event) => {
     if (!activeCallState) return;
     if (!activeCallState.remoteStream) activeCallState.remoteStream = new MediaStream();
-    const tracks = event.streams?.[0]?.getTracks?.() || (event.track ? [event.track] : []);
-    tracks.forEach((track) => {
-      if (!activeCallState.remoteStream.getTracks().some((existing) => existing.id === track.id)) {
+    const incoming = event.streams?.[0]?.getTracks?.()?.length ? event.streams[0].getTracks() : (event.track ? [event.track] : []);
+    incoming.forEach((track) => {
+      if (!activeCallState.remoteStream.getTracks().some((existing) => existing.id === track.id || existing.kind === track.kind && existing.readyState === "ended")) {
+        const oldSameKind = activeCallState.remoteStream.getTracks().filter((existing) => existing.kind === track.kind && existing.readyState === "ended");
+        oldSameKind.forEach((oldTrack) => activeCallState.remoteStream.removeTrack(oldTrack));
         activeCallState.remoteStream.addTrack(track);
       }
-      if (track.kind === "video") activeCallState.remoteVideoOn = track.readyState !== "ended";
+      if (track.kind === "video") activeCallState.remoteVideoOn = track.readyState !== "ended" && track.enabled !== false;
       track.onunmute = () => { if (track.kind === "video") activeCallState.remoteVideoOn = true; attachCallMedia(); };
-      track.onmute = () => { attachCallMedia(); };
+      track.onmute = () => { if (track.kind === "video") attachCallMedia(); };
       track.onended = () => { if (track.kind === "video") activeCallState.remoteVideoOn = false; attachCallMedia(); };
     });
     attachCallMedia();
@@ -1396,6 +1479,7 @@ function createPeerConnection(callId, isAnswerer) {
   };
   return pc;
 }
+
 
 function watchActiveCall(callId, isAnswerer) {
   clearActiveCallListeners();
@@ -1417,19 +1501,8 @@ function watchActiveCall(callId, isAnswerer) {
       activeCallState.remoteVideoOn = !!remoteMedia.videoOn;
       attachCallMedia();
     }
-    if (call.renegotiateOffer && call.renegotiateOffer.from !== ownCallUid() && activeCallState.lastRemoteOfferAt !== call.renegotiateOffer.at && activeCallState.pc?.signalingState === "stable") {
-      activeCallState.lastRemoteOfferAt = call.renegotiateOffer.at;
-      await activeCallState.pc.setRemoteDescription(new RTCSessionDescription({ type: call.renegotiateOffer.type, sdp: call.renegotiateOffer.sdp })).catch(() => {});
-      const answer = await activeCallState.pc.createAnswer().catch(() => null);
-      if (answer) {
-        await activeCallState.pc.setLocalDescription(answer).catch(() => {});
-        await setDoc(callRef, { renegotiateAnswer: { type: answer.type, sdp: answer.sdp, from: ownCallUid(), at: Date.now() }, updatedAt: serverTimestamp() }, { merge: true }).catch(() => {});
-      }
-    }
-    if (call.renegotiateAnswer && call.renegotiateAnswer.from !== ownCallUid() && activeCallState.lastRemoteAnswerAt !== call.renegotiateAnswer.at && activeCallState.pc?.signalingState === "have-local-offer") {
-      activeCallState.lastRemoteAnswerAt = call.renegotiateAnswer.at;
-      await activeCallState.pc.setRemoteDescription(new RTCSessionDescription({ type: call.renegotiateAnswer.type, sdp: call.renegotiateAnswer.sdp })).catch(() => {});
-    }
+    await handleRemoteRenegotiateOffer(call, callRef);
+    await handleRemoteRenegotiateAnswer(call);
     if (["ended", "rejected", "missed"].includes(call.status)) {
       scheduleCallSignalingCleanup(callId, call.receiverUid, CALL_SIGNAL_CLEANUP_DELAY_MS);
       endBrowserCall(false, call.status === "rejected" ? "Call rejected" : call.status === "missed" ? "Call missed" : "Call ended");
@@ -1489,7 +1562,7 @@ async function acceptIncomingCall() {
     const wantsVideo = call.kind === "video";
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: wantsVideo });
     const pc = createPeerConnection(activeCallState.callId, true);
-    ensureVideoTransceiver(pc);
+    setVideoTransceiverDirection(pc, "sendrecv");
     stream.getTracks().forEach((track) => pc.addTrack(track, stream));
     await pc.setRemoteDescription(new RTCSessionDescription(call.offer));
     const answer = await pc.createAnswer();
@@ -1724,22 +1797,26 @@ function toggleCallMaximize() {
 async function switchCallCamera() {
   if (!activeCallState?.videoOn || !activeCallState?.stream || !activeCallState?.pc) return;
   callCameraFacingMode = callCameraFacingMode === "user" ? "environment" : "user";
+  activeCallState.facingMode = callCameraFacingMode;
   try {
     const videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: callCameraFacingMode } } });
     const newTrack = videoStream.getVideoTracks()[0];
     if (!newTrack) return;
+    newTrack.enabled = !activeCallState.holdOn;
     activeCallState.stream.getVideoTracks().forEach((track) => { track.stop(); activeCallState.stream.removeTrack(track); });
     activeCallState.stream.addTrack(newTrack);
     const sender = getVideoSender(activeCallState.pc);
     if (sender?.replaceTrack) await sender.replaceTrack(newTrack);
+    setVideoTransceiverDirection(activeCallState.pc, "sendrecv");
     applyLocalVideoState();
     await announceCallMediaUpdate(true);
-    await renegotiateActiveCall("camera-switch");
     attachCallMedia();
+    await renegotiateActiveCall("camera-switch", { force: true });
   } catch (error) {
     showChatAlert({ text: "Camera switch is not available on this device." }, "Camera");
   }
 }
+
 
 async function convertCallToVideo() {
   if (!activeCallState?.stream || !activeCallState?.pc) return;
@@ -1747,39 +1824,50 @@ async function convertCallToVideo() {
   if (activeCallState.videoOn) {
     const oldTracks = activeCallState.stream.getVideoTracks();
     oldTracks.forEach((track) => {
+      track.enabled = false;
       track.stop();
       activeCallState.stream.removeTrack(track);
     });
-    const sender = getVideoSender(activeCallState.pc) || activeCallState.pc.getSenders?.().find((candidate) => candidate.track?.kind === "video");
+    const sender = getVideoSender(activeCallState.pc);
     await sender?.replaceTrack?.(null).catch(() => {});
+    setVideoTransceiverDirection(activeCallState.pc, "sendrecv");
     activeCallState.videoOn = false;
     await announceCallMediaUpdate(false);
-    await renegotiateActiveCall("video-off");
+    await renegotiateActiveCall("video-off", { force: true });
     if (button) button.innerHTML = `${ADNN_ICON_VIDEO}<span>Video</span>`;
     renderCallOverlay();
     return;
   }
   try {
-    const videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: activeCallState.facingMode || "user" } });
+    const videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: activeCallState.facingMode || callCameraFacingMode || "user" } });
     const track = videoStream.getVideoTracks()[0];
     if (!track) throw new Error("No camera track");
+    track.enabled = !activeCallState.holdOn;
+    activeCallState.stream.getVideoTracks().forEach((oldTrack) => {
+      oldTrack.stop();
+      activeCallState.stream.removeTrack(oldTrack);
+    });
     activeCallState.stream.addTrack(track);
-    ensureVideoTransceiver(activeCallState.pc);
-    let sender = getVideoSender(activeCallState.pc);
+    const transceiver = setVideoTransceiverDirection(activeCallState.pc, "sendrecv");
+    const sender = transceiver?.sender || getVideoSender(activeCallState.pc);
     if (sender?.replaceTrack) {
       await sender.replaceTrack(track);
     } else {
       activeCallState.pc.addTrack(track, activeCallState.stream);
     }
     activeCallState.videoOn = true;
+    activeCallState.kind = "video";
     await announceCallMediaUpdate(true);
-    await renegotiateActiveCall("video-on");
+    attachCallMedia();
+    await renegotiateActiveCall("video-on", { force: true });
+    window.setTimeout(() => renegotiateActiveCall("video-on-confirm", { force: true }), 1200);
     if (button) button.innerHTML = `${ADNN_ICON_VIDEO}<span>Video On</span>`;
     renderCallOverlay();
   } catch (error) {
     showChatAlert({ text: "Camera permission is needed to convert to video." }, "Video blocked");
   }
 }
+
 
 
 function formatDuration(seconds) {
@@ -2417,6 +2505,33 @@ function installChatStyles() {
       .adnn-direct-room .adnn-chat-form { position:sticky; bottom:0; z-index:5; border-top:1px solid var(--adnn-line); padding:8px 10px calc(8px + env(safe-area-inset-bottom)); background:rgba(10,10,13,.96); backdrop-filter:blur(14px); }
       .adnn-direct-room .adnn-chat-form input { height:42px; font-size:16px; border-radius:18px; }
       .adnn-direct-room .adnn-chat-form button, .adnn-direct-room .adnn-chat-media { width:42px; height:42px; border-radius:50%; flex:0 0 42px; }
+    }
+
+
+    /* Stable, responsive in-site call window. Keeps remote video as the main surface and local video as PiP. */
+    .adnn-call-card { width:min(440px, calc(100vw - 24px)); max-height:calc(100svh - 24px); overflow:auto; scrollbar-width:none; }
+    .adnn-call-card::-webkit-scrollbar { display:none; }
+    .adnn-call-video-stage { width:100%; min-height:190px; }
+    .adnn-call-video-stage.is-video-active { display:block; aspect-ratio:16/10; }
+    .adnn-call-video-stage.has-remote-video #adnnCallRemoteVideo { display:block !important; width:100%; height:100%; object-fit:cover; }
+    .adnn-call-video-stage.has-local-video #adnnCallVideo { display:block !important; position:absolute; right:10px; bottom:10px; width:min(34%, 126px); height:auto; aspect-ratio:9/12; object-fit:cover; border-radius:16px; border:1px solid rgba(255,255,255,.22); box-shadow:0 16px 42px rgba(0,0,0,.5); z-index:2; }
+    .adnn-call-video-stage.has-local-video:not(.has-remote-video) #adnnCallVideo { position:static; width:100%; height:100%; aspect-ratio:16/10; border:0; border-radius:0; box-shadow:none; }
+    .adnn-call-card.is-maximized { width:min(960px, calc(100vw - 24px)); height:auto; max-height:calc(100svh - 24px); }
+    .adnn-call-card.is-maximized .adnn-call-video-stage.is-video-active { aspect-ratio:16/9; max-height:64svh; }
+    @media (max-width: 760px) {
+      .adnn-call-overlay { z-index:100000; }
+      .adnn-call-card { width:calc(100vw - 18px); max-height:calc(100svh - 18px); padding:12px; border-radius:24px; gap:8px; }
+      .adnn-call-topbar { grid-template-columns:36px 1fr 36px; }
+      .adnn-call-avatar { width:50px; height:50px; border-radius:18px; font-size:15px; }
+      .adnn-call-card strong { font-size:17px; }
+      .adnn-call-card small { font-size:10px; }
+      .adnn-call-video-stage.is-video-active { aspect-ratio:4/5; max-height:48svh; }
+      .adnn-call-card.is-maximized { inset:8px auto auto 8px !important; transform:none !important; width:calc(100vw - 16px); max-height:calc(100svh - 16px); }
+      .adnn-call-card.is-maximized .adnn-call-video-stage.is-video-active { aspect-ratio:4/5; max-height:54svh; }
+      .adnn-call-controls, .adnn-call-incoming { gap:7px; }
+      .adnn-call-control { width:50px; min-height:50px; border-radius:16px; }
+      .adnn-call-control svg { width:18px; height:18px; }
+      .adnn-call-control span { font-size:7.5px; }
     }
 
     :root.light-theme {

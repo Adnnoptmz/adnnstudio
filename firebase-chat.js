@@ -186,7 +186,6 @@ function installClientChatShell() {
   });
   drawer.querySelector(".adnn-chat-close")?.addEventListener("click", closeClientChat);
   drawer.querySelector("#adnnChatForm")?.addEventListener("submit", sendClientMessage);
-  keepMobileChatComposerVisible();
   wireFilePreview("adnnChatFile", "adnnChatFileName");
   window.addEventListener("hashchange", maybeOpenClientChatFromHash);
 }
@@ -242,7 +241,6 @@ function startClientChat(user) {
     firstClientMessagesSnapshot = false;
     knownClientMessageIds = nextIds;
     renderClientMessages(messages);
-    keepMobileChatComposerVisible();
     if (incoming.length) showChatAlert(incoming[incoming.length - 1], "New message");
     if (document.getElementById("adnnChatDrawer")?.classList.contains("is-open")) markClientChatRead();
   });
@@ -264,7 +262,6 @@ function openClientChat() {
   drawer?.classList.add("is-open");
   drawer?.setAttribute("aria-hidden", "false");
   markClientChatRead();
-  keepMobileChatComposerVisible();
   window.setTimeout(() => document.getElementById("adnnChatInput")?.focus(), 180);
 }
 
@@ -391,7 +388,6 @@ function installAdminChatPanel() {
     else document.querySelector(".shell")?.appendChild(panel);
   }
   document.getElementById("adnnAdminChatForm")?.addEventListener("submit", sendAdminMessage);
-  keepMobileChatComposerVisible();
   document.getElementById("adnnAdminChatBack")?.addEventListener("click", () => {
     document.body.classList.remove("adnn-admin-chat-open");
   });
@@ -480,7 +476,6 @@ function installDesignerChatPanel() {
   `;
   view.appendChild(panel);
   document.getElementById("adnnDesignerChatForm")?.addEventListener("submit", sendDesignerMessage);
-  keepMobileChatComposerVisible();
   wireFilePreview("adnnDesignerChatFile", "adnnDesignerChatFileName");
 }
 
@@ -517,7 +512,6 @@ function startDesignerChat(user, designer) {
     firstDesignerMessagesSnapshot = false;
     knownDesignerMessageIds = nextIds;
     renderDesignerMessages(messages);
-    keepMobileChatComposerVisible();
     if (incoming.length) showChatAlert(incoming[incoming.length - 1], "Designer chat");
   }, () => {
     renderDesignerChatStatus("Designer chat could not load.");
@@ -647,7 +641,6 @@ function selectAdminChat(chat) {
     firstAdminMessagesSnapshot = false;
     knownAdminMessageIds = nextIds;
     renderAdminMessages(messages);
-    keepMobileChatComposerVisible();
     if (incoming.length) showChatAlert(incoming[incoming.length - 1], "Client message");
   });
   setDoc(doc(db, "chats", chat.id), { unreadForAdmin: 0 }, { merge: true }).catch(() => {});
@@ -1049,53 +1042,6 @@ function installChatStyles() {
     :root.light-theme .adnn-chat-form input { background: #fff; color:#111b21; border:1px solid rgba(17,27,33,.08); }
     :root.light-theme .adnn-admin-chat-item.is-active { background: rgba(0, 0, 0, 0.03); }
 
-
-    @media (max-width: 760px) {
-      body.chat-view-active .adnn-chat-form,
-      body.chat-view-active #adnnDirectChatForm,
-      body.chat-view-active #adnnChatForm,
-      body.chat-view-active #adnnAdminChatForm,
-      body.chat-view-active #adnnDesignerChatForm {
-        display:grid !important;
-        visibility:visible !important;
-        opacity:1 !important;
-        grid-template-columns:44px minmax(0,1fr) 44px !important;
-        min-height:64px !important;
-        width:100% !important;
-        flex:0 0 auto !important;
-        position:relative !important;
-        z-index:999 !important;
-        padding:10px 10px calc(10px + env(safe-area-inset-bottom)) !important;
-        background:rgba(8,8,12,.98) !important;
-        box-sizing:border-box !important;
-      }
-      body.chat-view-active .adnn-chat-form input:not([type="file"]),
-      body.chat-view-active #adnnDirectChatInput,
-      body.chat-view-active #adnnChatInput,
-      body.chat-view-active #adnnAdminChatInput,
-      body.chat-view-active #adnnDesignerChatInput {
-        display:block !important;
-        height:44px !important;
-        min-width:0 !important;
-        width:100% !important;
-        font-size:16px !important;
-      }
-      body.chat-view-active .adnn-chat-media,
-      body.chat-view-active .adnn-chat-form button {
-        display:grid !important;
-        width:44px !important;
-        height:44px !important;
-        min-width:44px !important;
-      }
-      body.chat-view-active .adnn-chat-drawer.is-embedded,
-      body.chat-view-active .adnn-admin-chat-room,
-      body.chat-view-active .adnn-direct-room {
-        grid-template-rows:auto minmax(0,1fr) auto !important;
-        min-height:0 !important;
-        overflow:hidden !important;
-      }
-    }
-
     @media (max-width: 760px) {
       .adnn-admin-chat-panel { height:calc(100vh - 89px); min-height:0; border-radius:0 !important; margin:0 calc(-1 * clamp(16px, 3.5vw, 44px)); border-left:0 !important; border-right:0 !important; border-bottom: 0 !important; }
       .adnn-admin-chat-appbar { display:none; }
@@ -1119,28 +1065,6 @@ function installChatStyles() {
   `;
   document.head.appendChild(style);
 }
-
-
-function keepMobileChatComposerVisible() {
-  if (!window.matchMedia || !window.matchMedia("(max-width: 760px)").matches) return;
-  const forms = ["adnnDirectChatForm", "adnnChatForm", "adnnAdminChatForm", "adnnDesignerChatForm"];
-  forms.forEach((id) => {
-    const form = document.getElementById(id);
-    if (!form) return;
-    const room = form.closest(".adnn-direct-room, .adnn-admin-chat-room, .adnn-chat-drawer, .adnn-designer-chat-panel") || form.parentElement;
-    if (!room) return;
-    if (form.parentElement !== room) room.appendChild(form);
-    form.style.display = "grid";
-    form.style.visibility = "visible";
-    form.style.opacity = "1";
-    form.style.position = "relative";
-    form.style.zIndex = "999";
-  });
-}
-
-window.addEventListener("resize", keepMobileChatComposerVisible);
-window.addEventListener("orientationchange", () => window.setTimeout(keepMobileChatComposerVisible, 260));
-window.addEventListener("hashchange", () => window.setTimeout(keepMobileChatComposerVisible, 120));
 
 function initialsFromName(value) {
   const parts = String(value || "AD").trim().split(/\s+/).filter(Boolean);

@@ -1556,9 +1556,22 @@ function watchActiveCall(callId, isAnswerer) {
         const recentlySeen = Date.now() - (activeCallState.remoteVideoLastUnmutedAt || 0) < 2500;
         if (!visibleTracks.length && !recentlySeen) {
           activeCallState.remoteVideoDisabledByPeer = true;
+          const remoteVideo = document.getElementById("adnnCallRemoteVideo");
+          if (remoteVideo) { try { remoteVideo.pause?.(); remoteVideo.srcObject = null; } catch(e) {} remoteVideo.style.display = "none"; }
           markRemoteVideoInactive(true);
         }
       }
+    }
+    const remoteHold = call.hold?.[getRemoteCallUid()];
+    const remoteIsOnHold = !!(remoteHold?.on);
+    if (activeCallState.remoteHoldOn !== remoteIsOnHold) {
+      activeCallState.remoteHoldOn = remoteIsOnHold;
+      const remoteBlank = document.getElementById("adnnCallRemoteBlank");
+      const remoteName = activeCallState.label || "User";
+      if (remoteBlank) remoteBlank.textContent = remoteIsOnHold ? `${remoteName} is on hold` : "Camera off";
+      const remoteVideo = document.getElementById("adnnCallRemoteVideo");
+      if (remoteIsOnHold && remoteVideo) { try { remoteVideo.pause?.(); remoteVideo.srcObject = null; } catch(e) {} remoteVideo.style.display = "none"; }
+      attachCallMedia();
     }
     await handleRemoteRenegotiateOffer(call, callRef);
     await handleRemoteRenegotiateAnswer(call);
@@ -1878,6 +1891,12 @@ async function toggleCallHold() {
   applyLocalAudioState();
   applyLocalVideoState();
   await announceCallMediaUpdate(activeCallState.videoOn && !activeCallState.holdOn);
+  if (activeCallState.callId) {
+    await setDoc(doc(db, "calls", activeCallState.callId), {
+      [`hold.${ownCallUid()}`]: { on: activeCallState.holdOn, updatedAt: Date.now() },
+      updatedAt: serverTimestamp()
+    }, { merge: true }).catch(() => {});
+  }
   renderCallOverlay();
 }
 

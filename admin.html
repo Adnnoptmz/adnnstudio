@@ -857,18 +857,18 @@
 
     }
   
+    body.chat-view-active .dashboard-header,
+    body.chat-view-active .portal-top,
+    body.chat-view-active #dynamicPortalSub,
+    body.chat-view-active #dynamicPortalHeading {
+      display:none !important;
+    }
     @media (max-width:760px) {
-      body.chat-view-active .dashboard-header,
-      body.chat-view-active .portal-top,
-      body.chat-view-active #dynamicPortalSub,
-      body.chat-view-active #dynamicPortalHeading {
-        display:none !important;
-      }
       body.chat-view-active .admin-main-viewport,
       body.chat-view-active .dashboard-main,
       body.chat-view-active main {
-        height:100svh !important;
-        min-height:100svh !important;
+        height:100dvh !important;
+        min-height:100dvh !important;
         padding-top:0 !important;
         overflow:hidden !important;
       }

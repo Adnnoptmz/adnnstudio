@@ -857,18 +857,18 @@
 
     }
   
-    body.chat-view-active .dashboard-header,
-    body.chat-view-active .portal-top,
-    body.chat-view-active #dynamicPortalSub,
-    body.chat-view-active #dynamicPortalHeading {
-      display:none !important;
-    }
     @media (max-width:760px) {
+      body.chat-view-active .dashboard-header,
+      body.chat-view-active .portal-top,
+      body.chat-view-active #dynamicPortalSub,
+      body.chat-view-active #dynamicPortalHeading {
+        display:none !important;
+      }
       body.chat-view-active .admin-main-viewport,
       body.chat-view-active .dashboard-main,
       body.chat-view-active main {
-        height:100dvh !important;
-        min-height:100dvh !important;
+        height:100svh !important;
+        min-height:100svh !important;
         padding-top:0 !important;
         overflow:hidden !important;
       }
@@ -950,6 +950,10 @@
         <button type="button" class="sidebar-link-item" data-target-view="chats_view">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
           <span class="link-label">Chats</span>
+        </button>
+        <button type="button" class="sidebar-link-item" data-target-view="message_cards_view">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3"></rect><path d="M7 10h5M7 14h8M17 10h.01"></path></svg>
+          <span class="link-label">Message Cards</span>
         </button>
         <button type="button" class="sidebar-link-item" data-target-view="payments_view">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
@@ -1103,7 +1107,30 @@
     <div id="projects_view" class="admin-view-panel-container" style="display:none;">
       <div class="panel glass"><p class="kicker">Projects</p><h2>Creative Deliverables Directory</h2><p class="help">Slider datasets and active workspace node maps.</p></div>
     </div>
-    <div id="chats_view" class="admin-view-panel-container" style="display:none;">
+
+    <div id="message_cards_view" class="admin-view-panel-container" style="display:none;">
+      <div class="panel glass message-card-admin-panel">
+        <p class="kicker">Message cards</p>
+        <h2>User Message Card Generator</h2>
+        <p class="help">Connect two logged-in users by email. After creating the card, both users will see a private direct chat in their dashboard.</p>
+        <form id="adnnMessageCardForm">
+          <div class="grid">
+            <label class="form-field">User A email
+              <input id="adnnCardEmailA" type="email" placeholder="firstuser@gmail.com" required>
+            </label>
+            <label class="form-field">User B email
+              <input id="adnnCardEmailB" type="email" placeholder="seconduser@gmail.com" required>
+            </label>
+          </div>
+          <div class="actions">
+            <button type="submit">Create Message Card</button>
+            <button type="reset" class="secondary">Clear</button>
+          </div>
+          <p class="status" id="adnnMessageCardStatus" aria-live="polite"></p>
+        </form>
+      </div>
+    </div>
+        <div id="chats_view" class="admin-view-panel-container" style="display:none;">
       <div class="panel glass">
         <p class="kicker">Studio chat</p>
         <h2>Loading chat...</h2>
@@ -1286,6 +1313,7 @@
           "projects_view": { sub: "Active Workflow Pipelines", main: "Creative Deliverables Node Matrix" },
           "composer_view": { sub: "Admin Portal", main: "Message Composer" },
           "chats_view": { sub: "", main: "" },
+          "message_cards_view": { sub: "User Connection Control", main: "Message Card Generator" },
           "payments_view": { sub: "Finances & Ledger Records", main: "Invoices Ledger System" },
           "notifications_view": { sub: "Broadcast Matrix System", main: "Global Push Transmission" },
           "calendar_view": { sub: "Milestone Workspace Engine", main: "Reminder Studio Calendar" },
@@ -1312,6 +1340,7 @@
           btn.classList.toggle("is-active", isMatched);
         });
 
+        if (targetViewId === "message_cards_view" && window.adnnInstallAdminMessageCardTools) window.adnnInstallAdminMessageCardTools();
         closeMobileSidebar();
       }
 

@@ -1,53 +1,55 @@
-<!--
-const FIREBASE_SDK_VERSION = "10.8.0";
-const FIREBASE_SDK_BASE = `https://www.gstatic.com/firebasejs/${FIREBASE_SDK_VERSION}`;
-
-let addDoc;
-let collection;
-let deleteDoc;
-let doc;
-let getDoc;
-let getDocs;
-let increment;
-let onSnapshot;
-let orderBy;
-let limit;
-let query;
-let serverTimestamp;
-let setDoc;
-let updateDoc;
-let where;
-let getDownloadURL;
-let storageRef;
-let uploadBytes;
-let onAuthStateChanged;
-let app = null;
-let auth = null;
-let db = null;
-let storage = null;
-
-function decodeAdnnIconMarkup(markup) {
-  return markup.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, "\"");
-}
+import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import {
+  getAuth,
+  onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import {
+  addDoc,
+  collection,
+  deleteDoc,
+  doc,
+  getDoc,
+  getDocs,
+  getFirestore,
+  increment,
+  onSnapshot,
+  orderBy,
+  limit,
+  query,
+  serverTimestamp,
+  setDoc,
+  updateDoc,
+  where
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import {
+  getDownloadURL,
+  getStorage,
+  ref as storageRef,
+  uploadBytes
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
 const ADMIN_EMAIL = "getavcollab@gmail.com";
 const ADMIN_ALIAS_UID = "adnn-admin";
 const CALL_RING_TIMEOUT_MS = 60000;
 const CALL_SIGNAL_CLEANUP_DELAY_MS = 8000;
 const config = window.ADNN_FIREBASE_CONFIG;
+const app = config ? (getApps()[0] || initializeApp(config)) : null;
+const auth = app ? getAuth(app) : null;
+const db = app ? getFirestore(app) : null;
+const storage = app ? getStorage(app) : null;
 
-const ADNN_ICON_PHONE = decodeAdnnIconMarkup(`&lt;svg viewBox=&quot;0 0 24 24&quot; aria-hidden=&quot;true&quot;&gt;&lt;path d=&quot;M7.5 4.8 10 7.2c.6.6.7 1.5.2 2.2l-1 1.5a11.8 11.8 0 0 0 4.9 4.9l1.5-1c.7-.5 1.6-.4 2.2.2l2.4 2.5c.5.5.6 1.3.2 1.9-.8 1.3-2.4 2-4 1.5C9.6 18.8 5.2 14.4 3.1 7.6c-.5-1.6.2-3.2 1.5-4 .6-.4 1.4-.3 1.9.2Z&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot;/&gt;&lt;/svg&gt;`);
-const ADNN_ICON_VIDEO = decodeAdnnIconMarkup(`&lt;svg viewBox=&quot;0 0 24 24&quot; aria-hidden=&quot;true&quot;&gt;&lt;path d=&quot;M4 7.5A2.5 2.5 0 0 1 6.5 5h7A2.5 2.5 0 0 1 16 7.5v9A2.5 2.5 0 0 1 13.5 19h-7A2.5 2.5 0 0 1 4 16.5v-9Z&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot;/&gt;&lt;path d=&quot;m16 10 4-2.4v8.8L16 14v-4Z&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linejoin=&quot;round&quot;/&gt;&lt;/svg&gt;`);
-const ADNN_ICON_END = decodeAdnnIconMarkup(`&lt;svg viewBox=&quot;0 0 24 24&quot; aria-hidden=&quot;true&quot;&gt;&lt;path d=&quot;M6.5 14.5c3.5-3.1 7.5-3.1 11 0l1.7-1.7c.7-.7.7-1.8 0-2.5-4.5-4.2-9.9-4.2-14.4 0-.7.7-.7 1.8 0 2.5l1.7 1.7Z&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linejoin=&quot;round&quot;/&gt;&lt;path d=&quot;M9 15.5h6&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot;/&gt;&lt;/svg&gt;`);
-const ADNN_ICON_ACCEPT = decodeAdnnIconMarkup(`&lt;svg viewBox=&quot;0 0 24 24&quot; aria-hidden=&quot;true&quot;&gt;&lt;path d=&quot;m5 13 4 4L19 7&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;2&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot;/&gt;&lt;/svg&gt;`);
-const ADNN_ICON_SPEAKER = decodeAdnnIconMarkup(`&lt;svg viewBox=&quot;0 0 24 24&quot; aria-hidden=&quot;true&quot;&gt;&lt;path d=&quot;M5 9v6h4l5 4V5L9 9H5Z&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linejoin=&quot;round&quot;/&gt;&lt;path d=&quot;M17 9.5a4 4 0 0 1 0 5&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot;/&gt;&lt;path d=&quot;M19.5 7a7.5 7.5 0 0 1 0 10&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot;/&gt;&lt;/svg&gt;`);
-const ADNN_ICON_MUTED = decodeAdnnIconMarkup(`&lt;svg viewBox=&quot;0 0 24 24&quot; aria-hidden=&quot;true&quot;&gt;&lt;path d=&quot;M5 9v6h4l5 4V5L9 9H5Z&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linejoin=&quot;round&quot;/&gt;&lt;path d=&quot;m18 9 4 4m0-4-4 4&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot;/&gt;&lt;/svg&gt;`);
-const ADNN_ICON_MIC = decodeAdnnIconMarkup(`&lt;svg viewBox=&quot;0 0 24 24&quot; aria-hidden=&quot;true&quot;&gt;&lt;path d=&quot;M12 14a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3Z&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot;/&gt;&lt;path d=&quot;M5 11a7 7 0 0 0 14 0M12 18v3&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot;/&gt;&lt;/svg&gt;`);
-const ADNN_ICON_MIC_OFF = decodeAdnnIconMarkup(`&lt;svg viewBox=&quot;0 0 24 24&quot; aria-hidden=&quot;true&quot;&gt;&lt;path d=&quot;M9 9v2a3 3 0 0 0 4.4 2.7M15 10.5V6a3 3 0 0 0-5.3-1.9&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot;/&gt;&lt;path d=&quot;M5 11a7 7 0 0 0 11.2 5.6M12 18v3M4 4l16 16&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.7&quot; stroke-linecap=&quot;round&quot;/&gt;&lt;/svg&gt;`);
-const ADNN_ICON_HOLD = decodeAdnnIconMarkup(`&lt;svg viewBox=&quot;0 0 24 24&quot; aria-hidden=&quot;true&quot;&gt;&lt;path d=&quot;M8 5v14M16 5v14&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;2.2&quot; stroke-linecap=&quot;round&quot;/&gt;&lt;/svg&gt;`);
-const ADNN_ICON_CAMERA_SWITCH = decodeAdnnIconMarkup(`&lt;svg viewBox=&quot;0 0 24 24&quot; aria-hidden=&quot;true&quot;&gt;&lt;path d=&quot;M7 7h7l2 2h1.5A2.5 2.5 0 0 1 20 11.5v5A2.5 2.5 0 0 1 17.5 19h-11A2.5 2.5 0 0 1 4 16.5v-5A2.5 2.5 0 0 1 6.5 9H7V7Z&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.6&quot; stroke-linejoin=&quot;round&quot;/&gt;&lt;path d=&quot;M9 14a3 3 0 0 0 5.2 2M15 14a3 3 0 0 0-5.2-2&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.5&quot; stroke-linecap=&quot;round&quot;/&gt;&lt;path d=&quot;m14 16 1.4.2-.2 1.4M10 12l-1.4-.2.2-1.4&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.5&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot;/&gt;&lt;/svg&gt;`);
-const ADNN_ICON_MINIMIZE = decodeAdnnIconMarkup(`&lt;svg viewBox=&quot;0 0 24 24&quot; aria-hidden=&quot;true&quot;&gt;&lt;path d=&quot;M6 18h12&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;2&quot; stroke-linecap=&quot;round&quot;/&gt;&lt;/svg&gt;`);
-const ADNN_ICON_MAXIMIZE = decodeAdnnIconMarkup(`&lt;svg viewBox=&quot;0 0 24 24&quot; aria-hidden=&quot;true&quot;&gt;&lt;path d=&quot;M8 4H4v4M16 4h4v4M4 16v4h4M20 16v4h-4&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.8&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot;/&gt;&lt;/svg&gt;`);
+const ADNN_ICON_PHONE = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.5 4.8 10 7.2c.6.6.7 1.5.2 2.2l-1 1.5a11.8 11.8 0 0 0 4.9 4.9l1.5-1c.7-.5 1.6-.4 2.2.2l2.4 2.5c.5.5.6 1.3.2 1.9-.8 1.3-2.4 2-4 1.5C9.6 18.8 5.2 14.4 3.1 7.6c-.5-1.6.2-3.2 1.5-4 .6-.4 1.4-.3 1.9.2Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+const ADNN_ICON_VIDEO = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5A2.5 2.5 0 0 1 6.5 5h7A2.5 2.5 0 0 1 16 7.5v9A2.5 2.5 0 0 1 13.5 19h-7A2.5 2.5 0 0 1 4 16.5v-9Z" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="m16 10 4-2.4v8.8L16 14v-4Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>`;
+const ADNN_ICON_END = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 14.5c3.5-3.1 7.5-3.1 11 0l1.7-1.7c.7-.7.7-1.8 0-2.5-4.5-4.2-9.9-4.2-14.4 0-.7.7-.7 1.8 0 2.5l1.7 1.7Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M9 15.5h6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>`;
+const ADNN_ICON_ACCEPT = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 13 4 4L19 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+const ADNN_ICON_SPEAKER = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9v6h4l5 4V5L9 9H5Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M17 9.5a4 4 0 0 1 0 5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M19.5 7a7.5 7.5 0 0 1 0 10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>`;
+const ADNN_ICON_MUTED = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9v6h4l5 4V5L9 9H5Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="m18 9 4 4m0-4-4 4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>`;
+const ADNN_ICON_MIC = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3Z" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>`;
+const ADNN_ICON_MIC_OFF = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 9v2a3 3 0 0 0 4.4 2.7M15 10.5V6a3 3 0 0 0-5.3-1.9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5 11a7 7 0 0 0 11.2 5.6M12 18v3M4 4l16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>`;
+const ADNN_ICON_HOLD = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14M16 5v14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>`;
+const ADNN_ICON_CAMERA_SWITCH = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7h7l2 2h1.5A2.5 2.5 0 0 1 20 11.5v5A2.5 2.5 0 0 1 17.5 19h-11A2.5 2.5 0 0 1 4 16.5v-5A2.5 2.5 0 0 1 6.5 9H7V7Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M9 14a3 3 0 0 0 5.2 2M15 14a3 3 0 0 0-5.2-2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="m14 16 1.4.2-.2 1.4M10 12l-1.4-.2.2-1.4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+const ADNN_ICON_MINIMIZE = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 18h12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`;
+const ADNN_ICON_MAXIMIZE = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4H4v4M16 4h4v4M4 16v4h4M20 16v4h-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 const CALL_MESSAGE_LIMIT = 80;
 
 let activeUser = null;
@@ -81,67 +83,7 @@ let presenceTimer = null;
 let incomingCallsUnsubscribes = [];
 let activeCallUnsubscribes = [];
 
-runWhenDomReady(async () => {
-  const firebaseReady = await loadFirebaseServices().catch((error) => {
-    console.warn("[ADNN Firebase Chat] Firebase SDK could not be loaded. Preview fallback will be shown.", error);
-    return false;
-  });
-
-  if (firebaseReady && auth && db) {
-    bootstrapFirebaseChat();
-    return;
-  }
-
-  bootstrapChatPreviewFallback();
-});
-
-function runWhenDomReady(callback) {
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", callback, { once: true });
-    return;
-  }
-  callback();
-}
-
-async function loadFirebaseServices() {
-  if (!config) return false;
-
-  const [firebaseApp, firebaseAuth, firebaseFirestore, firebaseStorage] = await Promise.all([
-    import(`${FIREBASE_SDK_BASE}/firebase-app.js`),
-    import(`${FIREBASE_SDK_BASE}/firebase-auth.js`),
-    import(`${FIREBASE_SDK_BASE}/firebase-firestore.js`),
-    import(`${FIREBASE_SDK_BASE}/firebase-storage.js`)
-  ]);
-
-  const { initializeApp, getApps } = firebaseApp;
-  onAuthStateChanged = firebaseAuth.onAuthStateChanged;
-  addDoc = firebaseFirestore.addDoc;
-  collection = firebaseFirestore.collection;
-  deleteDoc = firebaseFirestore.deleteDoc;
-  doc = firebaseFirestore.doc;
-  getDoc = firebaseFirestore.getDoc;
-  getDocs = firebaseFirestore.getDocs;
-  increment = firebaseFirestore.increment;
-  onSnapshot = firebaseFirestore.onSnapshot;
-  orderBy = firebaseFirestore.orderBy;
-  limit = firebaseFirestore.limit;
-  query = firebaseFirestore.query;
-  serverTimestamp = firebaseFirestore.serverTimestamp;
-  setDoc = firebaseFirestore.setDoc;
-  updateDoc = firebaseFirestore.updateDoc;
-  where = firebaseFirestore.where;
-  getDownloadURL = firebaseStorage.getDownloadURL;
-  storageRef = firebaseStorage.ref;
-  uploadBytes = firebaseStorage.uploadBytes;
-
-  app = getApps()[0] || initializeApp(config);
-  auth = firebaseAuth.getAuth(app);
-  db = firebaseFirestore.getFirestore(app);
-  storage = firebaseStorage.getStorage(app);
-  return true;
-}
-
-function bootstrapFirebaseChat() {
+if (auth && db) {
   installChatStyles();
   installClientChatShell();
   if (location.pathname.includes("admin.html")) {
@@ -194,47 +136,6 @@ function bootstrapFirebaseChat() {
   });
 }
 
-function bootstrapChatPreviewFallback() {
-  installChatStyles();
-  installClientChatShell();
-
-  const trigger = document.getElementById("adnnChatTrigger");
-  const drawer = document.getElementById("adnnChatDrawer");
-  const messages = document.getElementById("adnnChatMessages");
-  const form = document.getElementById("adnnChatForm");
-  const input = document.getElementById("adnnChatInput");
-  const fileInput = document.getElementById("adnnChatFile");
-
-  if (trigger) {
-    trigger.hidden = false;
-    trigger.title = "Firebase chat preview - configuration/auth is not available in this local preview";
-  }
-
-  if (drawer) {
-    drawer.classList.add("is-open");
-    drawer.setAttribute("aria-hidden", "false");
-  }
-
-  if (messages) {
-    messages.innerHTML = `
-      <div class="adnn-chat-alert">
-        <span>Preview mode</span>
-        <strong>Firebase chat shell loaded successfully.</strong>
-        <small>Live messages need firebase-config.js, Firebase Auth, and a page served over http:// or https://.</small>
-      </div>
-    `;
-  }
-
-  if (form) form.addEventListener("submit", (event) => event.preventDefault());
-  if (input) {
-    input.disabled = true;
-    input.placeholder = "Firebase login required for live chat";
-  }
-  if (fileInput) fileInput.disabled = true;
-
-  console.warn("[ADNN Firebase Chat] Preview fallback is active. Load a page with firebase-config.js and Firebase Auth for live chat.");
-}
-
 function installClientChatShell() {
   if (document.getElementById("adnnChatTrigger")) return;
 
@@ -270,7 +171,7 @@ function installClientChatShell() {
       <div class="adnn-chat-head-actions">
         <button type="button" class="adnn-chat-call" data-call-kind="audio" aria-label="Start audio call">${ADNN_ICON_PHONE}</button>
         <button type="button" class="adnn-chat-call" data-call-kind="video" aria-label="Start video call">${ADNN_ICON_VIDEO}</button>
-        <button type="button" class="adnn-chat-close" aria-label="Close chat">?</button>
+        <button type="button" class="adnn-chat-close" aria-label="Close chat">�</button>
       </div>
     </div>
     <div class="adnn-chat-messages" id="adnnChatMessages">
@@ -487,7 +388,7 @@ function installAdminChatPanel() {
       </div>
       <div class="adnn-admin-chat-room" id="adnnAdminChatRoom">
         <div class="adnn-admin-chat-title">
-          <button type="button" class="adnn-admin-chat-back" id="adnnAdminChatBack" aria-label="Back to chats">?</button>
+          <button type="button" class="adnn-admin-chat-back" id="adnnAdminChatBack" aria-label="Back to chats">�</button>
           <span class="adnn-admin-chat-avatar" id="adnnAdminChatAvatar" style="display: none;"></span>
           <span class="adnn-admin-chat-title-text">
             <strong id="adnnAdminChatTitle"></strong>
@@ -797,7 +698,7 @@ function installDirectChatPanel() {
     <div class="adnn-direct-list" id="adnnDirectChatList"></div>
     <div class="adnn-direct-room" id="adnnDirectRoom">
       <div class="adnn-direct-title">
-        <button type="button" class="adnn-direct-back" id="adnnDirectBack">?</button>
+        <button type="button" class="adnn-direct-back" id="adnnDirectBack">�</button>
         <span class="adnn-direct-avatar" id="adnnDirectAvatar" hidden></span>
         <span class="adnn-direct-title-copy"><strong id="adnnDirectTitle"></strong><small id="adnnDirectSubtitle"></small></span>
         <span class="adnn-direct-actions"><button type="button" class="adnn-chat-call" data-call-kind="audio" aria-label="Start audio call" disabled>${ADNN_ICON_PHONE}</button><button type="button" class="adnn-chat-call" data-call-kind="video" aria-label="Start video call" disabled>${ADNN_ICON_VIDEO}</button></span>
@@ -1972,7 +1873,7 @@ function updateCallStatusText() {
       const seconds = Math.max(0, Math.floor((Date.now() - (activeCallState.startedAt || Date.now())) / 1000));
       const mm = String(Math.floor(seconds / 60)).padStart(2, "0");
       const ss = String(seconds % 60).padStart(2, "0");
-      status.textContent = `${activeCallState.videoOn ? "Video" : "Audio"} call ? ${mm}:${ss}`;
+      status.textContent = `${activeCallState.videoOn ? "Video" : "Audio"} call � ${mm}:${ss}`;
     };
     tick();
     activeCallState.timer = window.setInterval(tick, 1000);
@@ -2131,8 +2032,8 @@ async function writeCallSummaryFromState(callState, reason = "Call ended") {
   const direction = callDirectionForUser(callState);
   const kind = callState.kind || (callState.videoOn ? "video" : "audio");
   const text = durationSeconds > 0
-    ? `${callIconText(kind)} ${direction === "outgoing" ? "Outgoing" : "Incoming"} ${kind} call ? ${duration} ? ${callTime}`
-    : `${callIconText(kind)} ${reason} ? ${callTime}`;
+    ? `${callIconText(kind)} ${direction === "outgoing" ? "Outgoing" : "Incoming"} ${kind} call � ${duration} � ${callTime}`
+    : `${callIconText(kind)} ${reason} � ${callTime}`;
   const messageId = callState.callId ? `call_${callState.callId}` : undefined;
   const messageData = {
     text,
@@ -2324,7 +2225,7 @@ function messageBubble(message, mine, chatId) {
   if (message.callEvent) {
     const direction = message.callerUid === ownCallUid() ? "Outgoing" : "Incoming";
     const kind = message.callKind || "audio";
-    text.textContent = `${callIconText(kind)} ${direction} ${kind} call ? ${message.callDuration || formatDuration(message.callDurationSeconds || 0)} ? ${message.callTime || relativeTime(message.createdAt)}`;
+    text.textContent = `${callIconText(kind)} ${direction} ${kind} call � ${message.callDuration || formatDuration(message.callDurationSeconds || 0)} � ${message.callTime || relativeTime(message.createdAt)}`;
   } else {
     text.textContent = message.text || "";
   }
@@ -3353,7 +3254,7 @@ function wireFilePreview(inputId, labelId) {
       preview = `<img src="${url}" alt="Selected file preview">`;
     }
 
-    label.innerHTML = `${preview}<span class="adnn-file-copy"><strong>${safeName}</strong><small>Tap ? to remove ? ${sizeMb}</small></span>`;
+    label.innerHTML = `${preview}<span class="adnn-file-copy"><strong>${safeName}</strong><small>Tap � to remove � ${sizeMb}</small></span>`;
     label.hidden = false;
     mediaButton?.classList.add("has-file");
     mediaButton?.setAttribute("title", "Remove selected file");
@@ -3425,4 +3326,3 @@ function escapeHtml(value) {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
 }
-// -->

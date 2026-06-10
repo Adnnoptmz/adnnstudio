@@ -1552,19 +1552,17 @@ function watchActiveCall(callId, isAnswerer) {
         activeCallState.remoteVideoOn = true;
         attachCallMedia();
       } else {
-        activeCallState.remoteVideoDisabledByPeer = true;
-        activeCallState.remoteVideoOn = false;
-        const remoteVideo = document.getElementById("adnnCallRemoteVideo");
-        if (remoteVideo) {
-          try { remoteVideo.pause?.(); remoteVideo.srcObject = null; remoteVideo.load?.(); } catch(e) {}
-          remoteVideo.style.display = "none";
+        const visibleTracks = getVisibleRemoteVideoTracks(activeCallState.remoteStream);
+        const recentlySeen = Date.now() - (activeCallState.remoteVideoLastUnmutedAt || 0) < 2500;
+        if (!visibleTracks.length && !recentlySeen) {
+          activeCallState.remoteVideoDisabledByPeer = true;
+          markRemoteVideoInactive(true);
+        } else if (!recentlySeen) {
+          activeCallState.remoteVideoDisabledByPeer = true;
+          const remoteVideo = document.getElementById("adnnCallRemoteVideo");
+          if (remoteVideo) { try { remoteVideo.pause?.(); remoteVideo.srcObject = null; remoteVideo.load?.(); } catch(e) {} remoteVideo.style.display = "none"; }
+          markRemoteVideoInactive(true);
         }
-        const stage = document.getElementById("adnnCallVideoStage");
-        if (stage) { stage.classList.remove("has-remote-video"); }
-        const remoteTile = document.getElementById("adnnCallRemoteTile");
-        if (remoteTile) remoteTile.classList.add("is-camera-off");
-        const remoteBlank = document.getElementById("adnnCallRemoteBlank");
-        if (remoteBlank) remoteBlank.style.display = "grid";
       }
     }
     const remoteHold = call.hold?.[getRemoteCallUid()];

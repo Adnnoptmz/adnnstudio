@@ -1552,11 +1552,14 @@ function watchActiveCall(callId, isAnswerer) {
         activeCallState.remoteVideoOn = true;
         attachCallMedia();
       } else {
-        activeCallState.remoteVideoDisabledByPeer = true;
-        activeCallState.remoteVideoOn = false;
-        const remoteVideo = document.getElementById("adnnCallRemoteVideo");
-        if (remoteVideo) clearVideoElement(remoteVideo);
-        markRemoteVideoInactive(true);
+        const visibleTracks = getVisibleRemoteVideoTracks(activeCallState.remoteStream);
+        const recentlySeen = Date.now() - (activeCallState.remoteVideoLastUnmutedAt || 0) < 2500;
+        if (!visibleTracks.length && !recentlySeen) {
+          activeCallState.remoteVideoDisabledByPeer = true;
+          const remoteVideo = document.getElementById("adnnCallRemoteVideo");
+          if (remoteVideo) { try { remoteVideo.pause?.(); remoteVideo.srcObject = null; } catch(e) {} remoteVideo.style.display = "none"; }
+          markRemoteVideoInactive(true);
+        }
       }
     }
     const remoteHold = call.hold?.[getRemoteCallUid()];
@@ -1567,7 +1570,7 @@ function watchActiveCall(callId, isAnswerer) {
       const remoteName = activeCallState.label || "User";
       if (remoteBlank) remoteBlank.textContent = remoteIsOnHold ? `${remoteName} is on hold` : "Camera off";
       const remoteVideo = document.getElementById("adnnCallRemoteVideo");
-      if (remoteIsOnHold && remoteVideo) clearVideoElement(remoteVideo);
+      if (remoteIsOnHold && remoteVideo) { try { remoteVideo.pause?.(); remoteVideo.srcObject = null; } catch(e) {} remoteVideo.style.display = "none"; }
       attachCallMedia();
     }
     await handleRemoteRenegotiateOffer(call, callRef);
@@ -1577,7 +1580,7 @@ function watchActiveCall(callId, isAnswerer) {
       endBrowserCall(false, call.status === "rejected" ? "Call rejected" : call.status === "missed" ? "Call missed" : "Call ended");
     }
   }));
-  activeCallUnsubscribes.push(onSnapshot(collection(db, "calls", callId, "isAnswerer" ? "offerCandidates" : "answerCandidates"), (snapshot) => {
+  activeCallUnsubscribes.push(onSnapshot(collection(db, "calls", callId, isAnswerer ? "offerCandidates" : "answerCandidates"), (snapshot) => {
     snapshot.docChanges().forEach((change) => {
       if (change.type === "added" && activeCallState?.pc) activeCallState.pc.addIceCandidate(new RTCIceCandidate(change.doc.data())).catch(() => {});
     });
@@ -1767,7 +1770,7 @@ function attachCallMedia() {
   const localStream = activeCallState?.stream || null;
   
   const localHasVideo = !!activeCallState?.videoOn && !activeCallState?.holdOn && getLiveVideoTracks(localStream).length > 0;
-  const remoteHasVideo = !!activeCallState?.remoteVideoOn && !activeCallState?.remoteVideoDisabledByPeer && getVisibleRemoteVideoTracks(remoteStream).length > 0;
+  const remoteHasVideo = getVisibleRemoteVideoTracks(remoteStream).length > 0 && !activeCallState?.remoteVideoDisabledByPeer;
   const videoMode = localHasVideo || remoteHasVideo;
 
   if (stage) {

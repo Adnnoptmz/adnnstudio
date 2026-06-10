@@ -1556,11 +1556,8 @@ function watchActiveCall(callId, isAnswerer) {
         const recentlySeen = Date.now() - (activeCallState.remoteVideoLastUnmutedAt || 0) < 2500;
         if (!visibleTracks.length && !recentlySeen) {
           activeCallState.remoteVideoDisabledByPeer = true;
-          markRemoteVideoInactive(true);
-        } else if (!recentlySeen) {
-          activeCallState.remoteVideoDisabledByPeer = true;
           const remoteVideo = document.getElementById("adnnCallRemoteVideo");
-          if (remoteVideo) { try { remoteVideo.pause?.(); remoteVideo.srcObject = null; remoteVideo.load?.(); } catch(e) {} remoteVideo.style.display = "none"; }
+          if (remoteVideo) { try { remoteVideo.pause?.(); remoteVideo.srcObject = null; } catch(e) {} remoteVideo.style.display = "none"; }
           markRemoteVideoInactive(true);
         }
       }
@@ -2562,217 +2559,33 @@ function installChatStyles() {
     .adnn-chat-call:hover { background:var(--adnn-accent); color:#fff; }
     .adnn-chat-bubble.is-call-event { align-self:center; max-width:min(360px, 92%); text-align:center; border:1px solid var(--adnn-line); background:rgba(255,255,255,.045); color:var(--adnn-text); border-radius:18px; }
     .adnn-chat-bubble.is-call-event p { font-family:var(--font-mono, monospace); font-size:11px; letter-spacing:.02em; color:var(--adnn-text); }
-    /* ── Call overlay – Apple-inspired, fully responsive ── */
-    .adnn-call-overlay { position:fixed; inset:0; z-index:99999; pointer-events:none; }
+    .adnn-call-overlay { position:fixed; inset:0; z-index:99999; pointer-events:none; background:transparent; padding:0; }
+    .adnn-call-card { position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); width:min(420px, calc(100vw - 28px)); max-height:calc(100dvh - 28px); overflow:hidden; border:1px solid rgba(255,255,255,.11); border-radius:30px; background:linear-gradient(145deg, rgba(25,25,32,.98), rgba(10,10,16,.96)); color:var(--adnn-text); box-shadow:0 32px 100px rgba(0,0,0,.55), 0 0 50px rgba(83,96,255,.18), inset 0 1px 0 rgba(255,255,255,.08); padding:14px; text-align:center; display:grid; gap:10px; pointer-events:auto; cursor:default; backdrop-filter:blur(22px) saturate(150%); -webkit-backdrop-filter:blur(22px) saturate(150%); }
+    .adnn-call-card.is-dragging { cursor:grabbing; user-select:none; }
+    .adnn-call-topbar { display:grid; grid-template-columns:38px 1fr 38px; align-items:center; gap:8px; }
+    .adnn-call-drag-handle { cursor:grab; color:#7f86ff; font-family:var(--font-mono, monospace); font-size:10px; letter-spacing:.16em; text-transform:uppercase; }
+    .adnn-call-window-btn { width:34px; height:34px; border:1px solid rgba(255,255,255,.1); border-radius:13px; background:rgba(255,255,255,.055); color:var(--adnn-text); display:grid; place-items:center; cursor:pointer; }
+    .adnn-call-window-btn:hover { background:rgba(83,96,255,.24); }
+    .adnn-call-window-btn svg { width:18px; height:18px; }
+    .adnn-call-avatar { width:66px; height:66px; margin:0 auto; border-radius:22px; display:grid; place-items:center; background:linear-gradient(145deg, #5360ff, #252bd8); color:#fff; font-family:var(--font-mono, monospace); font-size:20px; letter-spacing:.08em; box-shadow:0 16px 34px rgba(39,45,207,.38); }
+    .adnn-call-card strong { font-size:21px; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; letter-spacing:-.02em; }
+    .adnn-call-card small, .adnn-call-note { color:var(--adnn-muted); font-family:var(--font-mono, monospace); font-size:11px; line-height:1.5; }
+    .adnn-call-video-stage { display:none; position:relative; min-height:0; border-radius:22px; overflow:hidden; background:radial-gradient(circle at 50% 25%, rgba(83,96,255,.24), rgba(0,0,0,.94) 55%); border:1px solid rgba(255,255,255,.08); }
+    .adnn-call-video-stage.is-video-active { display:block; aspect-ratio:16/10; }
+    .adnn-call-card video { width:100%; height:100%; object-fit:cover; border-radius:0; background:#050507; }
+    #adnnCallRemoteVideo { display:none; }
+    #adnnCallVideo { display:none; }
+    .adnn-call-video-stage.has-remote-video #adnnCallRemoteVideo { display:block !important; }
+    .adnn-call-video-stage.has-local-video #adnnCallVideo { display:block !important; position:absolute; right:10px; bottom:10px; width:30%; height:auto; aspect-ratio:9/12; border-radius:16px; border:1px solid rgba(255,255,255,.18); box-shadow:0 14px 34px rgba(0,0,0,.42); }
+    .adnn-call-video-stage.has-local-video:not(.has-remote-video) #adnnCallVideo { position:static; width:100%; aspect-ratio:16/10; border:0; border-radius:0; box-shadow:none; }
 
-    .adnn-call-card {
-      position: fixed;
-      left: 50%; top: 50%;
-      transform: translate(-50%, -50%);
-      width: min(440px, calc(100vw - 24px));
-      max-height: calc(100dvh - 24px);
-      overflow: hidden;
-      display: flex; flex-direction: column; gap: 0;
-      border: 1px solid rgba(255,255,255,.10);
-      border-radius: 32px;
-      background: linear-gradient(160deg, rgba(22,22,30,.97) 0%, rgba(10,10,16,.99) 100%);
-      color: var(--adnn-text);
-      box-shadow: 0 40px 120px rgba(0,0,0,.7), 0 0 60px rgba(83,96,255,.14), inset 0 1px 0 rgba(255,255,255,.07);
-      pointer-events: auto;
-      cursor: default;
-      backdrop-filter: blur(28px) saturate(160%);
-      -webkit-backdrop-filter: blur(28px) saturate(160%);
-      transition: box-shadow .3s ease;
-    }
-    .adnn-call-card.is-dragging { cursor: grabbing; user-select: none; }
-
-    /* Minimized pip */
-    .adnn-call-card.is-minimized {
-      width: min(220px, calc(100vw - 24px));
-      border-radius: 24px;
-      top: auto; left: auto;
-      bottom: clamp(80px, 12vh, 120px);
-      right: clamp(16px, 4vw, 28px);
-      transform: none;
-    }
-    .adnn-call-card.is-minimized .adnn-call-video-stage,
-    .adnn-call-card.is-minimized .adnn-call-controls,
-    .adnn-call-card.is-minimized .adnn-call-incoming,
-    .adnn-call-card.is-minimized .adnn-call-avatar,
-    .adnn-call-card.is-minimized .adnn-call-card-meta { display: none !important; }
-
-    /* Maximized fullscreen */
-    .adnn-call-card.is-maximized {
-      width: 100vw; max-height: 100dvh;
-      left: 0; top: 0; transform: none;
-      border-radius: 0; border: 0;
-    }
-
-    /* Topbar */
-    .adnn-call-topbar {
-      display: grid; grid-template-columns: 38px 1fr 38px;
-      align-items: center; gap: 8px;
-      padding: 14px 14px 0;
-      flex-shrink: 0;
-    }
-    .adnn-call-drag-handle { cursor: grab; color: rgba(255,255,255,.28); font-family: var(--font-mono, monospace); font-size: 10px; letter-spacing: .18em; text-transform: uppercase; text-align: center; }
-    .adnn-call-card.is-dragging .adnn-call-drag-handle { cursor: grabbing; }
-    .adnn-call-window-btn { width: 34px; height: 34px; border: 1px solid rgba(255,255,255,.09); border-radius: 12px; background: rgba(255,255,255,.05); color: rgba(255,255,255,.7); display: grid; place-items: center; cursor: pointer; flex-shrink: 0; transition: background .18s ease; }
-    .adnn-call-window-btn:hover { background: rgba(83,96,255,.28); color: #fff; }
-    .adnn-call-window-btn svg { width: 17px; height: 17px; }
-
-    /* Meta block (avatar, name, status) */
-    .adnn-call-card-meta {
-      display: flex; flex-direction: column; align-items: center; gap: 8px;
-      padding: 16px 20px 12px;
-      flex-shrink: 0;
-    }
-    .adnn-call-avatar { width: 64px; height: 64px; border-radius: 20px; display: grid; place-items: center; background: linear-gradient(145deg, #5360ff, #252bd8); color: #fff; font-family: var(--font-mono, monospace); font-size: 19px; letter-spacing: .08em; box-shadow: 0 12px 32px rgba(39,45,207,.40); flex-shrink: 0; }
-    .adnn-call-card > strong { font-size: 20px; font-weight: 500; letter-spacing: -.025em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; text-align: center; padding: 0 20px; flex-shrink: 0; }
-    .adnn-call-card > small, .adnn-call-note { color: rgba(245,245,247,.52); font-family: var(--font-mono, monospace); font-size: 11px; line-height: 1.5; text-align: center; padding: 0 20px; flex-shrink: 0; }
-
-    /* Video stage */
-    .adnn-call-video-stage {
-      display: none;
-      margin: 0 12px;
-      border-radius: 22px;
-      overflow: hidden;
-      background: #000;
-      border: 1px solid rgba(255,255,255,.07);
-      flex-shrink: 0;
-      position: relative;
-    }
-    .adnn-call-video-stage.is-video-active {
-      display: grid !important;
-      grid-template-columns: 1fr 1fr;
-      gap: 6px;
-      padding: 6px;
-      background: rgba(0,0,0,.6);
-      min-height: 180px;
-    }
-    @media (max-width: 360px) {
-      .adnn-call-video-stage.is-video-active { grid-template-columns: 1fr; min-height: 140px; }
-    }
-
-    /* Tiles */
-    .adnn-call-video-tile {
-      position: relative;
-      border-radius: 16px;
-      overflow: hidden;
-      background: #000;
-      border: 1px solid rgba(255,255,255,.08);
-      min-height: 160px;
-      aspect-ratio: 3/4;
-    }
-    @media (max-width: 360px) {
-      .adnn-call-video-tile { min-height: 120px; }
-    }
-    .adnn-call-video-tile video {
-      position: absolute; inset: 0;
-      width: 100%; height: 100%;
-      object-fit: cover;
-      background: #000;
-      display: none;
-    }
-
-    /* Show video only when tile has it */
-    .adnn-call-video-tile:not(.is-camera-off) video { display: block !important; }
-    .adnn-call-video-tile.is-camera-off video { display: none !important; }
-
-    /* Black blank — always rendered, hidden when cam is on */
-    .adnn-call-video-blank {
-      position: absolute; inset: 0;
-      display: none;
-      place-items: center;
-      flex-direction: column;
-      gap: 8px;
-      background: #000;
-      color: rgba(255,255,255,.38);
-      font-family: var(--font-mono, monospace);
-      font-size: 10px;
-      letter-spacing: .12em;
-      text-transform: uppercase;
-    }
-    .adnn-call-video-tile.is-camera-off .adnn-call-video-blank { display: grid !important; }
-
-    .adnn-call-video-label {
-      position: absolute; left: 8px; right: 8px; bottom: 8px;
-      height: 24px;
-      display: flex; align-items: center;
-      padding: 0 8px;
-      border-radius: 999px;
-      background: rgba(0,0,0,.52);
-      color: rgba(255,255,255,.88);
-      font-size: 11px; font-weight: 500;
-      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-      backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-    }
-
-    /* Legacy single-stream selectors — kept as fallback, tiles take priority */
-    #adnnCallRemoteVideo { display: none; }
-    #adnnCallVideo { display: none; }
-
-    /* Controls */
-    .adnn-call-incoming, .adnn-call-controls {
-      display: flex; align-items: center; justify-content: center;
-      flex-wrap: wrap; gap: 10px;
-      padding: 14px 16px calc(14px + env(safe-area-inset-bottom, 0px));
-      flex-shrink: 0;
-    }
-    .adnn-call-control {
-      display: grid; place-items: center;
-      width: 58px; height: 58px;
-      border-radius: 50%;
-      border: 0;
-      background: rgba(255,255,255,.09);
-      color: #fff;
-      cursor: pointer;
-      gap: 0;
-      transition: background .18s ease, transform .14s ease;
-      flex-shrink: 0;
-      position: relative;
-    }
-    .adnn-call-control span {
-      position: absolute;
-      bottom: -18px;
-      left: 50%; transform: translateX(-50%);
-      font-family: var(--font-mono, monospace);
-      font-size: 9px; letter-spacing: .06em;
-      color: rgba(255,255,255,.45);
-      white-space: nowrap;
-    }
-    .adnn-call-control svg { width: 22px; height: 22px; }
-    .adnn-call-control:hover { background: rgba(255,255,255,.15); transform: scale(1.06); }
-    .adnn-call-control:active { transform: scale(.94); }
-    .adnn-call-control.is-on { background: rgba(255,255,255,.92); color: #1a1a22; }
-    .adnn-call-control.is-accept { background: #30d158; color: #fff; }
-    .adnn-call-control.is-accept:hover { background: #28c04e; }
-    .adnn-call-control.is-end { background: #ff3b30; color: #fff; }
-    .adnn-call-control.is-end:hover { background: #e02d22; }
-    .adnn-call-control.is-muted { background: rgba(255,59,48,.18); color: #ff6961; }
-
-    /* Minimized state: show just controls */
-    .adnn-call-card.is-minimized .adnn-call-topbar { padding: 10px 10px 8px; }
-    .adnn-call-card.is-minimized .adnn-call-controls { padding: 6px 10px calc(6px + env(safe-area-inset-bottom, 0px)); gap: 6px; }
-    .adnn-call-card.is-minimized .adnn-call-control { width: 44px; height: 44px; }
-    .adnn-call-card.is-minimized .adnn-call-control span { display: none; }
-    .adnn-call-card.is-minimized .adnn-call-control svg { width: 18px; height: 18px; }
-
-    /* Mobile full-screen take-over */
-    @media (max-width: 500px) {
-      .adnn-call-card:not(.is-minimized) {
-        width: 100vw;
-        max-height: 100dvh;
-        left: 0; top: 0;
-        transform: none;
-        border-radius: 0; border: 0;
-      }
-      .adnn-call-card:not(.is-minimized) .adnn-call-topbar { padding: 16px 16px 0; }
-      .adnn-call-video-stage.is-video-active { margin: 0 8px; gap: 5px; padding: 5px; }
-      .adnn-call-video-tile { min-height: 130px; }
-      .adnn-call-controls, .adnn-call-incoming { padding: 16px 12px calc(20px + env(safe-area-inset-bottom, 0px)); gap: 8px; }
-      .adnn-call-control { width: 54px; height: 54px; }
-    }
+    .adnn-call-video-stage.is-video-active { display:grid !important; grid-template-columns:1fr 1fr; gap:10px; aspect-ratio:auto; min-height:210px; }
+    .adnn-call-video-tile { position:relative; min-height:210px; overflow:hidden; border-radius:18px; border:1px solid rgba(255,255,255,.1); background:linear-gradient(145deg, rgba(12,12,18,.96), rgba(2,2,6,.98)); display:block; }
+    .adnn-call-video-tile video { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; border-radius:0; background:#050507; }
+    .adnn-call-video-blank { position:absolute; inset:0; display:grid; place-items:center; color:rgba(255,255,255,.54); font-family:var(--font-mono, monospace); font-size:11px; letter-spacing:.12em; text-transform:uppercase; background:radial-gradient(circle at 50% 20%, rgba(83,96,255,.18), rgba(0,0,0,.94) 56%); }
+    .adnn-call-video-label { position:absolute; left:10px; right:10px; bottom:10px; min-height:26px; display:flex; align-items:center; padding:0 10px; border-radius:999px; background:rgba(0,0,0,.56); color:#fff; font-size:12px; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); }
+    .adnn-call-video-stage.has-local-video #adnnCallVideo, .adnn-call-video-stage.has-remote-video #adnnCallRemoteVideo { display:block !important; position:absolute !important; inset:0 !important; width:100% !important; height:100% !important; aspect-ratio:auto !important; border:0 !important; border-radius:0 !important; box-shadow:none !important; }
+    .adnn-call-video-stage:not(.has-local-video) #adnnCallVideo, .adnn-call-video-stage:not(.has-remote-video) #adnnCallRemoteVideo { display:none !important; }
     .adnn-call-card.is-maximized .adnn-call-video-stage.is-video-active { min-height:min(52svh, 520px); }
 
     .adnn-call-card audio { display:none; }

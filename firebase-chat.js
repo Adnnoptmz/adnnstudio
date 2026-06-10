@@ -1294,7 +1294,7 @@ function getLiveVideoTracks(stream) {
 }
 
 function getVisibleRemoteVideoTracks(stream) {
-  return getLiveVideoTracks(stream).filter((track) => track.muted !== true);
+  return getLiveVideoTracks(stream).filter((track) => track.kind === "video");
 }
 
 function markRemoteVideoActive(track = null) {
@@ -1522,22 +1522,8 @@ function createPeerConnection(callId, isAnswerer) {
     attachCallMedia();
   };
   pc.onconnectionstatechange = () => {
-    if (!activeCallState || activeCallState.status !== "connected") return;
-    if (pc.connectionState === "connected") {
-      if (activeCallState.disconnectTimer) window.clearTimeout(activeCallState.disconnectTimer);
-      activeCallState.disconnectTimer = null;
-      return;
-    }
-    if (["failed", "closed"].includes(pc.connectionState)) {
+    if (["failed", "disconnected", "closed"].includes(pc.connectionState) && activeCallState?.status === "connected") {
       endBrowserCall(true, "Call disconnected");
-      return;
-    }
-    if (pc.connectionState === "disconnected" && !activeCallState.disconnectTimer) {
-      activeCallState.disconnectTimer = window.setTimeout(() => {
-        if (activeCallState?.pc === pc && activeCallState.status === "connected" && ["disconnected", "failed", "closed"].includes(pc.connectionState)) {
-          endBrowserCall(true, "Call disconnected");
-        }
-      }, 25000);
     }
   };
   return pc;
@@ -1566,6 +1552,8 @@ function watchActiveCall(callId, isAnswerer) {
         activeCallState.remoteVideoDisabledByPeer = false;
         activeCallState.remoteVideoOn = true;
         attachCallMedia();
+        window.setTimeout(attachCallMedia, 250);
+        window.setTimeout(attachCallMedia, 900);
       } else {
         activeCallState.remoteVideoDisabledByPeer = true;
         activeCallState.remoteVideoOn = false;
@@ -1783,7 +1771,7 @@ function attachCallMedia() {
   const localHasVideo = !!activeCallState?.videoOn && !activeCallState?.holdOn && getLiveVideoTracks(localStream).length > 0;
   const remoteMediaState = activeCallState?.media?.[getRemoteCallUid()];
   const remoteAllowedByPeer = remoteMediaState ? !!remoteMediaState.videoOn : !activeCallState?.remoteVideoDisabledByPeer;
-  const remoteHasVideo = remoteAllowedByPeer && getVisibleRemoteVideoTracks(remoteStream).length > 0 && !activeCallState?.remoteVideoDisabledByPeer && !activeCallState?.remoteHoldOn;
+  const remoteHasVideo = remoteAllowedByPeer && getLiveVideoTracks(remoteStream).some((track) => track.kind === "video") && !activeCallState?.remoteVideoDisabledByPeer && !activeCallState?.remoteHoldOn;
   const videoMode = localHasVideo || remoteHasVideo;
 
   if (stage) {
@@ -2087,7 +2075,6 @@ async function endBrowserCall(showNotice = true, notice = "Call ended") {
   stopCallRinger();
   if (state?.timer) window.clearInterval(state.timer);
   if (state?.ringTimeout) window.clearTimeout(state.ringTimeout);
-  if (state?.disconnectTimer) window.clearTimeout(state.disconnectTimer);
   clearActiveCallListeners();
   if (wasConnected) await writeCallSummaryFromState(state, notice);
   if (showNotice && callId) {
@@ -3032,47 +3019,6 @@ function installChatStyles() {
         min-height:42px !important;
       }
     }
-
-
-    /* Final call video override: no empty preview boxes; full-width 16:9 video tiles only when camera is on. */
-    .adnn-call-video-stage:not(.is-video-active) { display:none !important; }
-    .adnn-call-video-stage.is-video-active {
-      display:grid !important;
-      grid-template-columns:1fr !important;
-      gap:10px !important;
-      aspect-ratio:auto !important;
-      min-height:0 !important;
-      max-height:none !important;
-      background:transparent !important;
-      border:0 !important;
-    }
-    .adnn-call-video-tile {
-      width:100% !important;
-      min-height:0 !important;
-      aspect-ratio:16 / 9 !important;
-      border-radius:18px !important;
-      overflow:hidden !important;
-      background:#000 !important;
-    }
-    .adnn-call-video-stage.has-local-video.has-remote-video { grid-template-columns:1fr !important; }
-    .adnn-call-video-stage:not(.has-local-video) #adnnCallLocalTile,
-    .adnn-call-video-stage:not(.has-remote-video) #adnnCallRemoteTile { display:none !important; }
-    .adnn-call-video-stage.has-local-video #adnnCallLocalTile,
-    .adnn-call-video-stage.has-remote-video #adnnCallRemoteTile { display:block !important; }
-    .adnn-call-video-stage.has-local-video #adnnCallVideo,
-    .adnn-call-video-stage.has-remote-video #adnnCallRemoteVideo {
-      display:block !important;
-      position:absolute !important;
-      inset:0 !important;
-      width:100% !important;
-      height:100% !important;
-      object-fit:cover !important;
-      border:0 !important;
-      border-radius:0 !important;
-      box-shadow:none !important;
-    }
-    .adnn-call-video-blank { display:none !important; }
-    .adnn-call-card.is-maximized .adnn-call-video-stage.is-video-active { min-height:0 !important; max-height:none !important; }
 
     }
   `;

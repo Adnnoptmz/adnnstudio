@@ -93,17 +93,21 @@ setTimeout(() => {
   });
 }, oneDayMs).unref();
 
-let lastIndexMtime = 0;
+const watchedFiles = ["index.html", "account.html", "designer-account.html", "firebase-chat.js", "firestore.rules", "storage.rules"];
+const lastMtimes = new Map();
 setInterval(() => {
-  fs.stat(path.join(root, "index.html"), (err, stats) => {
-    if (err) return;
-    if (!lastIndexMtime) {
-      lastIndexMtime = stats.mtimeMs;
-      return;
-    }
-    if (stats.mtimeMs !== lastIndexMtime) {
-      lastIndexMtime = stats.mtimeMs;
-      sendLiveReload();
-    }
-  });
+  for (const fileName of watchedFiles) {
+    fs.stat(path.join(root, fileName), (err, stats) => {
+      if (err) return;
+      const previous = lastMtimes.get(fileName);
+      if (!previous) {
+        lastMtimes.set(fileName, stats.mtimeMs);
+        return;
+      }
+      if (stats.mtimeMs !== previous) {
+        lastMtimes.set(fileName, stats.mtimeMs);
+        sendLiveReload();
+      }
+    });
+  }
 }, 500);

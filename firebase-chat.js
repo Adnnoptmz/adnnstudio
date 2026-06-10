@@ -1,3 +1,4 @@
+<!--
 const FIREBASE_SDK_VERSION = "10.8.0";
 const FIREBASE_SDK_BASE = `https://www.gstatic.com/firebasejs/${FIREBASE_SDK_VERSION}`;
 
@@ -3424,3 +3425,4 @@ function escapeHtml(value) {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
 }
+// -->

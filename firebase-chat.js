@@ -1293,43 +1293,6 @@ function getLiveVideoTracks(stream) {
   return (stream?.getVideoTracks?.() || []).filter((track) => track.readyState !== "ended");
 }
 
-function getCallBlackVideoTrack() {
-  if (!activeCallState) return null;
-  const existing = activeCallState.blackVideoTrack;
-  if (existing && existing.readyState !== "ended") return existing;
-  try {
-    const canvas = document.createElement("canvas");
-    canvas.width = 16;
-    canvas.height = 9;
-    const ctx = canvas.getContext("2d");
-    ctx.fillStyle = "#000";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    const paintBlackFrame = () => {
-      try { ctx.fillStyle = "#000"; ctx.fillRect(0, 0, canvas.width, canvas.height); } catch (error) {}
-    };
-    paintBlackFrame();
-    const blackStream = canvas.captureStream(1);
-    const blackTrack = blackStream.getVideoTracks()[0] || null;
-    if (blackTrack) {
-      activeCallState.blackVideoCanvas = canvas;
-      activeCallState.blackVideoTimer = window.setInterval(paintBlackFrame, 1000);
-      activeCallState.blackVideoTrack = blackTrack;
-    }
-    return blackTrack;
-  } catch (error) {
-    return null;
-  }
-}
-
-function stopCallBlackVideoTrack(state = activeCallState) {
-  if (!state) return;
-  if (state.blackVideoTimer) window.clearInterval(state.blackVideoTimer);
-  state.blackVideoTimer = null;
-  try { state.blackVideoTrack?.stop?.(); } catch (error) {}
-  state.blackVideoTrack = null;
-  state.blackVideoCanvas = null;
-}
-
 function getVisibleRemoteVideoTracks(stream) {
   return getLiveVideoTracks(stream).filter((track) => track.muted !== true);
 }
@@ -1592,20 +1555,22 @@ function watchActiveCall(callId, isAnswerer) {
         activeCallState.remoteVideoDisabledByPeer = true;
         activeCallState.remoteVideoOn = false;
         const remoteVideo = document.getElementById("adnnCallRemoteVideo");
-        clearVideoElement(remoteVideo);
-        if (remoteVideo) remoteVideo.style.display = "none";
-        markRemoteVideoInactive(true);
+        if (remoteVideo) {
+          clearVideoElement(remoteVideo);
+          remoteVideo.style.display = "none";
+        }
+        attachCallMedia();
       }
     }
     const remoteHold = call.hold?.[getRemoteCallUid()];
     const remoteIsOnHold = !!(remoteHold?.on);
     if (activeCallState.remoteHoldOn !== remoteIsOnHold) {
       activeCallState.remoteHoldOn = remoteIsOnHold;
-      const remoteBlank = document.getElementById("adnnCallRemoteBlank");
-      const remoteName = activeCallState.label || "User";
-      if (remoteBlank) remoteBlank.textContent = remoteIsOnHold ? `${remoteName} is on hold` : "Camera off";
       const remoteVideo = document.getElementById("adnnCallRemoteVideo");
-      if (remoteIsOnHold && remoteVideo) { try { remoteVideo.pause?.(); remoteVideo.srcObject = null; } catch(e) {} remoteVideo.style.display = "none"; }
+      if (remoteIsOnHold && remoteVideo) {
+        clearVideoElement(remoteVideo);
+        remoteVideo.style.display = "none";
+      }
       attachCallMedia();
     }
     await handleRemoteRenegotiateOffer(call, callRef);
@@ -1776,10 +1741,7 @@ function renderCallOverlay() {
   if (speaker) speaker.classList.toggle("is-muted", !activeCallState.speakerOn);
   if (videoToggle) videoToggle.classList.toggle("is-on", activeCallState.videoOn);
   if (mute) { mute.classList.toggle("is-on", activeCallState.micMuted); mute.innerHTML = `${activeCallState.micMuted ? ADNN_ICON_MIC_OFF : ADNN_ICON_MIC}<span>${activeCallState.micMuted ? "Muted" : "Mute"}</span>`; }
-  if (hold) {
-    hold.classList.toggle("is-on", activeCallState.holdOn);
-    hold.innerHTML = `${ADNN_ICON_HOLD}<span>${activeCallState.holdOn ? "Resume" : "Hold"}</span>`;
-  }
+  if (hold) hold.classList.toggle("is-on", activeCallState.holdOn);
   if (camera) camera.style.display = activeCallState.videoOn ? "grid" : "none";
   if (card) { card.classList.toggle("is-minimized", !!activeCallState.minimized); card.classList.toggle("is-maximized", !!activeCallState.maximized); }
   if (incomingControls) incomingControls.style.display = activeCallState.mode === "incoming" ? "flex" : "none";
@@ -1793,6 +1755,15 @@ function clearVideoElement(video) {
   try { video.srcObject = null; } catch (error) {}
   try { video.removeAttribute("src"); } catch (error) {}
   try { video.load?.(); } catch (error) {}
+}
+
+function callDisplayName(value, fallback = "User") {
+  return String(value || fallback).trim() || fallback;
+}
+
+function setCallBlankText(element, text) {
+  if (!element) return;
+  element.textContent = text;
 }
 
 function attachCallMedia() {
@@ -1809,19 +1780,27 @@ function attachCallMedia() {
   const localIsOnHold = !!activeCallState?.holdOn;
   const remoteIsOnHold = !!activeCallState?.remoteHoldOn;
   const localHasVideo = !!activeCallState?.videoOn && !localIsOnHold && getLiveVideoTracks(localStream).length > 0;
-  const remoteHasVideo = getVisibleRemoteVideoTracks(remoteStream).length > 0 && !activeCallState?.remoteVideoDisabledByPeer && !remoteIsOnHold;
-  const videoMode = localHasVideo || remoteHasVideo || activeCallState?.kind === "video";
+  const remoteHasVideo = !remoteIsOnHold && getVisibleRemoteVideoTracks(remoteStream).length > 0 && !activeCallState?.remoteVideoDisabledByPeer;
+  const videoMode = localHasVideo || remoteHasVideo || activeCallState?.kind === "video" || localIsOnHold || remoteIsOnHold;
+  const localHoldLabel = "You are on hold";
+  const remoteHoldLabel = `${callDisplayName(activeCallState?.label, "User")} is on hold`;
 
-  if (localBlank) localBlank.textContent = localIsOnHold ? "You are on hold" : "Camera off";
-  if (remoteBlank) remoteBlank.textContent = remoteIsOnHold ? `${activeCallState?.label || "User"} is on hold` : "Camera off";
+  setCallBlankText(localBlank, localIsOnHold ? localHoldLabel : "Camera off");
+  setCallBlankText(remoteBlank, remoteIsOnHold ? remoteHoldLabel : "Camera off");
 
   if (stage) {
     stage.classList.toggle("is-video-active", !!videoMode);
     stage.classList.toggle("has-local-video", !!localHasVideo);
     stage.classList.toggle("has-remote-video", !!remoteHasVideo);
   }
-  if (localTile) localTile.classList.toggle("is-camera-off", !localHasVideo);
-  if (remoteTile) remoteTile.classList.toggle("is-camera-off", !remoteHasVideo);
+  if (localTile) {
+    localTile.classList.toggle("is-camera-off", !localHasVideo);
+    localTile.classList.toggle("is-on-hold", localIsOnHold);
+  }
+  if (remoteTile) {
+    remoteTile.classList.toggle("is-camera-off", !remoteHasVideo);
+    remoteTile.classList.toggle("is-on-hold", remoteIsOnHold);
+  }
   if (localBlank) localBlank.style.display = localHasVideo ? "none" : "grid";
   if (remoteBlank) remoteBlank.style.display = remoteHasVideo ? "none" : "grid";
 
@@ -1873,9 +1852,18 @@ function applyLocalVideoState() {
     if (sender && realTrack && sender.track?.id !== realTrack.id) sender.replaceTrack(realTrack).catch(() => {});
   } else {
     activeCallState.stream.getVideoTracks().forEach((track) => { track.enabled = false; });
-    const blackTrack = getCallBlackVideoTrack();
-    const sender = getVideoSender(activeCallState.pc);
-    if (sender && blackTrack) sender.replaceTrack(blackTrack).catch(() => {});
+    try {
+      const canvas = document.createElement("canvas");
+      canvas.width = 2; canvas.height = 2;
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = "#000"; ctx.fillRect(0, 0, 2, 2);
+      const blackStream = canvas.captureStream(1);
+      const blackTrack = blackStream.getVideoTracks()[0];
+      if (blackTrack) {
+        const sender = getVideoSender(activeCallState.pc);
+        if (sender) sender.replaceTrack(blackTrack).catch(() => {});
+      }
+    } catch(e) {}
   }
 }
 
@@ -1907,9 +1895,7 @@ function updateCallStatusText() {
       const seconds = Math.max(0, Math.floor((Date.now() - (activeCallState.startedAt || Date.now())) / 1000));
       const mm = String(Math.floor(seconds / 60)).padStart(2, "0");
       const ss = String(seconds % 60).padStart(2, "0");
-      if (activeCallState.holdOn) status.textContent = `You are on hold • ${mm}:${ss}`;
-      else if (activeCallState.remoteHoldOn) status.textContent = `${activeCallState.label || "User"} is on hold • ${mm}:${ss}`;
-      else status.textContent = `${activeCallState.videoOn ? "Video" : "Audio"} call • ${mm}:${ss}`;
+      status.textContent = `${activeCallState.videoOn ? "Video" : "Audio"} call ? ${mm}:${ss}`;
     };
     tick();
     activeCallState.timer = window.setInterval(tick, 1000);
@@ -2003,8 +1989,7 @@ async function convertCallToVideo() {
       activeCallState.stream.removeTrack(track);
     });
     const sender = activeCallState.pc.getSenders?.().find((item) => item.track?.kind === "video") || getVideoSender(activeCallState.pc);
-    const blackTrack = getCallBlackVideoTrack();
-    await sender?.replaceTrack?.(blackTrack || null).catch(() => {});
+    await sender?.replaceTrack?.(null).catch(() => {});
     setVideoTransceiverDirection(activeCallState.pc, "sendrecv");
     activeCallState.videoOn = false;
     await announceCallMediaUpdate(false);
@@ -2115,7 +2100,6 @@ async function endBrowserCall(showNotice = true, notice = "Call ended") {
   }
   state?.pc?.close?.();
   state?.stream?.getTracks?.().forEach((track) => track.stop());
-  stopCallBlackVideoTrack(state);
   activeCallState = null;
   const overlay = document.getElementById("adnnCallOverlay");
   if (overlay) overlay.remove();
@@ -2618,9 +2602,10 @@ function installChatStyles() {
     .adnn-call-video-stage.has-local-video:not(.has-remote-video) #adnnCallVideo { position:static; width:100%; aspect-ratio:16/10; border:0; border-radius:0; box-shadow:none; }
 
     .adnn-call-video-stage.is-video-active { display:grid !important; grid-template-columns:1fr 1fr; gap:10px; aspect-ratio:auto; min-height:210px; }
-    .adnn-call-video-tile { position:relative; min-height:210px; overflow:hidden; border-radius:18px; border:1px solid rgba(255,255,255,.1); background:linear-gradient(145deg, rgba(12,12,18,.96), rgba(2,2,6,.98)); display:block; }
+    .adnn-call-video-tile { position:relative; min-height:210px; overflow:hidden; border-radius:18px; border:1px solid rgba(255,255,255,.1); background:#000; display:block; }
     .adnn-call-video-tile video { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; border-radius:0; background:#050507; }
-    .adnn-call-video-blank { position:absolute; inset:0; display:grid; place-items:center; color:rgba(255,255,255,.72); font-family:var(--font-mono, monospace); font-size:11px; letter-spacing:.12em; text-transform:uppercase; background:#000; text-align:center; padding:14px; }
+    .adnn-call-video-blank { position:absolute; inset:0; display:grid; place-items:center; color:rgba(255,255,255,.68); font-family:var(--font-mono, monospace); font-size:11px; letter-spacing:.12em; text-transform:uppercase; text-align:center; padding:16px; background:#000; }
+    .adnn-call-video-tile.is-on-hold .adnn-call-video-blank { color:rgba(255,255,255,.86); }
     .adnn-call-video-label { position:absolute; left:10px; right:10px; bottom:10px; min-height:26px; display:flex; align-items:center; padding:0 10px; border-radius:999px; background:rgba(0,0,0,.56); color:#fff; font-size:12px; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); }
     .adnn-call-video-stage.has-local-video #adnnCallVideo, .adnn-call-video-stage.has-remote-video #adnnCallRemoteVideo { display:block !important; position:absolute !important; inset:0 !important; width:100% !important; height:100% !important; aspect-ratio:auto !important; border:0 !important; border-radius:0 !important; box-shadow:none !important; }
     .adnn-call-video-stage:not(.has-local-video) #adnnCallVideo, .adnn-call-video-stage:not(.has-remote-video) #adnnCallRemoteVideo { display:none !important; }

@@ -1294,7 +1294,10 @@ function getLiveVideoTracks(stream) {
 }
 
 function getVisibleRemoteVideoTracks(stream) {
-  return getLiveVideoTracks(stream).filter((track) => track.kind === "video");
+  // Do not block the remote tile on track.muted.
+  // In WebRTC, a remote video track can stay muted until it is attached to a video element and playback starts.
+  // If we hide the tile until muted becomes false, the remote camera never appears and users only see their own preview.
+  return getLiveVideoTracks(stream);
 }
 
 function markRemoteVideoActive(track = null) {
@@ -1522,8 +1525,23 @@ function createPeerConnection(callId, isAnswerer) {
     attachCallMedia();
   };
   pc.onconnectionstatechange = () => {
-    if (["failed", "disconnected", "closed"].includes(pc.connectionState) && activeCallState?.status === "connected") {
+    if (!activeCallState || activeCallState.status !== "connected") return;
+    if (pc.connectionState === "connected") {
+      if (activeCallState.disconnectTimer) window.clearTimeout(activeCallState.disconnectTimer);
+      activeCallState.disconnectTimer = null;
+      return;
+    }
+    if (pc.connectionState === "failed" || pc.connectionState === "closed") {
       endBrowserCall(true, "Call disconnected");
+      return;
+    }
+    if (pc.connectionState === "disconnected") {
+      if (activeCallState.disconnectTimer) window.clearTimeout(activeCallState.disconnectTimer);
+      activeCallState.disconnectTimer = window.setTimeout(() => {
+        if (activeCallState?.pc === pc && activeCallState.status === "connected" && pc.connectionState === "disconnected") {
+          endBrowserCall(true, "Call disconnected");
+        }
+      }, 12000);
     }
   };
   return pc;
@@ -1545,15 +1563,13 @@ function watchActiveCall(callId, isAnswerer) {
       stopCallRinger();
       renderCallOverlay();
     }
+    if (call.media) activeCallState.media = call.media || activeCallState.media || {};
     const remoteMedia = call.media?.[getRemoteCallUid()];
     if (remoteMedia) {
-      activeCallState.media = call.media || activeCallState.media || {};
       if (remoteMedia.videoOn) {
         activeCallState.remoteVideoDisabledByPeer = false;
         activeCallState.remoteVideoOn = true;
         attachCallMedia();
-        window.setTimeout(attachCallMedia, 250);
-        window.setTimeout(attachCallMedia, 900);
       } else {
         activeCallState.remoteVideoDisabledByPeer = true;
         activeCallState.remoteVideoOn = false;
@@ -1771,7 +1787,7 @@ function attachCallMedia() {
   const localHasVideo = !!activeCallState?.videoOn && !activeCallState?.holdOn && getLiveVideoTracks(localStream).length > 0;
   const remoteMediaState = activeCallState?.media?.[getRemoteCallUid()];
   const remoteAllowedByPeer = remoteMediaState ? !!remoteMediaState.videoOn : !activeCallState?.remoteVideoDisabledByPeer;
-  const remoteHasVideo = remoteAllowedByPeer && getLiveVideoTracks(remoteStream).some((track) => track.kind === "video") && !activeCallState?.remoteVideoDisabledByPeer && !activeCallState?.remoteHoldOn;
+  const remoteHasVideo = remoteAllowedByPeer && getVisibleRemoteVideoTracks(remoteStream).length > 0 && !activeCallState?.remoteVideoDisabledByPeer && !activeCallState?.remoteHoldOn;
   const videoMode = localHasVideo || remoteHasVideo;
 
   if (stage) {
@@ -2075,6 +2091,7 @@ async function endBrowserCall(showNotice = true, notice = "Call ended") {
   stopCallRinger();
   if (state?.timer) window.clearInterval(state.timer);
   if (state?.ringTimeout) window.clearTimeout(state.ringTimeout);
+  if (state?.disconnectTimer) window.clearTimeout(state.disconnectTimer);
   clearActiveCallListeners();
   if (wasConnected) await writeCallSummaryFromState(state, notice);
   if (showNotice && callId) {
@@ -3192,6 +3209,18 @@ function installChatStyles() {
         max-height:calc(var(--adnn-chat-vh, 100dvh) - 58px) !important;
       }
     }
+
+    /* Final call video layout override: no empty boxes, remote video must be full, both videos stack cleanly. */
+    .adnn-call-video-stage.is-video-active { display:grid !important; grid-template-columns:1fr !important; gap:10px !important; aspect-ratio:auto !important; min-height:0 !important; }
+    .adnn-call-video-tile { position:relative !important; width:100% !important; min-height:clamp(190px, 34svh, 320px) !important; overflow:hidden !important; border-radius:18px !important; }
+    .adnn-call-video-tile video { position:absolute !important; inset:0 !important; width:100% !important; height:100% !important; object-fit:cover !important; border:0 !important; border-radius:0 !important; box-shadow:none !important; }
+    .adnn-call-video-stage:not(.has-local-video) #adnnCallLocalTile,
+    .adnn-call-video-stage:not(.has-remote-video) #adnnCallRemoteTile { display:none !important; }
+    .adnn-call-video-stage.has-local-video #adnnCallLocalTile,
+    .adnn-call-video-stage.has-remote-video #adnnCallRemoteTile { display:block !important; }
+    .adnn-call-video-stage.has-local-video #adnnCallVideo,
+    .adnn-call-video-stage.has-remote-video #adnnCallRemoteVideo { display:block !important; }
+
   `;
   document.head.appendChild(mobileComposerMarkupFix);
 

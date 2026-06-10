@@ -171,7 +171,7 @@ function installClientChatShell() {
       <div class="adnn-chat-head-actions">
         <button type="button" class="adnn-chat-call" data-call-kind="audio" aria-label="Start audio call">${ADNN_ICON_PHONE}</button>
         <button type="button" class="adnn-chat-call" data-call-kind="video" aria-label="Start video call">${ADNN_ICON_VIDEO}</button>
-        <button type="button" class="adnn-chat-close" aria-label="Close chat">�</button>
+        <button type="button" class="adnn-chat-close" aria-label="Close chat">?</button>
       </div>
     </div>
     <div class="adnn-chat-messages" id="adnnChatMessages">
@@ -388,7 +388,7 @@ function installAdminChatPanel() {
       </div>
       <div class="adnn-admin-chat-room" id="adnnAdminChatRoom">
         <div class="adnn-admin-chat-title">
-          <button type="button" class="adnn-admin-chat-back" id="adnnAdminChatBack" aria-label="Back to chats">�</button>
+          <button type="button" class="adnn-admin-chat-back" id="adnnAdminChatBack" aria-label="Back to chats">?</button>
           <span class="adnn-admin-chat-avatar" id="adnnAdminChatAvatar" style="display: none;"></span>
           <span class="adnn-admin-chat-title-text">
             <strong id="adnnAdminChatTitle"></strong>
@@ -698,7 +698,7 @@ function installDirectChatPanel() {
     <div class="adnn-direct-list" id="adnnDirectChatList"></div>
     <div class="adnn-direct-room" id="adnnDirectRoom">
       <div class="adnn-direct-title">
-        <button type="button" class="adnn-direct-back" id="adnnDirectBack">�</button>
+        <button type="button" class="adnn-direct-back" id="adnnDirectBack">?</button>
         <span class="adnn-direct-avatar" id="adnnDirectAvatar" hidden></span>
         <span class="adnn-direct-title-copy"><strong id="adnnDirectTitle"></strong><small id="adnnDirectSubtitle"></small></span>
         <span class="adnn-direct-actions"><button type="button" class="adnn-chat-call" data-call-kind="audio" aria-label="Start audio call" disabled>${ADNN_ICON_PHONE}</button><button type="button" class="adnn-chat-call" data-call-kind="video" aria-label="Start video call" disabled>${ADNN_ICON_VIDEO}</button></span>
@@ -1547,19 +1547,17 @@ function watchActiveCall(callId, isAnswerer) {
     }
     const remoteMedia = call.media?.[getRemoteCallUid()];
     if (remoteMedia) {
+      activeCallState.media = call.media || activeCallState.media || {};
       if (remoteMedia.videoOn) {
         activeCallState.remoteVideoDisabledByPeer = false;
         activeCallState.remoteVideoOn = true;
         attachCallMedia();
       } else {
-        const visibleTracks = getVisibleRemoteVideoTracks(activeCallState.remoteStream);
-        const recentlySeen = Date.now() - (activeCallState.remoteVideoLastUnmutedAt || 0) < 2500;
-        if (!visibleTracks.length && !recentlySeen) {
-          activeCallState.remoteVideoDisabledByPeer = true;
-          const remoteVideo = document.getElementById("adnnCallRemoteVideo");
-          if (remoteVideo) { try { remoteVideo.pause?.(); remoteVideo.srcObject = null; } catch(e) {} remoteVideo.style.display = "none"; }
-          markRemoteVideoInactive(true);
-        }
+        activeCallState.remoteVideoDisabledByPeer = true;
+        activeCallState.remoteVideoOn = false;
+        const remoteVideo = document.getElementById("adnnCallRemoteVideo");
+        if (remoteVideo) { try { remoteVideo.pause?.(); remoteVideo.srcObject = null; } catch(e) {} remoteVideo.style.display = "none"; }
+        markRemoteVideoInactive(true);
       }
     }
     const remoteHold = call.hold?.[getRemoteCallUid()];
@@ -1769,18 +1767,26 @@ function attachCallMedia() {
   const remoteStream = activeCallState?.remoteStream || null;
   const localStream = activeCallState?.stream || null;
   const localHasVideo = !!activeCallState?.videoOn && !activeCallState?.holdOn && getLiveVideoTracks(localStream).length > 0;
-  const remoteHasVideo = getVisibleRemoteVideoTracks(remoteStream).length > 0 && !activeCallState?.remoteVideoDisabledByPeer;
-  const videoMode = localHasVideo || remoteHasVideo || activeCallState?.kind === "video";
+  const remoteMediaState = activeCallState?.media?.[getRemoteCallUid()];
+  const remoteAllowedByPeer = remoteMediaState ? !!remoteMediaState.videoOn : !activeCallState?.remoteVideoDisabledByPeer;
+  const remoteHasVideo = remoteAllowedByPeer && getVisibleRemoteVideoTracks(remoteStream).length > 0 && !activeCallState?.remoteVideoDisabledByPeer && !activeCallState?.remoteHoldOn;
+  const videoMode = localHasVideo || remoteHasVideo;
 
   if (stage) {
     stage.classList.toggle("is-video-active", !!videoMode);
     stage.classList.toggle("has-local-video", !!localHasVideo);
     stage.classList.toggle("has-remote-video", !!remoteHasVideo);
   }
-  if (localTile) localTile.classList.toggle("is-camera-off", !localHasVideo);
-  if (remoteTile) remoteTile.classList.toggle("is-camera-off", !remoteHasVideo);
-  if (localBlank) localBlank.style.display = localHasVideo ? "none" : "grid";
-  if (remoteBlank) remoteBlank.style.display = remoteHasVideo ? "none" : "grid";
+  if (localTile) {
+    localTile.classList.toggle("is-camera-off", !localHasVideo);
+    localTile.style.display = localHasVideo ? "block" : "none";
+  }
+  if (remoteTile) {
+    remoteTile.classList.toggle("is-camera-off", !remoteHasVideo);
+    remoteTile.style.display = remoteHasVideo ? "block" : "none";
+  }
+  if (localBlank) localBlank.style.display = "none";
+  if (remoteBlank) remoteBlank.style.display = "none";
 
   if (localVideo) {
     if (localHasVideo) {
@@ -1873,7 +1879,7 @@ function updateCallStatusText() {
       const seconds = Math.max(0, Math.floor((Date.now() - (activeCallState.startedAt || Date.now())) / 1000));
       const mm = String(Math.floor(seconds / 60)).padStart(2, "0");
       const ss = String(seconds % 60).padStart(2, "0");
-      status.textContent = `${activeCallState.videoOn ? "Video" : "Audio"} call � ${mm}:${ss}`;
+      status.textContent = `${activeCallState.videoOn ? "Video" : "Audio"} call ? ${mm}:${ss}`;
     };
     tick();
     activeCallState.timer = window.setInterval(tick, 1000);
@@ -2032,8 +2038,8 @@ async function writeCallSummaryFromState(callState, reason = "Call ended") {
   const direction = callDirectionForUser(callState);
   const kind = callState.kind || (callState.videoOn ? "video" : "audio");
   const text = durationSeconds > 0
-    ? `${callIconText(kind)} ${direction === "outgoing" ? "Outgoing" : "Incoming"} ${kind} call � ${duration} � ${callTime}`
-    : `${callIconText(kind)} ${reason} � ${callTime}`;
+    ? `${callIconText(kind)} ${direction === "outgoing" ? "Outgoing" : "Incoming"} ${kind} call ? ${duration} ? ${callTime}`
+    : `${callIconText(kind)} ${reason} ? ${callTime}`;
   const messageId = callState.callId ? `call_${callState.callId}` : undefined;
   const messageData = {
     text,
@@ -2225,7 +2231,7 @@ function messageBubble(message, mine, chatId) {
   if (message.callEvent) {
     const direction = message.callerUid === ownCallUid() ? "Outgoing" : "Incoming";
     const kind = message.callKind || "audio";
-    text.textContent = `${callIconText(kind)} ${direction} ${kind} call � ${message.callDuration || formatDuration(message.callDurationSeconds || 0)} � ${message.callTime || relativeTime(message.createdAt)}`;
+    text.textContent = `${callIconText(kind)} ${direction} ${kind} call ? ${message.callDuration || formatDuration(message.callDurationSeconds || 0)} ? ${message.callTime || relativeTime(message.createdAt)}`;
   } else {
     text.textContent = message.text || "";
   }
@@ -2585,7 +2591,9 @@ function installChatStyles() {
     .adnn-call-video-blank { position:absolute; inset:0; display:grid; place-items:center; color:rgba(255,255,255,.54); font-family:var(--font-mono, monospace); font-size:11px; letter-spacing:.12em; text-transform:uppercase; background:radial-gradient(circle at 50% 20%, rgba(83,96,255,.18), rgba(0,0,0,.94) 56%); }
     .adnn-call-video-label { position:absolute; left:10px; right:10px; bottom:10px; min-height:26px; display:flex; align-items:center; padding:0 10px; border-radius:999px; background:rgba(0,0,0,.56); color:#fff; font-size:12px; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); }
     .adnn-call-video-stage.has-local-video #adnnCallVideo, .adnn-call-video-stage.has-remote-video #adnnCallRemoteVideo { display:block !important; position:absolute !important; inset:0 !important; width:100% !important; height:100% !important; aspect-ratio:auto !important; border:0 !important; border-radius:0 !important; box-shadow:none !important; }
+    .adnn-call-video-stage:not(.has-local-video) #adnnCallLocalTile, .adnn-call-video-stage:not(.has-remote-video) #adnnCallRemoteTile { display:none !important; }
     .adnn-call-video-stage:not(.has-local-video) #adnnCallVideo, .adnn-call-video-stage:not(.has-remote-video) #adnnCallRemoteVideo { display:none !important; }
+    .adnn-call-video-stage.has-local-video:not(.has-remote-video), .adnn-call-video-stage.has-remote-video:not(.has-local-video) { grid-template-columns:1fr !important; }
     .adnn-call-card.is-maximized .adnn-call-video-stage.is-video-active { min-height:min(52svh, 520px); }
 
     .adnn-call-card audio { display:none; }
@@ -3254,7 +3262,7 @@ function wireFilePreview(inputId, labelId) {
       preview = `<img src="${url}" alt="Selected file preview">`;
     }
 
-    label.innerHTML = `${preview}<span class="adnn-file-copy"><strong>${safeName}</strong><small>Tap � to remove � ${sizeMb}</small></span>`;
+    label.innerHTML = `${preview}<span class="adnn-file-copy"><strong>${safeName}</strong><small>Tap ? to remove ? ${sizeMb}</small></span>`;
     label.hidden = false;
     mediaButton?.classList.add("has-file");
     mediaButton?.setAttribute("title", "Remove selected file");

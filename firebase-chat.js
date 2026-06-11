@@ -281,34 +281,16 @@ function openRoom(chatId, chatData, roomId) {
 function ensureRoomChrome(state) {
   const shell = roomShell(state);
   if (!shell) return;
-  let dock = shell.querySelector("[data-call-dock]");
-  if (!dock) {
-    const head = shell.querySelector(".adnn-room-head");
-    if (head) {
-      head.insertAdjacentHTML("afterend", `<div class="adnn-call-dock" data-call-dock></div>`);
-      dock = shell.querySelector("[data-call-dock]");
-    }
-  }
-  if (dock) {
-    if (!dock.querySelector('[data-call="audio"]')) {
-      dock.insertAdjacentHTML("beforeend", `<button type="button" class="adnn-call-btn" data-call="audio" title="Audio call" aria-label="Audio call">${ICON.phone}</button>`);
-    }
-    if (!dock.querySelector('[data-call="video"]')) {
-      dock.insertAdjacentHTML("beforeend", `<button type="button" class="adnn-call-btn" data-call="video" title="Video call" aria-label="Video call">${ICON.video}</button>`);
-    }
-    dock.querySelectorAll("[data-call]").forEach((btn) => {
-      btn.removeAttribute("hidden");
-      btn.hidden = false;
-      btn.style.setProperty("display", "grid", "important");
-      btn.style.setProperty("visibility", "visible", "important");
-      btn.style.setProperty("opacity", "1", "important");
-      btn.style.setProperty("pointer-events", "auto", "important");
-    });
-    dock.style.setProperty("display", "flex", "important");
-    dock.style.setProperty("visibility", "visible", "important");
-    dock.style.setProperty("opacity", "1", "important");
-    dock.style.setProperty("pointer-events", "auto", "important");
-  }
+  const dock = shell.querySelector("[data-call-dock]");
+  if (!dock) return;
+  dock.querySelectorAll("[data-call]").forEach((btn) => {
+    btn.hidden = false;
+    btn.removeAttribute("hidden");
+    btn.style.setProperty("display", "grid", "important");
+    btn.style.setProperty("visibility", "visible", "important");
+    btn.style.setProperty("opacity", "1", "important");
+    btn.style.setProperty("pointer-events", "auto", "important");
+  });
 }
 
 function roomMarkup(roomId) {
@@ -322,9 +304,9 @@ function roomMarkup(roomId) {
           <small data-chat-presence>Checking status...</small>
         </div>
       </div>
-      <div class="adnn-call-dock" data-call-dock style="display: flex !important; visibility: visible !important; opacity: 1 !important;">
-        <button type="button" class="adnn-call-btn" data-call="audio" title="Audio call" aria-label="Audio call" style="display: grid !important; visibility: visible !important; opacity: 1 !important;">${ICON.phone}</button>
-        <button type="button" class="adnn-call-btn" data-call="video" title="Video call" aria-label="Video call" style="display: grid !important; visibility: visible !important; opacity: 1 !important;">${ICON.video}</button>
+      <div class="adnn-call-dock" data-call-dock>
+        <button type="button" class="adnn-call-btn" data-call="audio" title="Audio call" aria-label="Audio call">${ICON.phone}</button>
+        <button type="button" class="adnn-call-btn" data-call="video" title="Video call" aria-label="Video call">${ICON.video}</button>
       </div>
       <main class="adnn-message-scroll" data-message-scroll>
         <div class="adnn-chat-empty">Loading messages...</div>
@@ -354,6 +336,7 @@ function roomMarkup(roomId) {
 
 function bindRoomControls(state) {
   const shell = roomShell(state);
+  if (!shell) return;
   const text = shell.querySelector("[data-text]");
   const form = shell.querySelector("[data-composer]");
   const fileInput = shell.querySelector("[data-file-input]");
@@ -410,6 +393,7 @@ function watchRoomMeta(state) {
     state.chatData = { id: state.chatId, ...snapshot.data() };
     const title = getChatTitle(state.chatData, isAdminEmail(activeUser.email) ? "admin" : "user");
     const shell = roomShell(state);
+    if (!shell) return;
     const avatar = shell.querySelector("[data-chat-avatar]");
     const titleNode = shell.querySelector("[data-chat-title]");
     if (avatar) avatar.textContent = initials(title);
@@ -421,7 +405,9 @@ function watchRoomMeta(state) {
 
 function watchPresence(state) {
   const uid = getRemoteUid(state.chatData);
-  const status = roomShell(state).querySelector("[data-chat-presence]");
+  const shell = roomShell(state);
+  if (!shell) return;
+  const status = shell.querySelector("[data-chat-presence]");
   state.presenceUnsub?.();
   if (!uid || !status) {
     if (status) status.textContent = "Available";
@@ -442,8 +428,10 @@ function watchTyping(state) {
     const typing = snapshot.docs
       .map((item) => ({ id: item.id, ...item.data() }))
       .filter((item) => item.id !== activeUser.uid && item.isTyping && Date.now() - Number(item.updatedAt || 0) < 5000);
-    const line = roomShell(state).querySelector("[data-typing-line]");
-    const status = roomShell(state).querySelector("[data-chat-presence]");
+    const shell = roomShell(state);
+    if (!shell) return;
+    const line = shell.querySelector("[data-typing-line]");
+    const status = shell.querySelector("[data-chat-presence]");
     if (line) {
       line.hidden = typing.length === 0;
       line.innerHTML = typing.length ? `<span></span><span></span><span></span> ${escapeHtml(typing[0].name || "User")} is typing` : "";
@@ -460,13 +448,16 @@ function watchMessages(state) {
     renderMessages(state, messages);
     markMessagesRead(state, messages);
   }, () => {
-    roomShell(state).querySelector("[data-message-scroll]").innerHTML = `<div class="adnn-chat-empty">Could not load messages.</div>`;
+    const shell = roomShell(state);
+    if (shell) shell.querySelector("[data-message-scroll]").innerHTML = `<div class="adnn-chat-empty">Could not load messages.</div>`;
   });
   state.unsubs.push(unsub);
 }
 
 function renderMessages(state, messages) {
-  const scroller = roomShell(state).querySelector("[data-message-scroll]");
+  const shell = roomShell(state);
+  if (!shell) return;
+  const scroller = shell.querySelector("[data-message-scroll]");
   if (!scroller) return;
   scroller.innerHTML = "";
   const visibleMessages = messages.filter((message) => !isHiddenSystemMessage(message));
@@ -525,7 +516,7 @@ function handleMessageAction(event, state, message) {
       text: message.text || firstAttachmentName(message) || "Attachment"
     };
     renderReplyBar(state);
-    roomShell(state).querySelector("[data-text]")?.focus();
+    roomShell(state)?.querySelector("[data-text]")?.focus();
   }
   if (action === "react") toggleReaction(state.chatId, message, btn.dataset.emoji);
   if (action === "delete") deleteDoc(doc(db, "chats", state.chatId, "messages", message.id)).catch(() => {});
@@ -533,6 +524,7 @@ function handleMessageAction(event, state, message) {
 
 async function sendCurrentMessage(state) {
   const shell = roomShell(state);
+  if (!shell) return;
   const textNode = shell.querySelector("[data-text]");
   const text = textNode.value.trim();
   if (!text && state.files.length === 0 && !state.voice) return;
@@ -613,7 +605,9 @@ function addFilesToState(state, files) {
 }
 
 function renderFilePreview(state) {
-  const target = roomShell(state).querySelector("[data-file-preview]");
+  const shell = roomShell(state);
+  if (!shell) return;
+  const target = shell.querySelector("[data-file-preview]");
   if (!target) return;
   target.hidden = state.files.length === 0;
   target.innerHTML = state.files.map((item) => `
@@ -633,6 +627,8 @@ function renderFilePreview(state) {
 }
 
 async function toggleVoiceRecording(state) {
+  const shell = roomShell(state);
+  if (!shell) return;
   if (state.recorder && state.recorder.state !== "inactive") {
     state.recorder.stop();
     return;
@@ -647,12 +643,12 @@ async function toggleVoiceRecording(state) {
     state.recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
     state.chunks = [];
     state.seconds = 0;
-    const voiceBtn = roomShell(state).querySelector("[data-voice]");
+    const voiceBtn = shell.querySelector("[data-voice]");
     voiceBtn?.classList.add("is-recording");
     voiceBtn.innerHTML = `<span class="adnn-rec-dot"></span><b>0s</b>`;
     state.recordTimer = setInterval(() => {
       state.seconds += 1;
-      const label = roomShell(state).querySelector("[data-voice] b");
+      const label = shell.querySelector("[data-voice] b");
       if (label) label.textContent = `${state.seconds}s`;
     }, 1000);
     state.recorder.ondataavailable = (event) => {
@@ -680,7 +676,9 @@ async function toggleVoiceRecording(state) {
 }
 
 function renderVoicePreview(state) {
-  const target = roomShell(state).querySelector("[data-voice-preview]");
+  const shell = roomShell(state);
+  if (!shell) return;
+  const target = shell.querySelector("[data-voice-preview]");
   if (!target) return;
   target.hidden = !state.voice;
   target.innerHTML = state.voice ? `
@@ -698,6 +696,7 @@ function renderVoicePreview(state) {
 
 function refreshComposerMode(state) {
   const shell = roomShell(state);
+  if (!shell) return;
   const text = shell.querySelector("[data-text]")?.value.trim() || "";
   const hasPayload = !!text || state.files.length > 0 || !!state.voice;
   shell.querySelector("[data-send]").hidden = !hasPayload;
@@ -917,21 +916,30 @@ function createCallState(callId, role, kind, stream, chatId, chatData, remoteUid
 async function setupPeerConnection(call, caller) {
   const pc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }, { urls: "stun:stun1.l.google.com:19302" }] });
   call.pc = pc;
-  pc.addTransceiver("video", { direction: "sendrecv" });
-  call.localStream.getAudioTracks().forEach((track) => pc.addTrack(track, call.localStream));
-  await replaceVideoTrack(call, call.cameraOn ? call.localStream.getVideoTracks()[0] : getBlankTrack(call));
+
+  call.localStream.getTracks().forEach((track) => pc.addTrack(track, call.localStream));
+
   pc.onicecandidate = (event) => {
     if (!event.candidate) return;
     const path = caller ? "offerCandidates" : "answerCandidates";
     addDoc(collection(db, "calls", call.callId, path), event.candidate.toJSON()).catch(() => {});
   };
+
   pc.ontrack = (event) => {
-    const tracks = event.streams?.[0]?.getTracks?.().length ? event.streams[0].getTracks() : [event.track];
-    tracks.forEach((track) => {
-      if (!call.remoteStream.getTracks().some((item) => item.id === track.id)) call.remoteStream.addTrack(track);
-    });
+    if (event.streams && event.streams[0]) {
+      event.streams[0].getTracks().forEach((track) => {
+        if (!call.remoteStream.getTracks().some((t) => t.id === track.id)) {
+          call.remoteStream.addTrack(track);
+        }
+      });
+    } else {
+      if (!call.remoteStream.getTracks().some((t) => t.id === event.track.id)) {
+        call.remoteStream.addTrack(event.track);
+      }
+    }
     attachCallMedia();
   };
+
   const remotePath = caller ? "answerCandidates" : "offerCandidates";
   call.unsubs.push(onSnapshot(collection(db, "calls", call.callId, remotePath), (snapshot) => {
     snapshot.docChanges().forEach((change) => {
@@ -992,15 +1000,19 @@ function attachCallMedia() {
   const localTile = overlay.querySelector("[data-local-tile]");
   const remoteTile = overlay.querySelector("[data-remote-tile]");
   const audioFace = overlay.querySelector("[data-audio-face]");
+  
   if (localVideo && localVideo.srcObject !== activeCall.localStream) localVideo.srcObject = activeCall.localStream;
   if (remoteVideo && remoteVideo.srcObject !== activeCall.remoteStream) remoteVideo.srcObject = activeCall.remoteStream;
+  
   localVideo?.play?.().catch(() => {});
   remoteVideo?.play?.().catch(() => {});
+  
   const localOn = activeCall.cameraOn && activeCall.localStream.getVideoTracks().some((track) => track.readyState !== "ended");
   const remoteOn = activeCall.remoteCameraOn && activeCall.remoteStream.getVideoTracks().some((track) => track.readyState !== "ended");
-  localTile.hidden = !localOn;
-  remoteTile.hidden = !remoteOn;
-  audioFace.hidden = localOn || remoteOn;
+  
+  if (localTile) localTile.hidden = !localOn;
+  if (remoteTile) remoteTile.hidden = !remoteOn;
+  if (audioFace) audioFace.hidden = localOn || remoteOn;
 }
 
 async function toggleCallMic(event) {
@@ -1015,48 +1027,38 @@ async function toggleCallCamera(event) {
   if (!activeCall) return;
   if (activeCall.cameraOn) {
     activeCall.localStream.getVideoTracks().forEach((track) => {
-      track.stop();
-      activeCall.localStream.removeTrack(track);
+      track.enabled = false;
     });
-    await replaceVideoTrack(activeCall, getBlankTrack(activeCall));
     activeCall.cameraOn = false;
   } else {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-    const track = stream.getVideoTracks()[0];
-    activeCall.localStream.getVideoTracks().forEach((old) => {
-      old.stop();
-      activeCall.localStream.removeTrack(old);
-    });
-    activeCall.localStream.addTrack(track);
-    await replaceVideoTrack(activeCall, track);
+    if (activeCall.localStream.getVideoTracks().length === 0) {
+      try {
+        const videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
+        const videoTrack = videoStream.getVideoTracks()[0];
+        activeCall.localStream.addTrack(videoTrack);
+        
+        const sender = activeCall.pc.getSenders().find((s) => s.track && s.track.kind === "video");
+        if (sender) {
+          sender.replaceTrack(videoTrack);
+        }
+      } catch (err) {
+        showToast("Unable to start camera.");
+        return;
+      }
+    } else {
+      activeCall.localStream.getVideoTracks().forEach((track) => {
+        track.enabled = true;
+      });
+    }
     activeCall.cameraOn = true;
   }
+  
   event.currentTarget.innerHTML = activeCall.cameraOn ? ICON.videoOff : ICON.video;
   await updateDoc(doc(db, "calls", activeCall.callId), {
     [`media.${ownCallUid()}`]: { cameraOn: activeCall.cameraOn, updatedAt: Date.now() },
     updatedAt: serverTimestamp()
   }).catch(() => {});
   attachCallMedia();
-}
-
-async function replaceVideoTrack(call, track) {
-  let sender = call.pc.getSenders().find((item) => item.track?.kind === "video");
-  if (!sender) sender = call.pc.getTransceivers().find((item) => item.sender && item.receiver?.track?.kind === "video")?.sender;
-  if (!sender) sender = call.pc.getTransceivers().find((item) => item.sender && !item.sender.track)?.sender;
-  if (sender?.replaceTrack) await sender.replaceTrack(track);
-}
-
-function getBlankTrack(call) {
-  if (call.blankVideo?.track && call.blankVideo.track.readyState !== "ended") return call.blankVideo.track;
-  const canvas = document.createElement("canvas");
-  canvas.width = 16;
-  canvas.height = 9;
-  const context = canvas.getContext("2d");
-  context.fillStyle = "#000";
-  context.fillRect(0, 0, 16, 9);
-  const stream = canvas.captureStream(1);
-  call.blankVideo = { canvas, stream, track: stream.getVideoTracks()[0] };
-  return call.blankVideo.track;
 }
 
 function startCallTimer() {
@@ -1131,7 +1133,9 @@ function roomShell(state) {
 }
 
 function renderReplyBar(state) {
-  const bar = roomShell(state).querySelector("[data-reply-bar]");
+  const shell = roomShell(state);
+  if (!shell) return;
+  const bar = shell.querySelector("[data-reply-bar]");
   if (!bar) return;
   bar.hidden = !state.replyTo;
   if (state.replyTo) bar.querySelector("span").innerHTML = `<strong>${escapeHtml(state.replyTo.senderName)}</strong><small>${escapeHtml(state.replyTo.text)}</small>`;
@@ -1304,7 +1308,7 @@ function injectChatStyles() {
     .adnn-room-title small { font-size:12px; color:rgba(255,255,255,.5); }
     .adnn-room-title small.is-online { color:#53d769; }
     .adnn-call-btn, .adnn-back-btn, .adnn-attach-btn, .adnn-voice-btn, .adnn-send-btn, .adnn-composer button { width:42px; height:42px; border:0; border-radius:50%; display:grid; place-items:center; color:#fff; background:rgba(255,255,255,.06); cursor:pointer; transition:.2s ease; flex:0 0 auto; }
-    .adnn-chat-app .adnn-room-shell .adnn-call-dock .adnn-call-btn { display:grid !important; visibility:visible !important; opacity:1 !important; pointer-events:auto !important; background:rgba(255,255,255,.08); box-shadow:inset 0 1px 0 rgba(255,255,255,.08); }
+    .adnn-chat-app .adnn-room-shell .adnn-call-btn { display:grid !important; visibility:visible !important; opacity:1 !important; pointer-events:auto !important; background:rgba(255,255,255,.08); box-shadow:inset 0 1px 0 rgba(255,255,255,.08); }
     .adnn-chat-app .adnn-room-shell > .adnn-room-head .adnn-back-btn { display:none !important; }
     .adnn-call-btn:hover, .adnn-attach-btn:hover, .adnn-voice-btn:hover { background:rgba(255,255,255,.1); transform:translateY(-1px); }
     .adnn-call-btn svg, .adnn-back-btn svg, .adnn-attach-btn svg, .adnn-voice-btn svg, .adnn-send-btn svg { width:19px; height:19px; }
@@ -1407,6 +1411,4 @@ function injectChatStyles() {
     }
   `;
   document.head.appendChild(style);
-}
-
 }

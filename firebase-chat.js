@@ -6,20 +6,19 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
-// Global Ecosystem Constants
 const ADMIN_EMAIL = "getavcollab@gmail.com";
 const ADMIN_ALIAS_UID = "adnn-admin";
 const CALL_RING_TIMEOUT_MS = 60000;
 const CALL_SIGNAL_CLEANUP_DELAY_MS = 5000;
 const CALL_MESSAGE_LIMIT = 100;
 
-// Configurations & State Matrix
 const config = window.ADNN_FIREBASE_CONFIG;
 const app = config ? (getApps()[0] || initializeApp(config)) : null;
 const db = app ? getFirestore(app) : null;
 const auth = app ? getAuth(app) : null;
 const storage = app ? getStorage(app) : null;
 
+// Application States
 let activeUser = null;
 let currentProfileCache = null;
 let activeChatId = "";
@@ -27,14 +26,15 @@ let currentChatType = ""; // 'support' or 'direct'
 let activeChatUnsubscribe = null;
 let activeMessagesUnsubscribe = null;
 let adminChatsUnsubscribe = null;
+let knownMessageIds = new Set();
 
-// Audio context states
 let activeCallState = null;
 let activeMediaRecorder = null;
 let voiceRecordTimer = null;
 let voiceDurationCounter = 0;
+let recordedChunks = [];
 
-// Premium Apple/Tahoe Icon System Assets
+// Icons System
 const IC_PHONE = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>`;
 const IC_VIDEO = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 7a2 2 0 0 0-2-2H3a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2V7z"/><polyline points="23 10 19 12 23 14"/></svg>`;
 const IC_VIDEO_OFF = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 16v1a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2m5.66 0H14a2 2 0 0 1 2 2v3.34l1 1L23 7v10l-2.66-2"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
@@ -42,8 +42,8 @@ const IC_MIC = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strok
 const IC_MIC_OFF = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"/><line x1="12" y1="19" x2="12" y2="23"/></svg>`;
 const IC_END = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.42 19.42 0 0 1-3.33-2.67m-2.67-3.34a19.79 19.79 0 0 1-3.07-8.63A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91"/><line x1="23" y1="1" x2="1" y2="23"/></svg>`;
 const IC_ATTACH = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>`;
+const IC_BACK = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>`;
 
-// Initialize Application Scope Execution Loop
 if (db && auth) {
   injectGlobalAppStyles();
   onAuthStateChanged(auth, async (user) => {
@@ -52,12 +52,10 @@ if (db && auth) {
       terminateAllSystemListeners();
       return;
     }
-    
     currentProfileCache = await resolveUserProfile(user.uid, user.email);
     initializePresenceTracking(user);
     initializeIncomingCallDispatcher(user);
     
-    // Auto-routing initialization based on structural location paths
     if (location.pathname.includes("admin.html")) {
       setupAdminWorkspacePortal();
     } else {
@@ -151,7 +149,7 @@ function renderAdminSidebarMatrix(chats) {
     itemBtn.type = "button";
     itemBtn.className = `adnn-admin-list-item-btn ${chat.id === activeChatId ? "is-active" : ""}`;
     itemBtn.innerHTML = `
-      <div class="adnn-item-avatar-circle">${displayName.slice(0, 2).toUpperCase()}</div>
+      <div class="adnn-item-avatar-circle">${displayName.replace("[Support] ", "").slice(0, 2).toUpperCase()}</div>
       <div class="adnn-item-metadata-block">
         <strong>${escapeHtmlString(displayName)}</strong>
         <p>${escapeHtmlString(subDisplay)}</p>
@@ -162,6 +160,7 @@ function renderAdminSidebarMatrix(chats) {
     itemBtn.addEventListener("click", () => {
       activeChatId = chat.id;
       currentChatType = chat.type;
+      document.body.classList.add("adnn-admin-chat-open");
       document.querySelectorAll(".adnn-admin-list-item-btn").forEach(b => b.classList.remove("is-active"));
       itemBtn.classList.add("is-active");
       loadAdminSelectedConversationStream(chat);
@@ -182,7 +181,7 @@ function loadAdminSelectedConversationStream(chat) {
 }
 
 /* ==========================================================================
-   MARKUP COMPONENT & VIEWPORT DISPATCH FACTORIES
+   MARKUP COMPONENT FACTORIES
    ========================================================================== */
 
 function buildMessengerMarkupFrame(type) {
@@ -191,27 +190,28 @@ function buildMessengerMarkupFrame(type) {
     <div class="adnn-whatsapp-messenger-frame" id="${prefix}RootFrame">
       <div class="adnn-messenger-header-action-bar">
         <div class="adnn-header-identity-block">
+          <button type="button" class="adnn-messenger-mobile-back-btn" id="${prefix}MobileBackBtn">${IC_BACK}</button>
           <div class="adnn-header-avatar" id="${prefix}HeaderAvatar">--</div>
           <div class="adnn-header-title-details">
-            <h4 id="${prefix}HeaderTitle">Connecting workspace...</h4>
-            <small id="${prefix}HeaderStatus">Tracking offline status markers</small>
+            <h4 id="${prefix}HeaderTitle">Connecting...</h4>
+            <small id="${prefix}HeaderStatus">offline</small>
           </div>
         </div>
         <div class="adnn-header-communications-utilities">
-          <button type="button" class="adnn-util-call-btn" id="${prefix}AudioCallTrigger" aria-label="Audio call">${IC_PHONE}</button>
-          <button type="button" class="adnn-util-call-btn" id="${prefix}VideoCallTrigger" aria-label="Video call">${IC_VIDEO}</button>
+          <button type="button" class="adnn-util-call-btn" id="${prefix}AudioCallTrigger">${IC_PHONE}</button>
+          <button type="button" class="adnn-util-call-btn" id="${prefix}VideoCallTrigger">${IC_VIDEO}</button>
         </div>
       </div>
       
       <div class="adnn-messenger-messages-viewport" id="${prefix}Viewport">
-        <div class="adnn-chat-view-loader">Synchronizing message buffers...</div>
+        <div class="adnn-chat-view-loader">Synchronizing chat data...</div>
       </div>
 
       <div class="adnn-messenger-composer-area">
         <div class="adnn-composer-attachment-fullscreen-preview-panel" id="${prefix}UploadPreviewPanel" hidden>
           <button type="button" class="adnn-close-preview-panel-btn" id="${prefix}CancelUploadBtn">&times;</button>
           <div class="adnn-preview-render-mount" id="${prefix}PreviewMount"></div>
-          <span class="adnn-preview-file-metadata-label" id="${prefix}PreviewMetadataLabel">File allocation descriptor</span>
+          <span class="adnn-preview-file-metadata-label" id="${prefix}PreviewMetadataLabel"></span>
         </div>
 
         <div class="adnn-composer-quoted-reply-context-bar" id="${prefix}QuoteContextBar" hidden>
@@ -224,23 +224,23 @@ function buildMessengerMarkupFrame(type) {
         </div>
 
         <form class="adnn-messenger-interactive-form" id="${prefix}Form">
-          <label class="adnn-composer-utility-file-label" title="Attach assets">
+          <label class="adnn-composer-utility-file-label" title="Attach Asset">
             <input type="file" id="${prefix}FileInput" accept="image/*,.pdf,.doc,.docx,.zip" style="display:none;">
             ${IC_ATTACH}
           </label>
           
           <div class="adnn-composer-input-wrapper-container">
-            <input type="text" autocomplete="off" maxlength="1800" id="${prefix}TextInput" placeholder="Type a message...">
+            <input type="text" autocomplete="off" maxlength="1800" id="${prefix}TextInput" placeholder="Message">
             <div class="adnn-composer-typing-indicator-dot-matrix" id="${prefix}TypingIndicator" hidden>
               <span></span><span></span><span></span>
             </div>
           </div>
 
-          <button type="button" class="adnn-composer-action-voice-btn" id="${prefix}VoiceActionBtn" title="Hold to record audio message">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="adnn-icon-mic-svg"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+          <button type="button" class="adnn-composer-action-voice-btn" id="${prefix}VoiceActionBtn" title="Hold to record voice">
+            ${IC_MIC}
           </button>
           
-          <button type="submit" class="adnn-composer-submit-message-btn" id="${prefix}SubmitBtn" title="Send text dispatch">
+          <button type="submit" class="adnn-composer-submit-message-btn" id="${prefix}SubmitBtn" title="Send text">
             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
           </button>
         </form>
@@ -250,7 +250,7 @@ function buildMessengerMarkupFrame(type) {
 }
 
 /* ==========================================================================
-   LIVE REALTIME DATA STREAM ENGINE (INTERCONNECTION & SYNC PIPELINES)
+   LIVE SNAPSHOT MONITOR STREAM MODULE
    ========================================================================== */
 
 function bindEcosystemStreams(type) {
@@ -259,24 +259,23 @@ function bindEcosystemStreams(type) {
   if (!isAdminEmail(activeUser.email)) {
     if (type === "support") {
       activeChatId = `support_${activeUser.uid}`;
-      establishActiveMessagePipelineListeners(activeChatId, prefix, type);
     } else {
       if (activeChatUnsubscribe) activeChatUnsubscribe();
       activeChatUnsubscribe = onSnapshot(
         query(collection(db, "chats"), where("type", "==", "direct"), where("participantUids", "array-contains", activeUser.uid)),
         (snapshot) => {
-          const validPairedChannels = [];
-          snapshot.forEach(docSnap => validPairedChannels.push({ id: docSnap.id, ...docSnap.data() }));
-          if (validPairedChannels.length > 0) {
-            activeChatId = validPairedChannels[0].id;
+          const pairedChannels = [];
+          snapshot.forEach(docSnap => pairedChannels.push({ id: docSnap.id, ...docSnap.data() }));
+          if (pairedChannels.length > 0) {
+            activeChatId = pairedChannels[0].id;
             establishActiveMessagePipelineListeners(activeChatId, prefix, type);
           } else {
-            renderEmptyWorkspacePlaceholder(prefix, "Awaiting Connection", "Only administrative pairs can spin up a connection trace here. Contact admin support to provision a communication card.");
+            renderEmptyWorkspacePlaceholder(prefix, "User Chats", "No communication channels have been opened for this profile yet. Only administrative dispatches can spin up connections.");
           }
         }
       );
+      return;
     }
-    return;
   }
 
   establishActiveMessagePipelineListeners(activeChatId, prefix, type);
@@ -288,14 +287,19 @@ function establishActiveMessagePipelineListeners(chatId, prefix, type) {
   const headerTitle = document.getElementById(`${prefix}HeaderTitle`);
   const headerAvatar = document.getElementById(`${prefix}HeaderAvatar`);
   const headerStatus = document.getElementById(`${prefix}HeaderStatus`);
+  const backBtn = document.getElementById(`${prefix}MobileBackBtn`);
+
+  backBtn?.addEventListener("click", () => {
+    document.body.classList.remove("adnn-direct-chat-open", "adnn-admin-chat-open");
+  });
 
   onSnapshot(doc(db, "chats", chatId), (snapshot) => {
     if (!snapshot.exists()) return;
     const data = snapshot.data();
     
-    let resolvedTitle = data.title || "Workspace Thread";
+    let resolvedTitle = data.title || "Workspace Group";
     if (type === "support") {
-      resolvedTitle = isAdminEmail(activeUser.email) ? `Client: ${data.clientName || data.clientEmail}` : "AdnnStudio Support Portal";
+      resolvedTitle = isAdminEmail(activeUser.email) ? `Client: ${data.clientName || data.clientEmail}` : "AdnnStudio Admin Support";
     } else {
       if (!isAdminEmail(activeUser.email)) {
         const names = data.participantNames || {};
@@ -305,7 +309,7 @@ function establishActiveMessagePipelineListeners(chatId, prefix, type) {
     }
 
     if (headerTitle) headerTitle.textContent = resolvedTitle;
-    if (headerAvatar) headerAvatar.textContent = resolvedTitle.slice(0, 2).toUpperCase();
+    if (headerAvatar) headerAvatar.textContent = resolvedTitle.replace("Client: ", "").slice(0, 2).toUpperCase();
 
     if (type === "support") {
       monitorTargetPresence(isAdminEmail(activeUser.email) ? data.clientUid : ADMIN_ALIAS_UID, headerStatus);
@@ -318,6 +322,8 @@ function establishActiveMessagePipelineListeners(chatId, prefix, type) {
   const msgQuery = query(collection(db, "chats", chatId, "messages"), orderBy("createdAt", "asc"), limit(CALL_MESSAGE_LIMIT));
   
   if (activeMessagesUnsubscribe) activeMessagesUnsubscribe();
+  knownMessageIds.clear();
+  
   activeMessagesUnsubscribe = onSnapshot(msgQuery, (snapshot) => {
     const messages = [];
     snapshot.forEach(docSnap => messages.push({ id: docSnap.id, ...docSnap.data() }));
@@ -331,6 +337,7 @@ function monitorTargetPresence(uid, element) {
   onSnapshot(doc(db, "presence", uid), (snap) => {
     if (!snap.exists()) {
       element.textContent = "offline";
+      element.classList.remove("adnn-status-online-highlight");
       return;
     }
     const data = snap.data();
@@ -341,7 +348,7 @@ function monitorTargetPresence(uid, element) {
 }
 
 /* ==========================================================================
-   MESSENGER INPUT CONTROLLERS & INTERACTION SYSTEM
+   INPUT CONTROLLERS & AUDIO RECORDER MATRIX
    ========================================================================== */
 
 function initializeMessengerControllers(type) {
@@ -360,21 +367,20 @@ function initializeMessengerControllers(type) {
     if (!activeChatId) return;
     const isTyping = textInput.value.length > 0;
     setDoc(doc(db, "chats", activeChatId, "typing", activeUser.uid), {
-      isTyping, userName: currentProfileCache?.name || "User", timestamp: Date.now()
+      isTyping, timestamp: Date.now()
     }, { merge: true });
   });
 
-  // Track dynamic remote typing notifications
   onSnapshot(collection(db, "chats", activeChatId || "null", "typing"), (snapshot) => {
-    let remoteTypingDetected = false;
+    let remoteTyping = false;
     snapshot.forEach(docSnap => {
       if (docSnap.id !== activeUser.uid) {
         const data = docSnap.data();
-        if (data.isTyping && (Date.now() - data.timestamp) < 4000) remoteTypingDetected = true;
+        if (data.isTyping && (Date.now() - data.timestamp) < 4000) remoteTyping = true;
       }
     });
     const indicator = document.getElementById(`${prefix}TypingIndicator`);
-    if (indicator) indicator.hidden = !remoteTypingDetected;
+    if (indicator) indicator.hidden = !remoteTyping;
   });
 
   fileInput?.addEventListener("change", (e) => {
@@ -391,7 +397,7 @@ function initializeMessengerControllers(type) {
       label.textContent = `${file.name} (${(file.size / (1024 * 1024)).toFixed(2)} MB)`;
       mount.innerHTML = file.type.startsWith("image/") 
         ? `<img src="${URL.createObjectURL(file)}" class="adnn-fullscreen-composer-image-render" />`
-        : `<div class="adnn-generic-document-fallback-card"><i>&boxbox;</i><span>Asset Content Attached</span></div>`;
+        : `<div class="adnn-generic-document-fallback-card"><span>File Document Attached</span></div>`;
     }
   });
 
@@ -408,10 +414,11 @@ function initializeMessengerControllers(type) {
     if (bar) bar.hidden = true;
   });
 
-  // Native touch & click listeners targeting audio message builders
+  // Safe Voice Recording Loop Hooks Integration points
   voiceActionBtn?.addEventListener("mousedown", startVoiceRecordingPipeline);
   voiceActionBtn?.addEventListener("mouseup", () => endVoiceRecordingPipeline(prefix));
   voiceActionBtn?.addEventListener("mouseleave", () => endVoiceRecordingPipeline(prefix, true));
+  
   voiceActionBtn?.addEventListener("touchstart", (e) => { e.preventDefault(); startVoiceRecordingPipeline(); });
   voiceActionBtn?.addEventListener("touchend", (e) => { e.preventDefault(); endVoiceRecordingPipeline(prefix); });
 
@@ -423,20 +430,21 @@ function initializeMessengerControllers(type) {
     if (!text && !currentAttachmentFile) return;
 
     textInput.value = "";
-    const originalFile = currentAttachmentFile;
+    const fileToUpload = currentAttachmentFile;
     currentAttachmentFile = null;
+    
     const panel = document.getElementById(`${prefix}UploadPreviewPanel`);
     if (panel) panel.hidden = true;
 
-    const quotedIdSnapshot = activeQuotedMessageId;
+    const quoteId = activeQuotedMessageId;
     activeQuotedMessageId = null;
     const quoteBar = document.getElementById(`${prefix}QuoteContextBar`);
     if (quoteBar) quoteBar.hidden = true;
 
     try {
       let mediaData = {};
-      if (originalFile) {
-        mediaData = await executeCloudMediaUpload(originalFile, activeChatId);
+      if (fileToUpload) {
+        mediaData = await executeCloudMediaUpload(fileToUpload, activeChatId);
       }
 
       const msgPayload = {
@@ -448,41 +456,34 @@ function initializeMessengerControllers(type) {
         ...mediaData
       };
 
-      if (quotedIdSnapshot) {
-        msgPayload.replyToMessageId = quotedIdSnapshot;
-      }
+      if (quoteId) msgPayload.replyToMessageId = quoteId;
 
       await addDoc(collection(db, "chats", activeChatId, "messages"), msgPayload);
       
-      const chatUpdateMeta = {
-        lastMessage: text || (originalFile ? "Premium Asset Attached" : "Voice Note"),
+      const updateData = {
+        lastMessage: text || (fileToUpload ? "Deliverable Asset Shared" : "Voice Note"),
         lastSenderUid: activeUser.uid,
         updatedAt: serverTimestamp()
       };
 
       if (type === "support") {
-        if (isAdminEmail(activeUser.email)) {
-          chatUpdateMeta.unreadForClient = increment(1);
-        } else {
-          chatUpdateMeta.unreadForAdmin = increment(1);
-        }
+        updateData[isAdminEmail(activeUser.email) ? "unreadForClient" : "unreadForAdmin"] = increment(1);
       } else {
-        chatUpdateMeta.unreadForClient = increment(1);
-        chatUpdateMeta.unreadForAdmin = increment(1);
+        updateData.unreadForClient = increment(1);
+        updateData.unreadForAdmin = increment(1);
       }
 
-      await updateDoc(doc(db, "chats", activeChatId), chatUpdateMeta);
+      await updateDoc(doc(db, "chats", activeChatId), updateData);
       setDoc(doc(db, "chats", activeChatId, "typing", activeUser.uid), { isTyping: false }, { merge: true });
 
     } catch (err) {
-      alert(`Message transmission interrupted: ${err.message}`);
+      console.warn("Message stream error: ", err);
     }
   });
 
   document.getElementById(`${prefix}AudioCallTrigger`)?.addEventListener("click", () => initiateEcosystemCall("audio", type));
   document.getElementById(`${prefix}VideoCallTrigger`)?.addEventListener("click", () => initiateEcosystemCall("video", type));
 
-  // Dynamic injection routing mapping reply triggers universally
   window[`hookReplyContext_${prefix}`] = function(messageId, senderName, textSummary) {
     activeQuotedMessageId = messageId;
     const bar = document.getElementById(`${prefix}QuoteContextBar`);
@@ -492,33 +493,45 @@ function initializeMessengerControllers(type) {
     if (bar && senderEl && bodyEl) {
       bar.hidden = false;
       senderEl.textContent = senderName;
-      bodyEl.textContent = textSummary || "Media deliverable asset.";
+      bodyEl.textContent = textSummary || "Media asset document.";
     }
   };
 }
 
 /* ==========================================================================
-   VIEWPORT RENDERING & COMPONENT BUILD HOOK FACTORIES
+   DOM INCREMENTAL RENDERER & INTERACTIVE VIEWPORTS
    ========================================================================== */
 
 function renderEcosystemMessagesViewport(messages, prefix, chatId) {
   const viewport = document.getElementById(`${prefix}Viewport`);
   if (!viewport) return;
-  viewport.innerHTML = "";
 
   if (messages.length === 0) {
-    viewport.innerHTML = `<div class="adnn-chat-empty-slate">No messages recorded in this terminal thread block.</div>`;
+    viewport.innerHTML = `<div class="adnn-chat-empty-slate">No messages registered yet.</div>`;
     return;
+  }
+
+  // Pure memory diff loop preventing flash and re-paint loops
+  if (knownMessageIds.size === 0) {
+    viewport.innerHTML = "";
   }
 
   messages.forEach(msg => {
     const isMine = msg.senderUid === activeUser.uid;
-    const bubble = document.createElement("div");
-    bubble.className = `adnn-whatsapp-message-bubble ${isMine ? "is-sender-bubble" : "is-receiver-bubble"}`;
+    let bubble = document.getElementById(`msg_${msg.id}`);
     
+    if (!bubble) {
+      bubble = document.createElement("div");
+      bubble.id = `msg_${msg.id}`;
+      viewport.appendChild(bubble);
+    }
+    
+    bubble.className = `adnn-whatsapp-message-bubble ${isMine ? "is-sender-bubble" : "is-receiver-bubble"}`;
+    knownMessageIds.add(msg.id);
+
     let quoteMarkup = "";
     if (msg.replyToMessageId) {
-      quoteMarkup = `<div class="adnn-bubble-quoted-context-wrapper">Awaiting parent context data...</div>`;
+      quoteMarkup = `<div class="adnn-bubble-quoted-context-wrapper"><strong>--</strong><p>...</p></div>`;
       resolveQuotedBubbleContextAsync(chatId, msg.replyToMessageId, bubble);
     }
 
@@ -527,21 +540,17 @@ function renderEcosystemMessagesViewport(messages, prefix, chatId) {
       if (msg.mediaType?.startsWith("image/")) {
         mediaMarkup = `<img src="${msg.mediaUrl}" class="adnn-bubble-embedded-image" onclick="window.open('${msg.mediaUrl}','_blank')" />`;
       } else if (msg.mediaType?.startsWith("audio/")) {
-        mediaMarkup = `
-          <div class="adnn-bubble-audio-note-row">
-            <audio src="${msg.mediaUrl}" controls class="adnn-bubble-native-audio-player"></audio>
-          </div>
-        `;
+        mediaMarkup = `<div class="adnn-bubble-audio-note-row"><audio src="${msg.mediaUrl}" controls class="adnn-bubble-native-audio-player"></audio></div>`;
       } else {
-        mediaMarkup = `<a href="${msg.mediaUrl}" target="_blank" rel="noopener" class="adnn-bubble-document-download-link">${IC_ATTACH} Open Deliverable Asset</a>`;
+        mediaMarkup = `<a href="${msg.mediaUrl}" target="_blank" rel="noopener" class="adnn-bubble-document-download-link">${IC_ATTACH} ${escapeHtmlString(msg.mediaName || "Open File")}</a>`;
       }
     }
 
     let receiptsTicks = "";
     if (isMine) {
       const readers = msg.readBy || [];
-      const readDelivered = readers.length > 1;
-      receiptsTicks = `<span class="adnn-receipt-tick-marks ${readDelivered ? "is-fully-read-blue" : ""}">&#10004;&#10004;</span>`;
+      const isFullyRead = readers.length > 1;
+      receiptsTicks = `<span class="adnn-receipt-tick-marks ${isFullyRead ? "is-fully-read-blue" : ""}">&#10004;&#10004;</span>`;
     }
 
     const currentReactions = msg.reactions || {};
@@ -549,7 +558,7 @@ function renderEcosystemMessagesViewport(messages, prefix, chatId) {
     if (Object.keys(currentReactions).length > 0) {
       reactionsRowMarkup = `<div class="adnn-bubble-active-reactions-badge-row">`;
       Object.entries(currentReactions).forEach(([uid, emote]) => {
-        reactionsRowMarkup += `<span title="Reacted by user profile">${emote}</span>`;
+        reactionsRowMarkup += `<span>${emote}</span>`;
       });
       reactionsRowMarkup += `</div>`;
     }
@@ -557,7 +566,7 @@ function renderEcosystemMessagesViewport(messages, prefix, chatId) {
     bubble.innerHTML = `
       ${quoteMarkup}
       <div class="adnn-bubble-identity-header-row" ${isMine ? "hidden" : ""}>
-        <strong>${escapeHtmlString(msg.senderName || "Studio Peer")}</strong>
+        <strong>${escapeHtmlString(msg.senderName || "User")}</strong>
       </div>
       ${mediaMarkup}
       ${msg.text ? `<p class="adnn-bubble-text-content-paragraph">${escapeHtmlString(msg.text)}</p>` : ""}
@@ -575,8 +584,6 @@ function renderEcosystemMessagesViewport(messages, prefix, chatId) {
         ${isMine ? `<button type="button" class="adnn-util-delete-action" onclick="executeMessageDeletionDispatch('${chatId}','${msg.id}')">Delete</button>` : ""}
       </div>
     `;
-
-    viewport.appendChild(bubble);
   });
 
   viewport.scrollTop = viewport.scrollHeight;
@@ -591,7 +598,7 @@ async function resolveQuotedBubbleContextAsync(chatId, parentId, bubbleElement) 
       if (quoteBlock) {
         quoteBlock.innerHTML = `
           <strong>${escapeHtmlString(data.senderName)}</strong>
-          <p>${escapeHtmlString(data.text || "Media attachment asset.")}</p>
+          <p>${escapeHtmlString(data.text || "Media file record.")}</p>
         `;
       }
     }
@@ -599,7 +606,7 @@ async function resolveQuotedBubbleContextAsync(chatId, parentId, bubbleElement) 
 }
 
 /* ==========================================================================
-   WHATSAPP MEDIA PROCESSING ENGINE (VOICE & SYSTEM DISPATCHES)
+   WHATSAPP MEDIA PROCESSING ENGINE
    ========================================================================== */
 
 async function startVoiceRecordingPipeline() {
@@ -607,17 +614,16 @@ async function startVoiceRecordingPipeline() {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     activeMediaRecorder = new MediaRecorder(stream);
-    let chunks = [];
+    recordedChunks = [];
 
-    activeMediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+    activeMediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
     activeMediaRecorder.onstop = async () => {
-      const audioBlob = new Blob(chunks, { type: "audio/ogg; codecs=opus" });
-      const convertedVoiceFile = new File([audioBlob], `voice_note_${Date.now()}.ogg`, { type: "audio/ogg" });
-      
+      const audioBlob = new Blob(recordedChunks, { type: "audio/ogg; codecs=opus" });
+      const voiceFile = new File([audioBlob], `voice_note_${Date.now()}.ogg`, { type: "audio/ogg" });
       stream.getTracks().forEach(track => track.stop());
       
-      if (voiceDurationCounter > 1) { 
-        const cloudData = await executeCloudMediaUpload(convertedVoiceFile, activeChatId);
+      if (voiceDurationCounter > 0) {
+        const cloudData = await executeCloudMediaUpload(voiceFile, activeChatId);
         await addDoc(collection(db, "chats", activeChatId, "messages"), {
           senderUid: activeUser.uid,
           senderName: currentProfileCache?.name || activeUser.email,
@@ -626,7 +632,6 @@ async function startVoiceRecordingPipeline() {
           ...cloudData
         });
       }
-      voiceDurationCounter = 0;
     };
 
     activeMediaRecorder.start();
@@ -634,22 +639,19 @@ async function startVoiceRecordingPipeline() {
     voiceRecordTimer = setInterval(() => { voiceDurationCounter++; }, 1000);
 
   } catch (err) {
-    console.error("Voice structural access initialization denied: ", err);
+    console.warn("Hardware layer access denied: ", err);
   }
 }
 
-function endVoiceRecordingPipeline(prefix, cancelPlayback = false) {
+function endVoiceRecordingPipeline(prefix, cancel = false) {
   if (voiceRecordTimer) clearInterval(voiceRecordTimer);
   if (!activeMediaRecorder || activeMediaRecorder.state === "inactive") return;
-
-  if (cancelPlayback) {
-    voiceDurationCounter = 0;
-  }
+  if (cancel) voiceDurationCounter = 0;
   activeMediaRecorder.stop();
 }
 
 async function executeCloudMediaUpload(file, chatId) {
-  if (!storage) throw new Error("Cloud Storage system integration points unlinked.");
+  if (!storage) throw new Error("Cloud Storage pointers unlinked.");
   const cleanedName = file.name.replace(/[^a-z0-9.]/gi, "_").toLowerCase();
   const path = `messenger-vault/${chatId}/${activeUser.uid}/${Date.now()}_${cleanedName}`;
   const targetRef = storageRef(storage, path);
@@ -666,13 +668,12 @@ async function executeCloudMediaUpload(file, chatId) {
 }
 
 /* ==========================================================================
-   TRANSACTION MODIFIERS (REACTIONS, REVENUE MARKS, DELETIONS)
+   METRICS MODIFIERS DISPATCHES
    ========================================================================== */
 
 async function triggerReactionPayloadDispatch(chatId, messageId, emote) {
   try {
-    const targetRef = doc(db, "chats", chatId, "messages", messageId);
-    await updateDoc(targetRef, {
+    await updateDoc(doc(db, "chats", chatId, "messages", messageId), {
       [`reactions.${activeUser.uid}`]: emote
     });
   } catch (err) {}
@@ -682,6 +683,7 @@ async function executeMessageDeletionDispatch(chatId, messageId) {
   if (!confirm("Delete this message for everyone?")) return;
   try {
     await deleteDoc(doc(db, "chats", chatId, "messages", messageId));
+    document.getElementById(`msg_${messageId}`)?.remove();
   } catch (err) {}
 }
 
@@ -710,7 +712,7 @@ function markMessagesAsReadEcosystem(chatId, type) {
 }
 
 /* ==========================================================================
-   WEBRTC ARCHITECTURE CORE ENGINE (AUDIO & VIDEO PIPELINES)
+   WEBRTC HARDWARE CONSTRAINTS ENGINE
    ========================================================================== */
 
 function initializeIncomingCallDispatcher(user) {
@@ -737,7 +739,7 @@ function initializeIncomingCallDispatcher(user) {
 
 async function initiateEcosystemCall(kind, chatType) {
   if (!navigator.mediaDevices || !RTCPeerConnection) {
-    alert("Media routing layers unsupported across this browser engine context.");
+    alert("WebRTC connections unsupported by browser client engine layer parameters.");
     return;
   }
 
@@ -782,7 +784,7 @@ async function initiateEcosystemCall(kind, chatType) {
     await setDoc(doc(db, "callInbox", receiverTargetId), { callId, status: "ringing" });
 
   } catch (err) {
-    alert(`Microphone/Camera permission models rejected: ${err.message}`);
+    alert(`Hardware stream permissions rejected: ${err.message}`);
   }
 }
 
@@ -857,7 +859,7 @@ function renderActiveIncomingCallOverlay(callId, callData) {
     <div class="adnn-call-hardware-card-panel glass">
       <div class="adnn-call-card-avatar-row">${callData.callerName.slice(0, 2).toUpperCase()}</div>
       <h2>${escapeHtmlString(callData.callerName)}</h2>
-      <p>Incoming Studio ${callData.kind.toUpperCase()} Call...</p>
+      <p>Incoming ${callData.kind.toUpperCase()} Call...</p>
       <div class="adnn-call-card-interactive-controls-row">
         <button type="button" class="adnn-call-btn-circle is-accept-green-bg" id="adnnAcceptCallBtn">&#10004;</button>
         <button type="button" class="adnn-call-btn-circle is-decline-red-bg" id="adnnDeclineCallBtn">&times;</button>
@@ -895,7 +897,6 @@ function renderActiveIncomingCallOverlay(callId, callData) {
       transitionOverlayToActiveConnectedState();
 
     } catch (err) {
-      alert(`Could not patch connection to hardware parameters: ${err.message}`);
       executeCallRejectionCycle(callId, callData);
     }
   });
@@ -925,7 +926,7 @@ function renderActiveCallHardwareOverlayWindow() {
       </div>
       <div class="adnn-active-call-floating-identity-row">
         <h3>${escapeHtmlString(activeCallState.label)}</h3>
-        <p id="adnnCallDurationTimer">Ringing structural nodes...</p>
+        <p id="adnnCallDurationTimer">Connecting...</p>
       </div>
       <div class="adnn-call-card-interactive-controls-row">
         <button type="button" class="adnn-call-btn-circle" id="adnnToggleMicHardwareBtn">${IC_MIC}</button>
@@ -967,38 +968,31 @@ function renderActiveCallHardwareOverlayWindow() {
 }
 
 function transitionOverlayToActiveConnectedState() {
-  let timerCounterSeconds = 0;
-  const timeLabel = document.getElementById("adnnCallDurationTimer");
-  if (!timeLabel) return;
+  let elapsed = 0;
+  const label = document.getElementById("adnnCallDurationTimer");
+  if (!label) return;
 
   setInterval(() => {
-    timerCounterSeconds++;
-    const min = String(Math.floor(timerCounterSeconds / 60)).padStart(2, "0");
-    const sec = String(timerCounterSeconds % 60).padStart(2, "0");
-    if (timeLabel) timeLabel.textContent = `${min}:${sec}`;
+    elapsed++;
+    const m = String(Math.floor(elapsed / 60)).padStart(2, "0");
+    const s = String(elapsed % 60).padStart(2, "0");
+    if (label) label.textContent = `${m}:${s}`;
   }, 1000);
 }
 
 function terminateLiveHardwareCallSession(explicitlyTriggeredByLocalPeer = true) {
   if (!activeCallState) return;
-
   if (explicitlyTriggeredByLocalPeer) {
     updateDoc(doc(db, "calls", activeCallState.callId), { status: "ended" }).catch(() => {});
   }
-
   if (activeCallState.localStream) {
     activeCallState.localStream.getTracks().forEach(track => track.stop());
   }
-
   if (activeCallState.peerConnection) {
     activeCallState.peerConnection.close();
   }
-
   cleanupSignalingServerGarbage(activeCallState.callId, isAdminEmail(activeUser.email) ? ADMIN_ALIAS_UID : activeUser.uid);
-  
-  const container = document.getElementById("adnnCallOverlayContainer");
-  if (container) container.remove();
-
+  document.getElementById("adnnCallOverlayContainer")?.remove();
   activeCallState = null;
 }
 
@@ -1017,7 +1011,6 @@ async function cleanupSignalingServerGarbage(callId, targetInboxId) {
 function initializePresenceTracking(user) {
   const presenceRef = doc(db, "presence", isAdminEmail(user.email) ? ADMIN_ALIAS_UID : user.uid);
   const writeOnline = () => setDoc(presenceRef, { online: true, lastSeen: serverTimestamp() }, { merge: true });
-  
   writeOnline();
   setInterval(writeOnline, 30000);
   window.addEventListener("beforeunload", () => setDoc(presenceRef, { online: false, lastSeen: serverTimestamp() }, { merge: true }));
@@ -1070,8 +1063,12 @@ function escapeHtmlString(str) {
     .replace(/"/g, "&quot;").replace(/'/g, "&#039;");
 }
 
+function isAdminEmail(email) {
+  return String(email || "").trim().toLowerCase() === ADMIN_EMAIL;
+}
+
 /* ==========================================================================
-   PORTAL EXTRA-PREMIUM GLOW INTERACTION BRAND STYLING LAYOUT RULES
+   PORTAL INTERACTIVE LAYOUT OVERRIDES (WHATSAPP APP EMULATION)
    ========================================================================== */
 
 function injectGlobalAppStyles() {
@@ -1079,32 +1076,36 @@ function injectGlobalAppStyles() {
   const stylesheet = document.createElement("style");
   stylesheet.id = "adnnMessengerStyleInjectionNode";
   stylesheet.textContent = `
-    /* High-Grade Messenger Grid System Layout Overrides */
     .adnn-whatsapp-messenger-frame {
       display: grid;
       grid-template-rows: 64px 1fr auto;
-      height: 100% !important;
+      height: 100%;
       min-height: 480px;
-      background: linear-gradient(145deg, rgba(20, 20, 25, 0.96), rgba(10, 10, 14, 0.98));
-      border-radius: 24px;
+      background: #0b141a;
+      border-radius: 0px;
       overflow: hidden;
-      border: 1px solid rgba(255, 255, 255, 0.08);
       position: relative;
     }
 
     #clientChatMount.adnn-designer-chat-panel {
       display: block !important;
-      height: 560px !important;
-      border: 0 !important;
-      background: transparent !important;
+      height: min(650px, calc(100svh - 180px)) !important;
+      border: 1px solid rgba(255,255,255,0.08) !important;
+      border-radius: 24px !important;
+      overflow: hidden !important;
     }
 
-    /* System Layout Viewports for Administrative Grid Consoles */
+    #directChatMount .adnn-whatsapp-messenger-frame {
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 24px;
+      height: min(650px, calc(100svh - 180px));
+    }
+
     .adnn-admin-chat-layout {
       display: grid;
-      grid-template-columns: 320px 1fr;
+      grid-template-columns: 340px 1fr;
       height: calc(100vh - 140px);
-      min-height: 500px;
+      min-height: 520px;
       border-radius: 24px;
       overflow: hidden;
     }
@@ -1112,426 +1113,182 @@ function injectGlobalAppStyles() {
     .adnn-admin-chat-sidebar {
       border-right: 1px solid rgba(255, 255, 255, 0.08);
       display: grid;
-      grid-template-rows: 60px 1fr;
-      background: rgba(20, 20, 25, 0.3);
+      grid-template-rows: 64px 1fr;
+      background: rgba(20, 20, 25, 0.4);
     }
 
-    .adnn-sidebar-search-box {
-      padding: 10px;
-      display: flex;
-      align-items: center;
-    }
-
+    .adnn-sidebar-search-box { padding: 12px; display: flex; align-items: center; }
     .adnn-sidebar-search-box input {
-      height: 38px;
-      border-radius: 12px;
-      background: rgba(0, 0, 0, 0.4);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      padding: 0 14px;
-      color: #fff;
-      font-size: 13px;
+      height: 40px; border-radius: 10px; background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.08); padding: 0 14px; color: #fff; font-size: 14px;
     }
 
-    .adnn-admin-chat-list {
-      overflow-y: auto;
-      padding: 10px;
-    }
-
+    .adnn-admin-chat-list { overflow-y: auto; padding: 6px; }
     .adnn-admin-list-item-btn {
-      width: 100%;
-      display: grid;
-      grid-template-columns: 44px 1fr auto;
-      gap: 12px;
-      align-items: center;
-      padding: 12px;
-      background: transparent;
-      border: 0;
-      border-radius: 14px;
-      color: #fff;
-      text-align: left;
-      cursor: pointer;
-      margin-bottom: 6px;
-      transition: background 0.2s ease;
+      width: 100%; display: grid; grid-template-columns: 44px 1fr auto; gap: 12px;
+      align-items: center; padding: 12px; background: transparent; border: 0;
+      border-radius: 12px; color: #fff; text-align: left; cursor: pointer; margin-bottom: 4px;
     }
-
-    .adnn-admin-list-item-btn:hover, .adnn-admin-list-item-btn.is-active {
-      background: rgba(39, 45, 207, 0.15);
-    }
+    .adnn-admin-list-item-btn:hover, .adnn-admin-list-item-btn.is-active { background: rgba(255, 255, 255, 0.05); }
 
     .adnn-item-avatar-circle {
-      width: 42px;
-      height: 42px;
-      border-radius: 50%;
-      background: #272dcf;
-      display: grid;
-      place-items: center;
-      font-size: 13px;
-      font-weight: 500;
+      width: 42px; height: 42px; border-radius: 50%; background: #272dcf;
+      display: grid; place-items: center; font-size: 14px; font-weight: 500;
     }
+    .adnn-item-metadata-block strong { display: block; font-size: 14px; font-weight: 400; margin-bottom: 3px; }
+    .adnn-item-metadata-block p { margin: 0; font-size: 12px; color: rgba(255,255,255,0.4); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-    .adnn-item-metadata-block strong { display: block; font-size: 14px; font-weight: 500; margin-bottom: 4px; }
-    .adnn-item-metadata-block p { margin: 0; font-size: 12px; color: rgba(255, 255, 255, 0.5); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .adnn-admin-chat-workspace-room { background: rgba(0, 0, 0, 0.2); position: relative; }
+    .adnn-admin-chat-workspace-room .adnn-whatsapp-messenger-frame { height: 100% !important; border: 0; border-radius: 0; }
 
-    .adnn-unread-badge-counter {
-      background: #ff2602;
-      color: #fff;
-      font-size: 10px;
-      padding: 2px 6px;
-      border-radius: 10px;
-      font-family: monospace;
-    }
-
-    .adnn-admin-chat-workspace-room {
-      background: rgba(0, 0, 0, 0.2);
-      position: relative;
-    }
-
-    .adnn-admin-chat-workspace-room .adnn-whatsapp-messenger-frame {
-      height: 100% !important;
-      border-radius: 0;
-      border: 0;
-    }
-
-    /* WhatsApp Viewport Design Language Architecture */
     .adnn-messenger-header-action-bar {
-      height: 64px;
-      background: rgba(25, 25, 30, 0.4);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 20px;
+      height: 64px; background: #202c33; border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      display: flex; align-items: center; justify-content: space-between; padding: 0 16px;
     }
-
     .adnn-header-identity-block { display: flex; align-items: center; gap: 12px; }
+    .adnn-messenger-mobile-back-btn {
+      display: none; background: transparent; border: 0; color: #fff; cursor: pointer; padding: 4px;
+    }
+    .adnn-messenger-mobile-back-btn svg { width: 24px; height: 24px; }
     .adnn-header-avatar {
-      width: 38px;
-      height: 38px;
-      border-radius: 50%;
-      background: #272dcf;
-      display: grid;
-      place-items: center;
-      font-size: 12px;
-      font-weight: 500;
-      color: #fff;
+      width: 40px; height: 40px; border-radius: 50%; background: #272dcf;
+      display: grid; place-items: center; font-size: 13px; font-weight: 500; color: #fff;
     }
+    .adnn-header-title-details h4 { margin: 0; font-size: 15px; font-weight: 400; color: #fff; }
+    .adnn-header-title-details small { font-size: 12px; color: rgba(255, 255, 255, 0.4); display: block; margin-top: 1px; }
+    .adnn-status-online-highlight { color: #00a884 !important; }
 
-    .adnn-header-title-details h4 { margin: 0; font-size: 15px; font-weight: 500; color: #fff; }
-    .adnn-header-title-details small { font-size: 11px; color: rgba(255, 255, 255, 0.4); }
-    .adnn-status-online-highlight { color: #25d366 !important; font-weight: 500; }
-
-    .adnn-header-communications-utilities { display: flex; align-items: center; gap: 10px; }
+    .adnn-header-communications-utilities { display: flex; align-items: center; gap: 8px; }
     .adnn-util-call-btn {
-      width: 38px;
-      height: 38px;
-      border-radius: 50%;
-      background: rgba(255, 255, 255, 0.05);
-      border: 0;
-      color: #fff;
-      display: grid;
-      place-items: center;
-      cursor: pointer;
-      transition: background 0.2s;
+      width: 40px; height: 40px; border-radius: 50%; background: transparent;
+      border: 0; color: #aebac1; display: grid; place-items: center; cursor: pointer;
     }
-
-    .adnn-util-call-btn:hover { background: rgba(39, 45, 207, 0.3); color: #8d96ff; }
-    .adnn-util-call-btn svg { width: 18px; height: 18px; }
+    .adnn-util-call-btn:hover { color: #fff; background: rgba(255,255,255,0.05); }
+    .adnn-util-call-btn svg { width: 20px; height: 20px; }
 
     .adnn-messenger-messages-viewport {
-      overflow-y: auto;
-      padding: 20px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      scroll-behavior: smooth;
+      overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; background: #0b141a;
     }
 
-    /* Professional Message Bubble Architecture Mapping WhatsApp Shapes */
     .adnn-whatsapp-message-bubble {
-      max-width: 75%;
-      padding: 10px 14px;
-      border-radius: 16px;
-      position: relative;
-      color: #fff;
-      font-size: 14.5px;
-      line-height: 1.5;
-      display: flex;
-      flex-direction: column;
-      margin-bottom: 4px;
-      animation: bubbleArrivalAnimation 0.25s cubic-bezier(0.1, 1, 0.1, 1) both;
+      max-width: 65%; padding: 8px 10px; border-radius: 8px; position: relative;
+      color: #e9edef; font-size: 14.5px; line-height: 1.45; display: flex; flex-direction: column;
     }
+    .is-sender-bubble { align-self: flex-end; background: #005c4b; }
+    .is-receiver-bubble { align-self: flex-start; background: #202c33; }
 
-    @keyframes bubbleArrivalAnimation {
-      from { opacity: 0; transform: translateY(6px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    .is-sender-bubble {
-      align-self: flex-end;
-      background: linear-gradient(135deg, #272dcf, #1a1f94);
-      border-bottom-right-radius: 2px;
-    }
-
-    .is-receiver-bubble {
-      align-self: flex-start;
-      background: rgba(255, 255, 255, 0.06);
-      border-bottom-left-radius: 2px;
-      border: 1px solid rgba(255, 255, 255, 0.04);
-    }
-
-    .adnn-bubble-identity-header-row strong {
-      font-size: 11px;
-      color: #8d96ff;
-      font-family: monospace;
-      margin-bottom: 4px;
-      display: block;
-    }
-
+    .adnn-bubble-identity-header-row strong { font-size: 12px; color: #5360ff; display: block; margin-bottom: 3px; }
     .adnn-bubble-text-content-paragraph { margin: 0; word-break: break-word; }
-
     .adnn-bubble-timestamp-metrics-footer-line {
-      display: flex;
-      align-items: center;
-      justify-content: flex-end;
-      gap: 6px;
-      margin-top: 4px;
-      font-size: 10px;
-      color: rgba(255, 255, 255, 0.4);
-      font-family: monospace;
+      display: flex; align-items: center; justify-content: flex-end; gap: 4px;
+      margin-top: 4px; font-size: 11px; color: rgba(255, 255, 255, 0.35); font-family: monospace;
     }
+    .adnn-receipt-tick-marks { font-size: 12px; color: rgba(255, 255, 255, 0.3); }
+    .is-fully-read-blue { color: #53bdeb !important; }
 
-    .adnn-receipt-tick-marks { font-size: 11px; color: rgba(255, 255, 255, 0.3); }
-    .is-fully-read-blue { color: #34b7f1 !important; }
+    .adnn-bubble-embedded-image { max-width: 100%; max-height: 250px; border-radius: 6px; object-fit: cover; margin-bottom: 2px; cursor: pointer; }
+    .adnn-bubble-document-download-link { display: flex; align-items: center; gap: 8px; color: #53bdeb; text-decoration: none; font-size: 13.5px; background: rgba(0,0,0,0.15); padding: 8px; border-radius: 6px; }
 
-    /* Native Media Integration Modules */
-    .adnn-bubble-embedded-image {
-      max-width: 100%;
-      max-height: 280px;
-      border-radius: 12px;
-      object-fit: cover;
-      margin-bottom: 4px;
-      cursor: pointer;
-    }
-
-    .adnn-bubble-document-download-link {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      color: #8d96ff;
-      text-decoration: none;
-      font-size: 13px;
-      background: rgba(0, 0, 0, 0.2);
-      padding: 8px 12px;
-      border-radius: 10px;
-    }
-
-    .adnn-bubble-native-audio-player {
-      height: 36px;
-      max-width: 220px;
-      margin-top: 4px;
-    }
-
-    /* Reactions System Engine Badge Row styling */
     .adnn-bubble-active-reactions-badge-row {
-      position: absolute;
-      bottom: -10px;
-      right: 12px;
-      background: #1c1c24;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      padding: 1px 6px;
-      border-radius: 10px;
-      display: flex;
-      gap: 2px;
-      font-size: 11px;
-      z-index: 2;
+      position: absolute; bottom: -8px; right: 10px; background: #202c33; border: 1px solid rgba(255,255,255,0.05); padding: 1px 5px; border-radius: 10px; display: flex; gap: 1px; font-size: 11px; z-index: 2;
     }
 
-    /* Context Controls Menus Panel on hover layers */
     .adnn-bubble-interactive-context-menu-utilities {
-      position: absolute;
-      top: 50%;
-      transform: translateY(-50%);
-      background: #1c1c24;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 8px;
-      padding: 4px;
-      display: none;
-      gap: 4px;
-      z-index: 10;
+      position: absolute; top: 50%; transform: translateY(-50%); background: #233138; border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; padding: 2px; display: none; gap: 2px; z-index: 10;
     }
-
-    .is-sender-bubble .adnn-bubble-interactive-context-menu-utilities { left: -140px; }
-    .is-receiver-bubble .adnn-bubble-interactive-context-menu-utilities { right: -140px; }
+    .is-sender-bubble .adnn-bubble-interactive-context-menu-utilities { left: -145px; }
+    .is-receiver-bubble .adnn-bubble-interactive-context-menu-utilities { right: -145px; }
     .adnn-whatsapp-message-bubble:hover .adnn-bubble-interactive-context-menu-utilities { display: flex; }
+    .adnn-bubble-interactive-context-menu-utilities button { background: transparent; border: 0; color: #fff; font-size: 11px; cursor: pointer; padding: 2px 4px; }
+    .adnn-util-delete-action { color: #ff3b30 !important; }
 
-    .adnn-bubble-interactive-context-menu-utilities button {
-      background: transparent; border: 0; color: #fff; font-size: 11px; cursor: pointer; padding: 2px 4px;
-    }
-    .adnn-bubble-interactive-context-menu-utilities button:hover { color: #8d96ff; }
-    .adnn-util-delete-action { color: #ff2602 !important; }
+    .adnn-messenger-composer-area { border-top: 1px solid rgba(255,255,255,0.04); padding: 8px 12px; background: #202c33; position: relative; }
+    .adnn-messenger-interactive-form { display: flex; align-items: center; gap: 10px; }
 
-    /* Interactive Composer Core Framework Elements layout */
-    .adnn-messenger-composer-area {
-      border-top: 1px solid rgba(255, 255, 255, 0.06);
-      padding: 12px 16px;
-      background: rgba(15, 15, 20, 0.6);
-      position: relative;
-    }
+    .adnn-composer-utility-file-label { color: #8696a0; cursor: pointer; display: grid; place-items: center; }
+    .adnn-composer-utility-file-label svg { width: 24px; height: 24px; }
 
-    .adnn-messenger-interactive-form {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .adnn-composer-utility-file-label {
-      color: rgba(255, 255, 255, 0.5); cursor: pointer; display: grid; place-items: center; transition: color 0.2s;
-    }
-    .adnn-composer-utility-file-label:hover { color: #fff; }
-    .adnn-composer-utility-file-label svg { width: 22px; height: 22px; }
-
-    .adnn-composer-input-wrapper-container {
-      flex: 1; position: relative; display: flex; align-items: center;
-    }
-
+    .adnn-composer-input-wrapper-container { flex: 1; position: relative; display: flex; align-items: center; }
     .adnn-composer-input-wrapper-container input {
-      height: 44px; border-radius: 22px; background: rgba(0, 0, 0, 0.4);
-      border: 1px solid rgba(255, 255, 255, 0.08); padding: 0 44px 0 16px;
-      color: #fff; font-size: 14px; width: 100%;
+      height: 42px; border-radius: 8px; background: #2a3942; border: 0; padding: 0 40px 0 14px; color: #fff; font-size: 15px; width: 100%; outline: none;
     }
 
-    /* Native Typing Indicators Inside Input bounds layout */
-    .adnn-composer-typing-indicator-dot-matrix {
-      position: absolute; right: 16px; display: flex; gap: 3px;
-    }
-    .adnn-composer-typing-indicator-dot-matrix span {
-      width: 5px; height: 5px; background: #272dcf; border-radius: 50%;
-      animation: typingIndicatorDotsAnimation 1.4s infinite both;
-    }
+    .adnn-composer-typing-indicator-dot-matrix { position: absolute; right: 14px; display: flex; gap: 2px; }
+    .adnn-composer-typing-indicator-dot-matrix span { width: 4px; height: 4px; background: #00a884; border-radius: 50%; animation: typingDots 1.4s infinite both; }
     .adnn-composer-typing-indicator-dot-matrix span:nth-child(2) { animation-delay: 0.2s; }
     .adnn-composer-typing-indicator-dot-matrix span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes typingDots { 0%, 100% { transform: scale(0.6); opacity: 0.4; } 50% { transform: scale(1.2); opacity: 1; } }
 
-    @keyframes typingIndicatorDotsAnimation {
-      0%, 100% { transform: scale(0.6); opacity: 0.4; }
-      50% { transform: scale(1.2); opacity: 1; }
-    }
+    .adnn-composer-action-voice-btn, .adnn-composer-submit-message-btn { width: 42px; height: 42px; border-radius: 50%; border: 0; display: grid; place-items: center; cursor: pointer; color: #fff; }
+    .adnn-composer-action-voice-btn { background: transparent; color: #8696a0; }
+    .adnn-composer-submit-message-btn { background: #00a884; }
+    .adnn-composer-submit-message-btn svg { width: 16px; height: 16px; }
 
-    .adnn-composer-action-voice-btn, .adnn-composer-submit-message-btn {
-      width: 44px; height: 44px; border-radius: 50%; border: 0; display: grid;
-      place-items: center; cursor: pointer; color: #fff; transition: background 0.2s;
-    }
-
-    .adnn-composer-action-voice-btn { background: rgba(255, 255, 255, 0.05); }
-    .adnn-composer-action-voice-btn:hover { background: rgba(255, 38, 2, 0.15); color: #ff2602; }
-    .adnn-composer-submit-message-btn { background: #272dcf; }
-    .adnn-composer-submit-message-btn:hover { background: #3946ff; }
-    .adnn-composer-submit-message-btn svg, .adnn-composer-action-voice-btn svg { width: 16px; height: 16px; }
-
-    /* In-Chat Full-Screen Overlay Media Preview Panels styling elements map bounds */
     .adnn-composer-attachment-fullscreen-preview-panel {
-      position: absolute; bottom: 100%; left: 0; right: 0; height: 260px;
-      background: #0d0d12; border-top: 1px solid rgba(255, 255, 255, 0.08);
-      z-index: 100; padding: 16px; display: flex; flex-direction: column;
-      align-items: center; justify-content: center; gap: 10px;
+      position: absolute; bottom: 100%; left: 0; right: 0; height: 240px; background: #111b21; border-top: 1px solid rgba(255,255,255,0.08); z-index: 100; padding: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
     }
+    .adnn-preview-render-mount { max-width: 100%; max-height: 160px; overflow: hidden; border-radius: 6px; }
+    .adnn-fullscreen-composer-image-render { max-width: 100%; max-height: 160px; object-fit: contain; }
+    .adnn-preview-file-metadata-label { font-size: 12px; color: #8696a0; font-family: monospace; }
 
-    .adnn-close-preview-panel-btn, .adnn-close-quote-context-btn {
-      position: absolute; top: 12px; right: 16px; background: transparent;
-      border: 0; color: rgba(255, 255, 255, 0.5); font-size: 22px; cursor: pointer;
-    }
-    .adnn-close-preview-panel-btn:hover { color: #fff; }
+    .adnn-composer-quoted-reply-context-bar { display: grid; grid-template-columns: 4px 1fr auto; gap: 10px; background: rgba(0,0,0,0.2); padding: 6px 10px; border-radius: 6px; margin-bottom: 6px; }
+    .adnn-quote-line-indicator { background: #00a884; border-radius: 2px; }
+    .adnn-quote-text-details-block strong { font-size: 12px; color: #00a884; display: block; }
+    .adnn-quote-text-details-block p { margin: 0; font-size: 11px; color: #8696a0; }
+    .adnn-bubble-quoted-context-wrapper { background: rgba(0,0,0,0.15); border-left: 3px solid #00a884; padding: 5px 8px; border-radius: 4px; margin-bottom: 4px; font-size: 12px; }
+    .adnn-bubble-quoted-context-wrapper strong { color: #00a884; display: block; }
+    .adnn-bubble-quoted-context-wrapper p { margin: 0; opacity: 0.75; }
 
-    .adnn-preview-render-mount { max-width: 100%; max-height: 180px; overflow: hidden; border-radius: 10px; }
-    .adnn-fullscreen-composer-image-render { max-width: 100%; max-height: 180px; object-fit: contain; }
-    .adnn-preview-file-metadata-label { font-size: 12px; color: rgba(245, 245, 247, 0.6); font-family: monospace; }
-
-    /* Quoted Message Link UI Rows Mappings specifications blocks */
-    .adnn-composer-quoted-reply-context-bar {
-      display: grid; grid-template-columns: 4px 1fr auto; gap: 10px;
-      background: rgba(0, 0, 0, 0.3); padding: 8px 12px; border-radius: 8px; margin-bottom: 8px;
-    }
-    .adnn-quote-line-indicator { background: #272dcf; border-radius: 2px; }
-    .adnn-quote-text-details-block strong { font-size: 12px; color: #8d96ff; display: block; }
-    .adnn-quote-text-details-block p { margin: 0; font-size: 11px; color: rgba(255, 255, 255, 0.6); }
-
-    .adnn-bubble-quoted-context-wrapper {
-      background: rgba(0, 0, 0, 0.2); border-left: 3px solid #8d96ff;
-      padding: 6px 10px; border-radius: 6px; margin-bottom: 6px; font-size: 12px;
-    }
-    .adnn-bubble-quoted-context-wrapper strong { color: #8d96ff; display: block; margin-bottom: 2px; }
-    .adnn-bubble-quoted-context-wrapper p { margin: 0; opacity: 0.8; }
-
-    /* Universal Placeholder View Screens */
-    .adnn-whatsapp-placeholder-screen {
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      height: 100%; text-align: center; padding: 40px; color: rgba(255, 255, 255, 0.4);
-    }
-    .adnn-placeholder-branding-icon {
-      width: 64px; height: 64px; border-radius: 20px; background: rgba(39, 45, 207, 0.1);
-      color: #272dcf; font-size: 24px; font-weight: 500; display: grid; place-items: center;
-      margin-bottom: 16px; border: 1px solid rgba(39, 45, 207, 0.2);
-    }
-    .adnn-whatsapp-placeholder-screen h3 { margin: 0 0 8px; color: #fff; font-weight: 400; font-size: 18px; }
-    .adnn-whatsapp-placeholder-screen p { margin: 0; font-size: 13.5px; max-width: 320px; line-height: 1.6; }
-    .adnn-chat-view-loader, .adnn-chat-empty-slate { margin: auto; font-family: monospace; font-size: 12px; color: rgba(255,255,255,0.4); text-align: center; }
+    .adnn-whatsapp-placeholder-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; text-align: center; padding: 30px; color: #8696a0; }
+    .adnn-placeholder-branding-icon { width: 60px; height: 60px; border-radius: 50%; background: rgba(0,168,132,0.1); color: #00a884; font-size: 22px; display: grid; place-items: center; margin-bottom: 12px; }
+    .adnn-whatsapp-placeholder-screen h3 { margin: 0 0 6px; color: #fff; font-weight: 400; font-size: 18px; }
+    .adnn-whatsapp-placeholder-screen p { margin: 0; font-size: 13px; max-width: 280px; line-height: 1.5; }
+    .adnn-chat-view-loader, .adnn-chat-empty-slate { margin: auto; font-family: monospace; font-size: 12px; color: #8696a0; }
 
     /* ==========================================================================
-       WEBRTC DRAG HARDWARE CALL ENGINE VIEW OVERLAYS
+       WEBRTC HARDWARE CONSTRAINTS MODULE STAGES
        ========================================================================== */
-    .adnn-call-hardware-overlay-master-stage {
-      position: fixed; inset: 0; background: rgba(5, 5, 8, 0.85);
-      backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); z-index: 2147483640;
-    }
+    .adnn-call-hardware-overlay-master-stage { position: fixed; inset: 0; background: #111b21; z-index: 2147483640; }
     .generic-flex-center { display: flex; align-items: center; justify-content: center; }
-    .adnn-call-hardware-card-panel {
-      width: min(440px, calc(100vw - 32px)); background: #0f0f14;
-      border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 32px;
-      padding: 30px; text-align: center; color: #fff;
-      box-shadow: 0 30px 90px rgba(0, 0, 0, 0.5), 0 0 50px rgba(39, 45, 207, 0.15);
-    }
-    .adnn-call-card-avatar-row {
-      width: 72px; height: 72px; border-radius: 24px; background: #272dcf;
-      margin: 0 auto 20px; display: grid; place-items: center; font-size: 24px; font-weight: 500;
-    }
-    .adnn-call-hardware-card-panel h2 { margin: 0 0 6px; font-size: 22px; font-weight: 500; }
-    .adnn-call-hardware-card-panel p { margin: 0 0 30px; font-size: 13px; color: rgba(255,255,255,0.5); font-family: monospace; }
-    .adnn-call-card-interactive-controls-row { display: flex; align-items: center; justify-content: center; gap: 16px; }
-    
-    .adnn-call-btn-circle {
-      width: 54px; height: 54px; border-radius: 50%; border: 0; background: rgba(255, 255, 255, 0.08);
-      color: #fff; display: grid; place-items: center; cursor: pointer; transition: background 0.2s, transform 0.2s;
-    }
-    .adnn-call-btn-circle:hover { transform: scale(1.06); }
-    .adnn-call-btn-circle svg { width: 20px; height: 20px; }
-    
-    .is-accept-green-bg { background: #25d366 !important; }
-    .is-decline-red-bg { background: #ff3b30 !important; }
-    .is-muted-highlight { background: #ff2602 !important; color: #fff !important; }
+    .adnn-call-hardware-card-panel { width: min(450px, calc(100vw - 32px)); background: #222e35; border-radius: 16px; padding: 24px; text-align: center; color: #fff; }
+    .adnn-call-card-avatar-row { width: 80px; height: 80px; border-radius: 50%; background: #272dcf; margin: 0 auto 16px; display: grid; place-items: center; font-size: 26px; }
+    .adnn-call-hardware-card-panel h2 { margin: 0 0 4px; font-size: 20px; font-weight: 400; }
+    .adnn-call-hardware-card-panel p { margin: 0 0 24px; font-size: 13px; color: #8696a0; }
+    .adnn-call-card-interactive-controls-row { display: flex; align-items: center; justify-content: center; gap: 14px; }
+    .adnn-call-btn-circle { width: 50px; height: 50px; border-radius: 50%; border: 0; background: #3b4a54; color: #fff; display: grid; place-items: center; cursor: pointer; }
+    .is-accept-green-bg { background: #1fa353 !important; }
+    .is-decline-red-bg { background: #ea0038 !important; }
+    .is-muted-highlight { background: #ea0038 !important; }
 
-    /* WebRTC Live Grid Mesh Streams Windows styling blocks elements mapping bounds */
-    .is-active-call-pane { width: min(720px, calc(100vw - 24px)) !important; padding: 16px !important; }
-    .adnn-webrtc-video-tiles-grid-mesh {
-      width: 100%; aspect-ratio: 16/10; background: #000; border-radius: 20px;
-      overflow: hidden; margin-bottom: 16px; position: relative;
-    }
-    .adnn-webrtc-stream-track-video-tile-node { width: 100%; height: 100%; object-fit: cover; background: #050507; }
-    .is-local-mirror-track {
-      position: absolute; bottom: 14px; right: 14px; width: 25%; aspect-ratio: 3/4;
-      border-radius: 12px; border: 1px solid rgba(255,255,255,0.2); transform: scaleX(-1);
-    }
-    .adnn-active-call-floating-identity-row { margin-bottom: 20px; text-align: left; padding: 0 4px; }
-    .adnn-active-call-floating-identity-row h3 { margin: 0 0 4px; font-size: 17px; font-weight: 500; }
-    .adnn-active-call-floating-identity-row p { margin: 0; font-size: 12px; }
+    .is-active-call-pane { width: min(750px, calc(100vw - 24px)) !important; padding: 12px !important; }
+    .adnn-webrtc-video-tiles-grid-mesh { width: 100%; aspect-ratio: 16/10; background: #000; border-radius: 12px; overflow: hidden; margin-bottom: 12px; position: relative; }
+    .adnn-webrtc-stream-track-video-tile-node { width: 100%; height: 100%; object-fit: cover; }
+    .is-local-mirror-track { position: absolute; bottom: 12px; right: 12px; width: 22%; aspect-ratio: 3/4; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); transform: scaleX(-1); }
+    .adnn-active-call-floating-identity-row { margin-bottom: 16px; text-align: left; }
+    .adnn-active-call-floating-identity-row h3 { margin: 0; font-size: 16px; font-weight: 400; }
+    .adnn-active-call-floating-identity-row p { margin: 0; font-size: 12px; color: #8696a0; }
 
-    /* Mobile Adaptive Safe Boundaries Overrides tracking layout scaling behaviors */
+    /* ==========================================================================
+       MOBILE FIXES FOR BROKEN RENDER AND INLINE OVERLAYS
+       ========================================================================== */
     @media (max-width: 760px) {
       .adnn-whatsapp-messenger-frame {
-        height: 100svh !important; width: 100vw !important; border-radius: 0; border: 0;
-        position: fixed; inset: 0; z-index: 2147483600; background: #050507;
+        position: fixed !important; inset: 0 !important; z-index: 2147483000 !important;
+        height: 100svh !important; width: 100vw !important; border: 0 !important; border-radius: 0 !important;
       }
-      .adnn-admin-chat-layout { grid-template-columns: 1fr; height: 100svh; border-radius: 0; }
+      
+      /* Only render full-screen view if respective routing class maps onto body */
+      body:not(.adnn-direct-chat-open):not(.adnn-admin-chat-open) .adnn-whatsapp-messenger-frame {
+        display: none !important;
+      }
+
+      .adnn-admin-chat-layout { grid-template-columns: 1fr; height: calc(100svh - 65px); border-radius: 0; }
       body.adnn-admin-chat-open .adnn-admin-chat-sidebar { display: none; }
-      .adnn-bubble-interactive-context-menu-utilities { top: auto; bottom: -32px; left: 0 !important; right: auto !important; }
+      body.adnn-admin-chat-open .adnn-admin-chat-workspace-room { display: block; }
+      
+      .adnn-header-title-details strong { max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .adnn-messenger-mobile-back-btn { display: grid !important; place-items: center; }
+      .adnn-bubble-interactive-context-menu-utilities { top: auto; bottom: -34px; left: 4px !important; right: auto !important; }
       .adnn-whatsapp-message-bubble { max-width: 85%; }
     }
   `;

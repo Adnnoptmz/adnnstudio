@@ -1297,27 +1297,29 @@ function getLiveVideoTracks(stream) {
 }
 
 function getVisibleRemoteVideoTracks(stream) {
-  return getLiveVideoTracks(stream);
+  return getLiveVideoTracks(stream).filter((track) => !track.muted);
 }
 
 function markRemoteVideoActive(track = null) {
   if (!activeCallState) return;
-  if (!activeCallState.remoteVideoOn) {
-    attachCallMedia();
-    return;
+  if (track) {
+    activeCallState.remoteVideoTrackId = track.id || activeCallState.remoteVideoTrackId;
+    if (track.readyState !== "ended" && !track.muted) activeCallState.remoteVideoTrackReady = true;
   }
-  activeCallState.remoteVideoOn = true;
-  activeCallState.remoteVideoDisabledByPeer = false;
-  activeCallState.remoteVideoLastUnmutedAt = Date.now();
-  if (track) activeCallState.remoteVideoTrackId = track.id || activeCallState.remoteVideoTrackId;
+  if (activeCallState.remoteVideoOn && activeCallState.remoteVideoTrackReady) {
+    activeCallState.remoteVideoDisabledByPeer = false;
+    activeCallState.remoteVideoLastUnmutedAt = Date.now();
+  }
+  attachCallMedia();
 }
 
 function markRemoteVideoInactive(force = false) {
   if (!activeCallState) return;
   const visibleTracks = getVisibleRemoteVideoTracks(activeCallState.remoteStream);
   if (!force && visibleTracks.length) return;
-  activeCallState.remoteVideoOn = false;
-  activeCallState.remoteVideoDisabledByPeer = true;
+  activeCallState.remoteVideoTrackReady = false;
+  activeCallState.remoteVideoLastUnmutedAt = 0;
+  if (activeCallState.remoteVideoDisabledByPeer) activeCallState.remoteVideoOn = false;
   attachCallMedia();
 }
 
@@ -1459,7 +1461,6 @@ async function startRealtimeCall(kind = "audio", target = null) {
       pc,
       stream,
       remoteStream: new MediaStream(),
-      remoteVideoOn: wantsVideo,
       speakerOn: true,
       micMuted: false,
       holdOn: false,
@@ -1468,6 +1469,7 @@ async function startRealtimeCall(kind = "audio", target = null) {
       videoOn: wantsVideo,
       remoteVideoOn: false,
       remoteVideoDisabledByPeer: true,
+      remoteVideoTrackReady: false,
       remoteVideoLastUnmutedAt: 0,
       status: "ringing",
       media: { [ownCallUid()]: { videoOn: wantsVideo, updatedAt: Date.now() }, [target.receiverUid]: { videoOn: false, updatedAt: Date.now() } },
@@ -1515,15 +1517,28 @@ function createPeerConnection(callId, isAnswerer) {
       }
       if (track.kind === "video") {
         markRemoteVideoActive(track);
-        track.onunmute = () => { markRemoteVideoActive(track); attachCallMedia(); };
+        track.onunmute = () => {
+          if (!activeCallState) return;
+          activeCallState.remoteVideoTrackReady = true;
+          markRemoteVideoActive(track);
+        };
         track.onmute = () => {
           window.setTimeout(() => {
             if (!activeCallState || track.readyState === "ended") return;
-            if (track.muted && activeCallState.remoteVideoDisabledByPeer) markRemoteVideoInactive(true);
-            else attachCallMedia();
+            if (track.muted) {
+              activeCallState.remoteVideoTrackReady = false;
+              if (activeCallState.remoteVideoDisabledByPeer || !activeCallState.remoteVideoOn) markRemoteVideoInactive(true);
+              else attachCallMedia();
+            } else {
+              activeCallState.remoteVideoTrackReady = true;
+              attachCallMedia();
+            }
           }, 900);
         };
-        track.onended = () => markRemoteVideoInactive(true);
+        track.onended = () => {
+          if (activeCallState) activeCallState.remoteVideoTrackReady = false;
+          markRemoteVideoInactive(false);
+        };
       }
     });
     attachCallMedia();
@@ -1557,12 +1572,14 @@ function watchActiveCall(callId, isAnswerer) {
       if (remoteMedia.videoOn) {
         activeCallState.remoteVideoDisabledByPeer = false;
         activeCallState.remoteVideoOn = true;
+        if (getVisibleRemoteVideoTracks(activeCallState.remoteStream).length) activeCallState.remoteVideoTrackReady = true;
         attachCallMedia();
       } else {
         activeCallState.remoteVideoDisabledByPeer = true;
         activeCallState.remoteVideoOn = false;
+        activeCallState.remoteVideoTrackReady = false;
         clearVideoElement(document.getElementById("adnnCallRemoteVideo"));
-        markRemoteVideoInactive(true);
+        attachCallMedia();
       }
     }
     const remoteHold = call.hold?.[getRemoteCallUid()];
@@ -1602,7 +1619,9 @@ function showIncomingCall(call) {
     status: "incoming",
     stream: null,
     remoteStream: new MediaStream(),
-    remoteVideoDisabledByPeer: false,
+    remoteVideoOn: false,
+    remoteVideoDisabledByPeer: true,
+    remoteVideoTrackReady: false,
     remoteVideoLastUnmutedAt: 0,
     speakerOn: true,
     micMuted: false,
@@ -1644,7 +1663,8 @@ async function acceptIncomingCall() {
     await pc.setRemoteDescription(new RTCSessionDescription(call.offer));
     const answer = await pc.createAnswer();
     await pc.setLocalDescription(answer);
-    Object.assign(activeCallState, { pc, stream, videoOn: wantsVideo, remoteVideoOn: true, remoteVideoDisabledByPeer: false, remoteVideoLastUnmutedAt: Date.now(), status: "connected", startedAt: Date.now(), mode: "active", callerUid: call.callerUid, receiverUid: call.receiverUid });
+    const callerVideoOn = call.media?.[call.callerUid]?.videoOn ?? wantsVideo;
+    Object.assign(activeCallState, { pc, stream, videoOn: wantsVideo, remoteVideoOn: !!callerVideoOn, remoteVideoDisabledByPeer: !callerVideoOn, remoteVideoTrackReady: false, remoteVideoLastUnmutedAt: 0, status: "connected", startedAt: Date.now(), mode: "active", callerUid: call.callerUid, receiverUid: call.receiverUid });
     stopCallRinger();
     await setDoc(callRef, { answer: { type: answer.type, sdp: answer.sdp }, status: "accepted", [`media.${ownCallUid()}`]: { videoOn: wantsVideo, updatedAt: Date.now() }, answeredAt: serverTimestamp(), updatedAt: serverTimestamp() }, { merge: true });
     await updateCallInbox(call.receiverUid, activeCallState.callId, "accepted");
@@ -1776,7 +1796,10 @@ function attachCallMedia() {
   const remoteStream = activeCallState?.remoteStream || null;
   const localStream = activeCallState?.stream || null;
   const localHasVideo = !!activeCallState?.videoOn && !activeCallState?.holdOn && getLiveVideoTracks(localStream).length > 0;
-  const remoteHasVideo = !!activeCallState?.remoteVideoOn && !activeCallState?.remoteHoldOn && getVisibleRemoteVideoTracks(remoteStream).length > 0 && !activeCallState?.remoteVideoDisabledByPeer;
+  const remoteTracks = getLiveVideoTracks(remoteStream);
+  const remoteVisibleTracks = getVisibleRemoteVideoTracks(remoteStream);
+  const remoteTrackReady = !!activeCallState?.remoteVideoTrackReady || remoteVisibleTracks.length > 0 || (!!activeCallState?.remoteVideoOn && remoteTracks.length > 0 && !activeCallState?.remoteVideoDisabledByPeer);
+  const remoteHasVideo = !!activeCallState?.remoteVideoOn && !activeCallState?.remoteHoldOn && remoteTracks.length > 0 && remoteTrackReady && !activeCallState?.remoteVideoDisabledByPeer;
   const videoMode = localHasVideo || remoteHasVideo;
   const singleVideoMode = (localHasVideo && !remoteHasVideo) || (!localHasVideo && remoteHasVideo);
 
@@ -1804,14 +1827,16 @@ function attachCallMedia() {
     }
   }
   if (remoteVideo) {
-    if (remoteHasVideo) {
+    if (activeCallState?.remoteVideoOn && remoteStream && remoteTracks.length) {
       if (remoteVideo.srcObject !== remoteStream) remoteVideo.srcObject = remoteStream;
       remoteVideo.muted = true;
       remoteVideo.volume = 0;
-      remoteVideo.style.display = "block";
       remoteVideo.play?.().catch(() => {});
+    }
+    if (remoteHasVideo) {
+      remoteVideo.style.display = "block";
     } else {
-      clearVideoElement(remoteVideo);
+      if (!activeCallState?.remoteVideoOn || activeCallState?.remoteVideoDisabledByPeer || activeCallState?.remoteHoldOn) clearVideoElement(remoteVideo);
       remoteVideo.style.display = "none";
     }
   }

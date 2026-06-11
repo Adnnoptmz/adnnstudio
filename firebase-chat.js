@@ -1544,7 +1544,10 @@ async function startRealtimeCall(kind = "audio", target = null) {
 
 function createPeerConnection(callId, isAnswerer) {
   const pc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }, { urls: "stun:stun1.l.google.com:19302" }] });
-  ensureVideoTransceiver(pc);
+  // Caller creates the video m-line in the first offer. Answerer must wait until
+  // the remote offer is applied, otherwise browsers can create mismatched
+  // transceivers and the remote camera never renders.
+  if (!isAnswerer) ensureVideoTransceiver(pc);
   pc.onicecandidate = (event) => {
     if (event.candidate) addDoc(collection(db, "calls", callId, isAnswerer ? "answerCandidates" : "offerCandidates"), event.candidate.toJSON()).catch(() => {});
   };
@@ -1620,16 +1623,11 @@ function watchActiveCall(callId, isAnswerer) {
         if (getVisibleRemoteVideoTracks(activeCallState.remoteStream).length) activeCallState.remoteVideoTrackReady = true;
         attachCallMedia();
       } else {
-        // Only kill remote video if no live WebRTC track is already active.
-        // The Firestore media flag can lag behind the actual WebRTC track state.
-        const liveRemoteTracks = getVisibleRemoteVideoTracks(activeCallState.remoteStream);
-        if (!liveRemoteTracks.length) {
-          activeCallState.remoteVideoDisabledByPeer = true;
-          activeCallState.remoteVideoOn = false;
-          activeCallState.remoteVideoTrackReady = false;
-          clearVideoElement(document.getElementById("adnnCallRemoteVideo"));
-          attachCallMedia();
-        }
+        activeCallState.remoteVideoDisabledByPeer = true;
+        activeCallState.remoteVideoOn = false;
+        activeCallState.remoteVideoTrackReady = false;
+        clearVideoElement(document.getElementById("adnnCallRemoteVideo"));
+        attachCallMedia();
       }
     }
     const remoteHold = call.hold?.[getRemoteCallUid()];
@@ -1708,10 +1706,12 @@ async function acceptIncomingCall() {
     const wantsVideo = call.kind === "video";
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: wantsVideo });
     const pc = createPeerConnection(activeCallState.callId, true);
+    // Apply the caller offer first, then bind local media to those negotiated
+    // audio/video transceivers. This keeps both sides seeing each other's camera.
+    await pc.setRemoteDescription(new RTCSessionDescription(call.offer));
     setVideoTransceiverDirection(pc, "sendrecv");
     const blankVideo = wantsVideo ? null : createCallBlankVideo();
     await attachInitialCallTracks(pc, stream, blankVideo?.track || null);
-    await pc.setRemoteDescription(new RTCSessionDescription(call.offer));
     const answer = await pc.createAnswer();
     await pc.setLocalDescription(answer);
     const callerVideoOn = call.media?.[call.callerUid]?.videoOn ?? wantsVideo;
@@ -1849,8 +1849,12 @@ function attachCallMedia() {
   const localHasVideo = !!activeCallState?.videoOn && !activeCallState?.holdOn && getLiveVideoTracks(localStream).length > 0;
   const remoteTracks = getLiveVideoTracks(remoteStream);
   const remoteVisibleTracks = getVisibleRemoteVideoTracks(remoteStream);
+  // Some browsers keep the incoming video track muted until the element is
+  // actually attached and visible. Treat any live remote video track as displayable
+  // when the peer says their camera is on, then the video element itself will show
+  // frames as soon as they arrive.
   const remoteTrackReady = !!activeCallState?.remoteVideoTrackReady || remoteVisibleTracks.length > 0 || (!!activeCallState?.remoteVideoOn && remoteTracks.length > 0 && !activeCallState?.remoteVideoDisabledByPeer);
-  const remoteHasVideo = !!activeCallState?.remoteVideoOn && !activeCallState?.remoteHoldOn && remoteTracks.length > 0 && remoteTrackReady && !activeCallState?.remoteVideoDisabledByPeer;
+  const remoteHasVideo = !!activeCallState?.remoteVideoOn && !activeCallState?.remoteHoldOn && remoteTracks.length > 0 && !activeCallState?.remoteVideoDisabledByPeer;
   const videoMode = localHasVideo || remoteHasVideo;
   const singleVideoMode = (localHasVideo && !remoteHasVideo) || (!localHasVideo && remoteHasVideo);
 

@@ -6,251 +6,246 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
-// Global Ecosystem Constants
+// Global Hierarchy Constants
 const ADMIN_EMAIL = "getavcollab@gmail.com";
 const ADMIN_ALIAS_UID = "adnn-admin";
 const CALL_RING_TIMEOUT_MS = 60000;
-const CALL_SIGNAL_CLEANUP_DELAY_MS = 5000;
-const CALL_MESSAGE_LIMIT = 100;
+const CALL_SIGNAL_CLEANUP_DELAY_MS = 4000;
+const MSG_LIMIT = 100;
 
-// Configurations & State Matrix
+// Configurations Matrix
 const config = window.ADNN_FIREBASE_CONFIG;
 const app = config ? (getApps()[0] || initializeApp(config)) : null;
 const db = app ? getFirestore(app) : null;
 const auth = app ? getAuth(app) : null;
 const storage = app ? getStorage(app) : null;
 
+// Operational States
 let activeUser = null;
 let currentProfileCache = null;
-let activeChatId = "";
+let currentChatId = "";
 let currentChatType = ""; // 'support' or 'direct'
-let activeChatUnsubscribe = null;
-let activeMessagesUnsubscribe = null;
-let adminChatsUnsubscribe = null;
+let activeChatUnsub = null;
+let activeMessagesUnsub = null;
+let adminGlobalUnsub = null;
 
-// Audio context states
-let chatNotificationAudio = null;
-let activeCallState = null;
-let activeMediaRecorder = null;
-let voiceRecordTimer = null;
-let voiceDurationCounter = 0;
+let chatSound = null;
+let liveCallSession = null;
+let micRecorderInstance = null;
+let voiceDurationTimer = null;
+let voiceElapsedSeconds = 0;
 
-// Premium Apple/Tahoe Icon System Assets
-const IC_PHONE = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>`;
-const IC_VIDEO = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 7a2 2 0 0 0-2-2H3a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2V7z"/><polyline points="23 10 19 12 23 14"/></svg>`;
-const IC_VIDEO_OFF = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 16v1a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2m5.66 0H14a2 2 0 0 1 2 2v3.34l1 1L23 7v10l-2.66-2"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
-const IC_MIC = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" y1="19" x2="12" y2="23"/></svg>`;
-const IC_MIC_OFF = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"/><line x1="12" y1="19" x2="12" y2="23"/></svg>`;
-const IC_END = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.42 19.42 0 0 1-3.33-2.67m-2.67-3.34a19.79 19.79 0 0 1-3.07-8.63A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91"/><line x1="23" y1="1" x2="1" y2="23"/></svg>`;
-const IC_ATTACH = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>`;
+// Premium Apple-Tahoe Vector Icons
+const SVG_PHONE = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92v0z"/></svg>`;
+const SVG_VIDEO = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 7a2 2 0 0 0-2-2H3a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2V7z"/><polyline points="23 10 19 12 23 14"/></svg>`;
+const SVG_VIDEO_OFF = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 16v1a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2m5.66 0H14a2 2 0 0 1 2 2v3.34l1 1L23 7v10l-2.66-2"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
+const SVG_MIC = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" y1="19" x2="12" y2="23"/></svg>`;
+const SVG_MIC_OFF = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"/><line x1="12" y1="19" x2="12" y2="23"/></svg>`;
+const SVG_HANGUP = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.42 19.42 0 0 1-3.33-2.67m-2.67-3.34a19.79 19.79 0 0 1-3.07-8.63A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91"/><line x1="23" y1="1" x2="1" y2="23"/></svg>`;
+const SVG_CLIP = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>`;
 
-// Initialize Application Scope Execution Loop
+// Initialize Execution Lifecycle
 if (db && auth) {
-  injectGlobalAppStyles();
+  injectScopedSystemStyles();
   onAuthStateChanged(auth, async (user) => {
     activeUser = user;
     if (!user) {
-      terminateAllSystemListeners();
+      disconnectSystemListeners();
       return;
     }
+    currentProfileCache = await extractProfileInformation(user.uid, user.email);
+    syncPresenceNode(user);
+    bindIncomingCallInterceptor(user);
     
-    currentProfileCache = await resolveUserProfile(user.uid, user.email);
-    initializePresenceTracking(user);
-    initializeIncomingCallDispatcher(user);
-    
-    // Auto-routing initialization based on structural location paths
     if (location.pathname.includes("admin.html")) {
-      setupAdminWorkspacePortal();
+      buildAdminChatInterface();
     } else {
-      setupStandardUserPortal();
+      buildStandardClientInterface();
     }
   });
 }
 
 /* ==========================================================================
-   PORTAL INTERFACE SETUP ENGINE
+   PORTAL UI INTERFACE SETUP ENGINE
    ========================================================================== */
 
-function setupStandardUserPortal() {
-  // Target containers inside user portals
-  const userChatContainer = document.getElementById("directChatMount");
-  const adminSupportContainer = document.getElementById("clientChatMount");
+function buildStandardClientInterface() {
+  const userChatMount = document.getElementById("directChatMount");
+  const supportChatMount = document.getElementById("clientChatMount");
 
-  // Hook operational layout interfaces directly inside "User Chats" navigation scope
-  if (userChatContainer) {
-    userChatContainer.innerHTML = buildMessengerMarkupFrame("direct");
-    initializeMessengerControllers("direct");
-    bindEcosystemStreams("direct");
+  if (userChatMount) {
+    userChatMount.className = "adnn-wa-container";
+    userChatMount.innerHTML = generateWorkspaceLayoutHTML("direct");
+    attachComposerInputInteractions("direct");
+    connectEcosystemLiveFeeds("direct");
   }
 
-  // Hook operational layout interfaces directly inside "Admin Support" navigation scope
-  if (adminSupportContainer) {
-    adminSupportContainer.innerHTML = buildMessengerMarkupFrame("support");
-    initializeMessengerControllers("support");
-    bindEcosystemStreams("support");
+  if (supportChatMount) {
+    supportChatMount.className = "adnn-wa-container";
+    supportChatMount.innerHTML = generateWorkspaceLayoutHTML("support");
+    attachComposerInputInteractions("support");
+    connectEcosystemLiveFeeds("support");
   }
 }
 
-function setupAdminWorkspacePortal() {
-  const adminPanelTarget = document.getElementById("chats_view");
-  if (!adminPanelTarget) return;
+function buildAdminChatInterface() {
+  const masterViewTarget = document.getElementById("chats_view");
+  if (!masterViewTarget) return;
 
-  adminPanelTarget.innerHTML = `
-    <div class="adnn-admin-chat-layout glass">
-      <div class="adnn-admin-chat-sidebar">
-        <div class="adnn-sidebar-search-box">
-          <input type="text" id="adminSidebarSearch" placeholder="Search conversations...">
+  masterViewTarget.className = "adnn-wa-container";
+  masterViewTarget.innerHTML = `
+    <div class="adnn-wa-admin-panel-frame">
+      <div class="adnn-wa-admin-sidebar">
+        <div class="adnn-wa-sidebar-search-container">
+          <input type="text" id="waAdminSearch" placeholder="Search conversations...">
         </div>
-        <div class="adnn-admin-chat-list" id="adminConversationList">
-          <div class="adnn-chat-view-loader">Connecting live data feeds...</div>
+        <div class="adnn-wa-sidebar-stream-list" id="waAdminStreamList">
+          <div class="adnn-wa-loader">Connecting live communication streams...</div>
         </div>
       </div>
-      <div class="adnn-admin-chat-workspace-room" id="adminChatRoomTarget">
-        <div class="adnn-whatsapp-placeholder-screen">
-          <div class="adnn-placeholder-branding-icon">AD</div>
-          <h3>AdnnStudio Communication Suite</h3>
-          <p>Select an approved client conversation stream from the sidebar matrix to start messaging.</p>
+      <div class="adnn-wa-admin-chat-view-container" id="waAdminChatRoomTarget">
+        <div class="adnn-wa-placeholder-screen">
+          <div class="adnn-wa-branding-avatar">AD</div>
+          <h3>Studio Communication Matrix</h3>
+          <p>Select a verified operational user track from the sidebar directory to access secure messaging controls.</p>
         </div>
       </div>
     </div>
   `;
 
-  // Establish Admin Master Snapshot Monitor Streams
-  if (adminChatsUnsubscribe) adminChatsUnsubscribe();
-  adminChatsUnsubscribe = onSnapshot(collection(db, "chats"), (snapshot) => {
-    const chats = [];
-    snapshot.forEach(docSnap => chats.push({ id: docSnap.id, ...docSnap.data() }));
-    // Sort chronologically by update timestamp metadata markers
-    chats.sort((a, b) => toUnixEpochMillis(b.updatedAt) - toUnixEpochMillis(a.updatedAt));
-    renderAdminSidebarMatrix(chats);
+  if (adminGlobalUnsub) adminGlobalUnsub();
+  adminGlobalUnsub = onSnapshot(collection(db, "chats"), (snapshot) => {
+    const activeChannels = [];
+    snapshot.forEach(docSnap => activeChannels.push({ id: docSnap.id, ...docSnap.data() }));
+    activeChannels.sort((a, b) => getEpochTime(b.updatedAt) - getEpochTime(a.updatedAt));
+    renderAdminSidebarDirectory(activeChannels);
   });
 
-  // Bind dynamic searching logic directly across the console panel interface
-  document.getElementById("adminSidebarSearch")?.addEventListener("input", (e) => {
-    const term = e.target.value.toLowerCase().trim();
-    document.querySelectorAll(".adnn-admin-list-item-btn").forEach(item => {
-      const match = item.innerText.toLowerCase().includes(term);
-      item.style.display = match ? "grid" : "none";
+  document.getElementById("waAdminSearch")?.addEventListener("input", (e) => {
+    const val = e.target.value.toLowerCase().trim();
+    document.querySelectorAll(".adnn-wa-sidebar-list-row-item").forEach(item => {
+      const match = item.innerText.toLowerCase().includes(val);
+      item.style.display = match ? "flex" : "none";
     });
   });
 }
 
-function renderAdminSidebarMatrix(chats) {
-  const container = document.getElementById("adminConversationList");
-  if (!container) return;
-  container.innerHTML = "";
+function renderAdminSidebarDirectory(channels) {
+  const targetList = document.getElementById("waAdminStreamList");
+  if (!targetList) return;
+  targetList.innerHTML = "";
 
-  if (chats.length === 0) {
-    container.innerHTML = `<div class="adnn-chat-empty-slate">No workspace dispatches registered.</div>`;
+  if (channels.length === 0) {
+    targetList.innerHTML = `<div class="adnn-wa-empty-state">No operational channels initialized.</div>`;
     return;
   }
 
-  chats.forEach(chat => {
-    let displayName = chat.title || "Support Thread";
-    let subDisplay = chat.lastMessage || "Click to open workspace channel.";
-    
-    if (chat.type === "support") {
-      displayName = `[Support] ${chat.clientName || chat.clientEmail}`;
+  channels.forEach(channel => {
+    let name = channel.title || "Private Dialogue";
+    if (channel.type === "support") {
+      name = `[Support] ${channel.clientName || channel.clientEmail}`;
     }
 
-    const unreadCount = Number(chat.unreadForAdmin || 0);
-    const itemBtn = document.createElement("button");
-    itemBtn.type = "button";
-    itemBtn.className = `adnn-admin-list-item-btn ${chat.id === activeChatId ? "is-active" : ""}`;
-    itemBtn.innerHTML = `
-      <div class="adnn-item-avatar-circle">${displayName.slice(0, 2).toUpperCase()}</div>
-      <div class="adnn-item-metadata-block">
-        <strong>${escapeHtmlString(displayName)}</strong>
-        <p>${escapeHtmlString(subDisplay)}</p>
+    const counter = Number(channel.unreadForAdmin || 0);
+    const activeClass = channel.id === currentChatId ? "is-selected" : "";
+    const summaryMsg = channel.lastMessage || "No messages recorded.";
+
+    const row = document.createElement("div");
+    row.className = `adnn-wa-sidebar-list-row-item ${activeClass}`;
+    row.innerHTML = `
+      <div class="adnn-wa-row-avatar-icon">${name.slice(0, 2).toUpperCase()}</div>
+      <div class="adnn-wa-row-content-block">
+        <div class="adnn-wa-row-top-line">
+          <strong>${sanitizeString(name)}</strong>
+        </div>
+        <p>${sanitizeString(summaryMsg)}</p>
       </div>
-      ${unreadCount > 0 ? `<span class="adnn-unread-badge-counter">${unreadCount}</span>` : ""}
+      ${counter > 0 ? `<span class="adnn-wa-unread-badge">${counter}</span>` : ""}
     `;
 
-    itemBtn.addEventListener("click", () => {
-      activeChatId = chat.id;
-      currentChatType = chat.type;
-      document.querySelectorAll(".adnn-admin-list-item-btn").forEach(b => b.classList.remove("is-active"));
-      itemBtn.classList.add("is-active");
-      loadAdminSelectedConversationStream(chat);
+    row.addEventListener("click", () => {
+      currentChatId = channel.id;
+      currentChatType = channel.type;
+      document.querySelectorAll(".adnn-wa-sidebar-list-row-item").forEach(r => r.classList.remove("is-selected"));
+      row.classList.add("is-selected");
+      loadAdminSelectedThread(channel);
     });
 
-    container.appendChild(itemBtn);
+    targetList.appendChild(row);
   });
 }
 
-function loadAdminSelectedConversationStream(chat) {
-  const targetRoom = document.getElementById("adminChatRoomTarget");
+function loadAdminSelectedThread(channel) {
+  const targetRoom = document.getElementById("waAdminChatRoomTarget");
   if (!targetRoom) return;
 
-  targetRoom.innerHTML = buildMessengerMarkupFrame(chat.type);
-  initializeMessengerControllers(chat.type);
-  
-  // Clear administrative notification targets upon reading the stream thread collection docs
-  updateDoc(doc(db, "chats", chat.id), { unreadForAdmin: 0 }).catch(() => {});
-  
-  bindEcosystemStreams(chat.type);
+  targetRoom.innerHTML = generateWorkspaceLayoutHTML(channel.type);
+  attachComposerInputInteractions(channel.type);
+  updateDoc(doc(db, "chats", channel.id), { unreadForAdmin: 0 }).catch(() => {});
+  connectEcosystemLiveFeeds(channel.type);
 }
 
 /* ==========================================================================
-   MARKUP COMPONENT & VIEWPORT DISPATCH FACTORIES
+   MARKUP COMPONENT & VIEWPORT GENERATOR FACTORIES
    ========================================================================== */
 
-function buildMessengerMarkupFrame(type) {
+function generateWorkspaceLayoutHTML(type) {
   const prefix = type === "support" ? "adnnSupport" : "adnnDirect";
   return `
-    <div class="adnn-whatsapp-messenger-frame" id="${prefix}RootFrame">
-      <div class="adnn-messenger-header-action-bar">
-        <div class="adnn-header-identity-block">
-          <div class="adnn-header-avatar" id="${prefix}HeaderAvatar">--</div>
-          <div class="adnn-header-title-details">
-            <h4 id="${prefix}HeaderTitle">Connecting workspace...</h4>
-            <small id="${prefix}HeaderStatus">Tracking offline status markers</small>
+    <div class="adnn-wa-messenger-shell-frame" id="${prefix}CoreShell">
+      <div class="adnn-wa-header-action-bar">
+        <button type="button" class="adnn-wa-mobile-back-nav-btn" id="${prefix}MobileBackBtn">&#8592;</button>
+        <div class="adnn-wa-header-profile-block">
+          <div class="adnn-wa-header-avatar-node" id="${prefix}HeaderAvatar">--</div>
+          <div class="adnn-wa-header-text-details">
+            <h4 id="${prefix}HeaderTitle">Verifying connection...</h4>
+            <small id="${prefix}HeaderPresence">Checking availability...</small>
           </div>
         </div>
-        <div class="adnn-header-communications-utilities">
-          <button type="button" class="adnn-util-call-btn" id="${prefix}AudioCallTrigger" aria-label="Audio call">${IC_PHONE}</button>
-          <button type="button" class="adnn-util-call-btn" id="${prefix}VideoCallTrigger" aria-label="Video call">${IC_VIDEO}</button>
+        <div class="adnn-wa-header-hardware-utilities">
+          <button type="button" class="adnn-wa-util-btn" id="${prefix}AudioCallBtn" aria-label="Audio call">${SVG_PHONE}</button>
+          <button type="button" class="adnn-wa-util-btn" id="${prefix}VideoCallBtn" aria-label="Video call">${SVG_VIDEO}</button>
         </div>
       </div>
-      
-      <div class="adnn-messenger-messages-viewport" id="${prefix}Viewport">
-        <div class="adnn-chat-view-loader">Synchronizing message buffers...</div>
+
+      <div class="adnn-wa-messages-viewport-scroller" id="${prefix}Viewport">
+        <div class="adnn-wa-loader">Synchronizing message streams...</div>
       </div>
 
-      <div class="adnn-messenger-composer-area">
-        <div class="adnn-composer-attachment-fullscreen-preview-panel" id="${prefix}UploadPreviewPanel" hidden>
-          <button type="button" class="adnn-close-preview-panel-btn" id="${prefix}CancelUploadBtn">&times;</button>
-          <div class="adnn-preview-render-mount" id="${prefix}PreviewMount"></div>
-          <span class="adnn-preview-file-metadata-label" id="${prefix}PreviewMetadataLabel">File allocation descriptor</span>
+      <div class="adnn-wa-composer-area-container">
+        <div class="adnn-wa-fullscreen-upload-preview-panel" id="${prefix}UploadPanel" hidden>
+          <button type="button" class="adnn-wa-close-preview-btn" id="${prefix}CloseUploadPanelBtn">&times;</button>
+          <div class="adnn-wa-preview-render-mount" id="${prefix}PreviewMount"></div>
+          <span class="adnn-wa-preview-metadata-tag" id="${prefix}UploadMetadataTag">File description tag</span>
         </div>
 
-        <div class="adnn-composer-quoted-reply-context-bar" id="${prefix}QuoteContextBar" hidden>
-          <div class="adnn-quote-line-indicator"></div>
-          <div class="adnn-quote-text-details-block">
-            <strong id="${prefix}QuoteSenderLabel">Sender</strong>
-            <p id="${prefix}QuoteBodyLabel">Quoted context string</p>
+        <div class="adnn-wa-quoted-reply-context-bar" id="${prefix}QuoteBar" hidden>
+          <div class="adnn-wa-quote-vertical-bar"></div>
+          <div class="adnn-wa-quote-details-block">
+            <strong id="${prefix}QuoteUser">User</strong>
+            <p id="${prefix}QuoteText">Quoted summary string...</p>
           </div>
-          <button type="button" class="adnn-close-quote-context-btn" id="${prefix}ClearQuoteBtn">&times;</button>
+          <button type="button" class="adnn-wa-clear-quote-btn" id="${prefix}ClearQuoteContextBtn">&times;</button>
         </div>
 
-        <form class="adnn-messenger-interactive-form" id="${prefix}Form">
-          <label class="adnn-composer-utility-file-label" title="Attach assets">
+        <form class="adnn-wa-composer-form-interface" id="${prefix}Form">
+          <label class="adnn-wa-file-attachment-trigger-label" title="Attach file assets">
             <input type="file" id="${prefix}FileInput" accept="image/*,.pdf,.doc,.docx,.zip" style="display:none;">
-            ${IC_ATTACH}
+            ${SVG_CLIP}
           </label>
           
-          <div class="adnn-composer-input-wrapper-container">
+          <div class="adnn-wa-input-wrapper-node">
             <input type="text" autocomplete="off" maxlength="1800" id="${prefix}TextInput" placeholder="Type a message...">
-            <div class="adnn-composer-typing-indicator-dot-matrix" id="${prefix}TypingIndicator" hidden>
+            <div class="adnn-wa-typing-indicator-dot-matrix" id="${prefix}TypingNode" hidden>
               <span></span><span></span><span></span>
             </div>
           </div>
 
-          <button type="button" class="adnn-composer-action-voice-btn" id="${prefix}VoiceActionBtn" title="Hold to record audio message">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="adnn-icon-mic-svg"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+          <button type="button" class="adnn-wa-voice-record-action-btn" id="${prefix}VoiceBtn" title="Hold to record audio message">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="adnn-wa-mic-icon-svg"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
           </button>
           
-          <button type="submit" class="adnn-composer-submit-message-btn" id="${prefix}SubmitBtn" title="Send text dispatch">
+          <button type="submit" class="adnn-wa-submit-message-btn" id="${prefix}SendBtn" title="Send message">
             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
           </button>
         </form>
@@ -260,29 +255,27 @@ function buildMessengerMarkupFrame(type) {
 }
 
 /* ==========================================================================
-   LIVE REALTIME DATA STREAM ENGINE (INTERCONNECTION & SYNC PIPELINES)
+   LIVE REALTIME DATA STREAM ENGINE (INTERCONNECTION & ROUTING PIPELINES)
    ========================================================================== */
 
-function bindEcosystemStreams(type) {
+function connectEcosystemLiveFeeds(type) {
   const prefix = type === "support" ? "adnnSupport" : "adnnDirect";
   
   if (!isAdminEmail(activeUser.email)) {
     if (type === "support") {
-      activeChatId = `support_${activeUser.uid}`;
+      currentChatId = `support_${activeUser.uid}`;
     } else {
-      // In User Chats pane, wait for Admin paired connection initialization setup mapping paths
-      if (activeChatUnsubscribe) activeChatUnsubscribe();
-      activeChatUnsubscribe = onSnapshot(
+      if (activeChatUnsub) activeChatUnsub();
+      activeChatUnsub = onSnapshot(
         query(collection(db, "chats"), where("type", "==", "direct"), where("participantUids", "array-contains", activeUser.uid)),
         (snapshot) => {
-          const validPairedChannels = [];
-          snapshot.forEach(docSnap => validPairedChannels.push({ id: docSnap.id, ...docSnap.data() }));
-          if (validPairedChannels.length > 0) {
-            // Pick the chronologically top paired active pipeline session trace target entry
-            activeChatId = validPairedChannels[0].id;
-            establishActiveMessagePipelineListeners(activeChatId, prefix, type);
+          const verifiedPairedThreads = [];
+          snapshot.forEach(docSnap => verifiedPairedThreads.push({ id: docSnap.id, ...docSnap.data() }));
+          if (verifiedPairedThreads.length > 0) {
+            currentChatId = verifiedPairedThreads[0].id;
+            initializeMessagePipelineTrackingListeners(currentChatId, prefix, type);
           } else {
-            renderEmptyWorkspacePlaceholder(prefix, "Awaiting Connection", "Only administrative pairs can spin up a connection trace here. Contact admin support to provision a communication card.");
+            renderEmptyLayoutFallback(prefix, "Awaiting Connection Card", "User-to-user messaging channels are restricted. Once the administrator creates a message connection card, your paired chat channel will unlock instantly.");
           }
         }
       );
@@ -290,234 +283,230 @@ function bindEcosystemStreams(type) {
     }
   }
 
-  establishActiveMessagePipelineListeners(activeChatId, prefix, type);
+  initializeMessagePipelineTrackingListeners(currentChatId, prefix, type);
 }
 
-function establishActiveMessagePipelineListeners(chatId, prefix, type) {
+function initializeMessagePipelineTrackingListeners(chatId, prefix, type) {
   if (!chatId) return;
 
-  // Track state targets across channel layout frameworks
-  const headerTitle = document.getElementById(`${prefix}HeaderTitle`);
-  const headerAvatar = document.getElementById(`${prefix}HeaderAvatar`);
-  const headerStatus = document.getElementById(`${prefix}HeaderStatus`);
+  const titleNode = document.getElementById(`${prefix}HeaderTitle`);
+  const avatarNode = document.getElementById(`${prefix}HeaderAvatar`);
+  const statusNode = document.getElementById(`${prefix}HeaderPresence`);
 
   onSnapshot(doc(db, "chats", chatId), (snapshot) => {
     if (!snapshot.exists()) return;
     const data = snapshot.data();
     
-    let resolvedTitle = data.title || "Workspace Thread";
+    let resolvedTitle = data.title || "Private Chat Thread";
     if (type === "support") {
-      resolvedTitle = isAdminEmail(activeUser.email) ? `Client: ${data.clientName || data.clientEmail}` : "AdnnStudio Support Portal";
+      resolvedTitle = isAdminEmail(activeUser.email) ? `Client Thread: ${data.clientName || data.clientEmail}` : "AdnnStudio Master Support";
     } else {
-      // Handle formatting names for direct peer mappings dynamically
       if (!isAdminEmail(activeUser.email)) {
-        const names = data.participantNames || {};
-        const otherUid = data.participantUids?.find(uid => uid !== activeUser.uid);
-        if (otherUid && names[otherUid]) resolvedTitle = names[otherUid];
+        const structuralNamesMap = data.participantNames || {};
+        const counterpeerUid = data.participantUids?.find(uid => uid !== activeUser.uid);
+        if (counterpeerUid && structuralNamesMap[counterpeerUid]) resolvedTitle = structuralNamesMap[counterpeerUid];
       }
     }
 
-    if (headerTitle) headerTitle.textContent = resolvedTitle;
-    if (headerAvatar) headerAvatar.textContent = resolvedTitle.slice(0, 2).toUpperCase();
+    if (titleNode) titleNode.textContent = resolvedTitle;
+    if (avatarNode) avatarNode.textContent = resolvedTitle.slice(0, 2).toUpperCase();
 
-    // Trigger explicit secondary check trace monitoring live connection statuses
     if (type === "support") {
-      monitorTargetPresence(isAdminEmail(activeUser.email) ? data.clientUid : ADMIN_ALIAS_UID, headerStatus);
+      bindPresenceNodeRealtimeMonitor(isAdminEmail(activeUser.email) ? data.clientUid : ADMIN_ALIAS_UID, statusNode);
     } else {
-      const otherUid = data.participantUids?.find(uid => uid !== activeUser.uid);
-      monitorTargetPresence(otherUid, headerStatus);
+      const counterpeerUid = data.participantUids?.find(uid => uid !== activeUser.uid);
+      bindPresenceNodeRealtimeMonitor(counterpeerUid, statusNode);
     }
   });
 
-  // Attach structural collection query pipelines listening for message arrivals
-  const msgQuery = query(collection(db, "chats", chatId, "messages"), orderBy("createdAt", "asc"), limit(CALL_MESSAGE_LIMIT));
+  const messagesQueryCollectionRef = query(collection(db, "chats", chatId, "messages"), orderBy("createdAt", "asc"), limit(MSG_LIMIT));
   
-  if (activeMessagesUnsubscribe) activeMessagesUnsubscribe();
-  activeMessagesUnsubscribe = onSnapshot(msgQuery, (snapshot) => {
-    const messages = [];
-    snapshot.forEach(docSnap => messages.push({ id: docSnap.id, ...docSnap.data() }));
-    renderEcosystemMessagesViewport(messages, prefix, chatId);
-    markMessagesAsReadEcosystem(chatId, type);
+  if (activeMessagesUnsub) activeMessagesUnsub();
+  activeMessagesUnsub = onSnapshot(messagesQueryCollectionRef, (snapshot) => {
+    const historicalPayload = [];
+    snapshot.forEach(docSnap => historicalPayload.push({ id: docSnap.id, ...docSnap.data() }));
+    renderConversationalMessageBubbles(historicalPayload, prefix, chatId);
+    executeReadReceiptsMarkingLoop(chatId, type);
   });
 }
 
-function monitorTargetPresence(uid, element) {
-  if (!uid || !element) return;
-  onSnapshot(doc(db, "presence", uid), (snap) => {
-    if (!snap.exists()) {
-      element.textContent = "offline";
+function bindPresenceNodeRealtimeMonitor(uid, targetDOMElement) {
+  if (!uid || !targetDOMElement) return;
+  onSnapshot(doc(db, "presence", uid), (snapshot) => {
+    if (!snapshot.exists()) {
+      targetDOMElement.textContent = "offline";
+      targetDOMElement.className = "is-offline-text";
       return;
     }
-    const data = snap.data();
-    const isOnline = data.online === true && (Date.now() - toUnixEpochMillis(data.lastSeen)) < 75000;
-    element.textContent = isOnline ? "online" : "offline";
-    element.className = isOnline ? "adnn-status-online-highlight" : "";
+    const data = snapshot.data();
+    const liveOnline = data.online === true && (Date.now() - getEpochTime(data.lastSeen)) < 75000;
+    targetDOMElement.textContent = liveOnline ? "online" : "offline";
+    targetDOMElement.className = liveOnline ? "is-online-active-green" : "is-offline-text";
   });
 }
 
 /* ==========================================================================
-   MESSENGER INPUT CONTROLLERS & INTERACTION SYSTEM
+   COMPOSER INPUT CONTROLLERS & INTERACTION SYSTEM
    ========================================================================== */
 
-function initializeMessengerControllers(type) {
+function attachComposerInputInteractions(type) {
   const prefix = type === "support" ? "adnnSupport" : "adnnDirect";
-  const form = document.getElementById(`${prefix}Form`);
-  const textInput = document.getElementById(`${prefix}TextInput`);
-  const fileInput = document.getElementById(`${prefix}FileInput`);
-  const cancelUploadBtn = document.getElementById(`${prefix}CancelUploadBtn`);
-  const voiceActionBtn = document.getElementById(`${prefix}VoiceActionBtn`);
-  const clearQuoteBtn = document.getElementById(`${prefix}ClearQuoteBtn`);
+  const targetForm = document.getElementById(`${prefix}Form`);
+  const textInputNode = document.getElementById(`${prefix}TextInput`);
+  const fileInputNode = document.getElementById(`${prefix}FileInput`);
+  const closeUploadBtn = document.getElementById(`${prefix}CloseUploadPanelBtn`);
+  const voiceRecordBtn = document.getElementById(`${prefix}VoiceBtn`);
+  const clearQuoteBtn = document.getElementById(`${prefix}ClearQuoteContextBtn`);
+  const mobileBackNavBtn = document.getElementById(`${prefix}MobileBackBtn`);
 
-  let currentAttachmentFile = null;
-  let activeQuotedMessageId = null;
+  let stagedFileAttachment = null;
+  let stagedQuotedParentId = null;
 
-  // Typing indicators logic metrics stream triggers
-  textInput?.addEventListener("input", () => {
-    if (!activeChatId) return;
-    const isTyping = textInput.value.length > 0;
-    setDoc(doc(db, "chats", activeChatId, "typing", activeUser.uid), {
-      isTyping, userName: currentProfileCache?.name || "User", timestamp: Date.now()
+  mobileBackNavBtn?.addEventListener("click", () => {
+    document.body.classList.remove("adnn-wa-mobile-view-active");
+    const adminWorkspaceLayout = document.querySelector(".adnn-wa-admin-panel-frame");
+    if (adminWorkspaceLayout) adminWorkspaceLayout.classList.remove("adnn-wa-mobile-room-open");
+  });
+
+  textInputNode?.addEventListener("input", () => {
+    if (!currentChatId) return;
+    const typingState = textInputNode.value.length > 0;
+    setDoc(doc(db, "chats", currentChatId, "typing", activeUser.uid), {
+      isTyping: typingState, name: currentProfileCache?.name || "User", timestamp: Date.now()
     }, { merge: true });
   });
 
-  // Track remote status variations to paint dynamic layout elements safely
-  onSnapshot(collection(db, "chats", activeChatId || "null", "typing"), (snapshot) => {
-    let remoteTypingDetected = false;
+  onSnapshot(collection(db, "chats", currentChatId || "null", "typing"), (snapshot) => {
+    let remotePeerIsActiveTyping = false;
     snapshot.forEach(docSnap => {
       if (docSnap.id !== activeUser.uid) {
         const data = docSnap.data();
-        if (data.isTyping && (Date.now() - data.timestamp) < 4000) remoteTypingDetected = true;
+        if (data.isTyping === true && (Date.now() - data.timestamp) < 4000) remotePeerIsActiveTyping = true;
       }
     });
-    const indicator = document.getElementById(`${prefix}TypingIndicator`);
-    if (indicator) indicator.hidden = !remoteTypingDetected;
+    const typingNode = document.getElementById(`${prefix}TypingNode`);
+    if (typingNode) typingNode.hidden = !remotePeerIsActiveTyping;
   });
 
-  // Intercept standard attachment events inside the panel architecture
-  fileInput?.addEventListener("change", (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    currentAttachmentFile = file;
-    
-    const panel = document.getElementById(`${prefix}UploadPreviewPanel`);
-    const mount = document.getElementById(`${prefix}PreviewMount`);
-    const label = document.getElementById(`${prefix}PreviewMetadataLabel`);
+  fileInputNode?.addEventListener("change", (event) => {
+    const targetFile = event.target.files[0];
+    if (!targetFile) return;
+    stagedFileAttachment = targetFile;
 
-    if (panel && mount && label) {
-      panel.hidden = false;
-      label.textContent = `${file.name} (${(file.size / (1024 * 1024)).toFixed(2)} MB)`;
-      mount.innerHTML = file.type.startsWith("image/") 
-        ? `<img src="${URL.createObjectURL(file)}" class="adnn-fullscreen-composer-image-render" />`
-        : `<div class="adnn-generic-document-fallback-card"><i>&boxbox;</i><span>Asset Content Attached</span></div>`;
+    const panelNode = document.getElementById(`${prefix}UploadPanel`);
+    const previewMountNode = document.getElementById(`${prefix}PreviewMount`);
+    const metadataTagNode = document.getElementById(`${prefix}UploadMetadataTag`);
+
+    if (panelNode && previewMountNode && metadataTagNode) {
+      panelNode.hidden = false;
+      metadataTagNode.textContent = `${targetFile.name} (${(targetFile.size / (1024 * 1024)).toFixed(2)} MB)`;
+      previewMountNode.innerHTML = targetFile.type.startsWith("image/")
+        ? `<img src="${URL.createObjectURL(targetFile)}" class="adnn-wa-full-panel-img-preview" />`
+        : `<div class="adnn-wa-doc-icon-fallback-box">📁<span>Document File Staged</span></div>`;
     }
   });
 
-  cancelUploadBtn?.addEventListener("click", () => {
-    currentAttachmentFile = null;
-    if (fileInput) fileInput.value = "";
-    const panel = document.getElementById(`${prefix}UploadPreviewPanel`);
-    if (panel) panel.hidden = true;
+  closeUploadBtn?.addEventListener("click", () => {
+    stagedFileAttachment = null;
+    if (fileInputNode) fileInputNode.value = "";
+    const panelNode = document.getElementById(`${prefix}UploadPanel`);
+    if (panelNode) panelNode.hidden = true;
   });
 
   clearQuoteBtn?.addEventListener("click", () => {
-    activeQuotedMessageId = null;
-    const bar = document.getElementById(`${prefix}QuoteContextBar`);
-    if (bar) bar.hidden = true;
+    stagedQuotedParentId = null;
+    const quoteBarNode = document.getElementById(`${prefix}QuoteBar`);
+    if (quoteBarNode) quoteBarNode.hidden = true;
   });
 
-  // WhatsApp Voice Message Processing Framework Loop
-  voiceActionBtn?.addEventListener("mousedown", startVoiceRecordingPipeline);
-  voiceActionBtn?.addEventListener("mouseup", () => endVoiceRecordingPipeline(prefix));
-  voiceActionBtn?.addEventListener("mouseleave", () => endVoiceRecordingPipeline(prefix, true)); // Cancel if dragged off
-  
-  // Mobile touch alignment equivalents mapping native interactions
-  voiceActionBtn?.addEventListener("touchstart", (e) => { e.preventDefault(); startVoiceRecordingPipeline(); });
-  voiceActionBtn?.addEventListener("touchend", (e) => { e.preventDefault(); endVoiceRecordingPipeline(prefix); });
+  // Handle WhatsApp Voice Interface Mappings securely across viewport scopes
+  voiceRecordBtn?.addEventListener("mousedown", startVoiceRecordingPipeline);
+  voiceRecordBtn?.addEventListener("mouseup", () => executeVoiceNoteTerminationAndDispatch(prefix));
+  voiceRecordBtn?.addEventListener("mouseleave", () => executeVoiceNoteTerminationAndDispatch(prefix, true));
 
-  // Handle transaction dispatches globally
-  form?.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    if (!activeChatId) return;
+  voiceRecordBtn?.addEventListener("touchstart", (e) => { e.preventDefault(); startVoiceRecordingPipeline(); });
+  voiceRecordBtn?.addEventListener("touchend", (e) => { e.preventDefault(); executeVoiceNoteTerminationAndDispatch(prefix); });
 
-    const text = textInput.value.trim();
-    if (!text && !currentAttachmentFile) return;
+  targetForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!currentChatId) return;
 
-    textInput.value = "";
-    const originalFile = currentAttachmentFile;
-    currentAttachmentFile = null;
-    const panel = document.getElementById(`${prefix}UploadPreviewPanel`);
-    if (panel) panel.hidden = true;
+    const messageText = textInputNode.value.trim();
+    if (!messageText && !stagedFileAttachment) return;
 
-    // Reset Quote context structures explicitly
-    const quotedIdSnapshot = activeQuotedMessageId;
-    activeQuotedMessageId = null;
-    const quoteBar = document.getElementById(`${prefix}QuoteContextBar`);
-    if (quoteBar) quoteBar.hidden = true;
+    // Reset layout elements locally to simulate sub-second interfaces responses
+    textInputNode.value = "";
+    const activeFilePayload = stagedFileAttachment;
+    stagedFileAttachment = null;
+    const panelNode = document.getElementById(`${prefix}UploadPanel`);
+    if (panelNode) panelNode.hidden = true;
+
+    const parentQuoteId = stagedQuotedParentId;
+    stagedQuotedParentId = null;
+    const quoteBarNode = document.getElementById(`${prefix}QuoteBar`);
+    if (quoteBarNode) quoteBarNode.hidden = true;
 
     try {
-      let mediaData = {};
-      if (originalFile) {
-        mediaData = await executeCloudMediaUpload(originalFile, activeChatId);
+      let cloudMediaPayload = {};
+      if (activeFilePayload) {
+        cloudMediaPayload = await executeCloudStorageAssetUpload(activeFilePayload, currentChatId);
       }
 
-      const msgPayload = {
-        text,
+      const coreMessageDocumentPayload = {
+        text: messageText,
         senderUid: activeUser.uid,
         senderName: currentProfileCache?.name || activeUser.email,
         createdAt: serverTimestamp(),
         readBy: [activeUser.uid],
-        ...mediaData
+        ...cloudMediaPayload
       };
 
-      if (quotedIdSnapshot) {
-        msgPayload.replyToMessageId = quotedIdSnapshot;
+      if (parentQuoteId) {
+        coreMessageDocumentPayload.replyToMessageId = parentQuoteId;
       }
 
-      await addDoc(collection(db, "chats", activeChatId, "messages"), msgPayload);
-      
-      // Paint transaction counters based on incoming data variations
-      const chatUpdateMeta = {
-        lastMessage: text || (originalFile ? "Premium Asset Attached" : "Voice Note"),
+      await addDoc(collection(db, "chats", currentChatId, "messages"), coreMessageDocumentPayload);
+
+      const dynamicChannelUpdatePayload = {
+        lastMessage: messageText || (activeFilePayload ? "📎 Document Deliverable" : "🎙️ Voice Note"),
         lastSenderUid: activeUser.uid,
         updatedAt: serverTimestamp()
       };
 
       if (type === "support") {
         if (isAdminEmail(activeUser.email)) {
-          chatUpdateMeta.unreadForClient = increment(1);
+          dynamicChannelUpdatePayload.unreadForClient = increment(1);
         } else {
-          chatUpdateMeta.unreadForAdmin = increment(1);
+          dynamicChannelUpdatePayload.unreadForAdmin = increment(1);
         }
       } else {
-        chatUpdateMeta.unreadForClient = increment(1);
-        chatUpdateMeta.unreadForAdmin = increment(1);
+        dynamicChannelUpdatePayload.unreadForClient = increment(1);
+        dynamicChannelUpdatePayload.unreadForAdmin = increment(1);
       }
 
-      await updateDoc(doc(db, "chats", activeChatId), chatUpdateMeta);
-      
-      // Stop local typing loops
-      setDoc(doc(db, "chats", activeChatId, "typing", activeUser.uid), { isTyping: false }, { merge: true });
+      await updateDoc(doc(db, "chats", currentChatId), dynamicChannelUpdatePayload);
+      setDoc(doc(db, "chats", currentChatId, "typing", activeUser.uid), { isTyping: false }, { merge: true });
 
     } catch (err) {
-      alert(`Message transmission interrupted: ${err.message}`);
+      console.warn("Message pipeline terminal failure: ", err);
     }
   });
 
-  // Call Button Triggers Injection routing dynamically
-  document.getElementById(`${prefix}AudioCallTrigger`)?.addEventListener("click", () => initiateEcosystemCall("audio", type));
-  document.getElementById(`${prefix}VideoCallTrigger`)?.addEventListener("click", () => initiateEcosystemCall("video", type));
+  // Call Pipeline Triggers Hardware routing setup maps injection points
+  document.getElementById(`${prefix}AudioCallBtn`)?.addEventListener("click", () => executeWebRTCHardwareCallInitialization("audio", type));
+  document.getElementById(`${prefix}VideoCallBtn`)?.addEventListener("click", () => executeWebRTCHardwareCallInitialization("video", type));
 
-  // Expose global quote hook context mappings inside window closures safely
-  window[`hookReplyContext_${prefix}`] = function(messageId, senderName, textSummary) {
-    activeQuotedMessageId = messageId;
-    const bar = document.getElementById(`${prefix}QuoteContextBar`);
-    const senderEl = document.getElementById(`${prefix}QuoteSenderLabel`);
-    const bodyEl = document.getElementById(`${prefix}QuoteBodyLabel`);
-    
-    if (bar && senderEl && bodyEl) {
-      bar.hidden = false;
-      senderEl.textContent = senderName;
-      bodyEl.textContent = textSummary || "Media deliverable asset.";
+  // Mount clean global cross-calling references under safe context frames closures
+  window[`adnnTriggerReplyLink_${prefix}`] = function(messageId, senderName, textualSummary) {
+    stagedQuotedParentId = messageId;
+    const quoteBarNode = document.getElementById(`${prefix}QuoteBar`);
+    const quoteUserNode = document.getElementById(`${prefix}QuoteUser`);
+    const quoteTextNode = document.getElementById(`${prefix}QuoteText`);
+
+    if (quoteBarNode && quoteUserNode && quoteTextNode) {
+      quoteBarNode.hidden = false;
+      quoteUserNode.textContent = senderName;
+      quoteTextNode.textContent = textualSummary || "Media asset document attachment.";
     }
   };
 }
@@ -526,102 +515,107 @@ function initializeMessengerControllers(type) {
    VIEWPORT RENDERING & COMPONENT BUILD HOOK FACTORIES
    ========================================================================== */
 
-function renderEcosystemMessagesViewport(messages, prefix, chatId) {
-  const viewport = document.getElementById(`${prefix}Viewport`);
-  if (!viewport) return;
-  viewport.innerHTML = "";
+function renderConversationalMessageBubbles(messages, prefix, chatId) {
+  const scrollerViewport = document.getElementById(`${prefix}Viewport`);
+  if (!scrollerViewport) return;
+  scrollerViewport.innerHTML = "";
 
   if (messages.length === 0) {
-    viewport.innerHTML = `<div class="adnn-chat-empty-slate">No messages recorded in this terminal thread block.</div>`;
+    scrollerViewport.innerHTML = `<div class="adnn-wa-empty-state">No messages registered in this operational timeline block.</div>`;
     return;
   }
 
   messages.forEach(msg => {
-    const isMine = msg.senderUid === activeUser.uid;
-    const bubble = document.createElement("div");
-    bubble.className = `adnn-whatsapp-message-bubble ${isMine ? "is-sender-bubble" : "is-receiver-bubble"}`;
-    
-    // Evaluate Quote mapping configurations explicitly
-    let quoteMarkup = "";
+    const checkIsMine = msg.senderUid === activeUser.uid;
+    const containerRowElement = document.createElement("div");
+    containerRowElement.className = `adnn-wa-message-row-wrapper ${checkIsMine ? "is-mine-row" : "is-peer-row"}`;
+
+    const bubbleBlock = document.createElement("div");
+    bubbleBlock.className = `adnn-wa-chat-bubble-node ${checkIsMine ? "is-sender" : "is-receiver"}`;
+
+    let replyContextMarkup = "";
     if (msg.replyToMessageId) {
-      quoteMarkup = `<div class="adnn-bubble-quoted-context-wrapper">Awaiting parent context data...</div>`;
-      resolveQuotedBubbleContextAsync(chatId, msg.replyToMessageId, bubble);
+      replyContextMarkup = `<div class="adnn-wa-bubble-quoted-parent-preview-box">Loading parent conversational link...</div>`;
+      resolveQuotedParentPreviewAsync(chatId, msg.replyToMessageId, bubbleBlock);
     }
 
-    // Evaluate Media Attachment Elements layout parameters
-    let mediaMarkup = "";
+    let dynamicMediaMarkup = "";
     if (msg.mediaUrl) {
       if (msg.mediaType?.startsWith("image/")) {
-        mediaMarkup = `<img src="${msg.mediaUrl}" class="adnn-bubble-embedded-image" onclick="window.open('${msg.mediaUrl}','_blank')" />`;
+        dynamicMediaMarkup = `<img src="${msg.mediaUrl}" class="adnn-wa-bubble-embedded-img" onclick="window.open('${msg.mediaUrl}','_blank')" />`;
       } else if (msg.mediaType?.startsWith("audio/")) {
-        mediaMarkup = `
-          <div class="adnn-bubble-audio-note-row">
-            <audio src="${msg.mediaUrl}" controls class="adnn-bubble-native-audio-player"></audio>
+        dynamicMediaMarkup = `
+          <div class="adnn-wa-bubble-voice-note-player-row">
+            <audio src="${msg.mediaUrl}" controls class="adnn-wa-bubble-native-audio-node"></audio>
           </div>
         `;
       } else {
-        mediaMarkup = `<a href="${msg.mediaUrl}" target="_blank" rel="noopener" class="adnn-bubble-document-download-link">${IC_ATTACH} Open Deliverable Asset</a>`;
+        dynamicMediaMarkup = `<a href="${msg.mediaUrl}" target="_blank" rel="noopener" class="adnn-wa-bubble-file-download-card">📁 Open Shared Asset Deliverable</a>`;
       }
     }
 
-    // Render precise Read Receipts ticks indicators matrix parameters
-    let receiptsTicks = "";
-    if (isMine) {
-      const readers = msg.readBy || [];
-      const readDelivered = readers.length > 1; // Includes sender plus partner target document traces
-      receiptsTicks = `<span class="adnn-receipt-tick-marks ${readDelivered ? "is-fully-read-blue" : ""}">&#10004;&#10004;</span>`;
+    let visualReceiptTicks = "";
+    if (checkIsMine) {
+      const activeReadersArray = msg.readBy || [];
+      const isReadAcrossEcosystem = activeReadersArray.length > 1;
+      visualReceiptTicks = `<span class="adnn-wa-receipt-tick-indicator ${isReadAcrossEcosystem ? "is-read-blue" : ""}">&#10004;&#10004;</span>`;
     }
 
-    // Setup Reaction Engine UI elements mapping collection hooks inside layouts
-    const currentReactions = msg.reactions || {};
-    let reactionsRowMarkup = "";
-    if (Object.keys(currentReactions).length > 0) {
-      reactionsRowMarkup = `<div class="adnn-bubble-active-reactions-badge-row">`;
-      Object.entries(currentReactions).forEach(([uid, emote]) => {
-        reactionsRowMarkup += `<span title="Reacted by user profile">${emote}</span>`;
+    const compiledReactionsArrayMap = msg.reactions || {};
+    let parsedReactionsRowMarkup = "";
+    if (Object.keys(compiledReactionsArrayMap).length > 0) {
+      parsedReactionsRowMarkup = `<div class="adnn-wa-bubble-active-reactions-badge-line">`;
+      Object.entries(compiledReactionsArrayMap).forEach(([uid, characterSymbol]) => {
+        parsedReactionsRowMarkup += `<span>${characterSymbol}</span>`;
       });
-      reactionsRowMarkup += `</div>`;
+      parsedReactionsRowMarkup += `</div>`;
     }
 
-    bubble.innerHTML = `
-      ${quoteMarkup}
-      <div class="adnn-bubble-identity-header-row" ${isMine ? "hidden" : ""}>
+    bubbleBlock.innerHTML = `
+      ${replyContextMarkup}
+      <div class="adnn-wa-bubble-sender-identity-label" ${checkIsMine ? "hidden" : ""}>
         <strong>${escapeHtmlString(msg.senderName || "Studio Peer")}</strong>
       </div>
-      ${mediaMarkup}
-      ${msg.text ? `<p class="adnn-bubble-text-content-paragraph">${escapeHtmlString(msg.text)}</p>` : ""}
-      <div class="adnn-bubble-timestamp-metrics-footer-line">
-        <span>${formatUnixTimestampString(msg.createdAt)}</span>
-        ${receiptsTicks}
+      ${dynamicMediaMarkup}
+      ${msg.text ? `<p class="adnn-wa-bubble-text-paragraph-content">${escapeHtmlString(msg.text)}</p>` : ""}
+      <div class="adnn-wa-bubble-metrics-footer-row">
+        <span>${formatEpochTimestampToTimeString(msg.createdAt)}</span>
+        ${visualReceiptTicks}
       </div>
-      ${reactionsRowMarkup}
-      
-      <div class="adnn-bubble-interactive-context-menu-utilities">
-        <button type="button" onclick="window['hookReplyContext_${prefix}']('${msg.id}','${escapeHtmlString(msg.senderName)}','${escapeHtmlString(msg.text)}')">Reply</button>
-        <button type="button" onclick="triggerReactionPayloadDispatch('${chatId}','${msg.id}','&#128077;')">&#128077;</button>
-        <button type="button" onclick="triggerReactionPayloadDispatch('${chatId}','${msg.id}','&#10084;&#65039;')">&#10084;&#65039;</button>
-        <button type="button" onclick="triggerReactionPayloadDispatch('${chatId}','${msg.id}','&#128514;')">&#128514;</button>
-        ${isMine ? `<button type="button" class="adnn-util-delete-action" onclick="executeMessageDeletionDispatch('${chatId}','${msg.id}')">Delete</button>` : ""}
+      ${parsedReactionsRowMarkup}
+
+      <div class="adnn-wa-bubble-hover-utilities-floating-menu">
+        <button type="button" onclick="window['adnnTriggerReplyLink_${prefix}']('${msg.id}','${escapeHtmlString(msg.senderName)}','${escapeHtmlString(msg.text)}')">Reply</button>
+        <button type="button" onclick="executeReactionPayloadCommit('${chatId}','${msg.id}','&#128077;')">&#128077;</button>
+        <button type="button" onclick="executeReactionPayloadCommit('${chatId}','${msg.id}','&#10084;&#65039;')">&#10084;&#65039;</button>
+        <button type="button" onclick="executeReactionPayloadCommit('${chatId}','${msg.id}','&#128514;')">&#128514;</button>
+        ${checkIsMine ? `<button type="button" class="is-delete-action-label" onclick="dispatchMessageDeletionCycle('${chatId}','${msg.id}')">Delete</button>` : ""}
       </div>
     `;
 
-    viewport.appendChild(bubble);
+    containerRowElement.appendChild(bubbleBlock);
+    scrollerViewport.appendChild(containerRowElement);
   });
 
-  // Lock scroll metrics straight onto terminal bases instantly
-  viewport.scrollTop = viewport.scrollHeight;
+  // Lock scroll coordinates directly down to bottom edge terminal bases safely
+  scrollerViewport.scrollTop = scrollerViewport.scrollHeight;
+  
+  // Expose routing active classes to structural containers tracking active states transformations
+  document.body.classList.add("adnn-wa-mobile-view-active");
+  const adminWorkspaceLayout = document.querySelector(".adnn-wa-admin-panel-frame");
+  if (adminWorkspaceLayout) adminWorkspaceLayout.classList.add("adnn-wa-mobile-room-open");
 }
 
-async function resolveQuotedBubbleContextAsync(chatId, parentId, bubbleElement) {
+async function resolveQuotedParentPreviewAsync(chatId, parentMessageId, bubbleDOMNode) {
   try {
-    const parentDoc = await getDoc(doc(db, "chats", chatId, "messages", parentId));
-    if (parentDoc.exists()) {
-      const data = parentDoc.data();
-      const quoteBlock = bubbleElement.querySelector(".adnn-bubble-quoted-context-wrapper");
-      if (quoteBlock) {
-        quoteBlock.innerHTML = `
+    const parentDocSnapshot = await getDoc(doc(db, "chats", chatId, "messages", parentMessageId));
+    if (parentDocSnapshot.exists()) {
+      const data = parentDocSnapshot.data();
+      const previewBoxContainerTarget = bubbleDOMNode.querySelector(".adnn-wa-bubble-quoted-parent-preview-box");
+      if (previewBoxContainerTarget) {
+        previewBoxContainerTarget.innerHTML = `
           <strong>${escapeHtmlString(data.senderName)}</strong>
-          <p>${escapeHtmlString(data.text || "Media attachment asset.")}</p>
+          <p>${escapeHtmlString(data.text || "Shared attachment payload asset.")}</p>
         `;
       }
     }
@@ -629,423 +623,407 @@ async function resolveQuotedBubbleContextAsync(chatId, parentId, bubbleElement) 
 }
 
 /* ==========================================================================
-   WHATSAPP MEDIA PROCESSING ENGINE (VOICE & SYSTEM DISPATCHES)
+   WHATSAPP MEDIA PROCESSING ENGINE (VOICE RECORDING STACK)
    ========================================================================== */
 
 async function startVoiceRecordingPipeline() {
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    activeMediaRecorder = new MediaRecorder(stream);
-    let chunks = [];
+    const captureHardwareStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    micRecorderInstance = new MediaRecorder(captureHardwareStream);
+    let temporaryAudioDataBuffersChunks = [];
 
-    activeMediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
-    activeMediaRecorder.onstop = async () => {
-      const audioBlob = new Blob(chunks, { type: "audio/ogg; codecs=opus" });
-      const convertedVoiceFile = new File([audioBlob], `voice_note_${Date.now()}.ogg`, { type: "audio/ogg" });
+    micRecorderInstance.ondataavailable = (event) => {
+      if (event.data.size > 0) temporaryAudioDataBuffersChunks.push(event.data);
+    };
+
+    micRecorderInstance.onstop = async () => {
+      const consolidatedAudioBlobPayload = new Blob(temporaryAudioDataBuffersChunks, { type: "audio/ogg; codecs=opus" });
+      const packagedVoiceBinaryFile = new File([consolidatedAudioBlobPayload], `voice_dispatch_${Date.now()}.ogg`, { type: "audio/ogg" });
       
-      // Stop all capturing audio hardware tracks safely
-      stream.getTracks().forEach(track => track.stop());
+      captureHardwareStream.getTracks().forEach(track => track.stop());
       
-      if (voiceDurationCounter > 1) { // Prevent blank clicks
-        const cloudData = await executeCloudMediaUpload(convertedVoiceFile, activeChatId);
-        await addDoc(collection(db, "chats", activeChatId, "messages"), {
+      if (voiceElapsedSeconds > 1 && currentChatId) {
+        const structuralUploadedStoragePayloadData = await executeCloudStorageAssetUpload(packagedVoiceBinaryFile, currentChatId);
+        await addDoc(collection(db, "chats", currentChatId, "messages"), {
           senderUid: activeUser.uid,
           senderName: currentProfileCache?.name || activeUser.email,
           createdAt: serverTimestamp(),
           readBy: [activeUser.uid],
-          ...cloudData
+          ...structuralUploadedStoragePayloadData
         });
       }
-      voiceDurationCounter = 0;
+      voiceElapsedSeconds = 0;
     };
 
-    activeMediaRecorder.start();
-    voiceDurationCounter = 0;
-    voiceRecordTimer = setInterval(() => { voiceDurationCounter++; }, 1000);
+    micRecorderInstance.start();
+    voiceElapsedSeconds = 0;
+    voiceDurationTimer = setInterval(() => { voiceElapsedSeconds++; }, 1000);
 
   } catch (err) {
-    console.error("Voice structural access initialization denied: ", err);
+    console.error("Microphone hardware layer allocation exception track: ", err);
   }
 }
 
-function endVoiceRecordingPipeline(prefix, cancelPlayback = false) {
-  if (voiceRecordTimer) clearInterval(voiceRecordTimer);
-  if (!activeMediaRecorder || activeMediaRecorder.state === "inactive") return;
+function executeVoiceNoteTerminationAndDispatch(prefix, invalidateAndDropTrack = false) {
+  if (voiceDurationTimer) clearInterval(voiceDurationTimer);
+  if (!micRecorderInstance || micRecorderInstance.state === "inactive") return;
 
-  if (cancelPlayback) {
-    voiceDurationCounter = 0; // Drop data collection array sets
+  if (invalidateAndDropTrack) {
+    voiceElapsedSeconds = 0; // Nullify tracking timers metrics array configurations
   }
-  activeMediaRecorder.stop();
+  micRecorderInstance.stop();
 }
 
-async function executeCloudMediaUpload(file, chatId) {
-  if (!storage) throw new Error("Cloud Storage system integration points unlinked.");
-  const cleanedName = file.name.replace(/[^a-z0-9.]/gi, "_").toLowerCase();
-  const path = `messenger-vault/${chatId}/${activeUser.uid}/${Date.now()}_${cleanedName}`;
-  const targetRef = storageRef(storage, path);
-  
-  await uploadBytes(targetRef, file);
-  const mediaUrl = await getDownloadURL(targetRef);
+async function executeCloudStorageAssetUpload(file, chatId) {
+  if (!storage) throw new Error("Firebase Cloud Storage system mapping interfaces unavailable.");
+  const sanitizedFilenameString = file.name.replace(/[^a-z0-9.]/gi, "_").toLowerCase();
+  const physicalDestinationStoragePath = `wa-vault/${chatId}/${activeUser.uid}/${Date.now()}_${sanitizedFilenameString}`;
+  const uploadDestinationRefPointer = storageRef(storage, physicalDestinationStoragePath);
+
+  await uploadBytes(uploadDestinationRefPointer, file);
+  const publiclyAccessibleDownloadUrl = await getDownloadURL(uploadDestinationRefPointer);
 
   return {
-    mediaUrl,
+    mediaUrl: publiclyAccessibleDownloadUrl,
     mediaName: file.name,
     mediaType: file.type || "application/octet-stream",
-    mediaStoragePath: path
+    mediaStoragePath: physicalDestinationStoragePath
   };
 }
 
 /* ==========================================================================
-   TRANSACTION MODIFIERS (REACTIONS, REVENUE MARKS, DELETIONS)
-   ========================================================================== */
+   TRANSACTION MODIFIERS (REACTIONS, READ RECEIPTS, MARKS)
+   ========================================================================= */
 
-async function triggerReactionPayloadDispatch(chatId, messageId, emote) {
+async function executeReactionPayloadCommit(chatId, messageId, characterSymbol) {
   try {
-    const targetRef = doc(db, "chats", chatId, "messages", messageId);
-    await updateDoc(targetRef, {
-      [`reactions.${activeUser.uid}`]: emote
+    await updateDoc(doc(db, "chats", chatId, "messages", messageId), {
+      [`reactions.${activeUser.uid}`]: characterSymbol
     });
   } catch (err) {}
 }
 
-async function executeMessageDeletionDispatch(chatId, messageId) {
-  if (!confirm("Delete this message for everyone?")) return;
+async function dispatchMessageDeletionCycle(chatId, messageId) {
+  if (!confirm("Annihilate this message for all workspace peers permanently?")) return;
   try {
     await deleteDoc(doc(db, "chats", chatId, "messages", messageId));
   } catch (err) {}
 }
 
-function markMessagesAsReadEcosystem(chatId, type) {
+function executeReadReceiptsMarkingLoop(chatId, type) {
   if (!chatId) return;
-  const colRef = collection(db, "chats", chatId, "messages");
-  getDocs(colRef).then(snapshot => {
+  const targetCollectionMessagesRef = collection(db, "chats", chatId, "messages");
+  getDocs(targetCollectionMessagesRef).then(snapshot => {
     snapshot.forEach(docSnap => {
       const data = docSnap.data();
-      const readers = data.readBy || [];
-      if (!readers.includes(activeUser.uid)) {
-        readers.push(activeUser.uid);
-        updateDoc(docSnap.ref, { readBy: readers });
+      const currentReadersListArray = data.readBy || [];
+      if (!currentReadersListArray.includes(activeUser.uid)) {
+        currentReadersListArray.push(activeUser.uid);
+        updateDoc(docSnap.ref, { readBy: currentReadersListArray });
       }
     });
   });
 
-  // Nullify channel navigation alert counters
-  const trackingObj = {};
+  const clearanceObjectMap = {};
   if (type === "support") {
-    trackingObj[isAdminEmail(activeUser.email) ? "unreadForAdmin" : "unreadForClient"] = 0;
+    clearanceObjectMap[isAdminEmail(activeUser.email) ? "unreadForAdmin" : "unreadForClient"] = 0;
   } else {
-    trackingObj.unreadForAdmin = 0;
-    trackingObj.unreadForClient = 0;
+    clearanceObjectMap.unreadForAdmin = 0;
+    clearanceObjectMap.unreadForClient = 0;
   }
-  updateDoc(doc(db, "chats", chatId), trackingObj).catch(() => {});
+  updateDoc(doc(db, "chats", chatId), clearanceObjectMap).catch(() => {});
 }
 
 /* ==========================================================================
-   WEBRTC ARCHITECTURE CORE ENGINE (AUDIO & VIDEO PIPELINES)
+   WEBRTC HARDWARE CALL ENGINE ENGINE (POLITE PEER MATRIX)
    ========================================================================== */
 
-function initializeIncomingCallDispatcher(user) {
-  const targetInboxId = isAdminEmail(user.email) ? ADMIN_ALIAS_UID : user.uid;
-  onSnapshot(doc(db, "callInbox", targetInboxId), async (snapshot) => {
+function bindIncomingCallInterceptor(user) {
+  const dynamicInboxRoutingTargetKeyId = isAdminEmail(user.email) ? ADMIN_ALIAS_UID : user.uid;
+  onSnapshot(doc(db, "callInbox", dynamicInboxRoutingTargetKeyId), async (snapshot) => {
     if (!snapshot.exists()) return;
-    const inbox = snapshot.data();
-    if (inbox.status !== "ringing" || !inbox.callId) return;
+    const inboxPayloadData = snapshot.data();
+    if (inboxPayloadData.status !== "ringing" || !inboxPayloadData.callId) return;
 
-    const callDoc = await getDoc(doc(db, "calls", inbox.callId));
-    if (!callDoc.exists()) return;
-    const callData = callDoc.data();
+    const baseCallDocSnapshot = await getDoc(doc(db, "calls", inboxPayloadData.callId));
+    if (!baseCallDocSnapshot.exists()) return;
+    const callStructuralContextData = baseCallDocSnapshot.data();
 
-    if (Date.now() > Number(callData.expiresAtMs || 0) || callData.status !== "ringing") {
-      cleanupSignalingServerGarbage(inbox.callId, targetInboxId);
+    if (Date.now() > Number(callStructuralContextData.expiresAtMs || 0) || callStructuralContextData.status !== "ringing") {
+      purgeSignalingTransactionTracesGarbage(inboxPayloadData.callId, dynamicInboxRoutingTargetKeyId);
       return;
     }
 
-    if (callData.callerUid !== targetInboxId) {
-      renderActiveIncomingCallOverlay(inbox.callId, callData);
+    if (callStructuralContextData.callerUid !== dynamicInboxRoutingTargetKeyId) {
+      renderActiveIncomingCallOverlayStage(inboxPayloadData.callId, callStructuralContextData);
     }
   });
 }
 
-async function initiateEcosystemCall(kind, chatType) {
+async function executeWebRTCHardwareCallInitialization(kind, chatType) {
   if (!navigator.mediaDevices || !RTCPeerConnection) {
-    alert("Media routing layers unsupported across this browser engine context.");
+    alert("WebRTC streaming dependencies map unavailable across this browser engine setup.");
     return;
   }
 
-  const wantsVideo = kind === "video";
+  const triggerVideoTrackActiveState = kind === "video";
   try {
-    const localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: wantsVideo });
-    const callId = `call_${Date.now()}_${activeUser.uid.slice(0, 5)}`;
-    
-    // Evaluate operational targets
-    let receiverTargetId = ADMIN_ALIAS_UID;
-    let destinationLabelName = "AdnnStudio Support Console";
-    
+    const structuralHardwareMediaStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: triggerVideoTrackActiveState });
+    const programmaticGeneratedCallId = `call_${Date.now()}_${activeUser.uid.slice(0, 4)}`;
+
+    let calculatedReceiverUidTargetId = ADMIN_ALIAS_UID;
+    let fallbackTextDisplayLabel = "AdnnStudio Administrative Support";
+
     if (chatType === "direct") {
-      const chatDoc = await getDoc(doc(db, "chats", activeChatId));
-      const metaData = chatDoc.data();
-      receiverTargetId = metaData.participantUids?.find(uid => uid !== activeUser.uid);
-      destinationLabelName = metaData.participantNames?.[receiverTargetId] || "Ecosystem Peer";
+      const activeChatBaseSnapshot = await getDoc(doc(db, "chats", currentChatId));
+      const dataset = activeChatBaseSnapshot.data();
+      calculatedReceiverUidTargetId = dataset.participantUids?.find(uid => uid !== activeUser.uid);
+      fallbackTextDisplayLabel = dataset.participantNames?.[calculatedReceiverUidTargetId] || "Studio Workspace Peer";
     } else if (isAdminEmail(activeUser.email)) {
-      const chatDoc = await getDoc(doc(db, "chats", activeChatId));
-      receiverTargetId = chatDoc.data().clientUid;
-      destinationLabelName = chatDoc.data().clientName || "Client Target";
+      const activeChatBaseSnapshot = await getDoc(doc(db, "chats", currentChatId));
+      calculatedReceiverUidTargetId = activeChatBaseSnapshot.data().clientUid;
+      fallbackTextDisplayLabel = activeChatBaseSnapshot.data().clientName || "Client Session Track";
     }
 
-    // Provision local signaling state parameters globally
-    activeCallState = {
-      callId, role: "caller", kind, isPolitePeer: false, // Impolite peer drives renegotiation offer cycles
-      localStream, remoteStream: new MediaStream(), peerConnection: null, receiverUid: receiverTargetId,
-      chatId: activeChatId, label: destinationLabelName
+    liveCallSession = {
+      callId: programmaticGeneratedCallId, role: "caller", kind, isPolitePeer: false,
+      localStream: structuralHardwareMediaStream, remoteStream: new MediaStream(),
+      peerConnection: null, receiverUid: calculatedReceiverUidTargetId, chatId: currentChatId, label: fallbackTextDisplayLabel
     };
 
-    renderActiveCallHardwareOverlayWindow();
-    instantiateWebRTCPeerConnection(callId, wantsVideo);
+    renderActiveWebRTCCallOverlayStageWindow();
+    assembleWebRTCPeerConnectionPipeline(programmaticGeneratedCallId, triggerVideoTrackActiveState);
 
-    // Build operational WebRTC Offer descriptions
-    const offer = await activeCallState.peerConnection.createOffer();
-    await activeCallState.peerConnection.setLocalDescription(offer);
+    const generatedOfferSDPPermalink = await liveCallSession.peerConnection.createOffer();
+    await liveCallSession.peerConnection.setLocalDescription(generatedOfferSDPPermalink);
 
-    const expiresAtMs = Date.now() + CALL_RING_TIMEOUT_MS;
-    await setDoc(doc(db, "calls", callId), {
-      id: callId, chatId: activeChatId, status: "ringing", kind, callerUid: activeUser.uid,
-      callerName: currentProfileCache?.name || activeUser.email, receiverUid: receiverTargetId,
-      offer: { type: offer.type, sdp: offer.sdp }, expiresAtMs, micMuted: false, cameraOn: wantsVideo
+    const computationalExpirationExpiryLimitMarker = Date.now() + CALL_RING_TIMEOUT_MS;
+    await setDoc(doc(db, "calls", programmaticGeneratedCallId), {
+      id: programmaticGeneratedCallId, chatId: currentChatId, status: "ringing", kind,
+      callerUid: activeUser.uid, callerName: currentProfileCache?.name || activeUser.email,
+      receiverUid: calculatedReceiverUidTargetId, offer: { type: generatedOfferSDPPermalink.type, sdp: generatedOfferSDPPermalink.sdp },
+      expiresAtMs: computationalExpirationExpiryLimitMarker, micMuted: false, cameraOn: triggerVideoTrackActiveState
     });
 
-    await setDoc(doc(db, "callInbox", receiverTargetId), { callId, status: "ringing" });
+    await setDoc(doc(db, "callInbox", calculatedReceiverUidTargetId), { callId: programmaticGeneratedCallId, status: "ringing" });
 
   } catch (err) {
-    alert(`Microphone/Camera permission models rejected: ${err.message}`);
+    alert(`Hardware streaming devices activation failed: ${err.message}`);
   }
 }
 
-function instantiateWebRTCPeerConnection(callId, wantsVideo) {
-  const pc = new RTCPeerConnection({
-    iceServers: [
-      { urls: "stun:stun.l.google.com:19302" },
-      { urls: "stun:stun1.l.google.com:19302" }
-    ]
+function assembleWebRTCPeerConnectionPipeline(callId, triggerVideoTrackActiveState) {
+  const peerConnectionInstance = new RTCPeerConnection({
+    iceServers: [{ urls: "stun:stun.l.google.com:19302" }, { urls: "stun:stun1.l.google.com:19302" }]
   });
 
-  activeCallState.peerConnection = pc;
+  liveCallSession.peerConnection = peerConnectionInstance;
 
-  // Bind local tracking data directly into peer connection tracks pipeline channels
-  activeCallState.localStream.getTracks().forEach(track => {
-    pc.addTrack(track, activeCallState.localStream);
+  liveCallSession.localStream.getTracks().forEach(track => {
+    peerConnectionInstance.addTrack(track, liveCallSession.localStream);
   });
 
-  // Track operational connection state variations checking link viability status metrics
-  pc.onicecandidate = (e) => {
-    if (!e.candidate) return;
-    const pathCollection = activeCallState.role === "caller" ? "offerCandidates" : "answerCandidates";
-    addDoc(collection(db, "calls", callId, pathCollection), e.candidate.toJSON());
+  peerConnectionInstance.onicecandidate = (event) => {
+    if (!event.candidate) return;
+    const targetingCollectionPathNameId = liveCallSession.role === "caller" ? "offerCandidates" : "answerCandidates";
+    addDoc(collection(db, "calls", callId, targetingCollectionPathNameId), event.candidate.toJSON());
   };
 
-  pc.ontrack = (e) => {
-    if (e.streams && e.streams[0]) {
-      e.streams[0].getTracks().forEach(track => {
-        activeCallState.remoteStream.addTrack(track);
-      });
+  peerConnectionInstance.ontrack = (event) => {
+    const streamsTrackArray = event.streams;
+    if (streamsTrackArray && streamsTrackArray[0]) {
+      streamsTrackArray[0].getTracks().forEach(track => liveCallSession.remoteStream.addTrack(track));
     } else {
-      activeCallState.remoteStream.addTrack(e.track);
+      liveCallSession.remoteStream.addTrack(event.track);
     }
-    const remoteVideoElement = document.getElementById("adnnRemoteVideoMount");
-    if (remoteVideoElement) remoteVideoElement.srcObject = activeCallState.remoteStream;
+    const remoteStreamVideoNodeDOMMount = document.getElementById("waRemoteVideoMount");
+    if (remoteStreamVideoNodeDOMMount) remoteStreamVideoNodeDOMMount.srcObject = liveCallSession.remoteStream;
   };
 
-  // Build the live snapshot monitor layer mapping signal parameter paths directly
   onSnapshot(doc(db, "calls", callId), async (snapshot) => {
     if (!snapshot.exists()) return;
-    const data = snapshot.data();
+    const callDataSnapshotMapValues = snapshot.data();
 
-    if (data.status === "accepted" && pc.signalingState === "have-local-offer" && activeCallState.role === "caller") {
-      await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
-      transitionOverlayToActiveConnectedState();
+    if (callDataSnapshotMapValues.status === "accepted" && peerConnectionInstance.signalingState === "have-local-offer" && liveCallSession.role === "caller") {
+      await peerConnectionInstance.setRemoteDescription(new RTCSessionDescription(callDataSnapshotMapValues.answer));
+      engageViewportTimerCounterLine();
     }
 
-    if (data.status === "ended") {
-      terminateLiveHardwareCallSession(false);
+    if (callDataSnapshotMapValues.status === "ended") {
+      terminateWebRTCCallSessionContext(false);
     }
 
-    // Sync remote muting transformations straight inside active viewport layers dynamically
-    const remoteVideoPanel = document.getElementById("adnnRemoteVideoMount");
-    if (remoteVideoPanel) {
-      remoteVideoPanel.style.opacity = data.cameraOn === false ? "0" : "1";
+    const remoteStreamVideoNodeDOMMount = document.getElementById("waRemoteVideoMount");
+    if (remoteStreamVideoNodeDOMMount) {
+      remoteStreamVideoNodeDOMMount.style.opacity = callDataSnapshotMapValues.cameraOn === false ? "0" : "1";
     }
   });
 
-  // Monitor incoming candidate elements from the remote peer signaling data maps
-  const targetsCollection = activeCallState.role === "caller" ? "answerCandidates" : "offerCandidates";
-  onSnapshot(collection(db, "calls", callId, targetsCollection), snapshot => {
+  const incomingIceCandidatesTargetingPathString = liveCallSession.role === "caller" ? "answerCandidates" : "offerCandidates";
+  onSnapshot(collection(db, "calls", callId, incomingIceCandidatesTargetingPathString), snapshot => {
     snapshot.docChanges().forEach(change => {
       if (change.type === "added") {
-        pc.addIceCandidate(new RTCIceCandidate(change.doc.data())).catch(() => {});
+        peerConnectionInstance.addIceCandidate(new RTCIceCandidate(change.doc.data())).catch(() => {});
       }
     });
   });
 }
 
-function renderActiveIncomingCallOverlay(callId, callData) {
-  // Prevent stacking identical element nodes on screen
-  if (document.getElementById("adnnCallOverlayContainer")) return;
+function renderActiveIncomingCallOverlayStage(callId, callData) {
+  if (document.getElementById("waCallHardwareStageOverlay")) return;
 
-  const ringOverlay = document.createElement("div");
-  ringOverlay.id = "adnnCallOverlayContainer";
-  ringOverlay.className = "adnn-call-hardware-overlay-master-stage generic-flex-center";
-  ringOverlay.innerHTML = `
-    <div class="adnn-call-hardware-card-panel glass">
-      <div class="adnn-call-card-avatar-row">${callData.callerName.slice(0, 2).toUpperCase()}</div>
+  const htmlOverlayNodeStageContainer = document.createElement("div");
+  htmlOverlayNodeStageContainer.id = "waCallHardwareStageOverlay";
+  htmlOverlayNodeStageContainer.className = "adnn-wa-webrtc-fullscreen-stage-overlay unified-flex-centering-utility";
+  htmlOverlayNodeStageContainer.innerHTML = `
+    <div class="adnn-wa-webrtc-card-modal glass">
+      <div class="adnn-wa-modal-avatar-wrapper">${callData.callerName.slice(0, 2).toUpperCase()}</div>
       <h2>${escapeHtmlString(callData.callerName)}</h2>
-      <p>Incoming Studio ${callData.kind.toUpperCase()} Call...</p>
-      <div class="adnn-call-card-interactive-controls-row">
-        <button type="button" class="adnn-call-btn-circle is-accept-green-bg" id="adnnAcceptCallBtn">&#10004;</button>
-        <button type="button" class="adnn-call-btn-circle is-decline-red-bg" id="adnnDeclineCallBtn">&times;</button>
+      <p>Incoming Adnn Workspace ${callData.kind.toUpperCase()} Call...</p>
+      <div class="adnn-wa-modal-controls-row">
+        <button type="button" class="adnn-wa-ctrl-btn-node is-green-success" id="waAcceptBtn">&#10004;</button>
+        <button type="button" class="adnn-wa-ctrl-btn-node is-red-danger" id="waDeclineBtn">&times;</button>
       </div>
     </div>
   `;
 
-  document.body.appendChild(ringOverlay);
+  document.body.appendChild(htmlOverlayNodeStageContainer);
 
-  document.getElementById("adnnAcceptCallBtn")?.addEventListener("click", async () => {
-    ringOverlay.remove();
+  document.getElementById("waAcceptBtn")?.addEventListener("click", async () => {
+    htmlOverlayNodeStageContainer.remove();
     try {
-      const wantsVideo = callData.kind === "video";
-      const localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: wantsVideo });
+      const activeVideoTrackState = callData.kind === "video";
+      const hardwareMediaCapturedStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: activeVideoTrackState });
 
-      activeCallState = {
+      liveCallSession = {
         callId, role: "receiver", kind: callData.kind, isPolitePeer: true,
-        localStream, remoteStream: new MediaStream(), peerConnection: null,
+        localStream: hardwareMediaCapturedStream, remoteStream: new MediaStream(), peerConnection: null,
         receiverUid: callData.callerUid, chatId: callData.chatId, label: callData.callerName
       };
 
       renderActiveCallHardwareOverlayWindow();
-      instantiateWebRTCPeerConnection(callId, wantsVideo);
+      assembleWebRTCPeerConnectionPipeline(callId, activeVideoTrackState);
 
-      await activeCallState.peerConnection.setRemoteDescription(new RTCSessionDescription(callData.offer));
-      const answer = await activeCallState.peerConnection.createAnswer();
-      await activeCallState.peerConnection.setLocalDescription(answer);
+      await liveCallSession.peerConnection.setRemoteDescription(new RTCSessionDescription(callData.offer));
+      const structuralGeneratedAnswerSDPData = await liveCallSession.peerConnection.createAnswer();
+      await liveCallSession.peerConnection.setLocalDescription(structuralGeneratedAnswerSDPData);
 
       await updateDoc(doc(db, "calls", callId), {
-        status: "accepted",
-        answer: { type: answer.type, sdp: answer.sdp }
+        status: "accepted", answer: { type: structuralGeneratedAnswerSDPData.type, sdp: structuralGeneratedAnswerSDPData.sdp }
       });
-      
+
       await updateDoc(doc(db, "callInbox", isAdminEmail(activeUser.email) ? ADMIN_ALIAS_UID : activeUser.uid), { status: "accepted" });
-      transitionOverlayToActiveConnectedState();
+      engageViewportTimerCounterLine();
 
     } catch (err) {
-      alert(`Could not patch connection to hardware parameters: ${err.message}`);
-      executeCallRejectionCycle(callId, callData);
+      executeTerminationSignalingCycle(callId);
     }
   });
 
-  document.getElementById("adnnDeclineCallBtn")?.addEventListener("click", () => {
-    ringOverlay.remove();
-    executeCallRejectionCycle(callId, callData);
+  document.getElementById("waDeclineBtn")?.addEventListener("click", () => {
+    htmlOverlayNodeStageContainer.remove();
+    executeTerminationSignalingCycle(callId);
   });
 }
 
-function executeCallRejectionCycle(callId, callData) {
+function executeTerminationSignalingCycle(callId) {
   updateDoc(doc(db, "calls", callId), { status: "ended" }).catch(() => {});
-  cleanupSignalingServerGarbage(callId, isAdminEmail(activeUser.email) ? ADMIN_ALIAS_UID : activeUser.uid);
+  purgeSignalingTransactionTracesGarbage(callId, isAdminEmail(activeUser.email) ? ADMIN_ALIAS_UID : activeUser.uid);
 }
 
 function renderActiveCallHardwareOverlayWindow() {
-  if (document.getElementById("adnnCallOverlayContainer")) return;
+  if (document.getElementById("waCallHardwareStageOverlay")) return;
 
-  const callOverlay = document.createElement("div");
-  callOverlay.id = "adnnCallOverlayContainer";
-  callOverlay.className = "adnn-call-hardware-overlay-master-stage generic-flex-center";
-  callOverlay.innerHTML = `
-    <div class="adnn-call-hardware-card-panel is-active-call-pane glass">
-      <div class="adnn-webrtc-video-tiles-grid-mesh">
-        <video id="adnnRemoteVideoMount" autoplay playsinline class="adnn-webrtc-stream-track-video-tile-node is-remote-peer-track"></video>
-        <video id="adnnLocalVideoMount" autoplay muted playsinline class="adnn-webrtc-stream-track-video-tile-node is-local-mirror-track"></video>
+  const htmlOverlayNodeStageContainer = document.createElement("div");
+  htmlOverlayNodeStageContainer.id = "waCallHardwareStageOverlay";
+  htmlOverlayNodeStageContainer.className = "adnn-wa-webrtc-fullscreen-stage-overlay unified-flex-centering-utility";
+  htmlOverlayNodeStageContainer.innerHTML = `
+    <div class="adnn-wa-webrtc-card-modal is-live-call-pane glass">
+      <div class="adnn-wa-webrtc-video-tiles-grid-mesh">
+        <video id="waRemoteVideoMount" autoplay playsinline class="adnn-wa-video-stream-node-frame is-remote-peer-track"></video>
+        <video id="waLocalVideoMount" autoplay muted playsinline class="adnn-wa-video-stream-node-frame is-local-mirror-flipped"></video>
       </div>
-      <div class="adnn-active-call-floating-identity-row">
-        <h3>${escapeHtmlString(activeCallState.label)}</h3>
-        <p id="adnnCallDurationTimer">Ringing structural nodes...</p>
+      <div class="adnn-wa-webrtc-live-identity-row">
+        <h3>${escapeHtmlString(liveCallSession.label)}</h3>
+        <p id="waCallTimerLineText">Connecting operational system pipelines...</p>
       </div>
-      <div class="adnn-call-card-interactive-controls-row">
-        <button type="button" class="adnn-call-btn-circle" id="adnnToggleMicHardwareBtn">${IC_MIC}</button>
-        <button type="button" class="adnn-call-btn-circle" id="adnnToggleCameraHardwareBtn">${IC_VIDEO}</button>
-        <button type="button" class="adnn-call-btn-circle is-decline-red-bg" id="adnnTerminateCallBtn">${IC_END}</button>
+      <div class="adnn-wa-modal-controls-row">
+        <button type="button" class="adnn-wa-ctrl-btn-node" id="waToggleMicBtn">${SVG_MIC}</button>
+        <button type="button" class="adnn-wa-ctrl-btn-node" id="waToggleCamBtn">${SVG_VIDEO}</button>
+        <button type="button" class="adnn-wa-ctrl-btn-node is-red-danger" id="waHangupBtn">${SVG_HANGUP}</button>
       </div>
     </div>
   `;
 
-  document.body.appendChild(callOverlay);
+  document.body.appendChild(htmlOverlayNodeStageContainer);
 
-  const localVideoElement = document.getElementById("adnnLocalVideoMount");
-  if (localVideoElement) localVideoElement.srcObject = activeCallState.localStream;
+  const localVideoDOMElementMountNode = document.getElementById("waLocalVideoMount");
+  if (localVideoDOMElementMountNode) localVideoDOMElementMountNode.srcObject = liveCallSession.localStream;
 
-  // Control modifiers adjustments actions hooks
-  document.getElementById("adnnToggleMicHardwareBtn")?.addEventListener("click", (e) => {
-    const audioTrack = activeCallState.localStream.getAudioTracks()[0];
+  document.getElementById("waToggleMicBtn")?.addEventListener("click", (event) => {
+    const audioTrack = liveCallSession.localStream.getAudioTracks()[0];
     if (audioTrack) {
       audioTrack.enabled = !audioTrack.enabled;
-      e.currentTarget.innerHTML = audioTrack.enabled ? IC_MIC : IC_MIC_OFF;
-      e.currentTarget.classList.toggle("is-muted-highlight", !audioTrack.enabled);
-      updateDoc(doc(db, "calls", activeCallState.callId), { micMuted: !audioTrack.enabled });
+      event.currentTarget.innerHTML = audioTrack.enabled ? SVG_MIC : SVG_MIC_OFF;
+      event.currentTarget.classList.toggle("is-deactivated-highlight", !audioTrack.enabled);
+      updateDoc(doc(db, "calls", liveCallSession.callId), { micMuted: !audioTrack.enabled });
     }
   });
 
-  document.getElementById("adnnToggleCameraHardwareBtn")?.addEventListener("click", (e) => {
-    const videoTrack = activeCallState.localStream.getVideoTracks()[0];
+  document.getElementById("waToggleCamBtn")?.addEventListener("click", (event) => {
+    const videoTrack = liveCallSession.localStream.getVideoTracks()[0];
     if (videoTrack) {
       videoTrack.enabled = !videoTrack.enabled;
-      e.currentTarget.innerHTML = videoTrack.enabled ? IC_VIDEO : IC_VIDEO_OFF;
-      e.currentTarget.classList.toggle("is-muted-highlight", !videoTrack.enabled);
-      updateDoc(doc(db, "calls", activeCallState.callId), { cameraOn: videoTrack.enabled });
-      localVideoElement.style.opacity = videoTrack.enabled ? "1" : "0";
+      event.currentTarget.innerHTML = videoTrack.enabled ? SVG_VIDEO : SVG_VIDEO_OFF;
+      event.currentTarget.classList.toggle("is-deactivated-highlight", !videoTrack.enabled);
+      updateDoc(doc(db, "calls", liveCallSession.callId), { cameraOn: videoTrack.enabled });
+      localVideoDOMElementMountNode.style.opacity = videoTrack.enabled ? "1" : "0";
     }
   });
 
-  document.getElementById("adnnTerminateCallBtn")?.addEventListener("click", () => {
-    terminateLiveHardwareCallSession(true);
+  document.getElementById("waHangupBtn")?.addEventListener("click", () => {
+    terminateWebRTCCallSessionContext(true);
   });
 }
 
-function transitionOverlayToActiveConnectedState() {
-  let timerCounterSeconds = 0;
-  const timeLabel = document.getElementById("adnnCallDurationTimer");
-  if (!timeLabel) return;
+function engageViewportTimerCounterLine() {
+  let ticksCounterValue = 0;
+  const timerTextLabelDOMNode = document.getElementById("waCallTimerLineText");
+  if (!timerTextLabelDOMNode) return;
 
   setInterval(() => {
-    timerCounterSeconds++;
-    const min = String(Math.floor(timerCounterSeconds / 60)).padStart(2, "0");
-    const sec = String(timerCounterSeconds % 60).padStart(2, "0");
-    if (timeLabel) timeLabel.textContent = `${min}:${sec}`;
+    ticksCounterValue++;
+    const formattedMinutes = String(Math.floor(ticksCounterValue / 60)).padStart(2, "0");
+    const formattedSeconds = String(Math.floor(ticksCounterValue % 60)).padStart(2, "0");
+    if (timerTextLabelDOMNode) timerTextLabelDOMNode.textContent = `${formattedMinutes}:${formattedSeconds}`;
   }, 1000);
 }
 
-function terminateLiveHardwareCallSession(explicitlyTriggeredByLocalPeer = true) {
-  if (!activeCallState) return;
+function terminateWebRTCCallSessionContext(explicitlyTriggeredByLocalPeer = true) {
+  if (!liveCallSession) return;
 
   if (explicitlyTriggeredByLocalPeer) {
-    updateDoc(doc(db, "calls", activeCallState.callId), { status: "ended" }).catch(() => {});
+    updateDoc(doc(db, "calls", liveCallSession.callId), { status: "ended" }).catch(() => {});
   }
 
-  // Clear hardware streaming assets pointers paths from execution channels safely
-  if (activeCallState.localStream) {
-    activeCallState.localStream.getTracks().forEach(track => track.stop());
+  if (liveCallSession.localStream) {
+    liveCallSession.localStream.getTracks().forEach(track => track.stop());
   }
 
-  if (activeCallState.peerConnection) {
-    activeCallState.peerConnection.close();
+  if (liveCallSession.peerConnection) {
+    liveCallSession.peerConnection.close();
   }
 
-  cleanupSignalingServerGarbage(activeCallState.callId, isAdminEmail(activeUser.email) ? ADMIN_ALIAS_UID : activeUser.uid);
+  purgeSignalingTransactionTracesGarbage(liveCallSession.callId, isAdminEmail(activeUser.email) ? ADMIN_ALIAS_UID : activeUser.uid);
   
-  const container = document.getElementById("adnnCallOverlayContainer");
-  if (container) container.remove();
+  const stageOverlayDOMNodeContainer = document.getElementById("waCallHardwareStageOverlay");
+  if (stageOverlayDOMNodeContainer) stageOverlayDOMNodeContainer.remove();
 
-  activeCallState = null;
+  liveCallSession = null;
 }
 
-async function cleanupSignalingServerGarbage(callId, targetInboxId) {
+async function purgeSignalingTransactionTracesGarbage(callId, targetInboxId) {
   if (!callId) return;
   setTimeout(async () => {
     await deleteDoc(doc(db, "callInbox", targetInboxId)).catch(() => {});
@@ -1054,64 +1032,67 @@ async function cleanupSignalingServerGarbage(callId, targetInboxId) {
 }
 
 /* ==========================================================================
-   SUPPORT CORE DATA UTILITIES
+   SUPPORT SYSTEM PRESENCE UTILITIES
    ========================================================================== */
 
-function initializePresenceTracking(user) {
-  const presenceRef = doc(db, "presence", isAdminEmail(user.email) ? ADMIN_ALIAS_UID : user.uid);
-  const writeOnline = () => setDoc(presenceRef, { online: true, lastSeen: serverTimestamp() }, { merge: true });
+function syncPresenceNode(user) {
+  const presenceDocReferencePointer = doc(db, "presence", isAdminEmail(user.email) ? ADMIN_ALIAS_UID : user.uid);
+  const writeOnlineStateTransactionCommit = () => setDoc(presenceDocReferencePointer, { online: true, lastSeen: serverTimestamp() }, { merge: true });
   
-  writeOnline();
-  setInterval(writeOnline, 30000);
-  window.addEventListener("beforeunload", () => setDoc(presenceRef, { online: false, lastSeen: serverTimestamp() }, { merge: true }));
+  writeOnlineStateTransactionCommit();
+  setInterval(writeOnlineStateTransactionCommit, 35000);
+  window.addEventListener("beforeunload", () => setDoc(presenceDocReferencePointer, { online: false, lastSeen: serverTimestamp() }, { merge: true }));
 }
 
-function terminateAllSystemListeners() {
-  if (activeChatUnsubscribe) activeChatUnsubscribe();
-  if (activeMessagesUnsubscribe) activeMessagesUnsubscribe();
-  if (adminChatsUnsubscribe) adminChatsUnsubscribe();
+function disconnectSystemListeners() {
+  if (activeChatUnsub) activeChatUnsub();
+  if (activeMessagesUnsub) activeMessagesUnsub();
+  if (adminGlobalUnsub) adminGlobalUnsub();
 }
 
-async function resolveUserProfile(uid, email) {
-  // Check the design database maps dynamically path collection routes
-  const clientDoc = await getDoc(doc(db, "clients", uid)).catch(() => null);
-  if (clientDoc?.exists()) return { uid, role: "client", ...clientDoc.data() };
+async function extractProfileInformation(uid, email) {
+  const clientSnapshotResult = await getDoc(doc(db, "clients", uid)).catch(() => null);
+  if (clientSnapshotResult?.exists()) return { uid, role: "client", ...clientSnapshotResult.data() };
 
-  const designerDoc = await getDoc(doc(db, "designers", uid)).catch(() => null);
-  if (designerDoc?.exists()) return { uid, role: "designer", ...designerDoc.data() };
+  const designerSnapshotResult = await getDoc(doc(db, "designers", uid)).catch(() => null);
+  if (designerSnapshotResult?.exists()) return { uid, role: "designer", ...designerSnapshotResult.data() };
 
   return { uid, email, role: isAdminEmail(email) ? "admin" : "client", name: email.split("@")[0] };
 }
 
-function renderEmptyWorkspacePlaceholder(prefix, title, body) {
-  const frame = document.getElementById(`${prefix}RootFrame`);
-  if (frame) {
-    frame.innerHTML = `
-      <div class="adnn-whatsapp-placeholder-screen">
-        <div class="adnn-placeholder-branding-icon">AD</div>
-        <h3>${escapeHtmlString(title)}</h3>
-        <p>${escapeHtmlString(body)}</p>
+function renderEmptyLayoutFallback(prefix, titleText, helpSummaryBody) {
+  const coreShellDOMNodeFrame = document.getElementById(`${prefix}CoreShell`);
+  if (coreShellDOMNodeFrame) {
+    coreShellDOMNodeFrame.innerHTML = `
+      <div class="adnn-wa-placeholder-screen">
+        <div class="adnn-wa-branding-avatar">AD</div>
+        <h3>${escapeHtmlString(titleText)}</h3>
+        <p>${escapeHtmlString(helpSummaryBody)}</p>
       </div>
     `;
   }
 }
 
-function toUnixEpochMillis(timestamp) {
+function getEpochTime(timestamp) {
   if (!timestamp) return Date.now();
   if (typeof timestamp.toMillis === "function") return timestamp.toMillis();
   return new Date(timestamp).getTime();
 }
 
-function formatUnixTimestampString(timestamp) {
+function formatEpochTimestampToTimeString(timestamp) {
   if (!timestamp) return "Just now";
-  const date = new Date(toUnixEpochMillis(timestamp));
-  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const dateInstance = new Date(getEpochTime(timestamp));
+  return dateInstance.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
-function escapeHtmlString(str) {
-  return String(str || "")
+function escapeHtmlString(stringLiteral) {
+  return String(stringLiteral || "")
     .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+}
+
+function sanitizeString(val) {
+  return escapeHtmlString(val);
 }
 
 function isAdminEmail(email) {
@@ -1119,141 +1100,92 @@ function isAdminEmail(email) {
 }
 
 /* ==========================================================================
-   PORTAL EXTRA-PREMIUM GLOW INTERACTION BRAND STYLING LAYOUT RULES
+   PORTAL EXTRA-PREMIUM SCOPED WHATSAPP MODULE STYLING SCHEMES
    ========================================================================== */
 
-function injectGlobalAppStyles() {
-  if (document.getElementById("adnnMessengerStyleInjectionNode")) return;
-  const stylesheet = document.createElement("style");
-  stylesheet.id = "adnnMessengerStyleInjectionNode";
-  stylesheet.textContent = `
-    /* High-Grade Messenger Grid System Layout Overrides */
-    .adnn-whatsapp-messenger-frame {
-      display: grid;
-      grid-template-rows: 64px 1fr auto;
-      height: min(640px, calc(100svh - 240px));
-      background: linear-gradient(145deg, rgba(20, 20, 25, 0.96), rgba(10, 10, 14, 0.98));
-      border-radius: 24px;
-      overflow: hidden;
-      border: 1px solid rgba(255, 255, 255, 0.08);
+function injectScopedSystemStyles() {
+  if (document.getElementById("adnnWaIsolatedStyleBlock")) return;
+  const embeddedStyleDOMNodeElement = document.createElement("style");
+  embeddedStyleDOMNodeElement.id = "adnnWaIsolatedStyleBlock";
+  embeddedStyleDOMNodeElement.textContent = `
+    /* Isolated Module Container Matrix Bounds */
+    .adnn-wa-container {
+      width: 100%;
+      height: 100%;
+      display: block;
       position: relative;
     }
 
-    #clientChatMount.adnn-designer-chat-panel {
-      display: block !important;
-      height: auto !important;
-      border: 0 !important;
-      background: transparent !important;
-    }
-
-    /* System Layout Viewports for Administrative Grid Consoles */
-    .adnn-admin-chat-layout {
+    /* Isolated Framework Architecture Frames Mappings */
+    .adnn-wa-messenger-shell-frame {
       display: grid;
-      grid-template-columns: 320px 1fr;
-      height: calc(100vh - 140px);
-      min-height: 500px;
-      border-radius: 24px;
+      grid-template-rows: 64px 1fr auto;
+      height: min(600px, calc(100svh - 220px));
+      background: linear-gradient(145deg, #0b0b0f 0%, #060608 100%);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 20px;
       overflow: hidden;
+      position: relative;
     }
 
-    .adnn-admin-chat-sidebar {
+    .adnn-wa-admin-panel-frame {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      height: calc(100vh - 150px);
+      background: rgba(10, 10, 14, 0.2);
+      border-radius: 20px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .adnn-wa-admin-sidebar {
+      background: rgba(15, 15, 22, 0.4);
       border-right: 1px solid rgba(255, 255, 255, 0.08);
       display: grid;
       grid-template-rows: 60px 1fr;
-      background: rgba(20, 20, 25, 0.3);
     }
 
-    .adnn-sidebar-search-box {
+    .adnn-wa-sidebar-search-container {
       padding: 10px;
       display: flex;
       align-items: center;
     }
 
-    .adnn-sidebar-search-box input {
+    .adnn-wa-sidebar-search-container input {
       height: 38px;
+      background: #000000 !important;
+      border: 1px solid rgba(255, 255, 255, 0.08) !important;
       border-radius: 12px;
-      background: rgba(0, 0, 0, 0.4);
-      border: 1px solid rgba(255, 255, 255, 0.08);
       padding: 0 14px;
-      color: #fff;
+      color: #fff !important;
       font-size: 13px;
-    }
-
-    .adnn-admin-chat-list {
-      overflow-y: auto;
-      padding: 10px;
-    }
-
-    .adnn-admin-list-item-btn {
       width: 100%;
-      display: grid;
-      grid-template-columns: 44px 1fr auto;
-      gap: 12px;
+    }
+
+    .adnn-wa-sidebar-stream-list {
+      overflow-y: auto;
+      padding: 8px;
+    }
+
+    .adnn-wa-sidebar-list-row-item {
+      display: flex;
       align-items: center;
+      gap: 12px;
       padding: 12px;
-      background: transparent;
-      border: 0;
       border-radius: 14px;
-      color: #fff;
-      text-align: left;
       cursor: pointer;
-      margin-bottom: 6px;
+      margin-bottom: 4px;
       transition: background 0.2s ease;
-    }
-
-    .adnn-admin-list-item-btn:hover, .adnn-admin-list-item-btn.is-active {
-      background: rgba(39, 45, 207, 0.15);
-    }
-
-    .adnn-item-avatar-circle {
-      width: 42px;
-      height: 42px;
-      border-radius: 50%;
-      background: #272dcf;
-      display: grid;
-      place-items: center;
-      font-size: 13px;
-      font-weight: 500;
-    }
-
-    .adnn-item-metadata-block strong { display: block; font-size: 14px; font-weight: 500; margin-bottom: 4px; }
-    .adnn-item-metadata-block p { margin: 0; font-size: 12px; color: rgba(255, 255, 255, 0.5); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-    .adnn-unread-badge-counter {
-      background: #ff2602;
-      color: #fff;
-      font-size: 10px;
-      padding: 2px 6px;
-      border-radius: 10px;
-      font-family: monospace;
-    }
-
-    .adnn-admin-chat-workspace-room {
-      background: rgba(0, 0, 0, 0.2);
       position: relative;
     }
 
-    .adnn-admin-chat-workspace-room .adnn-whatsapp-messenger-frame {
-      height: 100% !important;
-      border-radius: 0;
-      border: 0;
+    .adnn-wa-sidebar-list-row-item:hover, .adnn-wa-sidebar-list-row-item.is-selected {
+      background: rgba(39, 45, 207, 0.16);
     }
 
-    /* WhatsApp Viewport Design Language Architecture */
-    .adnn-messenger-header-action-bar {
-      height: 64px;
-      background: rgba(25, 25, 30, 0.4);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 20px;
-    }
-
-    .adnn-header-identity-block { display: flex; align-items: center; gap: 12px; }
-    .adnn-header-avatar {
-      width: 38px;
-      height: 38px;
+    .adnn-wa-row-avatar-icon {
+      width: 40px;
+      height: 40px;
       border-radius: 50%;
       background: #272dcf;
       display: grid;
@@ -1263,323 +1195,328 @@ function injectGlobalAppStyles() {
       color: #fff;
     }
 
-    .adnn-header-title-details h4 { margin: 0; font-size: 15px; font-weight: 500; color: #fff; }
-    .adnn-header-title-details small { font-size: 11px; color: rgba(255, 255, 255, 0.4); }
-    .adnn-status-online-highlight { color: #25d366 !important; font-weight: 500; }
+    .adnn-wa-row-content-block { flex: 1; min-width: 0; }
+    .adnn-wa-row-top-line { display: flex; align-items: center; justify-content: space-between; margin-bottom: 3px; }
+    .adnn-wa-row-top-line strong { font-size: 14px; font-weight: 500; color: #fff; }
+    .adnn-wa-row-content-block p { margin: 0; font-size: 12px; color: rgba(255,255,255,0.5); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-    .adnn-header-communications-utilities { display: flex; align-items: center; gap: 10px; }
-    .adnn-util-call-btn {
+    .adnn-wa-unread-badge {
+      background: #ff2602;
+      color: #fff;
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 10px;
+      font-family: monospace;
+    }
+
+    .adnn-wa-admin-chat-view-container {
+      background: rgba(0, 0, 0, 0.2);
+      position: relative;
+    }
+
+    .adnn-wa-admin-chat-view-container .adnn-wa-messenger-shell-frame {
+      height: 100% !important; border-radius: 0; border: 0;
+    }
+
+    /* WhatsApp Component Viewport Structure mapping specifications */
+    .adnn-wa-header-action-bar {
+      height: 64px;
+      background: rgba(20, 20, 26, 0.5);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+    }
+
+    .adnn-wa-mobile-back-nav-btn {
+      display: none; background: transparent; border: 0; color: #fff;
+      font-size: 20px; cursor: pointer; padding-right: 10px;
+    }
+
+    .adnn-wa-header-profile-block { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .adnn-wa-header-avatar-node {
       width: 38px;
       height: 38px;
       border-radius: 50%;
-      background: rgba(255, 255, 255, 0.05);
-      border: 0;
-      color: #fff;
+      background: #272dcf;
       display: grid;
       place-items: center;
-      cursor: pointer;
-      transition: background 0.2s;
+      font-size: 12px;
+      font-weight: 500;
+      color: #fff;
+      flex-shrink: 0;
     }
 
-    .adnn-util-call-btn:hover { background: rgba(39, 45, 207, 0.3); color: #8d96ff; }
-    .adnn-util-call-btn svg { width: 18px; height: 18px; }
+    .adnn-wa-header-text-details { min-width: 0; }
+    .adnn-wa-header-text-details h4 { margin: 0; font-size: 14.5px; font-weight: 500; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .adnn-wa-header-text-details small { font-size: 11px; display: block; margin-top: 1px; }
+    
+    .is-online-active-green { color: #25d366 !important; font-weight: 500; }
+    .is-offline-text { color: rgba(255, 255, 255, 0.4) !important; }
 
-    .adnn-messenger-messages-viewport {
+    .adnn-wa-header-hardware-utilities { display: flex; align-items: center; gap: 6px; }
+    .adnn-wa-util-btn {
+      width: 38px; height: 38px; border-radius: 50%; background: rgba(255,255,255,0.04);
+      border: 0; color: #fff; display: grid; place-items: center; cursor: pointer; transition: background 0.2s;
+    }
+    .adnn-wa-util-btn:hover { background: rgba(39, 45, 207, 0.24); color: #8d96ff; }
+    .adnn-wa-util-btn svg { width: 17px; height: 17px; }
+
+    .adnn-wa-messages-viewport-scroller {
       overflow-y: auto;
-      padding: 20px;
+      padding: 16px;
       display: flex;
       flex-direction: column;
-      gap: 12px;
-      scroll-behavior: smooth;
+      gap: 14px;
+      background: rgba(0, 0, 0, 0.15);
     }
 
-    /* Professional Message Bubble Architecture Mapping WhatsApp Shapes */
-    .adnn-whatsapp-message-bubble {
-      max-width: 75%;
-      padding: 10px 14px;
-      border-radius: 16px;
+    .adnn-wa-message-row-wrapper { width: 100%; display: flex; }
+    .is-mine-row { justify-content: flex-end; }
+    .is-peer-row { justify-content: flex-start; }
+
+    /* Conversational WhatsApp Shapes Engine Parameters */
+    .adnn-wa-chat-bubble-node {
+      max-width: 72%;
+      padding: 10px 12px;
+      border-radius: 14px;
       position: relative;
       color: #fff;
-      font-size: 14.5px;
-      line-height: 1.5;
-      display: flex;
-      flex-direction: column;
-      animation: bubbleArrivalAnimation 0.25s cubic-bezier(0.1, 1, 0.1, 1) both;
+      font-size: 14px;
+      line-height: 1.45;
     }
 
-    @keyframes bubbleArrivalAnimation {
-      from { opacity: 0; transform: translateY(6px); }
-      to { opacity: 1; transform: translateY(0); }
+    .is-sender {
+      background: linear-gradient(135deg, #272dcf 0%, #171ca1 100%);
+      border-top-right-radius: 2px;
     }
 
-    .is-sender-bubble {
-      align-self: flex-end;
-      background: linear-gradient(135deg, #272dcf, #1a1f94);
-      border-bottom-right-radius: 2px;
-    }
-
-    .is-receiver-bubble {
-      align-self: flex-start;
-      background: rgba(255, 255, 255, 0.06);
-      border-bottom-left-radius: 2px;
+    .is-receiver {
+      background: rgba(255, 255, 255, 0.05);
+      border-top-left-radius: 2px;
       border: 1px solid rgba(255, 255, 255, 0.04);
     }
 
-    .adnn-bubble-identity-header-row strong {
-      font-size: 11px;
-      color: #8d96ff;
-      font-family: monospace;
-      margin-bottom: 4px;
-      display: block;
+    .adnn-wa-bubble-sender-identity-label strong {
+      font-size: 11px; color: #8d96ff; display: block; margin-bottom: 4px; font-family: monospace;
     }
 
-    .adnn-bubble-text-content-paragraph { margin: 0; word-break: break-word; }
+    .adnn-wa-bubble-text-paragraph-content { margin: 0; word-break: break-word; }
 
-    .adnn-bubble-timestamp-metrics-footer-line {
-      display: flex;
-      align-items: center;
-      justify-content: flex-end;
-      gap: 6px;
-      margin-top: 4px;
-      font-size: 10px;
-      color: rgba(255, 255, 255, 0.4);
-      font-family: monospace;
+    .adnn-wa-bubble-metrics-footer-row {
+      display: flex; align-items: center; justify-content: flex-end; gap: 5px;
+      margin-top: 5px; font-size: 10px; color: rgba(255, 255, 255, 0.4); font-family: monospace;
     }
 
-    .adnn-receipt-tick-marks { font-size: 11px; color: rgba(255, 255, 255, 0.3); }
-    .is-fully-read-blue { color: #34b7f1 !important; }
+    .adnn-wa-receipt-tick-indicator { font-size: 11px; color: rgba(255, 255, 255, 0.3); }
+    .is-read-blue { color: #34b7f1 !important; }
 
-    /* Native Media Integration Modules */
-    .adnn-bubble-embedded-image {
-      max-width: 100%;
-      max-height: 280px;
-      border-radius: 12px;
-      object-fit: cover;
-      margin-bottom: 4px;
-      cursor: pointer;
+    /* Interactive Context Popup Items */
+    .adnn-wa-bubble-hover-utilities-floating-menu {
+      position: absolute; top: 50%; transform: translateY(-50%);
+      background: #0f0f14; border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px; padding: 4px; display: none; gap: 4px; z-index: 10;
     }
+    .is-sender .adnn-wa-bubble-hover-utilities-floating-menu { left: -140px; }
+    .is-receiver .adnn-wa-bubble-hover-utilities-floating-menu { right: -140px; }
+    .adnn-wa-chat-bubble-node:hover .adnn-wa-bubble-hover-utilities-floating-menu { display: flex; }
 
-    .adnn-bubble-document-download-link {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      color: #8d96ff;
-      text-decoration: none;
-      font-size: 13px;
-      background: rgba(0, 0, 0, 0.2);
-      padding: 8px 12px;
-      border-radius: 10px;
-    }
-
-    .adnn-bubble-native-audio-player {
-      height: 36px;
-      max-width: 220px;
-      margin-top: 4px;
-    }
-
-    /* Reactions System Engine Badge Row styling */
-    .adnn-bubble-active-reactions-badge-row {
-      position: absolute;
-      bottom: -10px;
-      right: 12px;
-      background: #1c1c24;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      padding: 1px 6px;
-      border-radius: 10px;
-      display: flex;
-      gap: 2px;
-      font-size: 11px;
-      z-index: 2;
-    }
-
-    /* Context Controls Menus Panel on hover layers */
-    .adnn-bubble-interactive-context-menu-utilities {
-      position: absolute;
-      top: 50%;
-      transform: translateY(-50%);
-      background: #1c1c24;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 8px;
-      padding: 4px;
-      display: none;
-      gap: 4px;
-      z-index: 10;
-    }
-
-    .is-sender-bubble .adnn-bubble-interactive-context-menu-utilities { left: -140px; }
-    .is-receiver-bubble .adnn-bubble-interactive-context-menu-utilities { right: -140px; }
-    .adnn-whatsapp-message-bubble:hover .adnn-bubble-interactive-context-menu-utilities { display: flex; }
-
-    .adnn-bubble-interactive-context-menu-utilities button {
+    .adnn-wa-bubble-hover-utilities-floating-menu button {
       background: transparent; border: 0; color: #fff; font-size: 11px; cursor: pointer; padding: 2px 4px;
     }
-    .adnn-bubble-interactive-context-menu-utilities button:hover { color: #8d96ff; }
-    .adnn-util-delete-action { color: #ff2602 !important; }
+    .adnn-wa-bubble-hover-utilities-floating-menu button:hover { color: #8d96ff; }
+    .is-delete-action-label { color: #ff3b30 !important; }
 
-    /* Interactive Composer Core Framework Elements layout */
-    .adnn-messenger-composer-area {
+    /* Media Embed Layout Frames styling blocks */
+    .adnn-wa-bubble-embedded-img {
+      max-width: 100%; max-height: 240px; border-radius: 10px; object-fit: cover; margin-bottom: 4px; cursor: pointer;
+    }
+    .adnn-wa-bubble-file-download-card {
+      display: flex; align-items: center; gap: 8px; color: #8d96ff; text-decoration: none;
+      font-size: 12.5px; background: rgba(0, 0, 0, 0.2); padding: 8px 12px; border-radius: 8px;
+    }
+    .adnn-wa-bubble-native-audio-node { height: 32px; max-width: 200px; margin-top: 4px; }
+    .adnn-wa-bubble-active-reactions-badge-line {
+      position: absolute; bottom: -10px; right: 10px; background: #0f0f14;
+      border: 1px solid rgba(255, 255, 255, 0.08); padding: 1px 5px; border-radius: 10px;
+      display: flex; gap: 2px; font-size: 10px; z-index: 2;
+    }
+
+    /* Interactive Composer Blocks */
+    .adnn-wa-composer-area-container {
       border-top: 1px solid rgba(255, 255, 255, 0.06);
-      padding: 12px 16px;
-      background: rgba(15, 15, 20, 0.6);
-      position: relative;
+      padding: 12px; background: rgba(10, 10, 14, 0.8); position: relative;
     }
 
-    .adnn-messenger-interactive-form {
-      display: flex;
-      align-items: center;
-      gap: 12px;
+    .adnn-wa-composer-form-interface { display: flex; align-items: center; gap: 10px; }
+    .adnn-wa-file-attachment-trigger-label {
+      color: rgba(245, 245, 247, 0.6); cursor: pointer; display: grid; place-items: center;
+    }
+    .adnn-wa-file-attachment-trigger-label svg { width: 20px; height: 20px; }
+
+    .adnn-wa-input-wrapper-node { flex: 1; position: relative; display: flex; align-items: center; }
+    .adnn-wa-input-wrapper-node input {
+      height: 42px; width: 100%; border-radius: 20px; background: #000000 !important;
+      border: 1px solid rgba(255, 255, 255, 0.08) !important; padding: 0 40px 0 14px;
+      color: #fff !important; font-size: 14px;
     }
 
-    .adnn-composer-utility-file-label {
-      color: rgba(255, 255, 255, 0.5); cursor: pointer; display: grid; place-items: center; transition: color 0.2s;
+    .adnn-wa-typing-indicator-dot-matrix { position: absolute; right: 14px; display: flex; gap: 3px; }
+    .adnn-wa-typing-indicator-dot-matrix span {
+      width: 4px; height: 4px; background: #272dcf; border-radius: 50%;
+      animation: waTypingIndicatorAnimation 1.4s infinite both;
     }
-    .adnn-composer-utility-file-label:hover { color: #fff; }
-    .adnn-composer-utility-file-label svg { width: 22px; height: 22px; }
+    .adnn-wa-typing-indicator-dot-matrix span:nth-child(2) { animation-delay: 0.2s; }
+    .adnn-wa-typing-indicator-dot-matrix span:nth-child(3) { animation-delay: 0.4s; }
 
-    .adnn-composer-input-wrapper-container {
-      flex: 1; position: relative; display: flex; align-items: center;
-    }
-
-    .adnn-composer-input-wrapper-container input {
-      height: 44px; border-radius: 22px; background: rgba(0, 0, 0, 0.4);
-      border: 1px solid rgba(255, 255, 255, 0.08); padding: 0 44px 0 16px;
-      color: #fff; font-size: 14px; width: 100%;
-    }
-
-    /* Native Typing Indicators Inside Input bounds layout */
-    .adnn-composer-typing-indicator-dot-matrix {
-      position: absolute; right: 16px; display: flex; gap: 3px;
-    }
-    .adnn-composer-typing-indicator-dot-matrix span {
-      width: 5px; height: 5px; background: #272dcf; border-radius: 50%;
-      animation: typingIndicatorDotsAnimation 1.4s infinite both;
-    }
-    .adnn-composer-typing-indicator-dot-matrix span:nth-child(2) { animation-delay: 0.2s; }
-    .adnn-composer-typing-indicator-dot-matrix span:nth-child(3) { animation-delay: 0.4s; }
-
-    @keyframes typingIndicatorDotsAnimation {
+    @keyframes waTypingIndicatorAnimation {
       0%, 100% { transform: scale(0.6); opacity: 0.4; }
       50% { transform: scale(1.2); opacity: 1; }
     }
 
-    .adnn-composer-action-voice-btn, .adnn-composer-submit-message-btn {
-      width: 44px; height: 44px; border-radius: 50%; border: 0; display: grid;
-      place-items: center; cursor: pointer; color: #fff; transition: background 0.2s;
+    .adnn-wa-voice-record-action-btn, .adnn-wa-submit-message-btn {
+      width: 42px; height: 42px; border-radius: 50%; border: 0; display: grid;
+      place-items: center; cursor: pointer; color: #fff;
     }
 
-    .adnn-composer-action-voice-btn { background: rgba(255, 255, 255, 0.05); }
-    .adnn-composer-action-voice-btn:hover { background: rgba(255, 38, 2, 0.15); color: #ff2602; }
-    .adnn-composer-submit-message-btn { background: #272dcf; }
-    .adnn-composer-submit-message-btn:hover { background: #3946ff; }
-    .adnn-composer-submit-message-btn svg, .adnn-composer-action-voice-btn svg { width: 16px; height: 16px; }
+    .adnn-wa-voice-record-action-btn { background: rgba(255,255,255,0.04); }
+    .adnn-wa-voice-record-action-btn:hover { background: rgba(255, 59, 48, 0.14); color: #ff3b30; }
+    .adnn-wa-submit-message-btn { background: #272dcf; }
+    .adnn-wa-submit-message-btn:hover { background: #3946ff; }
+    .adnn-wa-submit-message-btn svg, .adnn-wa-voice-record-action-btn svg { width: 16px; height: 16px; }
 
-    /* In-Chat Full-Screen Overlay Media Preview Panels styling elements map bounds */
-    .adnn-composer-attachment-fullscreen-preview-panel {
-      position: absolute; bottom: 100%; left: 0; right: 0; height: 260px;
-      background: #0d0d12; border-top: 1px solid rgba(255, 255, 255, 0.08);
-      z-index: 100; padding: 16px; display: flex; flex-direction: column;
-      align-items: center; justify-content: center; gap: 10px;
+    /* In-Chat Fullscreen Preview & Quote context layouts */
+    .adnn-wa-fullscreen-upload-preview-panel {
+      position: absolute; bottom: 100%; left: 0; right: 0; height: 240px;
+      background: #08080c; border-top: 1px solid rgba(255, 255, 255, 0.08);
+      z-index: 100; padding: 14px; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 8px;
     }
+    .adnn-wa-close-preview-btn, .adnn-wa-clear-quote-btn {
+      position: absolute; top: 10px; right: 14px; background: transparent;
+      border: 0; color: rgba(255, 255, 255, 0.4); font-size: 20px; cursor: pointer;
+    }
+    .adnn-wa-preview-render-mount { max-width: 100%; max-height: 160px; overflow: hidden; border-radius: 8px; }
+    .adnn-wa-full-panel-img-preview { max-width: 100%; max-height: 160px; object-fit: contain; }
+    .adnn-wa-preview-metadata-tag { font-size: 11px; color: rgba(255,255,255,0.5); font-family: monospace; }
 
-    .adnn-close-preview-panel-btn, .adnn-close-quote-context-btn {
-      position: absolute; top: 12px; right: 16px; background: transparent;
-      border: 0; color: rgba(255, 255, 255, 0.5); font-size: 22px; cursor: pointer;
+    .adnn-wa-quoted-reply-context-bar {
+      display: grid; grid-template-columns: 3px 1fr auto; gap: 10px;
+      background: rgba(0, 0, 0, 0.4); padding: 6px 10px; border-radius: 6px; margin-bottom: 6px;
     }
-    .adnn-close-preview-panel-btn:hover { color: #fff; }
-
-    .adnn-preview-render-mount { max-width: 100%; max-height: 180px; overflow: hidden; border-radius: 10px; }
-    .adnn-fullscreen-composer-image-render { max-width: 100%; max-height: 180px; object-fit: contain; }
-    .adnn-preview-file-metadata-label { font-size: 12px; color: rgba(245, 245, 247, 0.6); font-family: monospace; }
-
-    /* Quoted Message Link UI Rows Mappings specifications blocks */
-    .adnn-composer-quoted-reply-context-bar {
-      display: grid; grid-template-columns: 4px 1fr auto; gap: 10px;
-      background: rgba(0, 0, 0, 0.3); padding: 8px 12px; border-radius: 8px; margin-bottom: 8px;
+    .adnn-wa-quote-vertical-bar { background: #272dcf; border-radius: 1px; }
+    .adnn-wa-quote-details-block strong { font-size: 12px; color: #8d96ff; display: block; }
+    .adnn-wa-quote-details-block p { margin: 0; font-size: 11px; color: rgba(255,255,255,0.5); }
+    
+    .adnn-wa-bubble-quoted-parent-preview-box {
+      background: rgba(0, 0, 0, 0.15); border-left: 3px solid #8d96ff;
+      padding: 5px 8px; border-radius: 6px; margin-bottom: 5px; font-size: 12px;
     }
-    .adnn-quote-line-indicator { background: #272dcf; border-radius: 2px; }
-    .adnn-quote-text-details-block strong { font-size: 12px; color: #8d96ff; display: block; }
-    .adnn-quote-text-details-block p { margin: 0; font-size: 11px; color: rgba(255, 255, 255, 0.6); }
-
-    .adnn-bubble-quoted-context-wrapper {
-      background: rgba(0, 0, 0, 0.2); border-left: 3px solid #8d96ff;
-      padding: 6px 10px; border-radius: 6px; margin-bottom: 6px; font-size: 12px;
-    }
-    .adnn-bubble-quoted-context-wrapper strong { color: #8d96ff; display: block; margin-bottom: 2px; }
-    .adnn-bubble-quoted-context-wrapper p { margin: 0; opacity: 0.8; }
-
-    /* Universal Placeholder View Screens */
-    .adnn-whatsapp-placeholder-screen {
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      height: 100%; text-align: center; padding: 40px; color: rgba(255, 255, 255, 0.4);
-    }
-    .adnn-placeholder-branding-icon {
-      width: 64px; height: 64px; border-radius: 20px; background: rgba(39, 45, 207, 0.1);
-      color: #272dcf; font-size: 24px; font-weight: 500; display: grid; place-items: center;
-      margin-bottom: 16px; border: 1px solid rgba(39, 45, 207, 0.2);
-    }
-    .adnn-whatsapp-placeholder-screen h3 { margin: 0 0 8px; color: #fff; font-weight: 400; font-size: 18px; }
-    .adnn-whatsapp-placeholder-screen p { margin: 0; font-size: 13.5px; max-width: 320px; line-height: 1.6; }
-    .adnn-chat-view-loader, .adnn-chat-empty-slate { margin: auto; font-family: monospace; font-size: 12px; color: rgba(255,255,255,0.4); text-align: center; }
+    .adnn-wa-bubble-quoted-parent-preview-box strong { color: #8d96ff; display: block; margin-bottom: 1px; }
+    .adnn-wa-bubble-quoted-parent-preview-box p { margin: 0; opacity: 0.75; }
+    .adnn-wa-loader, .adnn-wa-empty-state { margin: auto; font-family: monospace; font-size: 11px; color: rgba(255,255,255,0.4); text-align: center; }
 
     /* ==========================================================================
-       WEBRTC DRAG HARDWARE CALL ENGINE VIEW OVERLAYS
+       WEBRTC HARDWARE ENGINE OVERLAY STAGE OVERRIDES
        ========================================================================== */
-    .adnn-call-hardware-overlay-master-stage {
-      position: fixed; inset: 0; background: rgba(5, 5, 8, 0.85);
-      backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); z-index: 2147483640;
+    .adnn-wa-webrtc-fullscreen-stage-overlay {
+      position: fixed; inset: 0; background: rgba(4, 4, 6, 0.94);
+      backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); z-index: 2147483645;
     }
-    .generic-flex-center { display: flex; align-items: center; justify-content: center; }
-    .adnn-call-hardware-card-panel {
-      width: min(440px, calc(100vw - 32px)); background: #0f0f14;
-      border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 32px;
-      padding: 30px; text-align: center; color: #fff;
-      box-shadow: 0 30px 90px rgba(0, 0, 0, 0.5), 0 0 50px rgba(39, 45, 207, 0.15);
+    .unified-flex-centering-utility { display: flex; align-items: center; justify-content: center; }
+    .adnn-wa-webrtc-card-modal {
+      width: min(420px, calc(100vw - 24px)); background: #0b0b0f;
+      border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 28px;
+      padding: 24px; text-align: center; color: #fff;
     }
-    .adnn-call-card-avatar-row {
-      width: 72px; height: 72px; border-radius: 24px; background: #272dcf;
-      margin: 0 auto 20px; display: grid; place-items: center; font-size: 24px; font-weight: 500;
+    .adnn-wa-modal-avatar-wrapper {
+      width: 68px; height: 68px; border-radius: 20px; background: #272dcf;
+      margin: 0 auto 16px; display: grid; place-items: center; font-size: 22px; font-weight: 500;
     }
-    .adnn-call-hardware-card-panel h2 { margin: 0 0 6px; font-size: 22px; font-weight: 500; }
-    .adnn-call-hardware-card-panel p { margin: 0 0 30px; font-size: 13px; color: rgba(255,255,255,0.5); font-family: monospace; }
-    .adnn-call-card-interactive-controls-row { display: flex; align-items: center; justify-content: center; gap: 16px; }
+    .adnn-wa-webrtc-card-modal h2 { margin: 0 0 4px; font-size: 20px; font-weight: 500; }
+    .adnn-wa-webrtc-card-modal p { margin: 0 0 24px; font-size: 12.5px; color: rgba(255,255,255,0.4); font-family: monospace; }
+    .adnn-wa-modal-controls-row { display: flex; align-items: center; justify-content: center; gap: 12px; }
     
-    .adnn-call-btn-circle {
-      width: 54px; height: 54px; border-radius: 50%; border: 0; background: rgba(255, 255, 255, 0.08);
-      color: #fff; display: grid; place-items: center; cursor: pointer; transition: background 0.2s, transform 0.2s;
+    .adnn-wa-ctrl-btn-node {
+      width: 50px; height: 50px; border-radius: 50%; border: 0; background: rgba(255,255,255,0.06);
+      color: #fff; display: grid; place-items: center; cursor: pointer; transition: transform 0.2s;
     }
-    .adnn-call-btn-circle:hover { transform: scale(1.06); }
-    .adnn-call-btn-circle svg { width: 20px; height: 20px; }
-    
-    .is-accept-green-bg { background: #25d366 !important; }
-    .is-decline-red-bg { background: #ff3b30 !important; }
-    .is-muted-highlight { background: #ff2602 !important; color: #fff !important; }
+    .adnn-wa-ctrl-btn-node:hover { transform: scale(1.05); }
+    .adnn-wa-ctrl-btn-node svg { width: 18px; height: 18px; }
+    .is-green-success { background: #25d366 !important; }
+    .is-red-danger { background: #ff3b30 !important; }
+    .is-deactivated-highlight { background: #ff2602 !important; }
 
-    /* WebRTC Live Grid Mesh Streams Windows styling blocks elements mapping bounds */
-    .is-active-call-pane { width: min(720px, calc(100vw - 24px)) !important; padding: 16px !important; }
-    .adnn-webrtc-video-tiles-grid-mesh {
-      width: 100%; aspect-ratio: 16/10; background: #000; border-radius: 20px;
-      overflow: hidden; margin-bottom: 16px; position: relative;
+    .is-live-call-pane { width: min(680px, calc(100vw - 20px)) !important; padding: 14px !important; }
+    .adnn-wa-webrtc-video-tiles-grid-mesh {
+      width: 100%; aspect-ratio: 16/10; background: #000; border-radius: 16px;
+      overflow: hidden; margin-bottom: 14px; position: relative;
     }
-    .adnn-webrtc-stream-track-video-tile-node { width: 100%; height: 100%; object-fit: cover; background: #050507; }
-    .is-local-mirror-track {
-      position: absolute; bottom: 14px; right: 14px; width: 25%; aspect-ratio: 3/4;
-      border-radius: 12px; border: 1px solid rgba(255,255,255,0.2); transform: scaleX(-1); /* Correct perspective mirror lines */
+    .adnn-wa-video-stream-node-frame { width: 100%; height: 100%; object-fit: cover; background: #030305; }
+    .is-local-mirror-flipped {
+      position: absolute; bottom: 12px; right: 12px; width: 24%; aspect-ratio: 3/4;
+      border-radius: 10px; border: 1px solid rgba(255,255,255,0.15); transform: scaleX(-1);
     }
-    .adnn-active-call-floating-identity-row { margin-bottom: 20px; text-align: left; padding: 0 4px; }
-    .adnn-active-call-floating-identity-row h3 { margin: 0 0 4px; font-size: 17px; font-weight: 500; }
-    .adnn-active-call-floating-identity-row p { margin: 0; font-size: 12px; }
+    .adnn-wa-webrtc-live-identity-row { text-align: left; padding: 0 2px; margin-bottom: 16px; }
+    .adnn-wa-webrtc-live-identity-row h3 { margin: 0 0 2px; font-size: 16px; font-weight: 500; }
+    .adnn-wa-webrtc-live-identity-row p { margin: 0; font-size: 12px; }
 
-    /* Mobile Adaptive Safe Boundaries Overrides tracking layout scaling behaviors */
+    /* ==========================================================================
+       WHATSAPP EXACT MOBILE NATIVE APP EXPERIENCE OVERACTIVE OVERRIDES
+       ========================================================================== */
     @media (max-width: 760px) {
-      .adnn-whatsapp-messenger-frame {
-        height: 100svh !important; width: 100vw !important; border-radius: 0; border: 0;
-        position: fixed; inset: 0; z-index: 2147483600; background: #050507;
+      /* Force active mobile view to lock scroll lines safely on body elements */
+      body.adnn-wa-mobile-view-active {
+        overflow: hidden !important;
+        position: fixed !important;
+        width: 100vw !important;
+        height: 100svh !important;
       }
-      .adnn-admin-chat-layout { grid-template-columns: 1fr; height: 100svh; border-radius: 0; }
-      body.adnn-admin-chat-open .adnn-admin-chat-sidebar { display: none; }
-      .adnn-bubble-interactive-context-menu-utilities { top: auto; bottom: -32px; left: 0 !important; right: auto !important; }
-      .adnn-whatsapp-message-bubble { max-width: 85%; }
+
+      .adnn-wa-messenger-shell-frame {
+        position: fixed !important;
+        inset: 0 !important;
+        width: 100vw !important;
+        height: 100svh !important;
+        max-height: 100svh !important;
+        z-index: 2147483500 !important;
+        border: 0 !important;
+        border-radius: 0 !important;
+        background: #050507 !important;
+        display: grid !important;
+        grid-template-rows: 60px 1fr auto !important;
+      }
+
+      .adnn-wa-mobile-back-nav-btn { display: block !important; }
+
+      .adnn-wa-admin-panel-frame {
+        grid-template-columns: 1fr !important;
+        height: 100svh !important;
+        position: fixed !important;
+        inset: 0 !important;
+        z-index: 2147483400 !important;
+        border: 0 !important;
+        border-radius: 0 !important;
+      }
+
+      .adnn-wa-admin-panel-frame .adnn-wa-admin-chat-view-container {
+        display: none;
+      }
+
+      .adnn-wa-admin-panel-frame.adnn-wa-mobile-room-open .adnn-wa-admin-sidebar {
+        display: none !important;
+      }
+
+      .adnn-wa-admin-panel-frame.adnn-wa-mobile-room-open .adnn-wa-admin-chat-view-container {
+        display: block !important;
+        width: 100vw !important;
+        height: 100svh !important;
+      }
+
+      .adnn-wa-chat-bubble-node { max-width: 85% !important; }
+      .adnn-wa-bubble-hover-utilities-floating-menu { top: auto; bottom: -34px; left: 4px !important; right: auto !important; }
     }
   `;
-  document.head.appendChild(stylesheet);
+  document.head.appendChild(embeddedStyleDOMNodeElement);
 }

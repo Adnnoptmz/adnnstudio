@@ -93,18 +93,18 @@ function buildUserChatPortals() {
 }
 
 function buildAdminChatPortal() {
-  const target = document.getElementById("chats_view");
+  const target = document.getElementById("adminChatMount") || document.getElementById("chats_view");
   if (!target) return;
-  target.className = "admin-view-panel-container adnn-chat-app";
+  target.className = "adnn-chat-app";
   target.innerHTML = appFrameMarkup("Studio Chats", "adminThreads", "adminRoom", true);
   renderPassiveRoom("adminRoom", "Studio chats", "Loading conversations...", "Select a client chat to send a message");
   watchChatThreads("admin", "adminThreads", "adminRoom", {});
 }
 
 function buildAdminChatShellOnly(message) {
-  const target = document.getElementById("chats_view");
+  const target = document.getElementById("adminChatMount") || document.getElementById("chats_view");
   if (!target) return;
-  target.className = "admin-view-panel-container adnn-chat-app";
+  target.className = "adnn-chat-app";
   target.innerHTML = appFrameMarkup("Studio Chats", "adminThreads", "adminRoom", true);
   const list = document.getElementById("adminThreads");
   if (list) list.innerHTML = `<div class="adnn-chat-empty">${escapeHtml(message)}</div>`;

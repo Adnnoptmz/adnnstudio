@@ -873,6 +873,83 @@
         overflow:hidden !important;
       }
     }
+
+    .admin-chat-fallback {
+      height:clamp(580px, calc(100svh - 210px), 820px);
+      display:grid;
+      grid-template-rows:auto 1fr auto;
+      overflow:hidden;
+      border:1px solid var(--line);
+      border-radius:24px;
+      background:linear-gradient(145deg, rgba(22,22,28,.92), rgba(4,4,7,.96));
+      box-shadow:0 24px 90px rgba(0,0,0,.32);
+    }
+    .admin-chat-fallback-head,
+    .admin-chat-fallback-composer {
+      display:flex;
+      align-items:center;
+      gap:12px;
+      padding:14px;
+      border-bottom:1px solid var(--line);
+      background:rgba(255,255,255,.035);
+    }
+    .admin-chat-fallback-composer {
+      border-top:1px solid var(--line);
+      border-bottom:0;
+    }
+    .admin-chat-fallback-avatar {
+      width:42px;
+      height:42px;
+      border-radius:16px;
+      display:grid;
+      place-items:center;
+      background:linear-gradient(145deg,#3036e8,#161bba);
+      color:#fff;
+      font-size:12px;
+      flex:0 0 auto;
+    }
+    .admin-chat-fallback-body {
+      display:grid;
+      place-items:center;
+      text-align:center;
+      color:var(--muted);
+      padding:28px;
+    }
+    .admin-chat-fallback-body strong {
+      display:block;
+      color:var(--text);
+      font-size:22px;
+      font-weight:400;
+      margin-bottom:8px;
+    }
+    .admin-chat-fallback-composer textarea {
+      flex:1;
+      min-height:44px;
+      max-height:118px;
+      resize:none;
+      border:1px solid var(--line);
+      border-radius:22px;
+      background:#020203;
+      color:#fff;
+      outline:0;
+      padding:12px 15px;
+      font:inherit;
+      font-size:14px;
+    }
+    .admin-chat-fallback-composer button {
+      width:44px;
+      height:44px;
+      border:0;
+      border-radius:50%;
+      display:grid;
+      place-items:center;
+      background:rgba(255,255,255,.08);
+      color:#fff;
+      cursor:pointer;
+    }
+    .admin-chat-fallback-composer button:last-child {
+      background:#272dcf;
+    }
 </style>
 </head>
 <body>
@@ -1104,10 +1181,29 @@
       <div class="panel glass"><p class="kicker">Projects</p><h2>Creative Deliverables Directory</h2><p class="help">Slider datasets and active workspace node maps.</p></div>
     </div>
     <div id="chats_view" class="admin-view-panel-container" style="display:none;">
-      <div class="panel glass">
-        <p class="kicker">Studio chat</p>
-        <h2>Loading chat...</h2>
-        <p class="help">The live Firebase chat panel loads from firebase-chat.js.</p>
+      <div class="admin-chat-fallback" id="adminChatFallbackPanel">
+        <div class="admin-chat-fallback-head">
+          <span class="admin-chat-fallback-avatar">AD</span>
+          <div>
+            <strong style="display:block;font-weight:500;color:var(--text);">Studio Chats</strong>
+            <small style="color:var(--muted);">Select a user conversation when it loads</small>
+          </div>
+        </div>
+        <div class="admin-chat-fallback-body">
+          <div>
+            <strong>Admin chat ready</strong>
+            <span>Client conversations will replace this panel after the chat connection is active.</span>
+          </div>
+        </div>
+        <form class="admin-chat-fallback-composer" onsubmit="event.preventDefault();">
+          <button type="button" aria-label="Attach file">
+            <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m21.4 11.1-9.2 9.2a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5"/></svg>
+          </button>
+          <textarea rows="1" placeholder="Message"></textarea>
+          <button type="submit" aria-label="Send message">
+            <svg viewBox="0 0 24 24" width="19" height="19" fill="currentColor"><path d="M3 20.5 22 12 3 3.5v6.6L15.7 12 3 13.9v6.6Z"/></svg>
+          </button>
+        </form>
       </div>
     </div>
     
@@ -1846,6 +1942,6 @@
       }
     });
   </script>
-  <script type="module" src="firebase-chat.js?v=20260611-room-dock-admin-composer"></script>
+  <script type="module" src="firebase-chat.js?v=20260611-preview-admin-composer"></script>
 </body>
 </html>

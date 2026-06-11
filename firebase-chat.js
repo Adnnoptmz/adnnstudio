@@ -61,7 +61,6 @@ let activeChatId = "";
 let activeChat = null;
 let recorder = null;
 let chunks = [];
-let recorderState = null;
 let call = null;
 let ringAudio = null;
 let localStream = null;
@@ -75,8 +74,11 @@ function css() {
   style.id = "adnnFirestoreChatStyles";
   style.textContent = `
   :root{--adnn-chat-accent:var(--accent,#272dcf);--adnn-chat-red:var(--red,#ff2602);--adnn-chat-bg:var(--bg,#050506);--adnn-chat-panel:var(--panel-bg,linear-gradient(135deg,rgba(34,34,38,.72),rgba(22,22,26,.58)));--adnn-chat-text:var(--text,var(--ink,#f5f5f7));--adnn-chat-muted:var(--muted,rgba(245,245,247,.62));--adnn-chat-line:var(--line,rgba(255,255,255,.08));--adnn-chat-input:var(--input-bg,rgba(255,255,255,.08));--adnn-chat-font:var(--font-body,ui-sans-serif,system-ui);--adnn-chat-mono:var(--font-mono,ui-monospace,SFMono-Regular,Menlo,monospace)}
-  #chat.view,#chats_view,#clientChatMount,#directChatMount{min-height:0!important;display:block!important;opacity:1!important;visibility:visible!important;overflow:visible!important}.adnn-chat-shell{height:min(78vh,760px);min-height:620px;width:100%;display:grid;grid-template-columns:minmax(260px,360px) minmax(0,1fr);border:1px solid var(--adnn-chat-line);border-radius:30px;overflow:hidden;background:var(--adnn-chat-panel);box-shadow:var(--glass-shadow,0 24px 70px rgba(0,0,0,.35));backdrop-filter:blur(28px) saturate(160%);-webkit-backdrop-filter:blur(28px) saturate(160%);color:var(--adnn-chat-text);font-family:var(--adnn-chat-font);position:relative;z-index:5}.adnn-chat-sidebar{border-right:1px solid var(--adnn-chat-line);min-width:0;display:flex;flex-direction:column;background:rgba(255,255,255,.025)}.adnn-chat-top{padding:18px;display:flex;gap:12px;align-items:center;border-bottom:1px solid var(--adnn-chat-line)}.adnn-chat-logo{width:44px;height:44px;border-radius:16px;background:linear-gradient(135deg,var(--adnn-chat-accent),#6970ff);display:grid;place-items:center;color:#fff;font-weight:700;box-shadow:0 12px 36px rgba(39,45,207,.35)}.adnn-chat-top h3{margin:0;font-size:17px;letter-spacing:-.03em}.adnn-chat-top p{margin:3px 0 0;color:var(--adnn-chat-muted);font-family:var(--adnn-chat-mono);font-size:11px}.adnn-chat-search{margin:14px 16px;display:flex;align-items:center;gap:8px;height:42px;padding:0 12px;border:1px solid var(--adnn-chat-line);border-radius:16px;background:var(--adnn-chat-input)}.adnn-chat-search svg,.adnn-icon{width:18px;height:18px;display:block}.adnn-chat-search input{border:0;outline:0;background:transparent;color:var(--adnn-chat-text);width:100%;font-size:13px}.adnn-chat-list{overflow:auto;padding:0 10px 14px;display:grid;gap:8px}.adnn-chat-item{width:100%;border:0;background:transparent;color:inherit;text-align:left;padding:12px;border-radius:20px;display:grid;grid-template-columns:44px 1fr auto;gap:11px;align-items:center;cursor:pointer;transition:.2s}.adnn-chat-item:hover,.adnn-chat-item.active{background:rgba(255,255,255,.08)}:root.light-theme .adnn-chat-item:hover,:root.light-theme .adnn-chat-item.active{background:rgba(0,0,0,.045)}.adnn-avatar{width:44px;height:44px;border-radius:16px;display:grid;place-items:center;background:rgba(39,45,207,.14);color:var(--adnn-chat-accent);font-weight:700;position:relative}.adnn-presence-dot{position:absolute;right:1px;bottom:2px;width:10px;height:10px;border-radius:99px;background:#32d74b;border:2px solid var(--adnn-chat-bg)}.adnn-chat-item strong{display:block;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.adnn-chat-item small{display:block;margin-top:3px;color:var(--adnn-chat-muted);font-family:var(--adnn-chat-mono);font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.adnn-unread{min-width:20px;height:20px;border-radius:999px;background:var(--adnn-chat-accent);color:#fff;display:grid;place-items:center;font-size:11px;font-weight:700}.adnn-room{min-width:0;display:flex;flex-direction:column;position:relative;background:radial-gradient(circle at 90% 4%,rgba(39,45,207,.16),transparent 26%)}.adnn-room-head{height:82px;padding:16px 20px;border-bottom:1px solid var(--adnn-chat-line);display:flex;align-items:center;gap:12px}.adnn-room-head .adnn-title{min-width:0;flex:1}.adnn-room-head strong{display:block;font-size:17px;letter-spacing:-.03em}.adnn-room-head small{display:block;margin-top:3px;color:var(--adnn-chat-muted);font-family:var(--adnn-chat-mono);font-size:11px}.adnn-room-actions{display:flex;gap:8px}.adnn-action{width:42px;height:42px;border-radius:16px;border:1px solid var(--adnn-chat-line);background:rgba(255,255,255,.06);color:var(--adnn-chat-text);display:grid;place-items:center;cursor:pointer;transition:.2s}.adnn-action:hover{transform:translateY(-1px);background:rgba(39,45,207,.16);color:#fff}.adnn-action.primary{background:var(--adnn-chat-accent);border-color:transparent;color:#fff}.adnn-action.danger{background:var(--adnn-chat-red);border-color:transparent;color:#fff}.adnn-action:disabled{opacity:.38;cursor:not-allowed}.adnn-back{display:none}.adnn-messages{flex:1;overflow:auto;padding:22px;display:flex;flex-direction:column;gap:10px;scroll-behavior:smooth}.adnn-empty{margin:auto;max-width:420px;text-align:center;color:var(--adnn-chat-muted);font-family:var(--adnn-chat-mono);font-size:12px;line-height:1.6}.adnn-bubble-row{display:flex;gap:8px;align-items:flex-end;max-width:82%}.adnn-bubble-row.mine{align-self:flex-end;flex-direction:row-reverse}.adnn-bubble{position:relative;padding:10px 12px;border-radius:20px;background:rgba(255,255,255,.08);border:1px solid var(--adnn-chat-line);box-shadow:0 8px 24px rgba(0,0,0,.08);font-size:14px;line-height:1.45;word-break:break-word}.mine .adnn-bubble{background:linear-gradient(135deg,var(--adnn-chat-accent),#4651ff);color:#fff;border-color:transparent;border-bottom-right-radius:7px}.theirs .adnn-bubble{border-bottom-left-radius:7px}.adnn-bubble-meta{display:flex;align-items:center;gap:7px;margin-top:5px;font-size:10px;font-family:var(--adnn-chat-mono);opacity:.68}.adnn-media-preview{display:block;max-width:min(320px,58vw);max-height:260px;border-radius:16px;margin:4px 0 8px;object-fit:cover}.adnn-file-card{display:flex;gap:10px;align-items:center;padding:10px;border-radius:16px;background:rgba(0,0,0,.08);text-decoration:none;color:inherit;margin-bottom:8px}.adnn-file-card span{font-family:var(--adnn-chat-mono);font-size:11px}.adnn-msg-tools{position:absolute;top:-18px;right:8px;display:none;gap:4px}.adnn-bubble:hover .adnn-msg-tools{display:flex}.adnn-mini{width:28px;height:28px;border:1px solid var(--adnn-chat-line);border-radius:12px;background:rgba(20,20,24,.86);color:#fff;display:grid;place-items:center;cursor:pointer}.adnn-reactions{display:flex;gap:4px;margin-top:6px}.adnn-reactions button{border:0;border-radius:999px;background:rgba(255,255,255,.13);padding:3px 7px;cursor:pointer}.adnn-composer{padding:14px 18px;border-top:1px solid var(--adnn-chat-line);display:grid;grid-template-columns:auto 1fr auto auto;gap:10px;align-items:end;background:rgba(0,0,0,.05)}.adnn-composer textarea{resize:none;max-height:130px;min-height:46px;border:1px solid var(--adnn-chat-line);outline:0;border-radius:18px;padding:13px 14px;background:var(--adnn-chat-input);color:var(--adnn-chat-text);font-size:14px}.adnn-hidden-file{display:none}.adnn-attach-preview{position:absolute;left:20px;right:20px;bottom:82px;padding:10px 12px;border:1px solid var(--adnn-chat-line);border-radius:18px;background:var(--adnn-chat-panel);display:none;align-items:center;justify-content:space-between;gap:10px;box-shadow:0 20px 50px rgba(0,0,0,.25)}.adnn-attach-preview.show{display:flex}.adnn-toast{position:fixed;right:22px;bottom:22px;z-index:99999;background:rgba(20,20,24,.9);color:#fff;border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:12px 14px;box-shadow:0 18px 50px rgba(0,0,0,.35);font-size:13px;max-width:330px}.adnn-call-layer{position:fixed;inset:0;z-index:99998;background:rgba(0,0,0,.72);backdrop-filter:blur(18px) saturate(160%);display:none;align-items:center;justify-content:center;padding:22px}.adnn-call-layer.show{display:flex}.adnn-call-window{width:min(1120px,96vw);height:min(760px,92vh);border-radius:34px;overflow:hidden;border:1px solid rgba(255,255,255,.14);background:#08080a;box-shadow:0 30px 100px rgba(0,0,0,.55);position:relative;color:#fff}.adnn-call-remote{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:radial-gradient(circle at 50% 30%,#20203a,#050506 62%)}.adnn-call-local{position:absolute;right:20px;top:20px;width:min(230px,28vw);aspect-ratio:9/13;border-radius:24px;overflow:hidden;border:1px solid rgba(255,255,255,.18);box-shadow:0 16px 50px rgba(0,0,0,.45);transform:scaleX(-1);object-fit:cover;background:#111}.adnn-call-info{position:absolute;left:24px;top:24px}.adnn-call-info h3{margin:0;font-size:22px}.adnn-call-info p{margin:6px 0 0;color:rgba(255,255,255,.7);font-family:var(--adnn-chat-mono);font-size:12px}.adnn-call-controls{position:absolute;left:50%;bottom:24px;transform:translateX(-50%);display:flex;gap:12px;padding:10px;border:1px solid rgba(255,255,255,.12);border-radius:24px;background:rgba(20,20,24,.62);backdrop-filter:blur(18px)}.adnn-call-btn{width:56px;height:56px;border-radius:20px;border:0;background:rgba(255,255,255,.13);color:#fff;display:grid;place-items:center;cursor:pointer}.adnn-call-btn svg{width:23px;height:23px}.adnn-call-btn.off{background:rgba(255,255,255,.28)}.adnn-call-btn.end{background:var(--adnn-chat-red)}.adnn-incoming{position:fixed;right:22px;top:22px;z-index:99999;width:min(360px,calc(100vw - 44px));padding:16px;border-radius:24px;background:rgba(20,20,24,.92);border:1px solid rgba(255,255,255,.12);box-shadow:0 22px 80px rgba(0,0,0,.4);color:#fff;display:none}.adnn-incoming.show{display:block}.adnn-incoming h4{margin:0 0 5px}.adnn-incoming p{margin:0 0 14px;color:rgba(255,255,255,.68);font-family:var(--adnn-chat-mono);font-size:12px}.adnn-incoming-actions{display:flex;gap:10px}.adnn-chip{border:1px solid var(--adnn-chat-line);background:rgba(255,255,255,.06);color:inherit;border-radius:999px;padding:7px 10px;font-size:11px;font-family:var(--adnn-chat-mono)}.adnn-room-actions{position:relative;z-index:3;display:flex!important;opacity:1!important;visibility:visible!important}.adnn-room-action button,.adnn-room-actions button{display:grid!important}.adnn-action svg{width:19px;height:19px}.adnn-attach-preview{z-index:6}.adnn-attach-card{display:flex;align-items:center;gap:12px;min-width:0}.adnn-attach-thumb{width:58px;height:58px;border-radius:16px;background:rgba(255,255,255,.08);display:grid;place-items:center;overflow:hidden;flex:0 0 auto}.adnn-attach-thumb img,.adnn-attach-thumb video{width:100%;height:100%;object-fit:cover}.adnn-attach-meta{min-width:0}.adnn-attach-meta strong{display:block;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.adnn-attach-meta small{display:block;margin-top:3px;color:var(--adnn-chat-muted);font-family:var(--adnn-chat-mono);font-size:11px}.adnn-voice-panel{position:absolute;left:18px;right:18px;bottom:14px;z-index:8;min-height:58px;border:1px solid var(--adnn-chat-line);border-radius:22px;background:rgba(20,20,24,.9);color:#fff;display:none;align-items:center;gap:12px;padding:10px 12px;box-shadow:0 20px 70px rgba(0,0,0,.38);backdrop-filter:blur(18px)}.adnn-voice-panel.show{display:flex}.adnn-voice-dot{width:10px;height:10px;border-radius:99px;background:var(--adnn-chat-red);box-shadow:0 0 0 0 rgba(255,38,2,.65);animation:adnnPulse 1.1s infinite}.adnn-voice-wave{flex:1;height:26px;display:flex;align-items:center;gap:3px}.adnn-voice-wave i{width:3px;border-radius:99px;background:rgba(255,255,255,.76);animation:adnnWave .8s infinite alternate}.adnn-voice-wave i:nth-child(2n){animation-delay:.12s}.adnn-voice-wave i:nth-child(3n){animation-delay:.24s}.adnn-voice-time{font-family:var(--adnn-chat-mono);font-size:12px;min-width:48px}.adnn-composer.recording textarea,.adnn-composer.recording [data-pick],.adnn-composer.recording [data-send]{opacity:.18;pointer-events:none}.adnn-composer.recording{padding-bottom:86px}@keyframes adnnPulse{70%{box-shadow:0 0 0 11px rgba(255,38,2,0)}}@keyframes adnnWave{from{height:7px}to{height:24px}}@media(max-width:820px){.adnn-chat-shell{height:calc(100vh - 24px);min-height:560px;grid-template-columns:1fr;border-radius:24px}.adnn-chat-sidebar{border-right:0}.adnn-room{display:none}.adnn-chat-shell.room-open .adnn-chat-sidebar{display:none}.adnn-chat-shell.room-open .adnn-room{display:flex}.adnn-back{display:grid}.adnn-composer{grid-template-columns:auto 1fr auto}.adnn-composer .adnn-mic{display:grid}.adnn-bubble-row{max-width:94%}.adnn-call-local{width:118px;border-radius:18px}.adnn-call-controls{gap:8px}.adnn-call-btn{width:50px;height:50px;border-radius:18px}}`;
+  #chat.view,#chats_view,#clientChatMount,#directChatMount{min-height:0!important;display:block!important;opacity:1!important;visibility:visible!important;overflow:visible!important}.adnn-chat-shell{height:min(78vh,760px);min-height:620px;width:100%;display:grid;grid-template-columns:minmax(260px,360px) minmax(0,1fr);border:1px solid var(--adnn-chat-line);border-radius:30px;overflow:hidden;background:var(--adnn-chat-panel);box-shadow:var(--glass-shadow,0 24px 70px rgba(0,0,0,.35));backdrop-filter:blur(28px) saturate(160%);-webkit-backdrop-filter:blur(28px) saturate(160%);color:var(--adnn-chat-text);font-family:var(--adnn-chat-font);position:relative;z-index:5}.adnn-chat-sidebar{border-right:1px solid var(--adnn-chat-line);min-width:0;display:flex;flex-direction:column;background:rgba(255,255,255,.025)}.adnn-chat-top{padding:18px;display:flex;gap:12px;align-items:center;border-bottom:1px solid var(--adnn-chat-line)}.adnn-chat-logo{width:44px;height:44px;border-radius:16px;background:linear-gradient(135deg,var(--adnn-chat-accent),#6970ff);display:grid;place-items:center;color:#fff;font-weight:700;box-shadow:0 12px 36px rgba(39,45,207,.35)}.adnn-chat-top h3{margin:0;font-size:17px;letter-spacing:-.03em}.adnn-chat-top p{margin:3px 0 0;color:var(--adnn-chat-muted);font-family:var(--adnn-chat-mono);font-size:11px}.adnn-chat-search{margin:14px 16px;display:flex;align-items:center;gap:8px;height:42px;padding:0 12px;border:1px solid var(--adnn-chat-line);border-radius:16px;background:var(--adnn-chat-input)}.adnn-chat-search svg,.adnn-icon{width:18px;height:18px;display:block}.adnn-chat-search input{border:0;outline:0;background:transparent;color:var(--adnn-chat-text);width:100%;font-size:13px}.adnn-chat-list{overflow:auto;padding:0 10px 14px;display:grid;gap:8px}.adnn-chat-item{width:100%;border:0;background:transparent;color:inherit;text-align:left;padding:12px;border-radius:20px;display:grid;grid-template-columns:44px 1fr auto;gap:11px;align-items:center;cursor:pointer;transition:.2s}.adnn-chat-item:hover,.adnn-chat-item.active{background:rgba(255,255,255,.08)}:root.light-theme .adnn-chat-item:hover,:root.light-theme .adnn-chat-item.active{background:rgba(0,0,0,.045)}.adnn-avatar{width:44px;height:44px;border-radius:16px;display:grid;place-items:center;background:rgba(39,45,207,.14);color:var(--adnn-chat-accent);font-weight:700;position:relative}.adnn-presence-dot{position:absolute;right:1px;bottom:2px;width:10px;height:10px;border-radius:99px;background:#32d74b;border:2px solid var(--adnn-chat-bg)}.adnn-chat-item strong{display:block;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.adnn-chat-item small{display:block;margin-top:3px;color:var(--adnn-chat-muted);font-family:var(--adnn-chat-mono);font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.adnn-unread{min-width:20px;height:20px;border-radius:999px;background:var(--adnn-chat-accent);color:#fff;display:grid;place-items:center;font-size:11px;font-weight:700}.adnn-room{min-width:0;display:flex;flex-direction:column;position:relative;background:radial-gradient(circle at 90% 4%,rgba(39,45,207,.16),transparent 26%)}.adnn-room-head{height:82px;padding:16px 20px;border-bottom:1px solid var(--adnn-chat-line);display:flex;align-items:center;gap:12px}.adnn-room-head .adnn-title{min-width:0;flex:1}.adnn-room-head strong{display:block;font-size:17px;letter-spacing:-.03em}.adnn-room-head small{display:block;margin-top:3px;color:var(--adnn-chat-muted);font-family:var(--adnn-chat-mono);font-size:11px}.adnn-room-actions{display:flex;gap:8px}.adnn-action{width:42px;height:42px;border-radius:16px;border:1px solid var(--adnn-chat-line);background:rgba(255,255,255,.06);color:var(--adnn-chat-text);display:grid;place-items:center;cursor:pointer;transition:.2s}.adnn-action:hover{transform:translateY(-1px);background:rgba(39,45,207,.16);color:#fff}.adnn-action.primary{background:var(--adnn-chat-accent);border-color:transparent;color:#fff}.adnn-action.danger{background:var(--adnn-chat-red);border-color:transparent;color:#fff}.adnn-action:disabled{opacity:.38;cursor:not-allowed}.adnn-back{display:none}.adnn-messages{flex:1;overflow:auto;padding:22px;display:flex;flex-direction:column;gap:10px;scroll-behavior:smooth}.adnn-empty{margin:auto;max-width:420px;text-align:center;color:var(--adnn-chat-muted);font-family:var(--adnn-chat-mono);font-size:12px;line-height:1.6}.adnn-bubble-row{display:flex;gap:8px;align-items:flex-end;max-width:82%}.adnn-bubble-row.mine{align-self:flex-end;flex-direction:row-reverse}.adnn-bubble{position:relative;padding:10px 12px;border-radius:20px;background:rgba(255,255,255,.08);border:1px solid var(--adnn-chat-line);box-shadow:0 8px 24px rgba(0,0,0,.08);font-size:14px;line-height:1.45;word-break:break-word}.mine .adnn-bubble{background:linear-gradient(135deg,var(--adnn-chat-accent),#4651ff);color:#fff;border-color:transparent;border-bottom-right-radius:7px}.theirs .adnn-bubble{border-bottom-left-radius:7px}.adnn-bubble-meta{display:flex;align-items:center;gap:7px;margin-top:5px;font-size:10px;font-family:var(--adnn-chat-mono);opacity:.68}.adnn-media-preview{display:block;max-width:min(320px,58vw);max-height:260px;border-radius:16px;margin:4px 0 8px;object-fit:cover}.adnn-file-card{display:flex;gap:10px;align-items:center;padding:10px;border-radius:16px;background:rgba(0,0,0,.08);text-decoration:none;color:inherit;margin-bottom:8px}.adnn-file-card span{font-family:var(--adnn-chat-mono);font-size:11px}.adnn-msg-tools{position:absolute;top:-18px;right:8px;display:none;gap:4px}.adnn-bubble:hover .adnn-msg-tools{display:flex}.adnn-mini{width:28px;height:28px;border:1px solid var(--adnn-chat-line);border-radius:12px;background:rgba(20,20,24,.86);color:#fff;display:grid;place-items:center;cursor:pointer}.adnn-reactions{display:flex;gap:4px;margin-top:6px}.adnn-reactions button{border:0;border-radius:999px;background:rgba(255,255,255,.13);padding:3px 7px;cursor:pointer}.adnn-composer{padding:14px 18px;border-top:1px solid var(--adnn-chat-line);display:grid;grid-template-columns:auto 1fr auto auto;gap:10px;align-items:end;background:rgba(0,0,0,.05)}.adnn-composer textarea{resize:none;max-height:130px;min-height:46px;border:1px solid var(--adnn-chat-line);outline:0;border-radius:18px;padding:13px 14px;background:var(--adnn-chat-input);color:var(--adnn-chat-text);font-size:14px}.adnn-hidden-file{display:none}.adnn-attach-preview{position:absolute;left:20px;right:20px;bottom:82px;padding:10px 12px;border:1px solid var(--adnn-chat-line);border-radius:18px;background:var(--adnn-chat-panel);display:none;align-items:center;justify-content:space-between;gap:10px;box-shadow:0 20px 50px rgba(0,0,0,.25)}.adnn-attach-preview.show{display:flex}.adnn-toast{position:fixed;right:22px;bottom:22px;z-index:99999;background:rgba(20,20,24,.9);color:#fff;border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:12px 14px;box-shadow:0 18px 50px rgba(0,0,0,.35);font-size:13px;max-width:330px}.adnn-call-layer{position:fixed;inset:0;z-index:99998;background:rgba(0,0,0,.72);backdrop-filter:blur(18px) saturate(160%);display:none;align-items:center;justify-content:center;padding:22px}.adnn-call-layer.show{display:flex}.adnn-call-window{width:min(1120px,96vw);height:min(760px,92vh);border-radius:34px;overflow:hidden;border:1px solid rgba(255,255,255,.14);background:#08080a;box-shadow:0 30px 100px rgba(0,0,0,.55);position:relative;color:#fff}.adnn-call-remote{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:radial-gradient(circle at 50% 30%,#20203a,#050506 62%)}.adnn-call-local{position:absolute;right:20px;top:20px;width:min(230px,28vw);aspect-ratio:9/13;border-radius:24px;overflow:hidden;border:1px solid rgba(255,255,255,.18);box-shadow:0 16px 50px rgba(0,0,0,.45);transform:scaleX(-1);object-fit:cover;background:#111}.adnn-call-info{position:absolute;left:24px;top:24px}.adnn-call-info h3{margin:0;font-size:22px}.adnn-call-info p{margin:6px 0 0;color:rgba(255,255,255,.7);font-family:var(--adnn-chat-mono);font-size:12px}.adnn-call-controls{position:absolute;left:50%;bottom:24px;transform:translateX(-50%);display:flex;gap:12px;padding:10px;border:1px solid rgba(255,255,255,.12);border-radius:24px;background:rgba(20,20,24,.62);backdrop-filter:blur(18px)}.adnn-call-btn{width:56px;height:56px;border-radius:20px;border:0;background:rgba(255,255,255,.13);color:#fff;display:grid;place-items:center;cursor:pointer}.adnn-call-btn svg{width:23px;height:23px}.adnn-call-btn.off{background:rgba(255,255,255,.28)}.adnn-call-btn.end{background:var(--adnn-chat-red)}.adnn-incoming{position:fixed;right:22px;top:22px;z-index:99999;width:min(360px,calc(100vw - 44px));padding:16px;border-radius:24px;background:rgba(20,20,24,.92);border:1px solid rgba(255,255,255,.12);box-shadow:0 22px 80px rgba(0,0,0,.4);color:#fff;display:none}.adnn-incoming.show{display:block}.adnn-incoming h4{margin:0 0 5px}.adnn-incoming p{margin:0 0 14px;color:rgba(255,255,255,.68);font-family:var(--adnn-chat-mono);font-size:12px}.adnn-incoming-actions{display:flex;gap:10px}.adnn-chip{border:1px solid var(--adnn-chat-line);background:rgba(255,255,255,.06);color:inherit;border-radius:999px;padding:7px 10px;font-size:11px;font-family:var(--adnn-chat-mono)}@media(max-width:820px){.adnn-chat-shell{height:calc(100vh - 24px);min-height:560px;grid-template-columns:1fr;border-radius:24px}.adnn-chat-sidebar{border-right:0}.adnn-room{display:none}.adnn-chat-shell.room-open .adnn-chat-sidebar{display:none}.adnn-chat-shell.room-open .adnn-room{display:flex}.adnn-back{display:grid}.adnn-composer{grid-template-columns:auto 1fr auto}.adnn-composer .adnn-mic{display:none}.adnn-bubble-row{max-width:94%}.adnn-call-local{width:118px;border-radius:18px}.adnn-call-controls{gap:8px}.adnn-call-btn{width:50px;height:50px;border-radius:18px}}`;
   document.head.appendChild(style);
+  style.textContent += `
+  .adnn-composer .primary{display:none}.adnn-composer.has-send .primary{display:grid}.adnn-composer.has-send [data-record]{display:none}.adnn-voice-panel{display:none;align-items:center;gap:10px;margin:0 14px 12px;padding:10px 12px;border:1px solid var(--adnn-chat-line);border-radius:18px;background:rgba(255,255,255,.08);color:var(--adnn-chat-text)}.adnn-voice-panel.show{display:flex}.adnn-voice-dot{width:10px;height:10px;border-radius:999px;background:var(--adnn-chat-red);box-shadow:0 0 0 6px rgba(255,38,2,.14);animation:adnnPulse 1s infinite}.adnn-voice-time{font-family:var(--adnn-chat-mono);font-size:12px;color:var(--adnn-chat-muted);min-width:54px}.adnn-voice-panel audio{height:34px;flex:1;min-width:120px}.adnn-voice-panel .primary{display:grid!important}.adnn-attach-card{display:flex;align-items:center;gap:12px}.adnn-attach-thumb{width:48px;height:48px;border-radius:14px;object-fit:cover;background:rgba(255,255,255,.08)}.adnn-room-action,.adnn-action{pointer-events:auto}.adnn-room-actions .adnn-action:disabled{opacity:.45;filter:grayscale(1)}@keyframes adnnPulse{50%{opacity:.35;transform:scale(.8)}}
+  `;
 }
 
 function toast(text) {
@@ -103,8 +105,8 @@ function makeShell({ mode }) {
         <div class="adnn-room-actions"><button class="adnn-action" data-audio disabled>${I.phone}</button><button class="adnn-action" data-video disabled>${I.video}</button></div>
       </header>
       <div class="adnn-messages" data-messages><div class="adnn-empty">Select a conversation to start.</div></div>
-      <div class="adnn-attach-preview" data-attach-preview><div class="adnn-attach-card"><div class="adnn-attach-thumb" data-attach-thumb>+</div><div class="adnn-attach-meta"><strong data-attach-name></strong><small data-attach-size></small></div></div><button class="adnn-mini" data-attach-clear>${I.close}</button></div>
-      <div class="adnn-voice-panel" data-voice-panel><span class="adnn-voice-dot"></span><span class="adnn-voice-time" data-voice-time>00:00</span><span class="adnn-voice-wave"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><button class="adnn-action danger" type="button" data-voice-cancel>${I.close}</button><button class="adnn-action primary" type="button" data-voice-send>${I.send}</button></div>
+      <div class="adnn-attach-preview" data-attach-preview><span data-attach-name></span><button class="adnn-mini" data-attach-clear>${I.close}</button></div>
+      <div class="adnn-voice-panel" data-voice-panel><span class="adnn-voice-dot"></span><span class="adnn-voice-time" data-voice-time>00:00</span><audio data-voice-playback controls></audio><button class="adnn-mini" type="button" data-voice-cancel>${I.close}</button><button class="adnn-action primary" type="button" data-voice-send>${I.send}</button></div>
       <form class="adnn-composer" data-composer>
         <input class="adnn-hidden-file" type="file" data-file accept="image/*,audio/*,video/*,.pdf,.doc,.docx,.zip,.ai,.psd,.fig,.sketch">
         <button class="adnn-action" type="button" data-pick>${I.plus}</button>
@@ -162,6 +164,8 @@ function subscribeChats(shell, mode) {
   else q = query(collection(db, "chats"), where("participantUids", "array-contains", user.uid));
   const unsub = onSnapshot(q, snap => {
     let chats = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    const hasRealActivity = c => !!c.lastSenderUid || (c.lastMessage && !["Chat opened", "Designer lounge"].includes(c.lastMessage));
+    chats = chats.filter(hasRealActivity);
     if (mode !== "admin") chats = chats.filter(c => c.type !== "designer-room" || isDesignerPage());
     chats.sort((a,b) => millis(b.updatedAt || b.createdAt) - millis(a.updatedAt || a.createdAt));
     renderChatList(shell, chats, mode);
@@ -176,7 +180,6 @@ function renderChatList(shell, chats, mode) {
   let filtered = chats.filter(c => JSON.stringify(c).toLowerCase().includes(term));
   if (!filtered.length) { list.innerHTML = `<div class="adnn-empty">No chats found. Your new chat UI is visible and ready.</div>`; return; }
   list.innerHTML = "";
-  if (!activeChatId && filtered.length) setTimeout(() => openChat(shell, filtered[0], mode), 0);
   filtered.forEach(c => {
     const other = otherFromChat(c);
     const title = mode === "admin" ? (c.clientName || c.clientEmail || c.roomKey || other.name) : (c.type === "designer-room" ? "Designer Lounge" : other.name);
@@ -199,13 +202,13 @@ function openChat(shell, chat, mode) {
   bindComposer(shell, chat);
   if (window.__adnnMsgUnsub) window.__adnnMsgUnsub();
   window.__adnnMsgUnsub = onSnapshot(query(collection(db, "chats", chat.id, "messages"), orderBy("createdAt", "asc"), limit(LIMIT_MESSAGES)), snap => {
-    const messages = snap.docs.map(d => ({ id:d.id, ...d.data() })); window.__adnnLastMessages = messages; renderMessages(shell, messages);
+    const messages = snap.docs.map(d => ({ id:d.id, ...d.data() })); renderMessages(shell, messages);
   }, () => shell.querySelector("[data-messages]").innerHTML = `<div class="adnn-empty">Messages could not load for this chat.</div>`);
 }
 
 function renderMessages(shell, messages) {
   const wrap = shell.querySelector("[data-messages]");
-  if (!messages.length) { wrap.innerHTML = `<div class="adnn-empty">No messages yet. Send files, voice notes, reactions or start a call.</div>`; return; }
+  if (!messages.length) { wrap.innerHTML = `<div class="adnn-empty">No messages yet. Send text, files, voice notes, or start a call.</div>`; return; }
   wrap.innerHTML = "";
   const favs = new Set(JSON.parse(localStorage.getItem(`adnnFavs_${user.uid}`) || "[]"));
   const hidden = new Set(JSON.parse(localStorage.getItem(`adnnHidden_${user.uid}`) || "[]"));
@@ -216,8 +219,7 @@ function renderMessages(shell, messages) {
     const canDelete = mine || isAdminEmail(user.email);
     const media = m.mediaUrl ? mediaHtml(m) : "";
     const fav = favs.has(m.id) ? "★" : "☆";
-    bubble.innerHTML = `<div class="adnn-msg-tools"><button class="adnn-mini" data-react="❤️">❤️</button><button class="adnn-mini" data-fav>${fav}</button>${canDelete ? `<button class="adnn-mini" data-del>${I.trash}</button>` : `<button class="adnn-mini" data-hide>${I.close}</button>`}</div>${media}${m.text ? `<div>${esc(m.text)}</div>` : ""}<div class="adnn-bubble-meta"><span>${esc(m.senderName || "")}</span><span>${fmtTime(m.createdAt)}</span>${m.edited ? "<span>edited</span>" : ""}</div>${reactionHtml(m)}`;
-    bubble.querySelector("[data-react]")?.addEventListener("click", () => reactMessage(m, "❤️"));
+    bubble.innerHTML = `<div class="adnn-msg-tools"><button class="adnn-mini" data-fav>${fav}</button>${canDelete ? `<button class="adnn-mini" data-del>${I.trash}</button>` : `<button class="adnn-mini" data-hide>${I.close}</button>`}</div>${media}${m.text ? `<div>${esc(m.text)}</div>` : ""}<div class="adnn-bubble-meta"><span>${esc(m.senderName || "")}</span><span>${fmtTime(m.createdAt)}</span>${m.edited ? "<span>edited</span>" : ""}</div>`;
     bubble.querySelector("[data-fav]")?.addEventListener("click", () => toggleLocalSet(`adnnFavs_${user.uid}`, m.id));
     bubble.querySelector("[data-hide]")?.addEventListener("click", () => toggleLocalSet(`adnnHidden_${user.uid}`, m.id));
     bubble.querySelector("[data-del]")?.addEventListener("click", () => deleteMessage(m));
@@ -229,14 +231,12 @@ function renderMessages(shell, messages) {
 function mediaHtml(m) {
   if (m.mediaType?.startsWith("image/")) return `<img class="adnn-media-preview" src="${esc(m.mediaUrl)}" alt="Attachment">`;
   if (m.mediaType?.startsWith("video/")) return `<video class="adnn-media-preview" src="${esc(m.mediaUrl)}" controls playsinline></video>`;
-  if (m.mediaType?.startsWith("audio/")) return `<audio src="${esc(m.mediaUrl)}" controls></audio>`;
+  if (m.mediaType?.startsWith("audio/")) return `<div class="adnn-file-card"><b>voice</b><audio src="${esc(m.mediaUrl)}" controls></audio></div>`;
   return `<a class="adnn-file-card" href="${esc(m.mediaUrl)}" target="_blank" rel="noopener"><b>${esc(fileIcon(m.mediaType))}</b><span>${esc(m.mediaName || "Download file")}</span></a>`;
 }
-function localReactionFor(messageId) { try { return JSON.parse(localStorage.getItem(`adnnReactions_${user.uid}_${activeChatId}`) || "{}")[messageId]; } catch { return null; } }
-function saveLocalReaction(messageId, emoji) { const key = `adnnReactions_${user.uid}_${activeChatId}`; let all = {}; try { all = JSON.parse(localStorage.getItem(key) || "{}"); } catch {} all[messageId] = emoji; localStorage.setItem(key, JSON.stringify(all)); }
-function reactionHtml(m) { const r = { ...(m.reactions || {}) }; const local = localReactionFor(m.id); if (local && !r[user.uid]) r[user.uid] = local; const vals = Object.values(r); return vals.length ? `<div class="adnn-reactions">${vals.map(v => `<button>${esc(v)}</button>`).join("")}</div>` : ""; }
+function reactionHtml(m) { const r = m.reactions || {}; const vals = Object.values(r); return vals.length ? `<div class="adnn-reactions">${vals.map(v => `<button>${esc(v)}</button>`).join("")}</div>` : ""; }
 function toggleLocalSet(key, id) { const s = new Set(JSON.parse(localStorage.getItem(key) || "[]")); s.has(id) ? s.delete(id) : s.add(id); localStorage.setItem(key, JSON.stringify([...s])); if (activeChat) openChat($(".adnn-chat-shell"), activeChat, isAdminPage()?"admin":"user"); }
-async function reactMessage(m, emoji) { try { await updateDoc(doc(db, "chats", activeChatId, "messages", m.id), { [`reactions.${user.uid}`]: emoji, edited:true }); } catch { saveLocalReaction(m.id, emoji); const shell = $(".adnn-chat-shell"); if (shell && window.__adnnLastMessages) renderMessages(shell, window.__adnnLastMessages); } }
+async function reactMessage(m, emoji) { try { await updateDoc(doc(db, "chats", activeChatId, "messages", m.id), { [`reactions.${user.uid}`]: emoji, edited:true }); } catch { toast("Reaction saved only when rules allow message updates. Current rules allow sender/admin updates."); } }
 async function deleteMessage(m) { try { await deleteDoc(doc(db, "chats", activeChatId, "messages", m.id)); toast("Message deleted."); } catch { toggleLocalSet(`adnnHidden_${user.uid}`, m.id); toast("Hidden for you. Firestore rules allow full delete for sender/admin only."); } }
 
 function bindComposer(shell, chat) {
@@ -247,66 +247,80 @@ function bindComposer(shell, chat) {
   const rec = shell.querySelector("[data-record]");
   const prev = shell.querySelector("[data-attach-preview]");
   const voicePanel = shell.querySelector("[data-voice-panel]");
-  const voiceSend = shell.querySelector("[data-voice-send]");
+  const voiceTime = shell.querySelector("[data-voice-time]");
+  const voiceAudio = shell.querySelector("[data-voice-playback]");
   const voiceCancel = shell.querySelector("[data-voice-cancel]");
+  const voiceSend = shell.querySelector("[data-voice-send]");
+  let voiceBlob = null;
+  let voiceUrl = "";
+  let voiceStarted = 0;
+  let voiceTimer = null;
+
+  const refreshComposer = () => {
+    const hasText = !!text.value.trim();
+    const hasFile = !!file.files[0];
+    form.classList.toggle("has-send", hasText || hasFile);
+  };
+  const clearVoice = () => {
+    if (recorder && recorder.state === "recording") recorder.stop();
+    recorder = null; chunks = []; voiceBlob = null;
+    if (voiceUrl) URL.revokeObjectURL(voiceUrl);
+    voiceUrl = ""; voiceAudio.removeAttribute("src");
+    voicePanel.classList.remove("show");
+    clearInterval(voiceTimer); voiceTimer = null; voiceTime.textContent = "00:00";
+  };
+
   pick.onclick = () => file.click();
-  file.onchange = () => renderAttachmentPreview(shell, file.files[0]);
-  shell.querySelector("[data-attach-clear]").onclick = () => { file.value = ""; prev.classList.remove("show"); shell.querySelector("[data-attach-thumb]").innerHTML = "+"; };
-  text.oninput = () => { text.style.height = "auto"; text.style.height = Math.min(text.scrollHeight, 130) + "px"; };
-  text.onkeydown = e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); form.requestSubmit(); } };
-  form.onsubmit = async e => { e.preventDefault(); if (recorderState?.recording) return; await sendMessage(chat, text.value.trim(), file.files[0]); text.value=""; text.style.height=""; file.value=""; prev.classList.remove("show"); };
-  rec.onclick = () => startVoiceRecording(chat, shell);
-  voiceCancel.onclick = () => stopVoiceRecording(false, chat, shell);
-  voiceSend.onclick = () => stopVoiceRecording(true, chat, shell);
-}
-
-function renderAttachmentPreview(shell, file) {
-  const prev = shell.querySelector("[data-attach-preview]");
-  const thumb = shell.querySelector("[data-attach-thumb]");
-  const name = shell.querySelector("[data-attach-name]");
-  const size = shell.querySelector("[data-attach-size]");
-  if (!file) { prev.classList.remove("show"); return; }
-  name.textContent = file.name; size.textContent = `${file.type || "file"} • ${Math.max(1, Math.round(file.size/1024))} KB`;
-  thumb.innerHTML = file.type.startsWith("image/") ? `<img alt="Preview">` : file.type.startsWith("video/") ? `<video muted playsinline></video>` : file.type.startsWith("audio/") ? `🎙️` : `📎`;
-  const media = thumb.querySelector("img,video");
-  if (media) { const url = URL.createObjectURL(file); media.src = url; media.onload = media.onloadeddata = () => setTimeout(() => URL.revokeObjectURL(url), 1200); }
-  prev.classList.add("show");
-}
-
-function fmtDuration(ms) { const s = Math.floor(ms/1000); return `${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`; }
-async function startVoiceRecording(chat, shell) {
-  if (recorderState?.recording) return;
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio:true }); chunks = [];
-    recorder = new MediaRecorder(stream);
-    recorder.ondataavailable = e => { if (e.data?.size) chunks.push(e.data); };
-    recorderState = { recording:true, send:false, stream, startedAt:Date.now(), timer:null };
-    shell.querySelector("[data-composer]").classList.add("recording");
-    shell.querySelector("[data-voice-panel]").classList.add("show");
-    shell.querySelector("[data-record]").classList.add("danger");
-    const tick = () => shell.querySelector("[data-voice-time]").textContent = fmtDuration(Date.now() - recorderState.startedAt);
-    tick(); recorderState.timer = setInterval(tick, 350);
-    recorder.onstop = async () => {
-      const state = recorderState;
-      clearInterval(state?.timer); state?.stream?.getTracks().forEach(t => t.stop());
-      shell.querySelector("[data-composer]").classList.remove("recording");
-      shell.querySelector("[data-voice-panel]").classList.remove("show");
-      shell.querySelector("[data-record]").classList.remove("danger");
-      recorderState = null;
-      if (state?.send && chunks.length) {
-        const blob = new Blob(chunks, { type:"audio/webm" });
-        const file = new File([blob], `voice-${Date.now()}.webm`, { type:"audio/webm" });
-        await sendMessage(chat, "", file);
-      }
-      chunks = [];
-    };
-    recorder.start(250);
-  } catch { toast("Microphone permission was blocked."); }
-}
-function stopVoiceRecording(send, chat, shell) {
-  if (!recorderState || !recorder) return;
-  recorderState.send = !!send;
-  try { recorder.stop(); } catch {}
+  file.onchange = () => {
+    const f = file.files[0];
+    prev.classList.toggle("show", !!f);
+    if (f && f.type.startsWith("image/")) {
+      const url = URL.createObjectURL(f);
+      shell.querySelector("[data-attach-name]").innerHTML = `<span class="adnn-attach-card"><img class="adnn-attach-thumb" src="${url}" alt=""><span>${esc(f.name)}</span></span>`;
+    } else {
+      shell.querySelector("[data-attach-name]").textContent = f?.name || "";
+    }
+    refreshComposer();
+  };
+  shell.querySelector("[data-attach-clear]").onclick = () => { file.value = ""; prev.classList.remove("show"); refreshComposer(); };
+  text.oninput = () => { text.style.height = "auto"; text.style.height = Math.min(text.scrollHeight, 130) + "px"; refreshComposer(); };
+  text.onkeydown = e => { if (e.key === "Enter" && !e.shiftKey && text.value.trim()) { e.preventDefault(); form.requestSubmit(); } };
+  form.onsubmit = async e => { e.preventDefault(); if (!text.value.trim() && !file.files[0]) return; await sendMessage(chat, text.value.trim(), file.files[0]); text.value=""; text.style.height=""; file.value=""; prev.classList.remove("show"); refreshComposer(); };
+  rec.onclick = async () => {
+    if (form.classList.contains("has-send")) return;
+    if (recorder && recorder.state === "recording") return;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio:true });
+      chunks = []; voiceBlob = null; voicePanel.classList.add("show"); voiceAudio.removeAttribute("src");
+      voiceStarted = Date.now();
+      voiceTimer = setInterval(() => {
+        const s = Math.floor((Date.now() - voiceStarted) / 1000);
+        voiceTime.textContent = `${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`;
+      }, 250);
+      recorder = new MediaRecorder(stream);
+      recorder.ondataavailable = e => e.data.size && chunks.push(e.data);
+      recorder.onstop = () => {
+        stream.getTracks().forEach(t=>t.stop());
+        clearInterval(voiceTimer); voiceTimer = null;
+        voiceBlob = new Blob(chunks, { type:"audio/webm" });
+        voiceUrl = URL.createObjectURL(voiceBlob);
+        voiceAudio.src = voiceUrl;
+      };
+      recorder.start();
+    } catch { toast("Microphone permission was blocked."); }
+  };
+  voiceCancel.onclick = clearVoice;
+  voiceSend.onclick = async () => {
+    if (recorder && recorder.state === "recording") {
+      recorder.stop();
+      await new Promise(resolve => setTimeout(resolve, 350));
+    }
+    if (!voiceBlob) return toast("Record a voice note first.");
+    const vf = new File([voiceBlob], `voice-${Date.now()}.webm`, { type:"audio/webm" });
+    await sendMessage(chat, "", vf);
+    clearVoice();
+  };
+  refreshComposer();
 }
 
 function callLayer() {
@@ -353,7 +367,7 @@ async function boot() {
     let mode = isAdminPage() && await isAdminUser(u) ? "admin" : "user";
     const shell = makeShell({ mode }); if (!shell) return;
     shell.querySelector("[data-chat-search]").addEventListener("input", () => subscribeChats(shell, mode));
-    if (mode !== "admin") { await ensureSupportChat(u).catch(()=>{}); if (isDesignerPage() && await isDesigner(u.uid)) await ensureDesignerRoom(u).catch(()=>{}); }
+    // Do not auto-create empty chats here. The list now shows only chats with real activity/messages.
     subscribeChats(shell, mode); listenIncoming();
   });
 }

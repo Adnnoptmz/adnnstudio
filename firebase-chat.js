@@ -70,6 +70,7 @@ const ICON = {
 
 if (db && auth) {
   injectChatStyles();
+  setupMobileChatViewportSync();
   onAuthStateChanged(auth, async (user) => {
     cleanupAll();
     activeUser = user;
@@ -82,6 +83,7 @@ if (db && auth) {
     watchIncomingCalls();
     if (location.pathname.includes("admin.html")) buildAdminChatPortal();
     else buildUserChatPortals();
+    requestAnimationFrame(syncMobileChatHeights);
   });
 }
 
@@ -96,6 +98,7 @@ function buildUserChatPortals() {
   if (supportMount) {
     supportMount.className = "adnn-chat-app";
     supportMount.innerHTML = `<div class="adnn-chat-layout is-single"><section class="adnn-chat-room" id="supportRoom"></section></div>`;
+    requestAnimationFrame(syncMobileChatHeights);
     ensureSupportChat().then((chat) => openRoom(chat.id, chat, "supportRoom"));
   }
 }
@@ -1226,8 +1229,32 @@ function isCompactChatViewport() {
 
 function setLayoutRoomOpen(layout, open) {
   if (!layout) return;
+  if (open && isCompactChatViewport()) syncOneMobileChatHeight(layout, true);
   layout.classList.toggle("is-room-open", !!open);
+  syncMobileChatHeights();
   syncMobileChatLock();
+}
+
+function syncOneMobileChatHeight(layout, preserveTop = false) {
+  if (!layout || !isVisibleChatLayout(layout)) return;
+  if (!isCompactChatViewport()) {
+    layout.style.removeProperty("--adnn-chat-available-h");
+    layout.style.removeProperty("--adnn-chat-mobile-top");
+    return;
+  }
+  const viewportH = window.visualViewport?.height || window.innerHeight || document.documentElement.clientHeight || 0;
+  const rect = layout.getBoundingClientRect();
+  const storedTop = parseFloat(layout.style.getPropertyValue("--adnn-chat-mobile-top")) || 0;
+  const rawTop = preserveTop || !layout.classList.contains("is-room-open") ? rect.top : storedTop;
+  const top = Math.max(0, Math.min(Math.floor(rawTop || 0), Math.max(0, viewportH - 360)));
+  const available = Math.max(360, Math.floor(viewportH - top));
+  layout.style.setProperty("--adnn-chat-mobile-top", `${top}px`);
+  layout.style.setProperty("--adnn-chat-available-h", `${available}px`);
+}
+
+function syncMobileChatHeights() {
+  const layouts = Array.from(document.querySelectorAll(".adnn-chat-layout"));
+  layouts.forEach((layout) => syncOneMobileChatHeight(layout, false));
 }
 
 function syncMobileChatLock() {
@@ -1241,6 +1268,16 @@ function isVisibleChatLayout(layout) {
 
 function resetBodyMobileLock() {
   document.body.classList.remove("adnn-chat-mobile-lock");
+}
+
+function setupMobileChatViewportSync() {
+  const sync = () => syncMobileChatHeights();
+  sync();
+  window.addEventListener("resize", sync, { passive:true });
+  window.addEventListener("orientationchange", sync, { passive:true });
+  window.visualViewport?.addEventListener("resize", sync, { passive:true });
+  window.visualViewport?.addEventListener("scroll", sync, { passive:true });
+  document.addEventListener("visibilitychange", sync);
 }
 
 function cleanupAll() {
@@ -1471,8 +1508,8 @@ function injectChatStyles() {
 
     @media (max-width:760px) {
       .adnn-chat-app { display:block !important; width:100% !important; max-width:100% !important; min-height:0 !important; }
-      .adnn-chat-app .adnn-chat-layout.is-room-open { position:fixed !important; inset:0 !important; z-index:2147483200 !important; width:100vw !important; height:100svh !important; height:100dvh !important; min-height:0 !important; max-height:none !important; border:0 !important; border-radius:0 !important; box-shadow:none !important; }
-      .adnn-chat-layout { grid-template-columns:1fr !important; width:100% !important; height:100% !important; min-height:100% !important; max-height:none !important; border-radius:0; border-left:0; border-right:0; }
+      .adnn-chat-layout { grid-template-columns:1fr !important; width:100% !important; height:var(--adnn-chat-available-h, calc(100svh - 110px)) !important; height:var(--adnn-chat-available-h, calc(100dvh - 110px)) !important; min-height:360px !important; max-height:none !important; border-radius:0; border-left:0; border-right:0; overflow:hidden !important; }
+      .adnn-chat-app .adnn-chat-layout.is-room-open { position:fixed !important; top:var(--adnn-chat-mobile-top, 0px) !important; right:0 !important; bottom:0 !important; left:0 !important; z-index:2147483200 !important; width:100vw !important; height:var(--adnn-chat-available-h, 100dvh) !important; min-height:0 !important; max-height:none !important; border:0 !important; border-radius:0 !important; box-shadow:none !important; overflow:hidden !important; }
       .adnn-chat-thread-panel { min-height:0; height:100%; border-right:0; background:linear-gradient(180deg, rgba(16,16,20,.98), rgba(5,5,8,.99)); }
       .adnn-chat-thread-head { position:sticky; top:0; z-index:5; min-height:78px; padding:14px 16px; background:rgba(8,8,12,.96); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px); }
       .adnn-chat-thread-head strong { font-size:18px; }

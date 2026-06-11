@@ -52,13 +52,19 @@ const I = {
   star:`<svg viewBox="0 0 24 24"><path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9L12 3Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>`,
   trash:`<svg viewBox="0 0 24 24"><path d="M5 7h14M10 11v6M14 11v6M8 7l1-3h6l1 3M7 7l1 14h8l1-14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
   cameraOff:`<svg viewBox="0 0 24 24"><path d="M4 7.5A2.5 2.5 0 0 1 6.5 5h7A2.5 2.5 0 0 1 16 7.5v5M14 19H6.5A2.5 2.5 0 0 1 4 16.5v-9M16 10l4-2.4v7M4 4l16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
-  end:`<svg viewBox="0 0 24 24"><path d="M6.5 14.5c3.5-3.1 7.5-3.1 11 0l1.7-1.7c.7-.7.7-1.8 0-2.5-4.5-4.2-9.9-4.2-14.4 0-.7.7-.7 1.8 0 2.5l1.7 1.7Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>`
+  end:`<svg viewBox="0 0 24 24"><path d="M6.5 14.5c3.5-3.1 7.5-3.1 11 0l1.7-1.7c.7-.7.7-1.8 0-2.5-4.5-4.2-9.9-4.2-14.4 0-.7.7-.7 1.8 0 2.5l1.7 1.7Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>`,
+  reply:`<svg viewBox="0 0 24 24"><path d="M10 7 5 12l5 5M6 12h7a6 6 0 0 1 6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  check:`<svg viewBox="0 0 24 24"><path d="m4 12 4 4 8-9M12 16l8-9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>`
 };
 
 let user = null;
 let unsubs = [];
 let activeChatId = "";
 let activeChat = null;
+let selectedReply = null;
+let activeChatReadBy = {};
+let activeTyping = {};
+let typingTimer = null;
 let recorder = null;
 let chunks = [];
 let call = null;
@@ -78,6 +84,9 @@ function css() {
   document.head.appendChild(style);
   style.textContent += `
   .adnn-composer .primary{display:none}.adnn-composer.has-send .primary{display:grid}.adnn-composer.has-send [data-record]{display:none}.adnn-voice-panel{display:none;align-items:center;gap:10px;margin:0 14px 12px;padding:10px 12px;border:1px solid var(--adnn-chat-line);border-radius:18px;background:rgba(255,255,255,.08);color:var(--adnn-chat-text)}.adnn-voice-panel.show{display:flex}.adnn-voice-dot{width:10px;height:10px;border-radius:999px;background:var(--adnn-chat-red);box-shadow:0 0 0 6px rgba(255,38,2,.14);animation:adnnPulse 1s infinite}.adnn-voice-time{font-family:var(--adnn-chat-mono);font-size:12px;color:var(--adnn-chat-muted);min-width:54px}.adnn-voice-panel audio{height:34px;flex:1;min-width:120px}.adnn-voice-panel .primary{display:grid!important}.adnn-attach-card{display:flex;align-items:center;gap:12px}.adnn-attach-thumb{width:48px;height:48px;border-radius:14px;object-fit:cover;background:rgba(255,255,255,.08)}.adnn-room-action,.adnn-action{pointer-events:auto}.adnn-room-actions .adnn-action:disabled{opacity:.45;filter:grayscale(1)}@keyframes adnnPulse{50%{opacity:.35;transform:scale(.8)}}
+
+  .adnn-reply-preview{display:none;margin:0 16px 8px;padding:10px 12px;border-left:3px solid var(--adnn-chat-accent);border-radius:14px;background:rgba(255,255,255,.08);align-items:center;gap:10px}.adnn-reply-preview.show{display:flex}.adnn-reply-preview span{flex:1;min-width:0;color:var(--adnn-chat-muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.adnn-quote{border-left:3px solid var(--adnn-chat-accent);padding:7px 10px;margin-bottom:8px;border-radius:10px;background:rgba(255,255,255,.08);font-size:12px;color:var(--adnn-chat-muted)}.adnn-quote b{display:block;color:var(--adnn-chat-text);font-size:11px;margin-bottom:2px}.adnn-read-receipt{color:var(--adnn-chat-accent);display:inline-flex}.adnn-typing{display:inline-flex;align-items:center;gap:3px}.adnn-typing i{width:4px;height:4px;border-radius:50%;background:currentColor;animation:adnnPulse 1s infinite}.adnn-typing i:nth-child(2){animation-delay:.15s}.adnn-typing i:nth-child(3){animation-delay:.3s}.adnn-full-preview,.adnn-camera-modal{position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.92);display:none;color:#fff;font-family:var(--adnn-chat-font);backdrop-filter:blur(18px)}.adnn-full-preview.show,.adnn-camera-modal.show{display:grid;grid-template-rows:72px 1fr 96px}.adnn-preview-top,.adnn-camera-top{display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid rgba(255,255,255,.12)}.adnn-preview-title,.adnn-camera-title{font-weight:700;letter-spacing:-.02em;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.adnn-preview-body,.adnn-camera-body{display:grid;place-items:center;min-height:0;padding:22px}.adnn-preview-body img,.adnn-preview-body video,.adnn-camera-body video,.adnn-camera-body canvas{max-width:100%;max-height:100%;border-radius:22px;box-shadow:0 28px 90px rgba(0,0,0,.45)}.adnn-preview-file{width:min(520px,92vw);border:1px solid rgba(255,255,255,.15);border-radius:26px;padding:28px;background:rgba(255,255,255,.09);text-align:center}.adnn-preview-bottom,.adnn-camera-bottom{display:flex;align-items:center;gap:12px;padding:16px 18px;border-top:1px solid rgba(255,255,255,.12)}.adnn-preview-bottom input{flex:1;height:48px;border:1px solid rgba(255,255,255,.16);border-radius:18px;background:rgba(255,255,255,.1);color:#fff;padding:0 16px;outline:0}.adnn-camera-shot{width:64px;height:64px;border-radius:50%;border:4px solid #fff;background:rgba(255,255,255,.25)}.adnn-dragging .adnn-room:after{content:'Drop to upload';position:absolute;inset:18px;border:2px dashed rgba(255,255,255,.45);border-radius:28px;background:rgba(39,45,207,.22);display:grid;place-items:center;font-weight:800;font-size:22px;z-index:30}.adnn-camera-btn{display:grid!important}
+
   `;
 }
 
@@ -106,10 +115,12 @@ function makeShell({ mode }) {
       </header>
       <div class="adnn-messages" data-messages><div class="adnn-empty">Select a conversation to start.</div></div>
       <div class="adnn-attach-preview" data-attach-preview><span data-attach-name></span><button class="adnn-mini" data-attach-clear>${I.close}</button></div>
+      <div class="adnn-reply-preview" data-reply-preview><span data-reply-text></span><button class="adnn-mini" type="button" data-reply-clear>${I.close}</button></div>
       <div class="adnn-voice-panel" data-voice-panel><span class="adnn-voice-dot"></span><span class="adnn-voice-time" data-voice-time>00:00</span><audio data-voice-playback controls></audio><button class="adnn-mini" type="button" data-voice-cancel>${I.close}</button><button class="adnn-action primary" type="button" data-voice-send>${I.send}</button></div>
       <form class="adnn-composer" data-composer>
         <input class="adnn-hidden-file" type="file" data-file accept="image/*,audio/*,video/*,.pdf,.doc,.docx,.zip,.ai,.psd,.fig,.sketch">
         <button class="adnn-action" type="button" data-pick>${I.plus}</button>
+        <button class="adnn-action adnn-camera-btn" type="button" data-camera-compose>${I.video}</button>
         <textarea data-text placeholder="Message..." rows="1"></textarea>
         <button class="adnn-action adnn-mic" type="button" data-record>${I.mic}</button>
         <button class="adnn-action primary" type="submit" data-send>${I.send}</button>
@@ -200,10 +211,58 @@ function openChat(shell, chat, mode) {
   shell.querySelector("[data-audio]").onclick = () => startCall("audio", chat, other, title);
   shell.querySelector("[data-video]").onclick = () => startCall("video", chat, other, title);
   bindComposer(shell, chat);
+  if (window.__adnnActiveChatUnsub) window.__adnnActiveChatUnsub();
+  window.__adnnActiveChatUnsub = onSnapshot(doc(db, "chats", chat.id), s => {
+    const d = s.data() || {}; activeChatReadBy = d.readBy || {}; activeTyping = d.typing || {};
+    const othersTyping = Object.entries(activeTyping).filter(([uid,t]) => uid !== user.uid && Date.now() - Number(t || 0) < 7000);
+    shell.querySelector("[data-room-status]").innerHTML = othersTyping.length ? typingHtml() : (chat.type === "designer-room" ? "Shared designer workspace" : (other.email || "Online status updates live"));
+  });
+  markChatRead(chat.id);
   if (window.__adnnMsgUnsub) window.__adnnMsgUnsub();
   window.__adnnMsgUnsub = onSnapshot(query(collection(db, "chats", chat.id, "messages"), orderBy("createdAt", "asc"), limit(LIMIT_MESSAGES)), snap => {
-    const messages = snap.docs.map(d => ({ id:d.id, ...d.data() })); renderMessages(shell, messages);
+    const messages = snap.docs.map(d => ({ id:d.id, ...d.data() })); renderMessages(shell, messages); markChatRead(chat.id);
   }, () => shell.querySelector("[data-messages]").innerHTML = `<div class="adnn-empty">Messages could not load for this chat.</div>`);
+}
+
+
+function messagePreview(m) {
+  if (!m) return "";
+  if (m.text) return m.text;
+  if (m.mediaType?.startsWith("image/")) return "Photo";
+  if (m.mediaType?.startsWith("video/")) return "Video";
+  if (m.mediaType?.startsWith("audio/")) return "Voice message";
+  return m.mediaName || "Attachment";
+}
+function setReply(shell, m) {
+  selectedReply = { id:m.id, senderName:m.senderName || "Studio user", text:messagePreview(m).slice(0,180) };
+  const box = shell.querySelector("[data-reply-preview]");
+  box?.classList.add("show");
+  shell.querySelector("[data-reply-text]").textContent = `Reply to ${selectedReply.senderName}: ${selectedReply.text}`;
+  shell.querySelector("[data-text]")?.focus();
+}
+function clearReply(shell) {
+  selectedReply = null;
+  shell?.querySelector("[data-reply-preview]")?.classList.remove("show");
+}
+function otherUidForReceipt() {
+  const other = activeChat ? otherFromChat(activeChat) : null;
+  return other?.uid || ADMIN_ALIAS_UID;
+}
+function receiptHtml(m, mine) {
+  if (!mine) return "";
+  const other = otherUidForReceipt();
+  const readAt = activeChatReadBy?.[other];
+  const isRead = readAt && Number(readAt) >= millis(m.createdAt);
+  return `<span class="adnn-read-receipt" title="${isRead ? "Read" : "Sent"}">${I.check}</span>`;
+}
+async function markChatRead(chatId) {
+  if (!chatId || !user) return;
+  try { await setDoc(doc(db, "chats", chatId), { readBy:{ [user.uid]: Date.now() } }, { merge:true }); } catch {}
+}
+function typingHtml() { return `<span class="adnn-typing">typing <i></i><i></i><i></i></span>`; }
+async function setTyping(chatId, on=true) {
+  if (!chatId || !user) return;
+  try { await setDoc(doc(db, "chats", chatId), { typing:{ [user.uid]: on ? Date.now() : 0 } }, { merge:true }); } catch {}
 }
 
 function renderMessages(shell, messages) {
@@ -219,7 +278,8 @@ function renderMessages(shell, messages) {
     const canDelete = mine || isAdminEmail(user.email);
     const media = m.mediaUrl ? mediaHtml(m) : "";
     const fav = favs.has(m.id) ? "★" : "☆";
-    bubble.innerHTML = `<div class="adnn-msg-tools"><button class="adnn-mini" data-fav>${fav}</button>${canDelete ? `<button class="adnn-mini" data-del>${I.trash}</button>` : `<button class="adnn-mini" data-hide>${I.close}</button>`}</div>${media}${m.text ? `<div>${esc(m.text)}</div>` : ""}<div class="adnn-bubble-meta"><span>${esc(m.senderName || "")}</span><span>${fmtTime(m.createdAt)}</span>${m.edited ? "<span>edited</span>" : ""}</div>`;
+    bubble.innerHTML = `<div class="adnn-msg-tools"><button class="adnn-mini" data-reply>${I.reply}</button><button class="adnn-mini" data-fav>${fav}</button>${canDelete ? `<button class="adnn-mini" data-del>${I.trash}</button>` : `<button class="adnn-mini" data-hide>${I.close}</button>`}</div>${m.replyTo ? `<div class="adnn-quote"><b>${esc(m.replyTo.senderName || "Reply")}</b>${esc(m.replyTo.text || "")}</div>` : ""}${media}${m.text ? `<div>${esc(m.text)}</div>` : ""}<div class="adnn-bubble-meta"><span>${esc(m.senderName || "")}</span><span>${fmtTime(m.createdAt)}</span>${m.edited ? "<span>edited</span>" : ""}${receiptHtml(m, mine)}</div>`;
+    bubble.querySelector("[data-reply]")?.addEventListener("click", () => setReply(shell, m));
     bubble.querySelector("[data-fav]")?.addEventListener("click", () => toggleLocalSet(`adnnFavs_${user.uid}`, m.id));
     bubble.querySelector("[data-hide]")?.addEventListener("click", () => toggleLocalSet(`adnnHidden_${user.uid}`, m.id));
     bubble.querySelector("[data-del]")?.addEventListener("click", () => deleteMessage(m));
@@ -239,87 +299,138 @@ function toggleLocalSet(key, id) { const s = new Set(JSON.parse(localStorage.get
 async function reactMessage(m, emoji) { try { await updateDoc(doc(db, "chats", activeChatId, "messages", m.id), { [`reactions.${user.uid}`]: emoji, edited:true }); } catch { toast("Reaction saved only when rules allow message updates. Current rules allow sender/admin updates."); } }
 async function deleteMessage(m) { try { await deleteDoc(doc(db, "chats", activeChatId, "messages", m.id)); toast("Message deleted."); } catch { toggleLocalSet(`adnnHidden_${user.uid}`, m.id); toast("Hidden for you. Firestore rules allow full delete for sender/admin only."); } }
 
+
+async function sendMessage(chat, text = "", file = null) {
+  if (!chat?.id || !user) return;
+  let mediaUrl = "", mediaType = "", mediaName = "";
+  try {
+    if (file) {
+      mediaType = file.type || "application/octet-stream";
+      mediaName = file.name || `attachment-${Date.now()}`;
+      const path = `chat-media/${chat.id}/${Date.now()}-${uidSafe(mediaName)}`;
+      const r = storageRef(storage, path);
+      await uploadBytes(r, file, { contentType: mediaType });
+      mediaUrl = await getDownloadURL(r);
+    }
+    const payload = {
+      senderUid: user.uid,
+      senderName: displayName(user),
+      senderEmail: user.email || "",
+      text: text || "",
+      mediaUrl,
+      mediaType,
+      mediaName,
+      replyTo: selectedReply || null,
+      createdAt: serverTimestamp(),
+      status: "sent"
+    };
+    await addDoc(collection(db, "chats", chat.id, "messages"), payload);
+    const lastMessage = text || (mediaType.startsWith("image/") ? "Photo" : mediaType.startsWith("video/") ? "Video" : mediaType.startsWith("audio/") ? "Voice message" : (mediaName || "Attachment"));
+    await setDoc(doc(db, "chats", chat.id), {
+      lastMessage,
+      lastSenderUid: user.uid,
+      updatedAt: serverTimestamp(),
+      typing: { [user.uid]: 0 }
+    }, { merge:true });
+  } catch (e) {
+    console.error(e);
+    toast("Message could not be sent. Check Firebase Storage / Firestore rules.");
+  }
+}
+
 function bindComposer(shell, chat) {
   const form = shell.querySelector("[data-composer]");
   const text = shell.querySelector("[data-text]");
   const file = shell.querySelector("[data-file]");
   const pick = shell.querySelector("[data-pick]");
   const rec = shell.querySelector("[data-record]");
+  const camBtn = shell.querySelector("[data-camera-compose]");
   const prev = shell.querySelector("[data-attach-preview]");
   const voicePanel = shell.querySelector("[data-voice-panel]");
   const voiceTime = shell.querySelector("[data-voice-time]");
   const voiceAudio = shell.querySelector("[data-voice-playback]");
   const voiceCancel = shell.querySelector("[data-voice-cancel]");
   const voiceSend = shell.querySelector("[data-voice-send]");
-  let voiceBlob = null;
-  let voiceUrl = "";
-  let voiceStarted = 0;
-  let voiceTimer = null;
+  let voiceBlob = null, voiceUrl = "", voiceStarted = 0, voiceTimer = null;
+  let stagedFile = null;
 
+  shell.querySelector("[data-reply-clear]").onclick = () => clearReply(shell);
   const refreshComposer = () => {
     const hasText = !!text.value.trim();
-    const hasFile = !!file.files[0];
+    const hasFile = !!stagedFile;
     form.classList.toggle("has-send", hasText || hasFile);
+    rec.hidden = hasText || hasFile;
   };
+  const setStage = f => { stagedFile = f || null; refreshComposer(); };
   const clearVoice = () => {
     if (recorder && recorder.state === "recording") recorder.stop();
     recorder = null; chunks = []; voiceBlob = null;
     if (voiceUrl) URL.revokeObjectURL(voiceUrl);
     voiceUrl = ""; voiceAudio.removeAttribute("src");
-    voicePanel.classList.remove("show");
-    clearInterval(voiceTimer); voiceTimer = null; voiceTime.textContent = "00:00";
+    voicePanel.classList.remove("show"); clearInterval(voiceTimer); voiceTimer = null; voiceTime.textContent = "00:00";
+  };
+  const ensureFullPreview = () => {
+    let m = document.getElementById("adnnFullUploadPreview");
+    if (m) return m;
+    m = document.createElement("div"); m.id = "adnnFullUploadPreview"; m.className = "adnn-full-preview";
+    m.innerHTML = `<div class="adnn-preview-top"><button class="adnn-action" data-prev-close>${I.close}</button><div class="adnn-preview-title" data-prev-title>Preview</div></div><div class="adnn-preview-body" data-prev-body></div><div class="adnn-preview-bottom"><input data-prev-caption placeholder="Add a caption"><button class="adnn-action primary" data-prev-send>${I.send}</button></div>`;
+    document.body.appendChild(m); return m;
+  };
+  const openFullPreview = f => {
+    if (!f) return; setStage(f);
+    const m = ensureFullPreview(); const body = m.querySelector("[data-prev-body]"); const title = m.querySelector("[data-prev-title]");
+    const url = URL.createObjectURL(f); title.textContent = f.name;
+    if (f.type.startsWith("image/")) body.innerHTML = `<img src="${url}" alt="Preview">`;
+    else if (f.type.startsWith("video/")) body.innerHTML = `<video src="${url}" controls autoplay playsinline></video>`;
+    else if (f.type.startsWith("audio/")) body.innerHTML = `<div class="adnn-preview-file"><h2>Voice / audio file</h2><audio src="${url}" controls></audio><p>${esc(f.name)}</p></div>`;
+    else body.innerHTML = `<div class="adnn-preview-file"><h2>Attachment</h2><p>${esc(f.name)}</p><small>${Math.round(f.size/1024)} KB</small></div>`;
+    m.classList.add("show");
+    m.querySelector("[data-prev-close]").onclick = () => { m.classList.remove("show"); setStage(null); file.value=""; URL.revokeObjectURL(url); };
+    m.querySelector("[data-prev-send]").onclick = async () => {
+      const caption = m.querySelector("[data-prev-caption]").value.trim();
+      await sendMessage(chat, caption, stagedFile); m.classList.remove("show"); file.value=""; setStage(null); m.querySelector("[data-prev-caption]").value=""; clearReply(shell); URL.revokeObjectURL(url);
+    };
+  };
+  const ensureCamera = () => {
+    let m = document.getElementById("adnnCameraComposer"); if (m) return m;
+    m = document.createElement("div"); m.id = "adnnCameraComposer"; m.className = "adnn-camera-modal";
+    m.innerHTML = `<div class="adnn-camera-top"><button class="adnn-action" data-cam-close>${I.close}</button><div class="adnn-camera-title">Camera</div><button class="adnn-action" data-cam-switch>↺</button></div><div class="adnn-camera-body"><video data-cam-video autoplay muted playsinline></video><canvas data-cam-canvas hidden></canvas></div><div class="adnn-camera-bottom"><button class="adnn-camera-shot" data-cam-shot></button><input data-cam-caption placeholder="Add a caption" style="flex:1;height:48px;border-radius:18px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.1);color:#fff;padding:0 16px;outline:0"><button class="adnn-action primary" data-cam-send>${I.send}</button></div>`;
+    document.body.appendChild(m); return m;
+  };
+  const openCamera = async () => {
+    const m = ensureCamera(); const video = m.querySelector("[data-cam-video]"); const canvas = m.querySelector("[data-cam-canvas]"); let stream = null; let photoFile = null;
+    const start = async () => { stream?.getTracks().forEach(t=>t.stop()); stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:cameraFacingMode }, audio:false }); video.srcObject = stream; video.hidden=false; canvas.hidden=true; photoFile=null; };
+    try { await start(); m.classList.add("show"); } catch { return toast("Camera permission was blocked."); }
+    m.querySelector("[data-cam-close]").onclick = () => { stream?.getTracks().forEach(t=>t.stop()); m.classList.remove("show"); };
+    m.querySelector("[data-cam-switch]").onclick = async () => { cameraFacingMode = cameraFacingMode === "user" ? "environment" : "user"; await start(); };
+    m.querySelector("[data-cam-shot]").onclick = async () => { canvas.width = video.videoWidth || 1280; canvas.height = video.videoHeight || 720; canvas.getContext("2d").drawImage(video,0,0,canvas.width,canvas.height); video.hidden=true; canvas.hidden=false; const blob = await new Promise(r=>canvas.toBlob(r,"image/jpeg",.92)); photoFile = new File([blob], `camera-${Date.now()}.jpg`, { type:"image/jpeg" }); };
+    m.querySelector("[data-cam-send]").onclick = async () => { if (!photoFile) m.querySelector("[data-cam-shot]").click(); setTimeout(async()=>{ if (!photoFile) return; await sendMessage(chat, m.querySelector("[data-cam-caption]").value.trim(), photoFile); stream?.getTracks().forEach(t=>t.stop()); m.classList.remove("show"); m.querySelector("[data-cam-caption]").value=""; clearReply(shell); }, 120); };
   };
 
   pick.onclick = () => file.click();
-  file.onchange = () => {
-    const f = file.files[0];
-    prev.classList.toggle("show", !!f);
-    if (f && f.type.startsWith("image/")) {
-      const url = URL.createObjectURL(f);
-      shell.querySelector("[data-attach-name]").innerHTML = `<span class="adnn-attach-card"><img class="adnn-attach-thumb" src="${url}" alt=""><span>${esc(f.name)}</span></span>`;
-    } else {
-      shell.querySelector("[data-attach-name]").textContent = f?.name || "";
-    }
-    refreshComposer();
-  };
-  shell.querySelector("[data-attach-clear]").onclick = () => { file.value = ""; prev.classList.remove("show"); refreshComposer(); };
-  text.oninput = () => { text.style.height = "auto"; text.style.height = Math.min(text.scrollHeight, 130) + "px"; refreshComposer(); };
+  camBtn.onclick = openCamera;
+  file.onchange = () => openFullPreview(file.files[0]);
+  shell.querySelector("[data-attach-clear]").onclick = () => { file.value = ""; prev.classList.remove("show"); setStage(null); };
+  text.oninput = () => { text.style.height = "auto"; text.style.height = Math.min(text.scrollHeight, 130) + "px"; refreshComposer(); setTyping(chat.id, !!text.value.trim()); clearTimeout(typingTimer); typingTimer = setTimeout(()=>setTyping(chat.id,false),2500); };
   text.onkeydown = e => { if (e.key === "Enter" && !e.shiftKey && text.value.trim()) { e.preventDefault(); form.requestSubmit(); } };
-  form.onsubmit = async e => { e.preventDefault(); if (!text.value.trim() && !file.files[0]) return; await sendMessage(chat, text.value.trim(), file.files[0]); text.value=""; text.style.height=""; file.value=""; prev.classList.remove("show"); refreshComposer(); };
+  form.onsubmit = async e => { e.preventDefault(); if (!text.value.trim() && !stagedFile) return; await sendMessage(chat, text.value.trim(), stagedFile); text.value=""; text.style.height=""; file.value=""; setStage(null); clearReply(shell); setTyping(chat.id,false); };
+  [shell.querySelector("[data-messages]"), shell].forEach(zone => {
+    zone.ondragover = e => { e.preventDefault(); shell.classList.add("adnn-dragging"); };
+    zone.ondragleave = e => { if (!shell.contains(e.relatedTarget)) shell.classList.remove("adnn-dragging"); };
+    zone.ondrop = e => { e.preventDefault(); shell.classList.remove("adnn-dragging"); const f = e.dataTransfer?.files?.[0]; if (f) openFullPreview(f); };
+  });
   rec.onclick = async () => {
     if (form.classList.contains("has-send")) return;
     if (recorder && recorder.state === "recording") return;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio:true });
-      chunks = []; voiceBlob = null; voicePanel.classList.add("show"); voiceAudio.removeAttribute("src");
-      voiceStarted = Date.now();
-      voiceTimer = setInterval(() => {
-        const s = Math.floor((Date.now() - voiceStarted) / 1000);
-        voiceTime.textContent = `${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`;
-      }, 250);
-      recorder = new MediaRecorder(stream);
-      recorder.ondataavailable = e => e.data.size && chunks.push(e.data);
-      recorder.onstop = () => {
-        stream.getTracks().forEach(t=>t.stop());
-        clearInterval(voiceTimer); voiceTimer = null;
-        voiceBlob = new Blob(chunks, { type:"audio/webm" });
-        voiceUrl = URL.createObjectURL(voiceBlob);
-        voiceAudio.src = voiceUrl;
-      };
+      const stream = await navigator.mediaDevices.getUserMedia({ audio:true }); chunks = []; voiceBlob = null; voicePanel.classList.add("show"); voiceAudio.removeAttribute("src");
+      voiceStarted = Date.now(); voiceTimer = setInterval(() => { const s = Math.floor((Date.now() - voiceStarted) / 1000); voiceTime.textContent = `${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`; }, 250);
+      recorder = new MediaRecorder(stream); recorder.ondataavailable = e => e.data.size && chunks.push(e.data); recorder.onstop = () => { stream.getTracks().forEach(t=>t.stop()); clearInterval(voiceTimer); voiceTimer = null; voiceBlob = new Blob(chunks, { type:"audio/webm" }); voiceUrl = URL.createObjectURL(voiceBlob); voiceAudio.src = voiceUrl; };
       recorder.start();
     } catch { toast("Microphone permission was blocked."); }
   };
   voiceCancel.onclick = clearVoice;
-  voiceSend.onclick = async () => {
-    if (recorder && recorder.state === "recording") {
-      recorder.stop();
-      await new Promise(resolve => setTimeout(resolve, 350));
-    }
-    if (!voiceBlob) return toast("Record a voice note first.");
-    const vf = new File([voiceBlob], `voice-${Date.now()}.webm`, { type:"audio/webm" });
-    await sendMessage(chat, "", vf);
-    clearVoice();
-  };
+  voiceSend.onclick = async () => { if (recorder && recorder.state === "recording") { recorder.stop(); await new Promise(resolve => setTimeout(resolve, 350)); } if (!voiceBlob) return toast("Record a voice note first."); const vf = new File([voiceBlob], `voice-${Date.now()}.webm`, { type:"audio/webm" }); await sendMessage(chat, "", vf); clearVoice(); clearReply(shell); };
   refreshComposer();
 }
 

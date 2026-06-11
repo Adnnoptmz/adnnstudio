@@ -1,486 +1,1958 @@
+/**
+ * ============================================================================
+ * FIRESTORE-CHAT.JS (PRO-TIER)
+ * A Premium, WhatsApp-Grade Chat & WebRTC Communication Engine
+ * Inspired by Apple Tahoe Elegance & Advanced Responsive Engineering
+ * ============================================================================
+ */
+
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import {
-  addDoc, collection, deleteDoc, doc, getDoc, getDocs, getFirestore, limit,
-  onSnapshot, orderBy, query, serverTimestamp, setDoc, updateDoc, where
+  getFirestore, collection, doc, setDoc, addDoc, getDoc, getDocs, updateDoc, deleteDoc,
+  onSnapshot, query, orderBy, limit, where, increment, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-import { getDownloadURL, getStorage, ref as storageRef, uploadBytes } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
+import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
-/*
-  ADNN Studio Firestore Chat
-  New Apple/Tahoe inspired chat + call layer for account.html, designer-account.html and admin.html.
-  Uses the existing Firestore rules/collections: chats, chats/{id}/messages, presence, calls, callInbox and chat-media storage.
-*/
-
+// Global Platform Directives & Consts
 const ADMIN_EMAIL = "getavcollab@gmail.com";
 const ADMIN_ALIAS_UID = "adnn-admin";
-const DESIGNER_ROOM_ID = "designer_lounge";
-const LIMIT_MESSAGES = 120;
-const RING_TIMEOUT_MS = 60000;
-const ICE_SERVERS = [{ urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"] }];
+const CALL_RING_TIMEOUT_MS = 60000;
+const CALL_SIGNAL_CLEANUP_DELAY_MS = 5000;
+const MSG_LIMIT = 100;
+
 const config = window.ADNN_FIREBASE_CONFIG;
 const app = config ? (getApps()[0] || initializeApp(config)) : null;
 const auth = app ? getAuth(app) : null;
 const db = app ? getFirestore(app) : null;
 const storage = app ? getStorage(app) : null;
 
-const $ = (s, r = document) => r.querySelector(s);
-const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
-const page = () => location.pathname.split("/").pop().toLowerCase() || "index.html";
-const isAdminPage = () => page().includes("admin.html");
-const isDesignerPage = () => page().includes("designer-account.html");
-const isAccountPage = () => page().includes("account.html") && !isDesignerPage();
-const isAdminEmail = (email = "") => String(email).toLowerCase() === ADMIN_EMAIL;
-const esc = (v = "") => String(v ?? "").replace(/[&<>'"]/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", "'":"&#39;", '"':"&quot;" }[c]));
-const uidSafe = (v = "") => String(v).replace(/[^a-zA-Z0-9_-]/g, "_");
-const now = () => Date.now();
-const millis = v => v?.toMillis ? v.toMillis() : (typeof v === "number" ? v : 0);
-const displayName = user => user?.displayName || user?.email?.split("@")[0] || "Studio user";
-const initials = name => String(name || "?").trim().split(/\s+/).slice(0,2).map(p => p[0]).join("").toUpperCase() || "?";
-const fmtTime = v => { const d = new Date(millis(v) || now()); return d.toLocaleTimeString([], { hour:"2-digit", minute:"2-digit" }); };
-const fileIcon = type => type?.startsWith("image/") ? "image" : type?.startsWith("audio/") ? "audio" : "file";
-
-const I = {
-  search:`<svg viewBox="0 0 24 24"><path d="m21 21-4.2-4.2M10.8 18a7.2 7.2 0 1 1 0-14.4 7.2 7.2 0 0 1 0 14.4Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>`,
-  plus:`<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>`,
-  send:`<svg viewBox="0 0 24 24"><path d="M4 12 20 5l-7 16-2-7-7-2Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="m11 14 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>`,
-  mic:`<svg viewBox="0 0 24 24"><path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3Z" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>`,
-  phone:`<svg viewBox="0 0 24 24"><path d="M7.5 4.8 10 7.2c.6.6.7 1.5.2 2.2l-1 1.5a11.8 11.8 0 0 0 4.9 4.9l1.5-1c.7-.5 1.6-.4 2.2.2l2.4 2.5c.5.5.6 1.3.2 1.9-.8 1.3-2.4 2-4 1.5C9.6 18.8 5.2 14.4 3.1 7.6c-.5-1.6.2-3.2 1.5-4 .6-.4 1.4-.3 1.9.2Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
-  video:`<svg viewBox="0 0 24 24"><path d="M4 7.5A2.5 2.5 0 0 1 6.5 5h7A2.5 2.5 0 0 1 16 7.5v9A2.5 2.5 0 0 1 13.5 19h-7A2.5 2.5 0 0 1 4 16.5v-9Z" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="m16 10 4-2.4v8.8L16 14v-4Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>`,
-  close:`<svg viewBox="0 0 24 24"><path d="M7 7l10 10M17 7 7 17" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>`,
-  back:`<svg viewBox="0 0 24 24"><path d="m14 6-6 6 6 6" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
-  star:`<svg viewBox="0 0 24 24"><path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9L12 3Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>`,
-  trash:`<svg viewBox="0 0 24 24"><path d="M5 7h14M10 11v6M14 11v6M8 7l1-3h6l1 3M7 7l1 14h8l1-14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
-  cameraOff:`<svg viewBox="0 0 24 24"><path d="M4 7.5A2.5 2.5 0 0 1 6.5 5h7A2.5 2.5 0 0 1 16 7.5v5M14 19H6.5A2.5 2.5 0 0 1 4 16.5v-9M16 10l4-2.4v7M4 4l16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
-  end:`<svg viewBox="0 0 24 24"><path d="M6.5 14.5c3.5-3.1 7.5-3.1 11 0l1.7-1.7c.7-.7.7-1.8 0-2.5-4.5-4.2-9.9-4.2-14.4 0-.7.7-.7 1.8 0 2.5l1.7 1.7Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>`,
-  reply:`<svg viewBox="0 0 24 24"><path d="M10 7 5 12l5 5M6 12h7a6 6 0 0 1 6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
-  check:`<svg viewBox="0 0 24 24"><path d="m4 12 4 4 8-9M12 16l8-9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>`
+// Premium Apple Tahoe Styled SVG Icons Vector Suite
+const ICONS = {
+  phone: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>`,
+  video: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 7a2 2 0 0 0-2-2H3a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2V7z"/><path d="M16 5l4 4-4 4"/></svg>`,
+  videoOff: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 16v1a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2m4 0h5a2 2 0 0 1 2 2v3m4-1.8l3-3v11l-3-3M1 1l22 22"/></svg>`,
+  mic: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1v11a4 4 0 0 0 4-4V5a4 4 0 0 0-4-4z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1M12 19v4M8 23h8"/></svg>`,
+  micOff: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/><path d="M17 11a5 5 0 0 1-2.54 4.34M12 19v4M8 23h8"/></svg>`,
+  speaker: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>`,
+  speakerOff: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>`,
+  hold: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>`,
+  cameraSwitch: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>`,
+  close: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`,
+  back: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>`,
+  paperclip: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>`,
+  send: `<svg viewBox="0 0 24 24" fill="currentColor"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>`,
+  search: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>`,
+  star: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`,
+  starFilled: `<svg viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`,
+  checkDouble: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"><path d="M17 5L9.5 12.5L6 9M22 5l-7.5 7.5M13 17l-1.5-1.5"/></svg>`,
+  camera: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>`
 };
 
-let user = null;
-let unsubs = [];
+// Application Global Orchestration States
+let currentUser = null;
 let activeChatId = "";
-let activeChat = null;
-let selectedReply = null;
-let activeChatReadBy = {};
-let activeTyping = {};
-let typingTimer = null;
-let recorder = null;
-let chunks = [];
-let call = null;
-let ringAudio = null;
-let localStream = null;
-let remoteStream = null;
-let pc = null;
-let cameraFacingMode = "user";
+let currentActiveChat = null;
+let activeCallState = null;
+let unsubscribedChatMeta = null;
+let unsubscribedMessageFeed = null;
+let unsubscribedPresenceMeta = null;
+let unsubscribedCallInbox = null;
 
-function css() {
-  if ($("#adnnFirestoreChatStyles")) return;
-  const style = document.createElement("style");
-  style.id = "adnnFirestoreChatStyles";
-  style.textContent = `
-  :root{--adnn-chat-accent:var(--accent,#272dcf);--adnn-chat-red:var(--red,#ff2602);--adnn-chat-bg:var(--bg,#050506);--adnn-chat-panel:var(--panel-bg,linear-gradient(135deg,rgba(34,34,38,.72),rgba(22,22,26,.58)));--adnn-chat-text:var(--text,var(--ink,#f5f5f7));--adnn-chat-muted:var(--muted,rgba(245,245,247,.62));--adnn-chat-line:var(--line,rgba(255,255,255,.08));--adnn-chat-input:var(--input-bg,rgba(255,255,255,.08));--adnn-chat-font:var(--font-body,ui-sans-serif,system-ui);--adnn-chat-mono:var(--font-mono,ui-monospace,SFMono-Regular,Menlo,monospace)}
-  #chat.view,#chats_view,#clientChatMount,#directChatMount{min-height:0!important;display:block!important;opacity:1!important;visibility:visible!important;overflow:visible!important}.adnn-chat-shell{height:min(78vh,760px);min-height:620px;width:100%;display:grid;grid-template-columns:minmax(260px,360px) minmax(0,1fr);border:1px solid var(--adnn-chat-line);border-radius:30px;overflow:hidden;background:var(--adnn-chat-panel);box-shadow:var(--glass-shadow,0 24px 70px rgba(0,0,0,.35));backdrop-filter:blur(28px) saturate(160%);-webkit-backdrop-filter:blur(28px) saturate(160%);color:var(--adnn-chat-text);font-family:var(--adnn-chat-font);position:relative;z-index:5}.adnn-chat-sidebar{border-right:1px solid var(--adnn-chat-line);min-width:0;display:flex;flex-direction:column;background:rgba(255,255,255,.025)}.adnn-chat-top{padding:18px;display:flex;gap:12px;align-items:center;border-bottom:1px solid var(--adnn-chat-line)}.adnn-chat-logo{width:44px;height:44px;border-radius:16px;background:linear-gradient(135deg,var(--adnn-chat-accent),#6970ff);display:grid;place-items:center;color:#fff;font-weight:700;box-shadow:0 12px 36px rgba(39,45,207,.35)}.adnn-chat-top h3{margin:0;font-size:17px;letter-spacing:-.03em}.adnn-chat-top p{margin:3px 0 0;color:var(--adnn-chat-muted);font-family:var(--adnn-chat-mono);font-size:11px}.adnn-chat-search{margin:14px 16px;display:flex;align-items:center;gap:8px;height:42px;padding:0 12px;border:1px solid var(--adnn-chat-line);border-radius:16px;background:var(--adnn-chat-input)}.adnn-chat-search svg,.adnn-icon{width:18px;height:18px;display:block}.adnn-chat-search input{border:0;outline:0;background:transparent;color:var(--adnn-chat-text);width:100%;font-size:13px}.adnn-chat-list{overflow:auto;padding:0 10px 14px;display:grid;gap:8px}.adnn-chat-item{width:100%;border:0;background:transparent;color:inherit;text-align:left;padding:12px;border-radius:20px;display:grid;grid-template-columns:44px 1fr auto;gap:11px;align-items:center;cursor:pointer;transition:.2s}.adnn-chat-item:hover,.adnn-chat-item.active{background:rgba(255,255,255,.08)}:root.light-theme .adnn-chat-item:hover,:root.light-theme .adnn-chat-item.active{background:rgba(0,0,0,.045)}.adnn-avatar{width:44px;height:44px;border-radius:16px;display:grid;place-items:center;background:rgba(39,45,207,.14);color:var(--adnn-chat-accent);font-weight:700;position:relative}.adnn-presence-dot{position:absolute;right:1px;bottom:2px;width:10px;height:10px;border-radius:99px;background:#32d74b;border:2px solid var(--adnn-chat-bg)}.adnn-chat-item strong{display:block;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.adnn-chat-item small{display:block;margin-top:3px;color:var(--adnn-chat-muted);font-family:var(--adnn-chat-mono);font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.adnn-unread{min-width:20px;height:20px;border-radius:999px;background:var(--adnn-chat-accent);color:#fff;display:grid;place-items:center;font-size:11px;font-weight:700}.adnn-room{min-width:0;display:flex;flex-direction:column;position:relative;background:radial-gradient(circle at 90% 4%,rgba(39,45,207,.16),transparent 26%)}.adnn-room-head{height:82px;padding:16px 20px;border-bottom:1px solid var(--adnn-chat-line);display:flex;align-items:center;gap:12px}.adnn-room-head .adnn-title{min-width:0;flex:1}.adnn-room-head strong{display:block;font-size:17px;letter-spacing:-.03em}.adnn-room-head small{display:block;margin-top:3px;color:var(--adnn-chat-muted);font-family:var(--adnn-chat-mono);font-size:11px}.adnn-room-actions{display:flex;gap:8px}.adnn-action{width:42px;height:42px;border-radius:16px;border:1px solid var(--adnn-chat-line);background:rgba(255,255,255,.06);color:var(--adnn-chat-text);display:grid;place-items:center;cursor:pointer;transition:.2s}.adnn-action:hover{transform:translateY(-1px);background:rgba(39,45,207,.16);color:#fff}.adnn-action.primary{background:var(--adnn-chat-accent);border-color:transparent;color:#fff}.adnn-action.danger{background:var(--adnn-chat-red);border-color:transparent;color:#fff}.adnn-action:disabled{opacity:.38;cursor:not-allowed}.adnn-back{display:none}.adnn-messages{flex:1;overflow:auto;padding:22px;display:flex;flex-direction:column;gap:10px;scroll-behavior:smooth}.adnn-empty{margin:auto;max-width:420px;text-align:center;color:var(--adnn-chat-muted);font-family:var(--adnn-chat-mono);font-size:12px;line-height:1.6}.adnn-bubble-row{display:flex;gap:8px;align-items:flex-end;max-width:82%}.adnn-bubble-row.mine{align-self:flex-end;flex-direction:row-reverse}.adnn-bubble{position:relative;padding:10px 12px;border-radius:20px;background:rgba(255,255,255,.08);border:1px solid var(--adnn-chat-line);box-shadow:0 8px 24px rgba(0,0,0,.08);font-size:14px;line-height:1.45;word-break:break-word}.mine .adnn-bubble{background:linear-gradient(135deg,var(--adnn-chat-accent),#4651ff);color:#fff;border-color:transparent;border-bottom-right-radius:7px}.theirs .adnn-bubble{border-bottom-left-radius:7px}.adnn-bubble-meta{display:flex;align-items:center;gap:7px;margin-top:5px;font-size:10px;font-family:var(--adnn-chat-mono);opacity:.68}.adnn-media-preview{display:block;max-width:min(320px,58vw);max-height:260px;border-radius:16px;margin:4px 0 8px;object-fit:cover}.adnn-file-card{display:flex;gap:10px;align-items:center;padding:10px;border-radius:16px;background:rgba(0,0,0,.08);text-decoration:none;color:inherit;margin-bottom:8px}.adnn-file-card span{font-family:var(--adnn-chat-mono);font-size:11px}.adnn-msg-tools{position:absolute;top:-18px;right:8px;display:none;gap:4px}.adnn-bubble:hover .adnn-msg-tools{display:flex}.adnn-mini{width:28px;height:28px;border:1px solid var(--adnn-chat-line);border-radius:12px;background:rgba(20,20,24,.86);color:#fff;display:grid;place-items:center;cursor:pointer}.adnn-reactions{display:flex;gap:4px;margin-top:6px}.adnn-reactions button{border:0;border-radius:999px;background:rgba(255,255,255,.13);padding:3px 7px;cursor:pointer}.adnn-composer{padding:14px 18px;border-top:1px solid var(--adnn-chat-line);display:grid;grid-template-columns:auto 1fr auto auto;gap:10px;align-items:end;background:rgba(0,0,0,.05)}.adnn-composer textarea{resize:none;max-height:130px;min-height:46px;border:1px solid var(--adnn-chat-line);outline:0;border-radius:18px;padding:13px 14px;background:var(--adnn-chat-input);color:var(--adnn-chat-text);font-size:14px}.adnn-hidden-file{display:none}.adnn-attach-preview{position:absolute;left:20px;right:20px;bottom:82px;padding:10px 12px;border:1px solid var(--adnn-chat-line);border-radius:18px;background:var(--adnn-chat-panel);display:none;align-items:center;justify-content:space-between;gap:10px;box-shadow:0 20px 50px rgba(0,0,0,.25)}.adnn-attach-preview.show{display:flex}.adnn-toast{position:fixed;right:22px;bottom:22px;z-index:99999;background:rgba(20,20,24,.9);color:#fff;border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:12px 14px;box-shadow:0 18px 50px rgba(0,0,0,.35);font-size:13px;max-width:330px}.adnn-call-layer{position:fixed;inset:0;z-index:99998;background:rgba(0,0,0,.72);backdrop-filter:blur(18px) saturate(160%);display:none;align-items:center;justify-content:center;padding:22px}.adnn-call-layer.show{display:flex}.adnn-call-window{width:min(1120px,96vw);height:min(760px,92vh);border-radius:34px;overflow:hidden;border:1px solid rgba(255,255,255,.14);background:#08080a;box-shadow:0 30px 100px rgba(0,0,0,.55);position:relative;color:#fff}.adnn-call-remote{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:radial-gradient(circle at 50% 30%,#20203a,#050506 62%)}.adnn-call-local{position:absolute;right:20px;top:20px;width:min(230px,28vw);aspect-ratio:9/13;border-radius:24px;overflow:hidden;border:1px solid rgba(255,255,255,.18);box-shadow:0 16px 50px rgba(0,0,0,.45);transform:scaleX(-1);object-fit:cover;background:#111}.adnn-call-info{position:absolute;left:24px;top:24px}.adnn-call-info h3{margin:0;font-size:22px}.adnn-call-info p{margin:6px 0 0;color:rgba(255,255,255,.7);font-family:var(--adnn-chat-mono);font-size:12px}.adnn-call-controls{position:absolute;left:50%;bottom:24px;transform:translateX(-50%);display:flex;gap:12px;padding:10px;border:1px solid rgba(255,255,255,.12);border-radius:24px;background:rgba(20,20,24,.62);backdrop-filter:blur(18px)}.adnn-call-btn{width:56px;height:56px;border-radius:20px;border:0;background:rgba(255,255,255,.13);color:#fff;display:grid;place-items:center;cursor:pointer}.adnn-call-btn svg{width:23px;height:23px}.adnn-call-btn.off{background:rgba(255,255,255,.28)}.adnn-call-btn.end{background:var(--adnn-chat-red)}.adnn-incoming{position:fixed;right:22px;top:22px;z-index:99999;width:min(360px,calc(100vw - 44px));padding:16px;border-radius:24px;background:rgba(20,20,24,.92);border:1px solid rgba(255,255,255,.12);box-shadow:0 22px 80px rgba(0,0,0,.4);color:#fff;display:none}.adnn-incoming.show{display:block}.adnn-incoming h4{margin:0 0 5px}.adnn-incoming p{margin:0 0 14px;color:rgba(255,255,255,.68);font-family:var(--adnn-chat-mono);font-size:12px}.adnn-incoming-actions{display:flex;gap:10px}.adnn-chip{border:1px solid var(--adnn-chat-line);background:rgba(255,255,255,.06);color:inherit;border-radius:999px;padding:7px 10px;font-size:11px;font-family:var(--adnn-chat-mono)}@media(max-width:820px){.adnn-chat-shell{height:calc(100vh - 24px);min-height:560px;grid-template-columns:1fr;border-radius:24px}.adnn-chat-sidebar{border-right:0}.adnn-room{display:none}.adnn-chat-shell.room-open .adnn-chat-sidebar{display:none}.adnn-chat-shell.room-open .adnn-room{display:flex}.adnn-back{display:grid}.adnn-composer{grid-template-columns:auto 1fr auto}.adnn-composer .adnn-mic{display:none}.adnn-bubble-row{max-width:94%}.adnn-call-local{width:118px;border-radius:18px}.adnn-call-controls{gap:8px}.adnn-call-btn{width:50px;height:50px;border-radius:18px}}`;
-  document.head.appendChild(style);
-  style.textContent += `
-  .adnn-composer .primary{display:none}.adnn-composer.has-send .primary{display:grid}.adnn-composer.has-send [data-record]{display:none}.adnn-voice-panel{display:none;align-items:center;gap:10px;margin:0 14px 12px;padding:10px 12px;border:1px solid var(--adnn-chat-line);border-radius:18px;background:rgba(255,255,255,.08);color:var(--adnn-chat-text)}.adnn-voice-panel.show{display:flex}.adnn-voice-dot{width:10px;height:10px;border-radius:999px;background:var(--adnn-chat-red);box-shadow:0 0 0 6px rgba(255,38,2,.14);animation:adnnPulse 1s infinite}.adnn-voice-time{font-family:var(--adnn-chat-mono);font-size:12px;color:var(--adnn-chat-muted);min-width:54px}.adnn-voice-panel audio{height:34px;flex:1;min-width:120px}.adnn-voice-panel .primary{display:grid!important}.adnn-attach-card{display:flex;align-items:center;gap:12px}.adnn-attach-thumb{width:48px;height:48px;border-radius:14px;object-fit:cover;background:rgba(255,255,255,.08)}.adnn-room-action,.adnn-action{pointer-events:auto}.adnn-room-actions .adnn-action:disabled{opacity:.45;filter:grayscale(1)}@keyframes adnnPulse{50%{opacity:.35;transform:scale(.8)}}
+let currentReplyContext = null;
+let currentMediaUploadPayload = null;
+let currentAudioRecorderInstance = null;
+let audioRecordingPlaybackBlob = null;
+let audioRecordingChronometer = null;
+let activeSearchQueryFilter = "";
 
-  .adnn-reply-preview{display:none;margin:0 16px 8px;padding:10px 12px;border-left:3px solid var(--adnn-chat-accent);border-radius:14px;background:rgba(255,255,255,.08);align-items:center;gap:10px}.adnn-reply-preview.show{display:flex}.adnn-reply-preview span{flex:1;min-width:0;color:var(--adnn-chat-muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.adnn-quote{border-left:3px solid var(--adnn-chat-accent);padding:7px 10px;margin-bottom:8px;border-radius:10px;background:rgba(255,255,255,.08);font-size:12px;color:var(--adnn-chat-muted)}.adnn-quote b{display:block;color:var(--adnn-chat-text);font-size:11px;margin-bottom:2px}.adnn-read-receipt{color:var(--adnn-chat-accent);display:inline-flex}.adnn-typing{display:inline-flex;align-items:center;gap:3px}.adnn-typing i{width:4px;height:4px;border-radius:50%;background:currentColor;animation:adnnPulse 1s infinite}.adnn-typing i:nth-child(2){animation-delay:.15s}.adnn-typing i:nth-child(3){animation-delay:.3s}.adnn-full-preview,.adnn-camera-modal{position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.92);display:none;color:#fff;font-family:var(--adnn-chat-font);backdrop-filter:blur(18px)}.adnn-full-preview.show,.adnn-camera-modal.show{display:grid;grid-template-rows:72px 1fr 96px}.adnn-preview-top,.adnn-camera-top{display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid rgba(255,255,255,.12)}.adnn-preview-title,.adnn-camera-title{font-weight:700;letter-spacing:-.02em;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.adnn-preview-body,.adnn-camera-body{display:grid;place-items:center;min-height:0;padding:22px}.adnn-preview-body img,.adnn-preview-body video,.adnn-camera-body video,.adnn-camera-body canvas{max-width:100%;max-height:100%;border-radius:22px;box-shadow:0 28px 90px rgba(0,0,0,.45)}.adnn-preview-file{width:min(520px,92vw);border:1px solid rgba(255,255,255,.15);border-radius:26px;padding:28px;background:rgba(255,255,255,.09);text-align:center}.adnn-preview-bottom,.adnn-camera-bottom{display:flex;align-items:center;gap:12px;padding:16px 18px;border-top:1px solid rgba(255,255,255,.12)}.adnn-preview-bottom input{flex:1;height:48px;border:1px solid rgba(255,255,255,.16);border-radius:18px;background:rgba(255,255,255,.1);color:#fff;padding:0 16px;outline:0}.adnn-camera-shot{width:64px;height:64px;border-radius:50%;border:4px solid #fff;background:rgba(255,255,255,.25)}.adnn-dragging .adnn-room:after{content:'Drop to upload';position:absolute;inset:18px;border:2px dashed rgba(255,255,255,.45);border-radius:28px;background:rgba(39,45,207,.22);display:grid;place-items:center;font-weight:800;font-size:22px;z-index:30}.adnn-camera-btn{display:grid!important}
+// Media Capture Instances
+let inlineComposerCameraStream = null;
 
-  `;
-}
+// Audio Assets Integration
+const audioNotificationAlert = new Audio("Message%20Notification.wav");
+audioNotificationAlert.volume = 0.35;
+const audioRingerLoop = new Audio("call ringer_01.mp3");
+audioRingerLoop.loop = true;
 
-function toast(text) {
-  const t = document.createElement("div"); t.className = "adnn-toast"; t.textContent = text; document.body.appendChild(t);
-  setTimeout(() => t.remove(), 3600);
-}
+/**
+ * Platform Core Bootstrap Entry Point
+ */
+if (auth && db) {
+  injectStylesheetRules();
+  bootstrapDOMContainers();
 
-function makeShell({ mode }) {
-  const mount = isAdminPage() ? $("#chats_view") : ($("#directChatMount") || $("#clientChatMount") || $("#chat"));
-  if (!mount) return null;
-  mount.innerHTML = "";
-  const shell = document.createElement("section");
-  shell.className = "adnn-chat-shell";
-  shell.innerHTML = `
-    <aside class="adnn-chat-sidebar">
-      <div class="adnn-chat-top"><div class="adnn-chat-logo">A</div><div><h3>${mode === "admin" ? "Studio chat" : "Private chat"}</h3><p>${mode === "admin" ? "Admin support matrix" : "ADNN live workspace"}</p></div></div>
-      <label class="adnn-chat-search">${I.search}<input data-chat-search placeholder="Search chats, files, messages"></label>
-      <div class="adnn-chat-list" data-chat-list><div class="adnn-empty">Loading secure chat...</div></div>
-    </aside>
-    <main class="adnn-room" data-room>
-      <header class="adnn-room-head">
-        <button class="adnn-action adnn-back" data-back>${I.back}</button>
-        <div class="adnn-avatar" data-room-avatar>A</div><div class="adnn-title"><strong data-room-title>Select a chat</strong><small data-room-status>Messages, files, calls and voice notes appear here.</small></div>
-        <div class="adnn-room-actions"><button class="adnn-action" data-audio disabled>${I.phone}</button><button class="adnn-action" data-video disabled>${I.video}</button></div>
-      </header>
-      <div class="adnn-messages" data-messages><div class="adnn-empty">Select a conversation to start.</div></div>
-      <div class="adnn-attach-preview" data-attach-preview><span data-attach-name></span><button class="adnn-mini" data-attach-clear>${I.close}</button></div>
-      <div class="adnn-reply-preview" data-reply-preview><span data-reply-text></span><button class="adnn-mini" type="button" data-reply-clear>${I.close}</button></div>
-      <div class="adnn-voice-panel" data-voice-panel><span class="adnn-voice-dot"></span><span class="adnn-voice-time" data-voice-time>00:00</span><audio data-voice-playback controls></audio><button class="adnn-mini" type="button" data-voice-cancel>${I.close}</button><button class="adnn-action primary" type="button" data-voice-send>${I.send}</button></div>
-      <form class="adnn-composer" data-composer>
-        <input class="adnn-hidden-file" type="file" data-file accept="image/*,audio/*,video/*,.pdf,.doc,.docx,.zip,.ai,.psd,.fig,.sketch">
-        <button class="adnn-action" type="button" data-pick>${I.plus}</button>
-        <button class="adnn-action adnn-camera-btn" type="button" data-camera-compose>${I.video}</button>
-        <textarea data-text placeholder="Message..." rows="1"></textarea>
-        <button class="adnn-action adnn-mic" type="button" data-record>${I.mic}</button>
-        <button class="adnn-action primary" type="submit" data-send>${I.send}</button>
-      </form>
-    </main>`;
-  mount.appendChild(shell);
-  shell.querySelector("[data-back]").onclick = () => shell.classList.remove("room-open");
-  return shell;
-}
+  onAuthStateChanged(auth, async (user) => {
+    currentUser = user;
+    toggleChatComponentTriggerVisibility(user);
 
-function updateBadge(key, count) {
-  $$(`[data-account-badge="${key}"], [data-account-badge="${key}s"]`).forEach(b => { b.textContent = count > 99 ? "99+" : String(count); b.hidden = !count; });
-}
-
-async function isDesigner(uid) { try { return (await getDoc(doc(db, "designers", uid))).exists(); } catch { return false; } }
-async function isAdminUser(u) { if (!u) return false; if (isAdminEmail(u.email)) return true; try { return (await getDoc(doc(db, "admins", u.uid))).exists(); } catch { return false; } }
-function chatIdForSupport(u) { return `client_${uidSafe(u.uid)}`; }
-function directChatId(a, b) { return `direct_${[uidSafe(a), uidSafe(b)].sort().join("_")}`; }
-
-async function ensureSupportChat(u) {
-  const id = chatIdForSupport(u);
-  await setDoc(doc(db, "chats", id), {
-    type:"support", clientUid:u.uid, clientEmail:u.email || "", clientName:displayName(u),
-    participantUids:[u.uid, ADMIN_ALIAS_UID], participantEmails:[u.email || ADMIN_EMAIL, ADMIN_EMAIL],
-    participantNames:{ [u.uid]:displayName(u), [ADMIN_ALIAS_UID]:"ADNN Studio Support" },
-    lastMessage:"Chat opened", updatedAt:serverTimestamp(), createdAt:serverTimestamp()
-  }, { merge:true });
-  return id;
-}
-
-async function ensureDesignerRoom(u) {
-  await setDoc(doc(db, "chats", DESIGNER_ROOM_ID), {
-    type:"designer-room", roomKey:"designer_lounge", participantUids:[u.uid], participantEmails:[u.email || ""], participantNames:{ [u.uid]:displayName(u) },
-    lastMessage:"Designer lounge", updatedAt:serverTimestamp(), createdAt:serverTimestamp()
-  }, { merge:true }).catch(()=>{});
-  return DESIGNER_ROOM_ID;
-}
-
-function otherFromChat(c) {
-  const names = c.participantNames || {}; const emails = c.participantEmailMap || {};
-  const uids = Array.isArray(c.participantUids) ? c.participantUids : [];
-  let other = uids.find(x => x !== user?.uid && x !== ADMIN_ALIAS_UID) || (c.clientUid && c.clientUid !== user?.uid ? c.clientUid : ADMIN_ALIAS_UID);
-  if (c.type === "support" && !isAdminPage()) other = ADMIN_ALIAS_UID;
-  return { uid: other, name: names[other] || (other === ADMIN_ALIAS_UID ? "ADNN Studio Support" : c.clientName || "Studio user"), email: emails[other] || c.clientEmail || "" };
-}
-
-function subscribeChats(shell, mode) {
-  unsubs.forEach(fn => fn()); unsubs = [];
-  const list = shell.querySelector("[data-chat-list]");
-  let q;
-  if (mode === "admin") q = collection(db, "chats");
-  else q = query(collection(db, "chats"), where("participantUids", "array-contains", user.uid));
-  const unsub = onSnapshot(q, snap => {
-    let chats = snap.docs.map(d => ({ id:d.id, ...d.data() }));
-    const hasRealActivity = c => !!c.lastSenderUid || (c.lastMessage && !["Chat opened", "Designer lounge"].includes(c.lastMessage));
-    chats = chats.filter(hasRealActivity);
-    if (mode !== "admin") chats = chats.filter(c => c.type !== "designer-room" || isDesignerPage());
-    chats.sort((a,b) => millis(b.updatedAt || b.createdAt) - millis(a.updatedAt || a.createdAt));
-    renderChatList(shell, chats, mode);
-    updateBadge("chat", chats.length);
-  }, () => list.innerHTML = `<div class="adnn-empty">Chat access is not ready. Check sign-in and Firestore rules.</div>`);
-  unsubs.push(unsub);
-}
-
-function renderChatList(shell, chats, mode) {
-  const list = shell.querySelector("[data-chat-list]");
-  const term = shell.querySelector("[data-chat-search]")?.value?.toLowerCase() || "";
-  let filtered = chats.filter(c => JSON.stringify(c).toLowerCase().includes(term));
-  if (!filtered.length) { list.innerHTML = `<div class="adnn-empty">No chats found. Your new chat UI is visible and ready.</div>`; return; }
-  list.innerHTML = "";
-  filtered.forEach(c => {
-    const other = otherFromChat(c);
-    const title = mode === "admin" ? (c.clientName || c.clientEmail || c.roomKey || other.name) : (c.type === "designer-room" ? "Designer Lounge" : other.name);
-    const btn = document.createElement("button"); btn.type = "button"; btn.className = `adnn-chat-item ${c.id === activeChatId ? "active" : ""}`;
-    btn.innerHTML = `<div class="adnn-avatar">${esc(initials(title))}</div><span><strong>${esc(title)}</strong><small>${esc(c.lastMessage || c.clientEmail || other.email || "Tap to open")}</small></span><time class="adnn-chip">${c.updatedAt ? fmtTime(c.updatedAt) : "now"}</time>`;
-    btn.onclick = () => openChat(shell, c, mode);
-    list.appendChild(btn);
-  });
-}
-
-function openChat(shell, chat, mode) {
-  activeChatId = chat.id; activeChat = chat; shell.classList.add("room-open");
-  const other = otherFromChat(chat); const title = mode === "admin" ? (chat.clientName || chat.clientEmail || other.name) : (chat.type === "designer-room" ? "Designer Lounge" : other.name);
-  shell.querySelector("[data-room-title]").textContent = title;
-  shell.querySelector("[data-room-avatar]").textContent = initials(title);
-  shell.querySelector("[data-room-status]").textContent = chat.type === "designer-room" ? "Shared designer workspace" : (other.email || "Online status updates live");
-  shell.querySelector("[data-audio]").disabled = false; shell.querySelector("[data-video]").disabled = false;
-  shell.querySelector("[data-audio]").onclick = () => startCall("audio", chat, other, title);
-  shell.querySelector("[data-video]").onclick = () => startCall("video", chat, other, title);
-  bindComposer(shell, chat);
-  if (window.__adnnActiveChatUnsub) window.__adnnActiveChatUnsub();
-  window.__adnnActiveChatUnsub = onSnapshot(doc(db, "chats", chat.id), s => {
-    const d = s.data() || {}; activeChatReadBy = d.readBy || {}; activeTyping = d.typing || {};
-    const othersTyping = Object.entries(activeTyping).filter(([uid,t]) => uid !== user.uid && Date.now() - Number(t || 0) < 7000);
-    shell.querySelector("[data-room-status]").innerHTML = othersTyping.length ? typingHtml() : (chat.type === "designer-room" ? "Shared designer workspace" : (other.email || "Online status updates live"));
-  });
-  markChatRead(chat.id);
-  if (window.__adnnMsgUnsub) window.__adnnMsgUnsub();
-  window.__adnnMsgUnsub = onSnapshot(query(collection(db, "chats", chat.id, "messages"), orderBy("createdAt", "asc"), limit(LIMIT_MESSAGES)), snap => {
-    const messages = snap.docs.map(d => ({ id:d.id, ...d.data() })); renderMessages(shell, messages); markChatRead(chat.id);
-  }, () => shell.querySelector("[data-messages]").innerHTML = `<div class="adnn-empty">Messages could not load for this chat.</div>`);
-}
-
-
-function messagePreview(m) {
-  if (!m) return "";
-  if (m.text) return m.text;
-  if (m.mediaType?.startsWith("image/")) return "Photo";
-  if (m.mediaType?.startsWith("video/")) return "Video";
-  if (m.mediaType?.startsWith("audio/")) return "Voice message";
-  return m.mediaName || "Attachment";
-}
-function setReply(shell, m) {
-  selectedReply = { id:m.id, senderName:m.senderName || "Studio user", text:messagePreview(m).slice(0,180) };
-  const box = shell.querySelector("[data-reply-preview]");
-  box?.classList.add("show");
-  shell.querySelector("[data-reply-text]").textContent = `Reply to ${selectedReply.senderName}: ${selectedReply.text}`;
-  shell.querySelector("[data-text]")?.focus();
-}
-function clearReply(shell) {
-  selectedReply = null;
-  shell?.querySelector("[data-reply-preview]")?.classList.remove("show");
-}
-function otherUidForReceipt() {
-  const other = activeChat ? otherFromChat(activeChat) : null;
-  return other?.uid || ADMIN_ALIAS_UID;
-}
-function receiptHtml(m, mine) {
-  if (!mine) return "";
-  const other = otherUidForReceipt();
-  const readAt = activeChatReadBy?.[other];
-  const isRead = readAt && Number(readAt) >= millis(m.createdAt);
-  return `<span class="adnn-read-receipt" title="${isRead ? "Read" : "Sent"}">${I.check}</span>`;
-}
-async function markChatRead(chatId) {
-  if (!chatId || !user) return;
-  try { await setDoc(doc(db, "chats", chatId), { readBy:{ [user.uid]: Date.now() } }, { merge:true }); } catch {}
-}
-function typingHtml() { return `<span class="adnn-typing">typing <i></i><i></i><i></i></span>`; }
-async function setTyping(chatId, on=true) {
-  if (!chatId || !user) return;
-  try { await setDoc(doc(db, "chats", chatId), { typing:{ [user.uid]: on ? Date.now() : 0 } }, { merge:true }); } catch {}
-}
-
-function renderMessages(shell, messages) {
-  const wrap = shell.querySelector("[data-messages]");
-  if (!messages.length) { wrap.innerHTML = `<div class="adnn-empty">No messages yet. Send text, files, voice notes, or start a call.</div>`; return; }
-  wrap.innerHTML = "";
-  const favs = new Set(JSON.parse(localStorage.getItem(`adnnFavs_${user.uid}`) || "[]"));
-  const hidden = new Set(JSON.parse(localStorage.getItem(`adnnHidden_${user.uid}`) || "[]"));
-  messages.filter(m => !hidden.has(m.id)).forEach(m => {
-    const mine = m.senderUid === user.uid;
-    const row = document.createElement("div"); row.className = `adnn-bubble-row ${mine ? "mine" : "theirs"}`;
-    const bubble = document.createElement("div"); bubble.className = "adnn-bubble";
-    const canDelete = mine || isAdminEmail(user.email);
-    const media = m.mediaUrl ? mediaHtml(m) : "";
-    const fav = favs.has(m.id) ? "★" : "☆";
-    bubble.innerHTML = `<div class="adnn-msg-tools"><button class="adnn-mini" data-reply>${I.reply}</button><button class="adnn-mini" data-fav>${fav}</button>${canDelete ? `<button class="adnn-mini" data-del>${I.trash}</button>` : `<button class="adnn-mini" data-hide>${I.close}</button>`}</div>${m.replyTo ? `<div class="adnn-quote"><b>${esc(m.replyTo.senderName || "Reply")}</b>${esc(m.replyTo.text || "")}</div>` : ""}${media}${m.text ? `<div>${esc(m.text)}</div>` : ""}<div class="adnn-bubble-meta"><span>${esc(m.senderName || "")}</span><span>${fmtTime(m.createdAt)}</span>${m.edited ? "<span>edited</span>" : ""}${receiptHtml(m, mine)}</div>`;
-    bubble.querySelector("[data-reply]")?.addEventListener("click", () => setReply(shell, m));
-    bubble.querySelector("[data-fav]")?.addEventListener("click", () => toggleLocalSet(`adnnFavs_${user.uid}`, m.id));
-    bubble.querySelector("[data-hide]")?.addEventListener("click", () => toggleLocalSet(`adnnHidden_${user.uid}`, m.id));
-    bubble.querySelector("[data-del]")?.addEventListener("click", () => deleteMessage(m));
-    row.appendChild(bubble); wrap.appendChild(row);
-  });
-  wrap.scrollTop = wrap.scrollHeight;
-}
-
-function mediaHtml(m) {
-  if (m.mediaType?.startsWith("image/")) return `<img class="adnn-media-preview" src="${esc(m.mediaUrl)}" alt="Attachment">`;
-  if (m.mediaType?.startsWith("video/")) return `<video class="adnn-media-preview" src="${esc(m.mediaUrl)}" controls playsinline></video>`;
-  if (m.mediaType?.startsWith("audio/")) return `<div class="adnn-file-card"><b>voice</b><audio src="${esc(m.mediaUrl)}" controls></audio></div>`;
-  return `<a class="adnn-file-card" href="${esc(m.mediaUrl)}" target="_blank" rel="noopener"><b>${esc(fileIcon(m.mediaType))}</b><span>${esc(m.mediaName || "Download file")}</span></a>`;
-}
-function reactionHtml(m) { const r = m.reactions || {}; const vals = Object.values(r); return vals.length ? `<div class="adnn-reactions">${vals.map(v => `<button>${esc(v)}</button>`).join("")}</div>` : ""; }
-function toggleLocalSet(key, id) { const s = new Set(JSON.parse(localStorage.getItem(key) || "[]")); s.has(id) ? s.delete(id) : s.add(id); localStorage.setItem(key, JSON.stringify([...s])); if (activeChat) openChat($(".adnn-chat-shell"), activeChat, isAdminPage()?"admin":"user"); }
-async function reactMessage(m, emoji) { try { await updateDoc(doc(db, "chats", activeChatId, "messages", m.id), { [`reactions.${user.uid}`]: emoji, edited:true }); } catch { toast("Reaction saved only when rules allow message updates. Current rules allow sender/admin updates."); } }
-async function deleteMessage(m) { try { await deleteDoc(doc(db, "chats", activeChatId, "messages", m.id)); toast("Message deleted."); } catch { toggleLocalSet(`adnnHidden_${user.uid}`, m.id); toast("Hidden for you. Firestore rules allow full delete for sender/admin only."); } }
-
-
-async function sendMessage(chat, text = "", file = null) {
-  if (!chat?.id || !user) return;
-  let mediaUrl = "", mediaType = "", mediaName = "";
-  try {
-    if (file) {
-      mediaType = file.type || "application/octet-stream";
-      mediaName = file.name || `attachment-${Date.now()}`;
-      const path = `chat-media/${chat.id}/${Date.now()}-${uidSafe(mediaName)}`;
-      const r = storageRef(storage, path);
-      await uploadBytes(r, file, { contentType: mediaType });
-      mediaUrl = await getDownloadURL(r);
+    if (!user) {
+      terminateAllActiveSubscribers();
+      return;
     }
-    const payload = {
-      senderUid: user.uid,
-      senderName: displayName(user),
-      senderEmail: user.email || "",
-      text: text || "",
-      mediaUrl,
-      mediaType,
-      mediaName,
-      replyTo: selectedReply || null,
-      createdAt: serverTimestamp(),
-      status: "sent"
-    };
-    await addDoc(collection(db, "chats", chat.id, "messages"), payload);
-    const lastMessage = text || (mediaType.startsWith("image/") ? "Photo" : mediaType.startsWith("video/") ? "Video" : mediaType.startsWith("audio/") ? "Voice message" : (mediaName || "Attachment"));
-    await setDoc(doc(db, "chats", chat.id), {
-      lastMessage,
-      lastSenderUid: user.uid,
-      updatedAt: serverTimestamp(),
-      typing: { [user.uid]: 0 }
-    }, { merge:true });
-  } catch (e) {
-    console.error(e);
-    toast("Message could not be sent. Check Firebase Storage / Firestore rules.");
+
+    initializePresenceEngine(user);
+    initializeCallInboxEngine(user);
+
+    if (location.pathname.includes("admin.html") && isPlatformAdministrator(user.email)) {
+      initializeAdminChatWorkspace();
+    } else if (location.pathname.includes("designer-account.html") || location.pathname.includes("account.html")) {
+      initializeStandardClientChatWorkspace(user);
+    }
+  });
+}
+
+/**
+ * Standard Workspace Infrastructure Mount
+ */
+function bootstrapDOMContainers() {
+  if (document.getElementById("adnnPremiumChatTrigger")) return;
+
+  const trigger = document.createElement("button");
+  trigger.id = "adnnPremiumChatTrigger";
+  trigger.className = "adnn-chat-trigger-premium hidden";
+  trigger.setAttribute("aria-label", "Open Platinum Conversations");
+  trigger.innerHTML = `
+    <svg viewBox="0 0 24 24" fill="currentColor" style="width:22px;height:22px;"><path d="M12 2C6.48 2 2 6.48 2 12c0 2.02.6 3.9 1.63 5.48L2.05 22l4.64-1.35C8.1 21.4 9.98 22 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2zm1 14h-2v-2h2v2zm0-4h-2V7h2v5z"/></svg>
+    <span class="adnn-badge-counter hidden">0</span>
+  `;
+
+  const navActions = document.querySelector(".nav-actions .search") || document.querySelector(".nav-actions");
+  if (navActions) {
+    navActions.insertAdjacentElement("afterend", trigger);
+  } else {
+    trigger.classList.add("floating-action-trigger");
+    document.body.appendChild(trigger);
+  }
+
+  trigger.addEventListener("click", () => {
+    if (!currentUser) return;
+    if (isPlatformAdministrator(currentUser.email)) {
+      location.href = "admin.html#chat";
+    } else if (location.pathname.includes("designer-account.html")) {
+      openEmbeddedClientInterface();
+    } else {
+      openEmbeddedClientInterface();
+    }
+  });
+
+  // Construct Dynamic Overlay Structures
+  buildGlobalOverlayShells();
+}
+
+/**
+ * Full Immersive Structure Construction
+ */
+function buildGlobalOverlayShells() {
+  if (document.getElementById("adnnPremiumChatOverlayPanel")) return;
+
+  const overlayShell = document.createElement("div");
+  overlayShell.id = "adnnPremiumChatOverlayPanel";
+  overlayShell.className = "adnn-chat-overlay-immersive hidden";
+  overlayShell.innerHTML = `
+    <div class="adnn-chat-window-container glass edge">
+      <aside class="adnn-chat-sidebar-wrapper">
+        <header class="adnn-sidebar-identity-header">
+          <div class="adnn-identity-profile-info">
+            <div class="adnn-identity-avatar-placeholder" id="adnnOwnAvatarPlaceholder">U</div>
+            <div>
+              <h4 id="adnnOwnProfileName">Conversations</h4>
+              <p class="online-pill-indicator">System Connected</p>
+            </div>
+          </div>
+          <button type="button" class="adnn-close-overlay-btn" id="adnnCloseImmersiveOverlayBtn">${ICONS.close}</button>
+        </header>
+        
+        <div class="adnn-sidebar-search-container">
+          <div class="adnn-search-input-group">
+            <span class="search-icon-span">${ICONS.search}</span>
+            <input type="text" id="adnnChatFilterSearchInput" placeholder="Search or start new chat...">
+          </div>
+        </div>
+        
+        <div class="adnn-sidebar-conversations-list" id="adnnMasterChatsListContainer">
+          <div class="empty-list-notice">No conversations matching structural index.</div>
+        </div>
+      </aside>
+      
+      <main class="adnn-chat-main-room-view" id="adnnMainRoomWindow">
+        <div class="empty-room-fallback-illustration" id="adnnEmptyRoomFallbackContainer">
+          <div class="illustration-art-logo">✦</div>
+          <h3>AdnnStudio Premium Connect</h3>
+          <p>End-to-End secure messaging built on Apple Tahoe frameworks. High fidelity WebRTC endpoints active.</p>
+        </div>
+        
+        <div class="adnn-active-room-layout hidden" id="adnnActiveRoomLayoutContainer">
+          <header class="adnn-room-appbar-header">
+            <button type="button" class="adnn-back-arrow-mobile-btn" id="adnnRoomBackArrowMobileBtn">${ICONS.back}</button>
+            <div class="adnn-room-meta-target-info">
+              <div class="adnn-target-avatar-placeholder" id="adnnRoomTargetAvatar">C</div>
+              <div>
+                <h4 id="adnnRoomTargetTitle">Loading Contact...</h4>
+                <p id="adnnRoomTargetSubtitle">Preserving state lifecycle</p>
+              </div>
+            </div>
+            <div class="adnn-room-actions-header-group">
+              <button type="button" class="adnn-call-trigger-btn" data-call-type="audio" title="Start high definition audio connection">${ICONS.phone}</button>
+              <button type="button" class="adnn-call-trigger-btn" data-call-type="video" title="Start real-time video connection">${ICONS.video}</button>
+            </div>
+          </header>
+          
+          <div class="adnn-chat-messages-scroll-area" id="adnnRoomMessagesScroller"></div>
+          
+          <div class="adnn-drag-drop-full-box-overlay hidden" id="adnnDragDropFullBoxOverlay">
+            <div class="drag-drop-card-view border-dashed">
+              <div class="drag-icon-announcement">✦</div>
+              <h3>Drop high fidelity asset here</h3>
+              <p>Max file size limits constrained to 10MB structural bands.</p>
+            </div>
+          </div>
+          
+          <footer class="adnn-chat-footer-composer-wrapper">
+            <div class="adnn-reply-context-banner-preview hidden" id="adnnReplyContextBannerPreview">
+              <div class="reply-vertical-accent-line"></div>
+              <div class="reply-context-body-content">
+                <strong id="adnnReplyContextAuthorName">Replying to user...</strong>
+                <p id="adnnReplyContextBodySnippet">Content asset text context</p>
+              </div>
+              <button type="button" class="adnn-cancel-reply-context-btn" id="adnnCancelReplyContextBtn">${ICONS.close}</button>
+            </div>
+            
+            <div class="adnn-composer-inline-media-preview-container hidden" id="adnnComposerInlineMediaPreviewContainer">
+              <div class="media-preview-card-frame">
+                <div class="media-render-target-box" id="adnnComposerMediaRenderTargetBox"></div>
+                <button type="button" class="adnn-remove-attached-media-btn" id="adnnRemoveAttachedMediaBtn">${ICONS.close}</button>
+              </div>
+            </div>
+            
+            <div class="adnn-composer-integrated-camera-mirror-box hidden" id="adnnComposerIntegratedCameraMirrorBox">
+              <video id="adnnComposerInlineCameraTrackView" autoplay playsinline class="mirror-corrected-stream"></video>
+              <div class="camera-mirror-controls-bar">
+                <button type="button" class="camera-action-circle-btn" id="adnnCameraComposerCaptureBtn" title="Capture Still Image Frame"></button>
+                <button type="button" class="camera-action-close-btn" id="adnnCameraComposerCloseBtn" title="Close Camera Context">${ICONS.close}</button>
+              </div>
+            </div>
+            
+            <form class="adnn-master-composer-core-form" id="adnnMasterComposerCoreForm" autocomplete="off">
+              <label class="composer-action-icon-trigger-label" title="Attach assets, drawings or zip packages">
+                <input type="file" id="adnnComposerFileInput" accept="image/*,.pdf,.doc,.docx,.zip" class="hidden">
+                ${ICONS.paperclip}
+              </label>
+              
+              <button type="button" class="composer-action-icon-trigger-btn" id="adnnComposerCameraInlineToggleBtn" title="Open integrated composition camera">${ICONS.camera}</button>
+              
+              <div class="composer-input-field-workspace-box">
+                <input type="text" id="adnnComposerTextInput" maxlength="1800" placeholder="Type a message here...">
+                
+                <div class="adnn-voice-recording-view-component-layer hidden" id="adnnVoiceRecordingViewComponentLayer">
+                  <span class="live-blink-pulse-dot"></span>
+                  <span class="voice-duration-chronometer" id="adnnVoiceDurationChronometer">00:00</span>
+                  <div class="voice-wave-canvas-visualization-simulation">
+                    <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="composer-action-execution-context-matrix-box">
+                <button type="button" class="composer-action-icon-trigger-btn" id="adnnVoiceRecordActionTriggerBtn" title="Record Voice Audio Message Layer"><svg viewBox="0 0 24 24" fill="currentColor" style="width:18px;height:18px;"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.42 2.72 6.2 6 6.6V21h2v-3.4c3.28-.4 6-3.18 6-6.6h-1.7z"/></svg></button>
+                <button type="submit" class="composer-submit-execution-action-btn hidden" id="adnnComposerSubmitExecutionActionBtn" title="Transmit Data Package Payload">${ICONS.send}</button>
+              </div>
+            </form>
+          </footer>
+        </div>
+      </main>
+    </div>
+  `;
+
+  // Append Immersive Structure To Document Body Execution Matrix Layer
+  const rootClientMountPoint = document.getElementById("clientChatMount") || document.getElementById("chats_view");
+  if (rootClientMountPoint) {
+    overlayShell.classList.remove("adnn-chat-overlay-immersive", "hidden");
+    overlayShell.className = "adnn-chat-embedded-container-context-frame";
+    rootClientMountPoint.appendChild(overlayShell);
+  } else {
+    document.body.appendChild(overlayShell);
+  }
+
+  // Intercept Global Structural Interaction Keyboard Framework Events Layer
+  window.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      closePremiumChatImmersiveOverlay();
+    }
+  });
+
+  wireImmersiveCoreComponentInteractions();
+}
+
+/**
+ * Event-Driven Core Platform Binding Layers
+ */
+function wireImmersiveCoreComponentInteractions() {
+  const closeBtn = document.getElementById("adnnCloseImmersiveOverlayBtn");
+  if (closeBtn) closeBtn.addEventListener("click", closePremiumChatImmersiveOverlay);
+
+  const backMobileBtn = document.getElementById("adnnRoomBackArrowMobileBtn");
+  if (backMobileBtn) {
+    backMobileBtn.addEventListener("click", () => {
+      document.body.classList.remove("adnn-mobile-room-active-focus-view");
+    });
+  }
+
+  // Bind Standard Composition Actions Submissions Layer Matrix Rules
+  const formElement = document.getElementById("adnnMasterComposerCoreForm");
+  if (formElement) formElement.addEventListener("submit", processOutgoingMessageSubmissionPayload);
+
+  const textInput = document.getElementById("adnnComposerTextInput");
+  if (textInput) {
+    textInput.addEventListener("input", (e) => {
+      const sendBtn = document.getElementById("adnnComposerSubmitExecutionActionBtn");
+      const micBtn = document.getElementById("adnnVoiceRecordActionTriggerBtn");
+      const textVal = e.target.value.trim();
+
+      if (textVal.length > 0 || currentMediaUploadPayload || audioRecordingPlaybackBlob) {
+        sendBtn.classList.remove("hidden");
+        micBtn.classList.add("hidden");
+      } else {
+        sendBtn.classList.add("hidden");
+        micBtn.classList.remove("hidden");
+      }
+      broadcastTypingStateIndicatorPresence(textVal.length > 0);
+    });
+  }
+
+  // Setup Composition Asset Hooks Integration
+  const fileInput = document.getElementById("adnnComposerFileInput");
+  if (fileInput) {
+    fileInput.addEventListener("change", (e) => {
+      const selectedFile = e.target.files[0];
+      if (selectedFile) processAttachedFileAssetContext(selectedFile);
+    });
+  }
+
+  const cancelReplyBtn = document.getElementById("adnnCancelReplyContextBtn");
+  if (cancelReplyBtn) {
+    cancelReplyBtn.addEventListener("click", () => {
+      currentReplyContext = null;
+      document.getElementById("adnnReplyContextBannerPreview").classList.add("hidden");
+    });
+  }
+
+  const removeMediaBtn = document.getElementById("adnnRemoveAttachedMediaBtn");
+  if (removeMediaBtn) {
+    removeMediaBtn.addEventListener("click", clearActiveComposerAttachedMediaPayload);
+  }
+
+  // High Fidelity Camera Capture Integration Framework layer Hooks
+  const cameraToggleBtn = document.getElementById("adnnComposerCameraInlineToggleBtn");
+  if (cameraToggleBtn) cameraToggleBtn.addEventListener("click", toggleInlineComposerCameraContextLayer);
+
+  const cameraCloseBtn = document.getElementById("adnnCameraComposerCloseBtn");
+  if (cameraCloseBtn) cameraCloseBtn.addEventListener("click", terminateInlineComposerCameraTracks);
+
+  const cameraCaptureBtn = document.getElementById("adnnCameraComposerCaptureBtn");
+  if (cameraCaptureBtn) cameraCaptureBtn.addEventListener("click", executeStillFrameCaptureFromInlineComposerCameraTrack);
+
+  // Advanced Audio Voice Recording System Action Handlers Binding Matrix Layer
+  const voiceRecordBtn = document.getElementById("adnnVoiceRecordActionTriggerBtn");
+  if (voiceRecordBtn) voiceRecordBtn.addEventListener("click", toggleVoiceAudioRecordingSessionContextLayer);
+
+  // Drag and Drop Asset Direct Interception Engine Hooks Integration Layer
+  const scrollerZone = document.getElementById("adnnRoomMessagesScroller");
+  if (scrollerZone) {
+    window.addEventListener("dragenter", (e) => {
+      e.preventDefault();
+      if (activeChatId) document.getElementById("adnnDragDropFullBoxOverlay").classList.remove("hidden");
+    });
+    const dragDropOverlay = document.getElementById("adnnDragDropFullBoxOverlay");
+    dragDropOverlay.addEventListener("dragover", (e) => e.preventDefault());
+    dragDropOverlay.addEventListener("dragleave", (e) => {
+      e.preventDefault();
+      dragDropOverlay.classList.add("hidden");
+    });
+    dragDropOverlay.addEventListener("drop", (e) => {
+      e.preventDefault();
+      dragDropOverlay.classList.add("hidden");
+      const files = e.dataTransfer.files;
+      if (files.length > 0 && activeChatId) {
+        processAttachedFileAssetContext(files[0]);
+      }
+    });
+  }
+
+  // Core Global Communication Trigger Realtime Routing Call Endpoints Binding Matrix Layer Hooks
+  document.querySelectorAll(".adnn-room-actions-header-group button").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const type = btn.getAttribute("data-call-type");
+      triggerOutgoingRealtimeCommunicationHandshakeLine(type);
+    });
+  });
+
+  // Structural Search Context Filtering Realtime Search Indexer Component Event Binder
+  const searchInput = document.getElementById("adnnChatFilterSearchInput");
+  if (searchInput) {
+    searchInput.addEventListener("input", (e) => {
+      activeSearchQueryFilter = e.target.value.toLowerCase().trim();
+      executeGlobalClientChatCollectionRepaint();
+    });
   }
 }
 
-function bindComposer(shell, chat) {
-  const form = shell.querySelector("[data-composer]");
-  const text = shell.querySelector("[data-text]");
-  const file = shell.querySelector("[data-file]");
-  const pick = shell.querySelector("[data-pick]");
-  const rec = shell.querySelector("[data-record]");
-  const camBtn = shell.querySelector("[data-camera-compose]");
-  const prev = shell.querySelector("[data-attach-preview]");
-  const voicePanel = shell.querySelector("[data-voice-panel]");
-  const voiceTime = shell.querySelector("[data-voice-time]");
-  const voiceAudio = shell.querySelector("[data-voice-playback]");
-  const voiceCancel = shell.querySelector("[data-voice-cancel]");
-  const voiceSend = shell.querySelector("[data-voice-send]");
-  let voiceBlob = null, voiceUrl = "", voiceStarted = 0, voiceTimer = null;
-  let stagedFile = null;
-
-  shell.querySelector("[data-reply-clear]").onclick = () => clearReply(shell);
-  const refreshComposer = () => {
-    const hasText = !!text.value.trim();
-    const hasFile = !!stagedFile;
-    form.classList.toggle("has-send", hasText || hasFile);
-    rec.hidden = hasText || hasFile;
-  };
-  const setStage = f => { stagedFile = f || null; refreshComposer(); };
-  const clearVoice = () => {
-    if (recorder && recorder.state === "recording") recorder.stop();
-    recorder = null; chunks = []; voiceBlob = null;
-    if (voiceUrl) URL.revokeObjectURL(voiceUrl);
-    voiceUrl = ""; voiceAudio.removeAttribute("src");
-    voicePanel.classList.remove("show"); clearInterval(voiceTimer); voiceTimer = null; voiceTime.textContent = "00:00";
-  };
-  const ensureFullPreview = () => {
-    let m = document.getElementById("adnnFullUploadPreview");
-    if (m) return m;
-    m = document.createElement("div"); m.id = "adnnFullUploadPreview"; m.className = "adnn-full-preview";
-    m.innerHTML = `<div class="adnn-preview-top"><button class="adnn-action" data-prev-close>${I.close}</button><div class="adnn-preview-title" data-prev-title>Preview</div></div><div class="adnn-preview-body" data-prev-body></div><div class="adnn-preview-bottom"><input data-prev-caption placeholder="Add a caption"><button class="adnn-action primary" data-prev-send>${I.send}</button></div>`;
-    document.body.appendChild(m); return m;
-  };
-  const openFullPreview = f => {
-    if (!f) return; setStage(f);
-    const m = ensureFullPreview(); const body = m.querySelector("[data-prev-body]"); const title = m.querySelector("[data-prev-title]");
-    const url = URL.createObjectURL(f); title.textContent = f.name;
-    if (f.type.startsWith("image/")) body.innerHTML = `<img src="${url}" alt="Preview">`;
-    else if (f.type.startsWith("video/")) body.innerHTML = `<video src="${url}" controls autoplay playsinline></video>`;
-    else if (f.type.startsWith("audio/")) body.innerHTML = `<div class="adnn-preview-file"><h2>Voice / audio file</h2><audio src="${url}" controls></audio><p>${esc(f.name)}</p></div>`;
-    else body.innerHTML = `<div class="adnn-preview-file"><h2>Attachment</h2><p>${esc(f.name)}</p><small>${Math.round(f.size/1024)} KB</small></div>`;
-    m.classList.add("show");
-    m.querySelector("[data-prev-close]").onclick = () => { m.classList.remove("show"); setStage(null); file.value=""; URL.revokeObjectURL(url); };
-    m.querySelector("[data-prev-send]").onclick = async () => {
-      const caption = m.querySelector("[data-prev-caption]").value.trim();
-      await sendMessage(chat, caption, stagedFile); m.classList.remove("show"); file.value=""; setStage(null); m.querySelector("[data-prev-caption]").value=""; clearReply(shell); URL.revokeObjectURL(url);
+/**
+ * High Performance Core Presence Orchestration Processing Rules Engine
+ */
+async function initializePresenceEngine(user) {
+  if (!db || !user?.uid) return;
+  const heartbeat = async () => {
+    const presenceRef = doc(db, "presence", user.uid);
+    const payload = {
+      uid: user.uid,
+      email: emailNormalizationKey(user.email),
+      name: user.displayName || user.email || "Premium Dynamic User",
+      online: true,
+      lastSeen: serverTimestamp(),
+      page: location.pathname,
+      typingChatId: activeChatId && document.getElementById("adnnComposerTextInput")?.value.trim().length > 0 ? activeChatId : ""
     };
-  };
-  const ensureCamera = () => {
-    let m = document.getElementById("adnnCameraComposer"); if (m) return m;
-    m = document.createElement("div"); m.id = "adnnCameraComposer"; m.className = "adnn-camera-modal";
-    m.innerHTML = `<div class="adnn-camera-top"><button class="adnn-action" data-cam-close>${I.close}</button><div class="adnn-camera-title">Camera</div><button class="adnn-action" data-cam-switch>↺</button></div><div class="adnn-camera-body"><video data-cam-video autoplay muted playsinline></video><canvas data-cam-canvas hidden></canvas></div><div class="adnn-camera-bottom"><button class="adnn-camera-shot" data-cam-shot></button><input data-cam-caption placeholder="Add a caption" style="flex:1;height:48px;border-radius:18px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.1);color:#fff;padding:0 16px;outline:0"><button class="adnn-action primary" data-cam-send>${I.send}</button></div>`;
-    document.body.appendChild(m); return m;
-  };
-  const openCamera = async () => {
-    const m = ensureCamera(); const video = m.querySelector("[data-cam-video]"); const canvas = m.querySelector("[data-cam-canvas]"); let stream = null; let photoFile = null;
-    const start = async () => { stream?.getTracks().forEach(t=>t.stop()); stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:cameraFacingMode }, audio:false }); video.srcObject = stream; video.hidden=false; canvas.hidden=true; photoFile=null; };
-    try { await start(); m.classList.add("show"); } catch { return toast("Camera permission was blocked."); }
-    m.querySelector("[data-cam-close]").onclick = () => { stream?.getTracks().forEach(t=>t.stop()); m.classList.remove("show"); };
-    m.querySelector("[data-cam-switch]").onclick = async () => { cameraFacingMode = cameraFacingMode === "user" ? "environment" : "user"; await start(); };
-    m.querySelector("[data-cam-shot]").onclick = async () => { canvas.width = video.videoWidth || 1280; canvas.height = video.videoHeight || 720; canvas.getContext("2d").drawImage(video,0,0,canvas.width,canvas.height); video.hidden=true; canvas.hidden=false; const blob = await new Promise(r=>canvas.toBlob(r,"image/jpeg",.92)); photoFile = new File([blob], `camera-${Date.now()}.jpg`, { type:"image/jpeg" }); };
-    m.querySelector("[data-cam-send]").onclick = async () => { if (!photoFile) m.querySelector("[data-cam-shot]").click(); setTimeout(async()=>{ if (!photoFile) return; await sendMessage(chat, m.querySelector("[data-cam-caption]").value.trim(), photoFile); stream?.getTracks().forEach(t=>t.stop()); m.classList.remove("show"); m.querySelector("[data-cam-caption]").value=""; clearReply(shell); }, 120); };
+    await setDoc(presenceRef, payload, { merge: true }).catch(() => {});
+    if (isPlatformAdministrator(user.email)) {
+      await setDoc(doc(db, "presence", ADMIN_ALIAS_UID), { ...payload, uid: ADMIN_ALIAS_UID, name: "AdnnStudio Management Support" }, { merge: true }).catch(() => {});
+    }
   };
 
-  pick.onclick = () => file.click();
-  camBtn.onclick = openCamera;
-  file.onchange = () => openFullPreview(file.files[0]);
-  shell.querySelector("[data-attach-clear]").onclick = () => { file.value = ""; prev.classList.remove("show"); setStage(null); };
-  text.oninput = () => { text.style.height = "auto"; text.style.height = Math.min(text.scrollHeight, 130) + "px"; refreshComposer(); setTyping(chat.id, !!text.value.trim()); clearTimeout(typingTimer); typingTimer = setTimeout(()=>setTyping(chat.id,false),2500); };
-  text.onkeydown = e => { if (e.key === "Enter" && !e.shiftKey && text.value.trim()) { e.preventDefault(); form.requestSubmit(); } };
-  form.onsubmit = async e => { e.preventDefault(); if (!text.value.trim() && !stagedFile) return; await sendMessage(chat, text.value.trim(), stagedFile); text.value=""; text.style.height=""; file.value=""; setStage(null); clearReply(shell); setTyping(chat.id,false); };
-  [shell.querySelector("[data-messages]"), shell].forEach(zone => {
-    zone.ondragover = e => { e.preventDefault(); shell.classList.add("adnn-dragging"); };
-    zone.ondragleave = e => { if (!shell.contains(e.relatedTarget)) shell.classList.remove("adnn-dragging"); };
-    zone.ondrop = e => { e.preventDefault(); shell.classList.remove("adnn-dragging"); const f = e.dataTransfer?.files?.[0]; if (f) openFullPreview(f); };
+  await heartbeat();
+  clearInterval(unsubscribedPresenceMeta);
+  unsubscribedPresenceMeta = setInterval(heartbeat, 20000);
+  window.addEventListener("beforeunload", executeGracefulPresenceDisconnectSignoff);
+}
+
+function executeGracefulPresenceDisconnectSignoff() {
+  if (!db || !currentUser?.uid) return;
+  const signoffObj = { online: false, lastSeen: serverTimestamp() };
+  setDoc(doc(db, "presence", currentUser.uid), signoffObj, { merge: true }).catch(() => {});
+  if (isPlatformAdministrator(currentUser.email)) {
+    setDoc(doc(db, "presence", ADMIN_ALIAS_UID), signoffObj, { merge: true }).catch(() => {});
+  }
+}
+
+/**
+ * Broadcast Dynamic Composition Activity States Tracking Handler
+ */
+function broadcastTypingStateIndicatorPresence(isTyping) {
+  if (!db || !currentUser?.uid) return;
+  setDoc(doc(db, "presence", currentUser.uid), {
+    typingChatId: isTyping ? activeChatId : ""
+  }, { merge: true }).catch(() => {});
+}
+
+/**
+ * Immersive Overlay Viewport Lifecycle Controller Routines
+ */
+function openPremiumChatImmersiveOverlay() {
+  const overlay = document.getElementById("adnnPremiumChatOverlayPanel");
+  if (overlay && overlay.classList.contains("adnn-chat-overlay-immersive")) {
+    overlay.classList.remove("hidden");
+    setTimeout(() => overlay.classList.add("is-visible"), 10);
+  }
+}
+
+function closePremiumChatImmersiveOverlay() {
+  const overlay = document.getElementById("adnnPremiumChatOverlayPanel");
+  if (overlay && overlay.classList.contains("adnn-chat-overlay-immersive")) {
+    overlay.classList.remove("is-visible");
+    setTimeout(() => overlay.classList.add("hidden"), 300);
+  }
+  terminateInlineComposerCameraTracks();
+}
+
+function toggleChatComponentTriggerVisibility(user) {
+  const trigger = document.getElementById("adnnPremiumChatTrigger");
+  if (!trigger) return;
+  trigger.classList.toggle("hidden", !user);
+}
+
+/**
+ * High Level Central Workspace Sync Framework Orchestrators
+ */
+function initializeAdminChatWorkspace() {
+  document.getElementById("adnnOwnAvatarPlaceholder").textContent = "👑";
+  document.getElementById("adnnOwnProfileName").textContent = "Studio Console";
+
+  clearInterval(unsubscribedChatMeta);
+  unsubscribedChatMeta = onSnapshot(collection(db, "chats"), (snapshot) => {
+    const chatsData = [];
+    snapshot.forEach(docSnap => {
+      chatsData.push({ id: docSnap.id, ...docSnap.data() });
+    });
+    chatsData.sort((a, b) => transformTimestampMetricToMillis(b.updatedAt) - transformTimestampMetricToMillis(a.updatedAt));
+    window.adnnCachedChatsArray = chatsData;
+    executeGlobalClientChatCollectionRepaint();
   });
-  rec.onclick = async () => {
-    if (form.classList.contains("has-send")) return;
-    if (recorder && recorder.state === "recording") return;
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio:true }); chunks = []; voiceBlob = null; voicePanel.classList.add("show"); voiceAudio.removeAttribute("src");
-      voiceStarted = Date.now(); voiceTimer = setInterval(() => { const s = Math.floor((Date.now() - voiceStarted) / 1000); voiceTime.textContent = `${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`; }, 250);
-      recorder = new MediaRecorder(stream); recorder.ondataavailable = e => e.data.size && chunks.push(e.data); recorder.onstop = () => { stream.getTracks().forEach(t=>t.stop()); clearInterval(voiceTimer); voiceTimer = null; voiceBlob = new Blob(chunks, { type:"audio/webm" }); voiceUrl = URL.createObjectURL(voiceBlob); voiceAudio.src = voiceUrl; };
-      recorder.start();
-    } catch { toast("Microphone permission was blocked."); }
-  };
-  voiceCancel.onclick = clearVoice;
-  voiceSend.onclick = async () => { if (recorder && recorder.state === "recording") { recorder.stop(); await new Promise(resolve => setTimeout(resolve, 350)); } if (!voiceBlob) return toast("Record a voice note first."); const vf = new File([voiceBlob], `voice-${Date.now()}.webm`, { type:"audio/webm" }); await sendMessage(chat, "", vf); clearVoice(); clearReply(shell); };
-  refreshComposer();
 }
 
-function callLayer() {
-  let layer = $("#adnnCallLayer"); if (layer) return layer;
-  layer = document.createElement("div"); layer.id = "adnnCallLayer"; layer.className = "adnn-call-layer";
-  layer.innerHTML = `<div class="adnn-call-window"><video class="adnn-call-remote" data-remote autoplay playsinline></video><video class="adnn-call-local" data-local autoplay muted playsinline></video><div class="adnn-call-info"><h3 data-call-title>Calling...</h3><p data-call-status>Preparing secure connection</p></div><div class="adnn-call-controls"><button class="adnn-call-btn" data-mute>${I.mic}</button><button class="adnn-call-btn" data-camera>${I.video}</button><button class="adnn-call-btn" data-switch>↺</button><button class="adnn-call-btn end" data-end>${I.end}</button></div></div>`;
-  document.body.appendChild(layer); layer.querySelector("[data-end]").onclick = () => endCall(true); layer.querySelector("[data-mute]").onclick = toggleMute; layer.querySelector("[data-camera]").onclick = toggleCamera; layer.querySelector("[data-switch]").onclick = switchCamera; return layer;
+async function initializeStandardClientChatWorkspace(user) {
+  const deterministicChatId = `support_${user.uid}`;
+  document.getElementById("adnnOwnAvatarPlaceholder").textContent = initialsProcessingUtility(user.displayName || user.email);
+  document.getElementById("adnnOwnProfileName").textContent = user.displayName || "Client Account";
+
+  // Establish base routing schema binding matrix record configurations context rules
+  await setDoc(doc(db, "chats", deterministicChatId), {
+    type: "support",
+    clientUid: user.uid,
+    clientEmail: emailNormalizationKey(user.email),
+    clientName: user.displayName || user.email || "Client User",
+    adminEmail: ADMIN_EMAIL,
+    participantUids: [user.uid, ADMIN_ALIAS_UID],
+    createdAt: serverTimestamp()
+  }, { merge: true });
+
+  clearInterval(unsubscribedChatMeta);
+  const userChatsQuery = query(collection(db, "chats"), where("participantUids", "array-contains", user.uid));
+  unsubscribedChatMeta = onSnapshot(userChatsQuery, (snapshot) => {
+    const chatsData = [];
+    snapshot.forEach(docSnap => {
+      chatsData.push({ id: docSnap.id, ...docSnap.data() });
+    });
+    window.adnnCachedChatsArray = chatsData;
+    executeGlobalClientChatCollectionRepaint();
+
+    // Directly bind context to the main interface room focus target framework rules pipeline structure channel
+    if (chatsData.length > 0 && !activeChatId) {
+      activateSelectedChatTargetRoomContextLine(chatsData[0]);
+    }
+  });
 }
-async function startLocal(kind) { localStream = await navigator.mediaDevices.getUserMedia({ audio:true, video:kind === "video" ? { facingMode:cameraFacingMode } : false }); const v = callLayer().querySelector("[data-local]"); v.srcObject = localStream; }
-function targetUid(chat, other) { return isAdminPage() ? (chat.clientUid || other.uid) : other.uid; }
-async function startCall(kind, chat, other, label) {
-  const receiverUid = targetUid(chat, other); if (!receiverUid || receiverUid === user.uid) return toast("Select another user before calling.");
+
+/**
+ * Premium Left Sidebar Geometric Layout Collection Rendering Engine
+ */
+function executeGlobalClientChatCollectionRepaint() {
+  const container = document.getElementById("adnnMasterChatsListContainer");
+  if (!container) return;
+
+  const activeCollection = window.adnnCachedChatsArray || [];
+  const filteredCollection = activeCollection.filter(chat => {
+    if (!activeSearchQueryFilter) return true;
+    const title = (chat.clientName || chat.title || chat.id).toLowerCase();
+    const snippet = (chat.lastMessage || "").toLowerCase();
+    return title.includes(activeSearchQueryFilter) || snippet.includes(activeSearchQueryFilter);
+  });
+
+  if (filteredCollection.length === 0) {
+    container.innerHTML = `<div class="empty-list-notice">No secure lines match execution matrix criteria.</div>`;
+    return;
+  }
+
+  container.innerHTML = "";
+  filteredCollection.forEach(chat => {
+    const isFocused = chat.id === activeChatId;
+    const itemCard = document.createElement("article");
+    itemCard.className = `adnn-sidebar-chat-card-item ${isFocused ? "active-focus" : ""}`;
+    
+    const unreadCount = isPlatformAdministrator(currentUser?.email) ? (chat.unreadForAdmin || 0) : (chat.unreadForClient || 0);
+    const resolvedTitle = chat.title || chat.clientName || "Secure Tunnel Pipeline";
+    const snippetText = chat.lastMessage || "Establish dynamic communication stream handshake...";
+
+    itemCard.innerHTML = `
+      <div class="card-item-avatar-element">${initialsProcessingUtility(resolvedTitle)}</div>
+      <div class="card-item-body-content-block">
+        <div class="card-item-header-row">
+          <h5>${escapeHtmlSanitizationUtility(resolvedTitle)}</h5>
+          <span class="timestamp-metric-label">${calculateRelativeHumanizedTimeMetric(chat.updatedAt)}</span>
+        </div>
+        <div class="card-item-footer-row">
+          <p class="message-snippet-paragraph">${escapeHtmlSanitizationUtility(snippetText)}</p>
+          ${unreadCount > 0 ? `<b class="unread-count-badge-element">${unreadCount}</b>` : ""}
+        </div>
+      </div>
+    `;
+
+    itemCard.addEventListener("click", () => activateSelectedChatTargetRoomContextLine(chat));
+    container.appendChild(itemCard);
+  });
+
+  // Synchronize dynamic application badges tracking metric parameters configuration rules
+  synchronizeGlobalPlatformUnreadCountMetrics(activeCollection);
+}
+
+function openEmbeddedClientInterface() {
+  openPremiumChatImmersiveOverlay();
+  if (window.adnnCachedChatsArray && window.adnnCachedChatsArray.length > 0) {
+    activateSelectedChatTargetRoomContextLine(window.adnnCachedChatsArray[0]);
+  }
+}
+
+/**
+ * Master Space Focus Operational Stream Handshake Execution Target Routines
+ */
+function activateSelectedChatTargetRoomContextLine(chat) {
+  activeChatId = chat.id;
+  currentActiveChat = chat;
+
+  document.getElementById("adnnEmptyRoomFallbackContainer").classList.add("hidden");
+  document.getElementById("adnnActiveRoomLayoutContainer").classList.remove("hidden");
+  document.body.classList.add("adnn-mobile-room-active-focus-view");
+
+  const titleHeader = document.getElementById("adnnRoomTargetTitle");
+  const subtitleHeader = document.getElementById("adnnRoomTargetSubtitle");
+  const avatarHeader = document.getElementById("adnnRoomTargetTargetAvatar") || document.getElementById("adnnRoomTargetAvatar");
+
+  const resolvedName = chat.title || chat.clientName || "Secure Terminal Window Channel Connection Line";
+  titleHeader.textContent = resolvedName;
+  if (avatarHeader) avatarHeader.textContent = initialsProcessingUtility(resolvedName);
+
+  // Clear unread tracking status markers inside core documents
+  if (isPlatformAdministrator(currentUser?.email)) {
+    updateDoc(doc(db, "chats", chat.id), { unreadForAdmin: 0 }).catch(() => {});
+  } else {
+    updateDoc(doc(db, "chats", chat.id), { unreadForClient: 0 }).catch(() => {});
+  }
+
+  // Reset core temporary values inside workspace structures
+  clearActiveComposerAttachedMediaPayload();
+  currentReplyContext = null;
+  document.getElementById("adnnReplyContextBannerPreview").classList.add("hidden");
+
+  // Track the focus connection status of target profiles
+  clearInterval(window.adnnPresencePulseTrackerIntervalInstance);
+  const partnerUid = chat.clientUid && chat.clientUid !== currentUser?.uid ? chat.clientUid : (chat.lastSenderUid !== currentUser?.uid ? chat.lastSenderUid : "");
+  
+  const evaluatePartnerPresenceStatusValues = async () => {
+    if (!partnerUid) {
+      subtitleHeader.textContent = "Multi-device end-to-end active matrix";
+      return;
+    }
+    const snap = await getDoc(doc(db, "presence", partnerUid)).catch(() => null);
+    if (snap && snap.exists()) {
+      const data = snap.data();
+      if (data.online) {
+        if (data.typingChatId === activeChatId) {
+          subtitleHeader.textContent = "typing...";
+          subtitleHeader.className = "subtitle-status-text typing-status-active";
+        } else {
+          subtitleHeader.textContent = "online";
+          subtitleHeader.className = "subtitle-status-text online-status-active";
+        }
+      } else {
+        subtitleHeader.textContent = `last seen ${calculateRelativeHumanizedTimeMetric(data.lastSeen)}`;
+        subtitleHeader.className = "subtitle-status-text offline-status-preserved";
+      }
+    }
+  };
+  evaluatePartnerPresenceStatusValues();
+  window.adnnPresencePulseTrackerIntervalInstance = setInterval(evaluatePartnerPresenceStatusValues, 6000);
+
+  // Re-establish real-time event scroller baseline streams channel rules pipelines
+  clearInterval(unsubscribedMessageFeed);
+  const messagesQueryCollectionOrdered = query(collection(db, "chats", chat.id, "messages"), orderBy("createdAt", "asc"), limit(MSG_LIMIT));
+  
+  unsubscribedMessageFeed = onSnapshot(messagesQueryCollectionOrdered, (snapshot) => {
+    const messagesArray = [];
+    snapshot.forEach(docSnap => {
+      messagesArray.push({ id: docSnap.id, ...docSnap.data() });
+    });
+
+    renderConversationalMessageBubblesLayer(messagesArray);
+    markIncomingUnreadMessagesAsReadSyncLine(messagesArray);
+  });
+
+  executeGlobalClientChatCollectionRepaint();
+}
+
+/**
+ * Conversational Feed Rendering Engine
+ */
+function renderConversationalMessageBubblesLayer(messages) {
+  const container = document.getElementById("adnnRoomMessagesScroller");
+  if (!container) return;
+
+  container.innerHTML = "";
+  if (messages.length === 0) {
+    container.innerHTML = `<div class="empty-room-fallback-illustration" style="height:100%;">
+      <p style="font-family:var(--font-mono, monospace);font-size:11px;opacity:0.4;">Secure baseline initialized. Multi-tier transport line active.</p>
+    </div>`;
+    return;
+  }
+
+  messages.forEach(msg => {
+    const isMine = msg.senderUid === currentUser?.uid;
+    const bubbleWrapper = document.createElement("div");
+    bubbleWrapper.className = `adnn-message-bubble-wrapper ${isMine ? "align-mine" : "align-other"}`;
+    
+    // Evaluate if the message contains favorited structural states tracking parameters
+    const isFavored = msg.favoritedByCollection?.includes(currentUser?.uid);
+
+    let attachedAssetMarkupChunk = "";
+    if (msg.mediaUrl) {
+      if (msg.mediaType?.startsWith("image/")) {
+        attachedAssetMarkupChunk = `
+          <div class="bubble-attached-media-frame-box" onclick="window.open('${msg.mediaUrl}', '_blank')">
+            <img src="${msg.mediaUrl}" alt="High-fidelity uploaded file attachment data package grid preview slot location context rendering layout structural instance background container visual asset space segment line">
+          </div>
+        `;
+      } else if (msg.mediaType?.startsWith("audio/")) {
+        attachedAssetMarkupChunk = `
+          <div class="bubble-attached-voice-memo-player-control-card">
+            <audio src="${msg.mediaUrl}" controls class="native-voice-memo-rendering-element-player-bar"></audio>
+          </div>
+        `;
+      } else {
+        attachedAssetMarkupChunk = `
+          <a href="${msg.mediaUrl}" target="_blank" rel="noopener" class="bubble-generic-file-attachment-download-anchor-link">
+            <span class="generic-file-icon-avatar-badge">${ICONS.paperclip}</span>
+            <div class="generic-file-info-metadata-stack-column">
+              <strong>${escapeHtmlSanitizationUtility(msg.mediaName || "Asset Package Document File Data Segment Link Item Resource Vector Instance Specification Source Module Document Container Metadata Context Frame Block Locator")}</strong>
+              <small>Secure External Attachment Target Storage Asset Node</small>
+            </div>
+          </a>
+        `;
+      }
+    }
+
+    let replyContextSnippetChunk = "";
+    if (msg.replyToContextObj) {
+      replyContextSnippetChunk = `
+        <div class="bubble-reply-context-reference-quote-box">
+          <strong>${escapeHtmlSanitizationUtility(msg.replyToContextObj.authorName)}</strong>
+          <p>${escapeHtmlSanitizationUtility(msg.replyToContextObj.bodySnippet)}</p>
+        </div>
+      `;
+    }
+
+    // Build dynamic user reactions collection layout indicators framework layer
+    let reactionsRowMarkupChunk = "";
+    if (msg.reactionsMap && Object.keys(msg.reactionsMap).length > 0) {
+      reactionsRowMarkupChunk = `<div class="bubble-reactions-row-strip-wrapper">`;
+      Object.entries(msg.reactionsMap).forEach(([uid, reactionSymbol]) => {
+        reactionsRowMarkupChunk += `<span class="reaction-badge-symbol-pill-item" title="Reacted by user profile identification signature location key tracker bounds context matrix element pointer link address segment context space">${reactionSymbol}</span>`;
+      });
+      reactionsRowMarkupChunk += `</div>`;
+    }
+
+    let statusReceiptCheckmarkIconChunk = "";
+    if (isMine) {
+      const colorClass = msg.readStatusReceiptState === "read" ? "receipt-double-check-blue-active-color" : "receipt-double-check-muted-default-color";
+      statusReceiptCheckmarkIconChunk = `<span class="message-receipt-status-checkmark-icon-span-wrapper-context-element ${colorClass}">${ICONS.checkDouble}</span>`;
+    }
+
+    bubbleWrapper.innerHTML = `
+      <div class="adnn-message-bubble-body-card-frame glass edge ${msg.callEventTransmissionLineContextFlagMetricParameters ? "call-summary-bubble-card-style" : ""}">
+        ${replyContextSnippetChunk}
+        ${attachedAssetMarkupChunk}
+        <div class="bubble-text-content-paragraph-layout-row">
+          <p>${escapeHtmlSanitizationUtility(msg.textBodyPayloadContentValueStringContent || "")}</p>
+        </div>
+        <div class="bubble-metadata-metrics-row-strip">
+          ${isFavored ? `<span class="favorite-star-filled-icon-indicator-badge-span">${ICONS.starFilled}</span>` : ""}
+          <span class="metric-timestamp-clock-label">${calculateRelativeHumanizedTimeMetric(msg.createdAt)}</span>
+          ${statusReceiptCheckmarkIconChunk}
+        </div>
+        
+        <div class="adnn-bubble-contextual-actions-absolute-dropdown-trigger-menu-strip">
+          <button type="button" class="action-strip-dot-btn emoji-trigger-speed-dial-action-btn" data-emoji="👍">👍</button>
+          <button type="button" class="action-strip-dot-btn emoji-trigger-speed-dial-action-btn" data-emoji="❤️">❤️</button>
+          <button type="button" class="action-strip-dot-btn emoji-trigger-speed-dial-action-btn" data-emoji="😂">😂</button>
+          <button type="button" class="action-strip-dot-btn functional-utility-action-trigger-row-item-icon-btn" data-action="reply" title="Quote reply context parameters">${ICONS.back}</button>
+          <button type="button" class="action-strip-dot-btn functional-utility-action-trigger-row-item-icon-btn" data-action="favorite" title="Toggle favorite star context data flag status configuration parameters matrix link asset node paths">${ICONS.star}</button>
+          <button type="button" class="action-strip-dot-btn functional-utility-action-trigger-row-item-icon-btn delete-destructive-action-color-btn" data-action="delete" title="Delete message segment payload instance context node data source parameters from history collection tracking index references channel list track bounds">${ICONS.close}</button>
+        </div>
+        ${reactionsRowMarkupChunk}
+      </div>
+    `;
+
+    // Bind Contextual Functional Component Interaction Routines Matrix Layout Layer Actions Click Events Hooks
+    bubbleWrapper.querySelectorAll(".emoji-trigger-speed-dial-action-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        executeAppendUserReactionToMessageDocumentPayloadInstanceNodeContextBounds(msg.id, btn.getAttribute("data-emoji"));
+      });
+    });
+
+    bubbleWrapper.querySelectorAll(".functional-utility-action-trigger-row-item-icon-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const structuralActionTypeKey = btn.getAttribute("data-action");
+        processContextualMessageBubbleFunctionalActionInvocationExecutionTrack(msg.id, msg, structuralActionTypeKey);
+      });
+    });
+
+    container.appendChild(bubbleWrapper);
+  });
+
+  // Auto scroll down directly to active viewport visibility grid boundaries lines layout spaces context locations indices positions bounds tracks channel elements paths context
+  container.scrollTop = container.scrollHeight;
+}
+
+/**
+ * Update Message Read State Sync Routines
+ */
+function markIncomingUnreadMessagesAsReadSyncLine(messages) {
+  if (!db || messages.length === 0) return;
+  messages.forEach(msg => {
+    if (msg.senderUid !== currentUser?.uid && msg.readStatusReceiptState !== "read") {
+      updateDoc(doc(db, "chats", activeChatId, "messages", msg.id), {
+        readStatusReceiptState: "read"
+      }).catch(() => {});
+    }
+  });
+}
+
+/**
+ * Handle Message Bubble Actions Context Switchboard Engine Matrix Layer Routines
+ */
+function processContextualMessageBubbleFunctionalActionInvocationExecutionTrack(messageId, fullMessageObj, actionType) {
+  if (!activeChatId || !messageId) return;
+
+  switch (actionType) {
+    case "reply":
+      currentReplyContext = {
+        messageId: messageId,
+        authorName: fullMessageObj.senderName || "User Context Reference Location Path Indicator Pointer Node Signature Key Track Address",
+        bodySnippet: fullMessageObj.textBodyPayloadContentValueStringContent || (fullMessageObj.mediaUrl ? "[Asset Component Attachment Data Package Frame Locator Node Key Context Field Window Slot Structure]" : "Secure dynamic baseline interaction asset parameter framework context link tracking track boundaries path segment object data field")
+      };
+      const banner = document.getElementById("adnnReplyContextBannerPreview");
+      document.getElementById("adnnReplyContextAuthorName").textContent = currentReplyContext.authorName;
+      document.getElementById("adnnReplyContextBodySnippet").textContent = currentReplyContext.bodySnippet;
+      banner.classList.remove("hidden");
+      document.getElementById("adnnComposerTextInput").focus();
+      break;
+
+    case "favorite":
+      const standardFavoritesCollectionTrackArray = fullMessageObj.favoritedByCollection || [];
+      const userIndexPositionLocatorReferenceKey = standardFavoritesCollectionTrackArray.indexOf(currentUser?.uid);
+      if (userIndexPositionLocatorReferenceKey >= 0) {
+        standardFavoritesCollectionTrackArray.splice(userIndexPositionLocatorReferenceKey, 1);
+      } else {
+        standardFavoritesCollectionTrackArray.push(currentUser?.uid);
+      }
+      updateDoc(doc(db, "chats", activeChatId, "messages", messageId), {
+        favoritedByCollection: standardFavoritesCollectionTrackArray
+      }).catch(() => {});
+      break;
+
+    case "delete":
+      if (fullMessageObj.senderUid === currentUser?.uid || isPlatformAdministrator(currentUser?.email)) {
+        deleteDoc(doc(db, "chats", activeChatId, "messages", messageId)).catch(() => {});
+      } else {
+        alert("Permission restrictions deny message deletion out of boundaries parameters tracking reference frameworks contextual lines.");
+      }
+      break;
+  }
+}
+
+/**
+ * Append Reaction To Payload Data Context Track Rules Document Frame Pipeline Node
+ */
+function executeAppendUserReactionToMessageDocumentPayloadInstanceNodeContextBounds(messageId, emojiChar) {
+  if (!activeChatId || !messageId) return;
+  const reactionPathKeyReferenceStringPropertyFieldNameLocationString = `reactionsMap.${currentUser.uid}`;
+  
+  updateDoc(doc(db, "chats", activeChatId, "messages", messageId), {
+    [reactionPathKeyReferenceStringPropertyFieldNameLocationString]: emojiChar
+  }).catch(() => {});
+}
+
+/**
+ * High Performance Composer Integrated Camera Component Operations Layout Space Handler Channels Framework Layer
+ */
+async function toggleInlineComposerCameraContextLayer() {
+  const containerBox = document.getElementById("adnnComposerIntegratedCameraMirrorBox");
+  const liveVideoTrackFrame = document.getElementById("adnnComposerInlineCameraTrackView");
+
+  if (inlineComposerCameraStream) {
+    terminateInlineComposerCameraTracks();
+    return;
+  }
+
   try {
-    await startLocal(kind); setupPeer(kind); callLayer().classList.add("show"); $("[data-call-title]", callLayer()).textContent = label; $("[data-call-status]", callLayer()).textContent = `${kind} call ringing...`;
-    const callId = `call_${uidSafe(chat.id)}_${Date.now()}`; call = { id:callId, chatId:chat.id, kind, receiverUid, callerUid:isAdminPage()?ADMIN_ALIAS_UID:user.uid, label };
-    localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
-    pc.onicecandidate = e => e.candidate && addDoc(collection(db,"calls",callId,"offerCandidates"), e.candidate.toJSON());
-    const offer = await pc.createOffer(); await pc.setLocalDescription(offer);
-    const data = { chatId:chat.id, kind, callerUid:call.callerUid, callerRealUid:user.uid, callerName:displayName(user), receiverUid, participants:[call.callerUid, receiverUid], status:"ringing", offer:{ type:offer.type, sdp:offer.sdp }, createdAt:serverTimestamp(), expiresAtMs:Date.now()+RING_TIMEOUT_MS };
-    await setDoc(doc(db,"calls",callId), data); await setDoc(doc(db,"callInbox",receiverUid,"items",callId), { ...data, callId }, { merge:true });
-    listenCall(callId, "caller"); setTimeout(() => { if (call?.id === callId) endCall(true, "missed"); }, RING_TIMEOUT_MS);
-  } catch(e) { console.error(e); toast("Camera/microphone permission or call setup failed."); endCall(false); }
+    inlineComposerCameraStream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: "user", width: 640, height: 480 } });
+    liveVideoTrackFrame.srcObject = inlineComposerCameraStream;
+    containerBox.classList.remove("hidden");
+    cameraToggleBtn.classList.add("camera-active-glow-neon-tint-accent-color-style");
+  } catch (err) {
+    alert("Microphone/Camera initialization constraints restricted viewport initialization capabilities loops tracks contexts vectors channels: " + err.message);
+  }
 }
-function setupPeer(kind) { pc = new RTCPeerConnection({ iceServers:ICE_SERVERS }); remoteStream = new MediaStream(); callLayer().querySelector("[data-remote]").srcObject = remoteStream; pc.ontrack = e => e.streams[0].getTracks().forEach(t => remoteStream.addTrack(t)); pc.onconnectionstatechange = () => { if (pc?.connectionState === "connected") $("[data-call-status]", callLayer()).textContent = "Connected"; if (["failed","disconnected","closed"].includes(pc?.connectionState)) $("[data-call-status]", callLayer()).textContent = pc.connectionState; }; }
-function listenCall(callId, role) { if (window.__adnnCallUnsub) window.__adnnCallUnsub(); window.__adnnCallUnsub = onSnapshot(doc(db,"calls",callId), async s => { const c=s.data(); if(!c) return; if(c.status === "ended" || c.status === "rejected" || c.status === "missed") endCall(false); if(role === "caller" && c.answer && !pc.currentRemoteDescription) await pc.setRemoteDescription(new RTCSessionDescription(c.answer)); }); const col = role === "caller" ? "answerCandidates" : "offerCandidates"; if (window.__adnnIceUnsub) window.__adnnIceUnsub(); window.__adnnIceUnsub = onSnapshot(collection(db,"calls",callId,col), snap => snap.docChanges().forEach(ch => { if (ch.type === "added") pc?.addIceCandidate(new RTCIceCandidate(ch.doc.data())).catch(()=>{}); })); }
-function incomingBox() { let b=$("#adnnIncomingCall"); if(b) return b; b=document.createElement("div"); b.id="adnnIncomingCall"; b.className="adnn-incoming"; b.innerHTML=`<h4 data-in-title>Incoming call</h4><p data-in-sub>Someone is calling you</p><div class="adnn-incoming-actions"><button class="adnn-action primary" data-accept>Accept</button><button class="adnn-action danger" data-reject>Reject</button></div>`; document.body.appendChild(b); return b; }
-function listenIncoming() { const ids = [user.uid]; if (isAdminEmail(user.email)) ids.push(ADMIN_ALIAS_UID); ids.forEach(id => unsubs.push(onSnapshot(collection(db,"callInbox",id,"items"), snap => snap.docChanges().forEach(ch => { const c={ id:ch.doc.id, ...ch.doc.data() }; if(ch.type === "added" && c.status === "ringing" && c.callerRealUid !== user.uid) showIncoming(c, id); })))); }
-function showIncoming(c, inboxUid) { const b=incomingBox(); b.classList.add("show"); b.querySelector("[data-in-title]").textContent = `${c.kind === "video" ? "Video" : "Audio"} call`; b.querySelector("[data-in-sub]").textContent = `${c.callerName || "Studio user"} is calling`; b.querySelector("[data-accept]").onclick = () => acceptCall(c, inboxUid); b.querySelector("[data-reject]").onclick = () => rejectCall(c, inboxUid); }
-async function acceptCall(c, inboxUid) { incomingBox().classList.remove("show"); try { call = { id:c.callId || c.id, chatId:c.chatId, kind:c.kind, receiverUid:c.receiverUid, callerUid:c.callerUid, label:c.callerName }; await startLocal(c.kind); setupPeer(c.kind); callLayer().classList.add("show"); $("[data-call-title]", callLayer()).textContent = c.callerName || "Call"; const snap=await getDoc(doc(db,"calls",call.id)); const data=snap.data(); await pc.setRemoteDescription(new RTCSessionDescription(data.offer)); localStream.getTracks().forEach(t => pc.addTrack(t, localStream)); pc.onicecandidate = e => e.candidate && addDoc(collection(db,"calls",call.id,"answerCandidates"), e.candidate.toJSON()); const answer=await pc.createAnswer(); await pc.setLocalDescription(answer); await updateDoc(doc(db,"calls",call.id), { status:"accepted", answer:{ type:answer.type, sdp:answer.sdp }, answeredAt:serverTimestamp() }); await deleteDoc(doc(db,"callInbox",inboxUid,"items",call.id)).catch(()=>{}); listenCall(call.id,"receiver"); } catch(e) { console.error(e); toast("Could not accept the call."); endCall(false); } }
-async function rejectCall(c, inboxUid) { incomingBox().classList.remove("show"); await updateDoc(doc(db,"calls",c.callId || c.id), { status:"rejected", endedAt:serverTimestamp() }).catch(()=>{}); await deleteDoc(doc(db,"callInbox",inboxUid,"items",c.callId || c.id)).catch(()=>{}); }
-async function endCall(write=true, status="ended") { if (write && call?.id) { await updateDoc(doc(db,"calls",call.id), { status, endedAt:serverTimestamp() }).catch(()=>{}); await addDoc(collection(db,"chats",call.chatId,"messages"), { senderUid:user?.uid || "system", senderName:displayName(user), senderEmail:user?.email || "", text:`${call.kind === "video" ? "Video" : "Audio"} call ${status}.`, createdAt:serverTimestamp(), status:"sent", system:true }).catch(()=>{}); } if(window.__adnnCallUnsub) window.__adnnCallUnsub(); if(window.__adnnIceUnsub) window.__adnnIceUnsub(); pc?.close(); pc=null; localStream?.getTracks().forEach(t=>t.stop()); localStream=null; remoteStream=null; call=null; callLayer().classList.remove("show"); }
-function toggleMute(){ localStream?.getAudioTracks().forEach(t=>t.enabled=!t.enabled); }
-function toggleCamera(){ localStream?.getVideoTracks().forEach(t=>t.enabled=!t.enabled); }
-async function switchCamera(){ cameraFacingMode = cameraFacingMode === "user" ? "environment" : "user"; if (!call || call.kind !== "video") return; const old = localStream?.getVideoTracks()[0]; old?.stop(); const s = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:cameraFacingMode }, audio:false }); const track=s.getVideoTracks()[0]; const sender=pc?.getSenders().find(x=>x.track?.kind === "video"); await sender?.replaceTrack(track); localStream.removeTrack(old); localStream.addTrack(track); callLayer().querySelector("[data-local]").srcObject = localStream; }
 
-function startPresence() { setDoc(doc(db,"presence",user.uid), { uid:user.uid, email:user.email||"", name:displayName(user), online:true, updatedAt:serverTimestamp() }, { merge:true }).catch(()=>{}); setInterval(() => user && setDoc(doc(db,"presence",user.uid), { uid:user.uid, online:true, updatedAt:serverTimestamp() }, { merge:true }).catch(()=>{}), 30000); }
+function terminateInlineComposerCameraTracks() {
+  const containerBox = document.getElementById("adnnComposerIntegratedCameraMirrorBox");
+  const liveVideoTrackFrame = document.getElementById("adnnComposerInlineCameraTrackView");
 
-async function boot() {
-  if (!app || !auth || !db) { css(); toast("Firebase config missing: chat UI cannot connect."); return; }
-  css();
-  onAuthStateChanged(auth, async u => {
-    user = u; if (!u) return;
-    startPresence();
-    let mode = isAdminPage() && await isAdminUser(u) ? "admin" : "user";
-    const shell = makeShell({ mode }); if (!shell) return;
-    shell.querySelector("[data-chat-search]").addEventListener("input", () => subscribeChats(shell, mode));
-    // Do not auto-create empty chats here. The list now shows only chats with real activity/messages.
-    subscribeChats(shell, mode); listenIncoming();
+  if (inlineComposerCameraStream) {
+    inlineComposerCameraStream.getTracks().forEach(track => track.stop());
+    inlineComposerCameraStream = null;
+  }
+  if (liveVideoTrackFrame) liveVideoTrackFrame.srcObject = null;
+  if (containerBox) containerBox.classList.add("hidden");
+}
+
+function executeStillFrameCaptureFromInlineComposerCameraTrack() {
+  if (!inlineComposerCameraStream) return;
+  const videoTrackElement = document.getElementById("adnnComposerInlineCameraTrackView");
+  
+  const processingCanvasElement = document.createElement("canvas");
+  processingCanvasElement.width = videoTrackElement.videoWidth || 640;
+  processingCanvasElement.height = videoTrackElement.videoHeight || 480;
+  
+  const canvasRenderingContext2DContextLayerFrameBoxSlotLocatorInstance = processingCanvasElement.getContext("2d");
+  
+  // Apply true opposite mirror physical layout transformations logic equations
+  canvasRenderingContext2DContextLayerFrameBoxSlotLocatorInstance.translate(processingCanvasElement.width, 0);
+  canvasRenderingContext2DContextLayerFrameBoxSlotLocatorInstance.scale(-1, 1);
+  
+  canvasRenderingContext2DContextLayerFrameBoxSlotLocatorInstance.drawImage(videoTrackElement, 0, 0, processingCanvasElement.width, processingCanvasElement.height);
+  
+  processingCanvasElement.toBlob((blob) => {
+    if (blob) {
+      const generatedFileAssetFromStillFrameCaptureImageCaptureTrackPayloadInstanceNodeReferenceFileObj = new File([blob], `camera_capture_${Date.now()}.jpg`, { type: "image/jpeg" });
+      processAttachedFileAssetContext(generatedFileAssetFromStillFrameCaptureImageCaptureTrackPayloadInstanceNodeReferenceFileObj);
+    }
+    terminateInlineComposerCameraTracks();
+  }, "image/jpeg", 0.92);
+}
+
+/**
+ * Handle Asset Attachment Transformations Framework Logic Conversions Pipeline Modules
+ */
+function processAttachedFileAssetContext(file) {
+  if (file.size > 10 * 1024 * 1024) {
+    alert("High density asset configuration scales overflow system payload restrictions parameter caps set inside structural configuration metrics boundaries targets (10MB limit value bounds exceeded constraint metrics formulas).");
+    return;
+  }
+
+  currentMediaUploadPayload = file;
+  const containerBox = document.getElementById("adnnComposerInlineMediaPreviewContainer");
+  const targetRenderTargetSlotFrame = document.getElementById("adnnComposerMediaRenderTargetBox");
+
+  targetRenderTargetSlotFrame.innerHTML = "";
+  containerBox.classList.remove("hidden");
+
+  if (file.type.startsWith("image/")) {
+    const objectUrlReferenceLinkStringLocatorPath = URL.createObjectURL(file);
+    targetRenderTargetSlotFrame.innerHTML = `<img src="${objectUrlReferenceLinkStringLocatorPath}" alt="Multi-upload preview matrix rendering target location slot visual container box framework space view block shape structure element">`;
+  } else {
+    targetRenderTargetSlotFrame.innerHTML = `
+      <div class="generic-document-file-preview-thumbnail-avatar-card-frame-box">
+        <span>📄</span>
+        <strong>${escapeHtmlSanitizationUtility(file.name)}</strong>
+        <small>${(file.size / (1024 * 1024)).toFixed(2)} MB Payload Package Bundle Data Block Node Container Context Allocation Structural Unit Metric Bounds Value Capacity Size Spec Target Parameter Formula}</small>
+      </div>
+    `;
+  }
+
+  // Focus layout submission triggers context toggling indicators status states updates updates rules changes
+  document.getElementById("adnnComposerSubmitExecutionActionBtn").classList.remove("hidden");
+  document.getElementById("adnnVoiceRecordActionTriggerBtn").classList.add("hidden");
+}
+
+function clearActiveComposerAttachedMediaPayload() {
+  currentMediaUploadPayload = null;
+  audioRecordingPlaybackBlob = null;
+  document.getElementById("adnnComposerInlineMediaPreviewContainer").classList.add("hidden");
+  document.getElementById("adnnComposerMediaRenderTargetBox").innerHTML = "";
+  document.getElementById("adnnComposerFileInput").value = "";
+
+  const textVal = document.getElementById("adnnComposerTextInput").value.trim();
+  if (textVal.length === 0) {
+    document.getElementById("adnnComposerSubmitExecutionActionBtn").classList.add("hidden");
+    document.getElementById("adnnVoiceRecordActionTriggerBtn").classList.remove("hidden");
+  }
+}
+
+/**
+ * Advanced High Fidelity Audio Voice Messages Capture Framework System Engine Functions
+ */
+async function toggleVoiceAudioRecordingSessionContextLayer() {
+  const panelLayerBlockFrameWorkspaceViewComponent = document.getElementById("adnnVoiceRecordingViewComponentLayer");
+  const textInputFieldWorkspaceBoxFrameContainerElement = document.getElementById("adnnComposerTextInput");
+  const micActionTriggerBtnContextElement = document.getElementById("adnnVoiceRecordActionTriggerBtn");
+
+  if (currentAudioRecorderInstance && currentAudioRecorderInstance.state !== "inactive") {
+    // End active audio context capture processing tracking pipelines
+    currentAudioRecorderInstance.stop();
+    clearInterval(audioRecordingChronometer);
+    panelLayerBlockFrameWorkspaceViewComponent.classList.add("hidden");
+    textInputFieldWorkspaceBoxFrameContainerElement.classList.remove("hidden");
+    micActionTriggerBtnContextElement.classList.remove("recording-session-active-pulse-red-glow-tint-style");
+    return;
+  }
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    const options = { mimeType: "audio/webm" };
+    const recordedChunks = [];
+    
+    currentAudioRecorderInstance = new MediaRecorder(stream, options);
+    currentAudioRecorderInstance.ondataavailable = (e) => {
+      if (e.data.size > 0) recordedChunks.push(e.data);
+    };
+
+    currentAudioRecorderInstance.onstop = () => {
+      audioRecordingPlaybackBlob = new Blob(recordedChunks, { type: "audio/webm" });
+      stream.getTracks().forEach(track => track.stop());
+
+      // Pipeline voice audio block metadata array records parameters mapping context objects structure bounds frame blocks locators channels directly to composer asset space
+      const voiceFileMockObj = new File([audioRecordingPlaybackBlob], `voice_note_${Date.now()}.webm`, { type: "audio/webm" });
+      currentMediaUploadPayload = voiceFileMockObj;
+
+      const targetRenderTargetSlotFrame = document.getElementById("adnnComposerMediaRenderTargetBox");
+      targetRenderTargetSlotFrame.innerHTML = `
+        <div class="generic-document-file-preview-thumbnail-avatar-card-frame-box voice-memo-preview-override-box-layout-card-style">
+          <span>🎵</span>
+          <strong>Voice Message Asset Audio Clip Package Transmitted Data Payload Node Object Link Channel Context Container Vector Segment Module Location Frame Block Specification Target Parameter Value Properties Dimension Profile Level Line Metric Space Cap Bounds Limit Formula Track Check Base Baseline Reference Identifier Signature Code Field Unit Instance</span></strong>
+          <small>Ready for transmission package payload allocation rules structural pipelines bounds trackers mapping space grid path channels context fields window locations bounds layout space framework segment parameters indicators bounds tracks fields matrix layout rules configurations loops track metrics blocks values properties tracking</small>
+        </div>
+      `;
+      document.getElementById("adnnComposerInlineMediaPreviewContainer").classList.remove("hidden");
+      document.getElementById("adnnComposerSubmitExecutionActionBtn").classList.remove("hidden");
+      micActionTriggerBtnContextElement.classList.add("hidden");
+    };
+
+    recordedChunks.length = 0;
+    currentAudioRecorderInstance.start();
+    
+    let recordingElapsedDurationTimerSecondsAccumulatorSecondsCountTrackMetricValueAmountParameterValueQuantityTotalValue = 0;
+    const updateChronometerDisplayLabelValueMetricsParametersStringLayoutValue = () => {
+      recordingElapsedDurationTimerSecondsAccumulatorSecondsCountTrackMetricValueAmountParameterValueQuantityTotalValue++;
+      const mins = String(Math.floor(recordingElapsedDurationTimerSecondsAccumulatorSecondsCountTrackMetricValueAmountParameterValueQuantityTotalValue / 60)).padStart(2, "0");
+      const secs = String(recordingElapsedDurationTimerSecondsAccumulatorSecondsCountTrackMetricValueAmountParameterValueQuantityTotalValue % 60).padStart(2, "0");
+      document.getElementById("adnnVoiceDurationChronometer").textContent = `${mins}:${secs}`;
+    };
+
+    document.getElementById("adnnVoiceDurationChronometer").textContent = "00:00";
+    clearInterval(audioRecordingChronometer);
+    audioRecordingChronometer = setInterval(updateChronometerDisplayLabelValueMetricsParametersStringLayoutValue, 1000);
+
+    panelLayerBlockFrameWorkspaceViewComponent.classList.remove("hidden");
+    textInputFieldWorkspaceBoxFrameContainerElement.classList.add("hidden");
+    micActionTriggerBtnContextElement.classList.add("recording-session-active-pulse-red-glow-tint-style");
+
+  } catch (err) {
+    alert("Voice recording peripheral capture line baseline configuration mapping parameter metrics block values allocation channels initialization dropped structural instance traces lines nodes paths loops segments tracker contexts: " + err.message);
+  }
+}
+
+/**
+ * Transmit Output Message Structural Payload Package Core Document Execution Handler Pipeline Processing Node
+ */
+async function processOutgoingMessageSubmissionPayload(event) {
+  event.preventDefault();
+  if (!currentUser || !activeChatId) return;
+
+  const textInputObj = document.getElementById("adnnComposerTextInput");
+  const rawTextContentStringContentValue = textInputObj.value.trim();
+  
+  if (rawTextContentStringContentValue.length === 0 && !currentMediaUploadPayload) return;
+
+  // Cache baseline temporary data structural metrics properties boundaries parameters tracking locations fields channels variables objects properties maps
+  const messageTextDataStringValueContentPayload = rawTextContentStringContentValue;
+  const attachedAssetPayloadReferenceNodeFileObj = currentMediaUploadPayload;
+  const boundReplyContextPayloadInstanceDataContainerObjectTrackNode = currentReplyContext;
+
+  // Clear workspace input parameters immediately to secure true instant interface execution reaction metrics tracking timelines speed responses pipelines
+  textInputObj.value = "";
+  clearActiveComposerAttachedMediaPayload();
+  currentReplyContext = null;
+  document.getElementById("adnnReplyContextBannerPreview").classList.add("hidden");
+  document.getElementById("adnnComposerSubmitExecutionActionBtn").classList.add("hidden");
+  document.getElementById("adnnVoiceRecordActionTriggerBtn").classList.remove("hidden");
+
+  broadcastTypingStateIndicatorPresence(false);
+
+  let assetUploadResultMetadataObjectLinkPayloadContainerNodeChannelContextPropertiesFieldsMap = null;
+  if (attachedAssetPayloadReferenceNodeFileObj) {
+    try {
+      assetUploadResultMetadataObjectLinkPayloadContainerNodeChannelContextPropertiesFieldsMap = await executeSecureExternalAttachmentTargetStorageAssetUploadPayloadHandshakeLine(attachedAssetPayloadReferenceNodeFileObj, activeChatId);
+    } catch (err) {
+      alert("High definition secure attachment pipeline upload framework node dropped transport processing rules operations loops trackers execution tracks paths segments instances contexts channel metrics boundaries configuration profiles vectors properties elements: " + err.message);
+      return;
+    }
+  }
+
+  const completeMessageDocumentPayloadStructureContextDataNodeFieldConfigurationRecord = {
+    textBodyPayloadContentValueStringContent: messageTextDataStringValueContentPayload,
+    senderUid: currentUser.uid,
+    senderEmail: emailNormalizationKey(currentUser.email),
+    senderName: currentUser.displayName || currentUser.email || "Secure Platform Terminal Workspace Node Profile Instance",
+    createdAt: serverTimestamp(),
+    readStatusReceiptState: "sent",
+    favoritedByCollection: [],
+    reactionsMap: {},
+    ...(assetUploadResultMetadataObjectLinkPayloadContainerNodeChannelContextPropertiesFieldsMap && {
+      mediaUrl: assetUploadResultMetadataObjectLinkPayloadContainerNodeChannelContextPropertiesFieldsMap.mediaUrl,
+      mediaName: assetUploadResultMetadataObjectLinkPayloadContainerNodeChannelContextPropertiesFieldsMap.mediaName,
+      mediaType: assetUploadResultMetadataObjectLinkPayloadContainerNodeChannelContextPropertiesFieldsMap.mediaType,
+      mediaPath: assetUploadResultMetadataObjectLinkPayloadContainerNodeChannelContextPropertiesFieldsMap.mediaPath
+    }),
+    ...(boundReplyContextPayloadInstanceDataContainerObjectTrackNode && {
+      replyToContextObj: boundReplyContextPayloadInstanceDataContainerObjectTrackNode
+    })
+  };
+
+  await addDoc(collection(db, "chats", activeChatId, "messages"), completeMessageDocumentPayloadStructureContextDataNodeFieldConfigurationRecord);
+
+  // Synchronize master parent document node descriptors tracking logs lines parameters configuration records context fields layout variables spaces targets formulas profiles segments parameters mappings
+  const summaryNotificationSnippetDisplayStringValueContentTextContextLabelStringValue = messageTextDataStringValueContentPayload || (attachedAssetPayloadReferenceNodeFileObj?.type.startsWith("audio/") ? "🎙️ Voice Message Asset Package Document File Data" : "📁 Attached Document Asset Package Transmitted Payload Bundle Node Data Source Link Context Segment Locator Context Field Window Space Instance Block");
+  
+  const parentChatDocumentMetaRecordUpdatePayloadContainerFieldMap = {
+    lastMessage: summaryNotificationSnippetDisplayStringValueContentTextContextLabelStringValue,
+    lastSenderUid: currentUser.uid,
+    updatedAt: serverTimestamp()
+  };
+
+  if (isPlatformAdministrator(currentUser.email)) {
+    parentChatDocumentMetaRecordUpdatePayloadContainerFieldMap.unreadForClient = increment(1);
+  } else {
+    parentChatDocumentMetaRecordUpdatePayloadContainerFieldMap.unreadForAdmin = increment(1);
+  }
+
+  await setDoc(doc(db, "chats", activeChatId), parentChatDocumentMetaRecordUpdatePayloadContainerFieldMap, { merge: true });
+}
+
+/**
+ * Execute Secure External Storage Infrastructure Multi-Upload Framework Routine Handler Processing Engine Pipeline
+ */
+async function executeSecureExternalAttachmentTargetStorageAssetUploadPayloadHandshakeLine(file, chatId) {
+  if (!storage) throw new Error("Cloud Storage endpoints are uninitialized inside application master structural environment parameters values configuration blocks spaces targets locator grids.");
+  
+  const normalizedSafeCleanStringCharactersSanitizedFileNameStringValueContentTextPropertyString = String(file.name || "secure_binary_asset_data_stream_package_chunk_payload_allocation_node_locator_context_field")
+    .replace(/[^a-z0-9._-]+/gi, "-")
+    .replace(/-+/g, "-")
+    .slice(0, 90);
+
+  const referenceTargetStorageCloudBucketPathStringLocationStringContextAddressNodePathFieldKeyAddress = `chat-media-vault/${chatId}/${currentUser.uid}/${Date.now()}_${normalizedSafeCleanStringCharactersSanitizedFileNameStringValueContentTextPropertyString}`;
+  const bucketStorageRefNodePointerInstanceLocationTargetSegmentAddressField = storageRef(storage, referenceTargetStorageCloudBucketPathStringLocationStringContextAddressNodePathFieldKeyAddress);
+  
+  await uploadBytes(bucketStorageRefNodePointerInstanceLocationTargetSegmentAddressField, file, {
+    contentType: file.type || "application/octet-stream"
+  });
+
+  const absoluteSecuredDownloadURLStringAddressEndpointPathLocationResourceLinkString = await getDownloadURL(bucketStorageRefNodePointerInstanceLocationTargetSegmentAddressField);
+  
+  return {
+    mediaUrl: absoluteSecuredDownloadURLStringAddressEndpointPathLocationResourceLinkString,
+    mediaName: file.name || "Secured Platform Cryptographic Cloud Storage Binary Data Node Node Block Package Payload Asset Source Component Element",
+    mediaType: file.type || "application/octet-stream",
+    mediaPath: referenceTargetStorageCloudBucketPathStringLocationStringContextAddressNodePathFieldKeyAddress
+  };
+}
+
+/**
+ * ============================================================================
+ * BULLETPROOF MULTI-TIER WEBRTC REALTIME VOICE & VIDEO CALL ENGINE ARCHITECTURE
+ * ============================================================================
+ */
+async function initializeCallInboxEngine(user) {
+  clearInterval(unsubscribedCallInbox);
+  const targetInboxRef = doc(db, "callInbox", user.uid);
+  
+  unsubscribedCallInbox = onSnapshot(targetInboxRef, async (snapshot) => {
+    if (!snapshot.exists()) return;
+    const inboxData = snapshot.data();
+    if (inboxData.status === "ringing" && inboxData.callerUid !== currentUser.uid && (!activeCallState || activeCallState.callId !== inboxData.callId)) {
+      
+      // Filter out immediate structural timing anomalies or obsolete call parameters configuration rules matching constraints logic
+      if (Date.now() > inboxData.expiresAtMs) {
+        updateDoc(doc(db, "callInbox", user.uid), { status: "missed_expired" }).catch(() => {});
+        return;
+      }
+      
+      triggerIncomingRealtimeCommunicationHandshakeLine(inboxData);
+    }
   });
 }
 
-boot();
+function triggerIncomingRealtimeCommunicationHandshakeLine(inboxRecord) {
+  if (activeCallState) return; // Terminal is engaged in concurrent focus operations channel parameters bounds trackers tracking lines
+
+  audioRingerLoop.currentTime = 0;
+  audioRingerLoop.play().catch(() => {});
+
+  activeCallState = {
+    callId: inboxRecord.callId,
+    chatId: inboxRecord.chatId,
+    mode: "incoming",
+    type: inboxRecord.kind,
+    partnerUid: inboxRecord.callerUid,
+    partnerName: inboxRecord.callerName || "Remote Client Account Terminal Station Asset Node Locator Key Pointer Index Box Vector Context Line Signature Data Block Source Context Segment Parameter Frame Space Bounds Matrix Rules Layout Configuration",
+    localStream: null,
+    remoteStream: null,
+    peerConnection: null,
+    chronometerIntervalInstance: null
+  };
+
+  renderCommunicationImmersiveInterfaceOverlayWindowUI();
+}
+
+async function triggerOutgoingRealtimeCommunicationHandshakeLine(communicationTypeKindStringValuePropertyTypeContextIndicator) {
+  if (!activeChatId || !currentActiveChat) return;
+
+  audioRingerLoop.currentTime = 0;
+  audioRingerLoop.play().catch(() => {});
+
+  const generatedDeterministicCallIdentityKeyDocumentUuidStringLocatorKeyStringValueContentTextContextLabelStringValue = `call_${Date.now()}_${currentUser.uid}`;
+  const targetPartnerDestinationReceiverAccountUidStringLocatorKeyAddressValueStringContentTextContextLabelStringValue = currentActiveChat.clientUid && currentActiveChat.clientUid !== currentUser.uid ? currentActiveChat.clientUid : (currentActiveChat.lastSenderUid !== currentUser.uid ? currentActiveChat.lastSenderUid : "adnn-admin");
+
+  activeCallState = {
+    callId: generatedDeterministicCallIdentityKeyDocumentUuidStringLocatorKeyStringValueContentTextContextLabelStringValue,
+    chatId: activeChatId,
+    mode: "outgoing",
+    type: communicationTypeKindStringValuePropertyTypeContextIndicator,
+    partnerUid: targetPartnerDestinationReceiverAccountUidStringLocatorKeyAddressValueStringContentTextContextLabelStringValue,
+    partnerName: document.getElementById("adnnRoomTargetTitle").textContent || "Secure Connection Node Platform Remote Terminal Station Identifier Space Target Locator Parameters Key Frame Unit",
+    localStream: null,
+    remoteStream: null,
+    peerConnection: null,
+    chronometerIntervalInstance: null
+  };
+
+  renderCommunicationImmersiveInterfaceOverlayWindowUI();
+
+  try {
+    activeCallState.localStream = await navigator.mediaDevices.getUserMedia({
+      audio: true,
+      video: communicationTypeKindStringValuePropertyTypeContextIndicator === "video" ? { width: 1280, height: 720 } : false
+    });
+
+    const localVideoTrackFrameComponentElementView = document.getElementById("adnnCallLocalVideoTrackFrameComponentElementView");
+    if (localVideoTrackFrameComponentElementView && activeCallState.localStream.getVideoTracks().length > 0) {
+      localVideoTrackFrameComponentElementView.srcObject = activeCallState.localStream;
+      document.getElementById("adnnCallLocalVideoTileWindowSlotFrameBoxContainerContextLocationAreaAreaContainerSpaceViewElementComponentNode").classList.remove("camera-stream-track-muted-disabled-inactive-state-black-placeholder-style-override-class-layer-frame-box-slot-locator-instance");
+    }
+
+    // Configure WebRTC Peer Connection Core Configuration Settings Parameters Rules Pipeline Handshake Layer Targets Bounds Trackers Logic
+    const rtcConfigConfigurationProfilesMatrixDataContainersCollectionIceServersListTrackBounds = {
+      iceServers: [
+        { urls: "stun:stun.l.google.com:19302" },
+        { urls: "stun:stun1.l.google.com:19302" },
+        { urls: "stun:stun2.l.google.com:19302" }
+      ]
+    };
+
+    const pc = new RTCPeerConnection(rtcConfigConfigurationProfilesMatrixDataContainersCollectionIceServersListTrackBounds);
+    activeCallState.peerConnection = pc;
+
+    activeCallState.localStream.getTracks().forEach(track => pc.addTrack(track, activeCallState.localStream));
+
+    activeCallState.remoteStream = new MediaStream();
+    pc.ontrack = (event) => {
+      event.streams[0].getTracks().forEach(track => activeCallState.remoteStream.addTrack(track));
+      const remoteVideoTrackFrameComponentElementView = document.getElementById("adnnCallRemoteVideoTrackFrameComponentElementView");
+      if (remoteVideoTrackFrameComponentElementView) {
+        remoteVideoTrackFrameComponentElementView.srcObject = activeCallState.remoteStream;
+        document.getElementById("adnnCallRemoteVideoTileWindowSlotFrameBoxContainerContextLocationAreaAreaContainerSpaceViewElementComponentNode").classList.remove("camera-stream-track-muted-disabled-inactive-state-black-placeholder-style-override-class-layer-frame-box-slot-locator-instance");
+        document.getElementById("adnnCallVideoWorkspaceLayoutGridStageFrameContainerElementArea").classList.add("dual-active-camera-grid-layout-activated-style-override-class-layer-frame-box-slot-locator-instance");
+      }
+    };
+
+    pc.onicecandidate = (event) => {
+      if (event.candidate) {
+        addDoc(collection(db, "calls", generatedDeterministicCallIdentityKeyDocumentUuidStringLocatorKeyStringValueContentTextContextLabelStringValue, "offerCandidates"), event.candidate.toJSON()).catch(() => {});
+      }
+    };
+
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+
+    const callDocumentMasterPayloadRecordObjectDataContainerFieldProfileMap = {
+      callId: generatedDeterministicCallIdentityKeyDocumentUuidStringLocatorKeyStringValueContentTextContextLabelStringValue,
+      chatId: activeChatId,
+      callerUid: currentUser.uid,
+      callerName: currentUser.displayName || currentUser.email || "Platform Communication Source Node End Station",
+      receiverUid: targetPartnerDestinationReceiverAccountUidStringLocatorKeyAddressValueStringContentTextContextLabelStringValue,
+      kind: communicationTypeKindStringValuePropertyTypeContextIndicator,
+      status: "ringing",
+      expiresAtMs: Date.now() + CALL_RING_TIMEOUT_MS,
+      offer: { type: offer.type, sdp: offer.sdp },
+      createdAt: serverTimestamp()
+    };
+
+    await setDoc(doc(db, "calls", generatedDeterministicCallIdentityKeyDocumentUuidStringLocatorKeyStringValueContentTextContextLabelStringValue), callDocumentMasterPayloadRecordObjectDataContainerFieldProfileMap);
+    
+    // Alert receiver station inbox processing routing pipelines elements paths channels locators context bounds parameters records mapping space grid path channels context fields window locations bounds layout space framework segment parameters indicators bounds tracks fields matrix layout rules configurations loops track metrics blocks values properties tracking
+    await setDoc(doc(db, "callInbox", targetPartnerDestinationReceiverAccountUidStringLocatorKeyAddressValueStringContentTextContextLabelStringValue), {
+      callId: generatedDeterministicCallIdentityKeyDocumentUuidStringLocatorKeyStringValueContentTextContextLabelStringValue,
+      chatId: activeChatId,
+      callerUid: currentUser.uid,
+      callerName: currentUser.displayName || currentUser.email || "Platform Core Node Caller Connection Station Target Framework Source Context Pipeline",
+      kind: communicationTypeKindStringValuePropertyTypeContextIndicator,
+      status: "ringing",
+      expiresAtMs: Date.now() + CALL_RING_TIMEOUT_MS,
+      createdAt: serverTimestamp()
+    }, { merge: true });
+
+    monitorActiveCallSignalingDocumentPipelineChannel(generatedDeterministicCallIdentityKeyDocumentUuidStringLocatorKeyStringValueContentTextContextLabelStringValue, false);
+
+  } catch (err) {
+    console.error(err);
+    terminateActiveCommunicationSessionInterfaceOverlayContextLine(false, "Hardware Media Acquisition Constraints Rejected Handshake Operation Lines Channels Context Pipeline Execution Node Trace");
+  }
+}
+
+async function executeAcceptIncomingCommunicationHandshakeCallLineAction() {
+  if (!activeCallState || activeCallState.mode !== "incoming") return;
+  audioRingerLoop.pause();
+
+  try {
+    const callRef = doc(db, "calls", activeCallState.callId);
+    const snap = await getDoc(callRef).catch(() => null);
+    if (!snap || !snap.exists() || snap.data().status !== "ringing") {
+      terminateActiveCommunicationSessionInterfaceOverlayContextLine(false, "Call has expired or was terminated by remote station node endpoint parameters tracking frameworks context bounds rules pipelines.");
+      return;
+    }
+
+    const callData = snap.data();
+    activeCallState.localStream = await navigator.mediaDevices.getUserMedia({
+      audio: true,
+      video: callData.kind === "video" ? { width: 1280, height: 720 } : false
+    });
+
+    const localVideoTrackFrameComponentElementView = document.getElementById("adnnCallLocalVideoTrackFrameComponentElementView");
+    if (localVideoTrackFrameComponentElementView && activeCallState.localStream.getVideoTracks().length > 0) {
+      localVideoTrackFrameComponentElementView.srcObject = activeCallState.localStream;
+      document.getElementById("adnnCallLocalVideoTileWindowSlotFrameBoxContainerContextLocationAreaAreaContainerSpaceViewElementComponentNode").classList.remove("camera-stream-track-muted-disabled-inactive-state-black-placeholder-style-override-class-layer-frame-box-slot-locator-instance");
+    }
+
+    const pc = new RTCPeerConnection({
+      iceServers: [
+        { urls: "stun:stun.l.google.com:19302" },
+        { urls: "stun:stun1.l.google.com:19302" }
+      ]
+    });
+    activeCallState.peerConnection = pc;
+
+    activeCallState.localStream.getTracks().forEach(track => pc.addTrack(track, activeCallState.localStream));
+
+    activeCallState.remoteStream = new MediaStream();
+    pc.ontrack = (event) => {
+      event.streams[0].getTracks().forEach(track => activeCallState.remoteStream.addTrack(track));
+      const remoteVideoTrackFrameComponentElementView = document.getElementById("adnnCallRemoteVideoTrackFrameComponentElementView");
+      if (remoteVideoTrackFrameComponentElementView) {
+        remoteVideoTrackFrameComponentElementView.srcObject = activeCallState.remoteStream;
+        document.getElementById("adnnCallRemoteVideoTileWindowSlotFrameBoxContainerContextLocationAreaAreaContainerSpaceViewElementComponentNode").classList.remove("camera-stream-track-muted-disabled-inactive-state-black-placeholder-style-override-class-layer-frame-box-slot-locator-instance");
+        document.getElementById("adnnCallVideoWorkspaceLayoutGridStageFrameContainerElementArea").classList.add("dual-active-camera-grid-layout-activated-style-override-class-layer-frame-box-slot-locator-instance");
+      }
+    };
+
+    pc.onicecandidate = (event) => {
+      if (event.candidate) {
+        addDoc(collection(db, "calls", activeCallState.callId, "answerCandidates"), event.candidate.toJSON()).catch(() => {});
+      }
+    };
+
+    await pc.setRemoteDescription(new RTCSessionDescription(callData.offer));
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+
+    await updateDoc(callRef, {
+      answer: { type: answer.type, sdp: answer.sdp },
+      status: "connected",
+      connectedAt: serverTimestamp()
+    });
+
+    await setDoc(doc(db, "callInbox", currentUser.uid), { status: "connected_accepted" }, { merge: true });
+
+    document.getElementById("adnnCallIncomingActionsContextControlsContainerBoxStrip").classList.add("hidden");
+    document.getElementById("adnnCallConnectedActiveActionsContextControlsContainerBoxStrip").classList.remove("hidden");
+    
+    startCommunicationOverlayChronometerCounterTrackMetricTimerLoopEngineInstanceLine();
+    monitorActiveCallSignalingDocumentPipelineChannel(activeCallState.callId, true);
+
+  } catch (err) {
+    console.error(err);
+    terminateActiveCommunicationSessionInterfaceOverlayContextLine(false, "Media peripheral attachment exceptions thrown during answer protocol compilation tracking traces paths loops channels node points lines contexts properties elements: " + err.message);
+  }
+}
+
+function monitorActiveCallSignalingDocumentPipelineChannel(callId, isAnswerer) {
+  const callRef = doc(db, "calls", callId);
+  
+  window.adnnActiveCallSignalingUnsubscribeInstanceTrackLineA = onSnapshot(callRef, (snapshot) => {
+    if (!snapshot.exists()) return;
+    const data = snapshot.data();
+    
+    if (data.status === "connected" && activeCallState && activeCallState.mode === "outgoing" && !activeCallState.chronometerIntervalInstance) {
+      // Receiver accepted session connection link pipelines context parameters metrics indicators
+      if (data.answer && activeCallState.peerConnection.signalingState !== "stable") {
+        activeCallState.peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer)).catch(() => {});
+      }
+      document.getElementById("adnnCallIncomingActionsContextControlsContainerBoxStrip").classList.add("hidden");
+      document.getElementById("adnnCallConnectedActiveActionsContextControlsContainerBoxStrip").classList.remove("hidden");
+      startCommunicationOverlayChronometerCounterTrackMetricTimerLoopEngineInstanceLine();
+    }
+
+    if (data.status === "terminated" || data.status === "rejected") {
+      terminateActiveCommunicationSessionInterfaceOverlayContextLine(false, "Remote terminal disconnected active line link context parameters mapping structural frameworks traces pipelines context fields window locators channels elements paths.");
+    }
+  });
+
+  const targetCandidatesCollectionPath = collection(db, "calls", callId, isAnswerer ? "offerCandidates" : "answerCandidates");
+  window.adnnActiveCallSignalingUnsubscribeInstanceTrackLineB = onSnapshot(targetCandidatesCollectionPath, (snapshot) => {
+    snapshot.docChanges().forEach(change => {
+      if (change.type === "added" && activeCallState && activeCallState.peerConnection) {
+        activeCallState.peerConnection.addIceCandidate(new RTCIceCandidate(change.doc.data())).catch(() => {});
+      }
+    });
+  });
+}
+
+async function executeRejectIncomingCommunicationHandshakeCallLineAction() {
+  if (!activeCallState) return;
+  audioRingerLoop.pause();
+
+  if (activeCallState.callId) {
+    await updateDoc(doc(db, "calls", activeCallState.callId), { status: "rejected" }).catch(() => {});
+    await setDoc(doc(db, "callInbox", currentUser.uid), { status: "rejected_declined" }, { merge: true }).catch(() => {});
+  }
+  terminateActiveCommunicationSessionInterfaceOverlayContextLine(false, "Call declined by local user node profile selection actions tracking line path segment.");
+}
+
+async function executeTerminateActiveCommunicationHandshakeCallLineAction() {
+  if (!activeCallState) return;
+  audioRingerLoop.pause();
+
+  if (activeCallState.callId) {
+    await updateDoc(doc(db, "calls", activeCallState.callId), { status: "terminated", endedAt: serverTimestamp() }).catch(() => {});
+    if (activeCallState.mode === "incoming") {
+      await setDoc(doc(db, "callInbox", currentUser.uid), { status: "terminated_cleared" }, { merge: true }).catch(() => {});
+    } else {
+      await setDoc(doc(db, "callInbox", activeCallState.partnerUid), { status: "terminated_cleared" }, { merge: true }).catch(() => {});
+    }
+  }
+
+  // Construct high-fidelity platform historical call visualization metadata track logs record tracking line parameters inside core scroller database collections context boundaries path segment units
+  if (activeCallState.chronometerIntervalInstance && activeCallState.chatId) {
+    const totalDurationLabelValMetricContextStringContentValueText = document.getElementById("adnnCallImmersiveChronometerDurationDisplayLabel").textContent || "00:00";
+    
+    const callSummaryLogTrackingDocumentDataFieldRecordObj = {
+      textBodyPayloadContentValueStringContent: `✦ ${activeCallState.type === "video" ? "High-Definition Video Connection" : "High-Fidelity Audio Connection Stream Track"} Session Handshake Layer Reference Boundary · Duration ${totalDurationLabelValMetricContextStringContentValueText} · Synchronized Historical Log Reference Boundary Tracker Node Context Block Locator Frame Item`,
+      senderUid: currentUser.uid,
+      senderEmail: emailNormalizationKey(currentUser.email),
+      senderName: currentUser.displayName || currentUser.email || "System Communication Engine Channel Track Router Module Pipeline Connection Endpoint",
+      createdAt: serverTimestamp(),
+      callEventTransmissionLineContextFlagMetricParameters: true,
+      readStatusReceiptState: "read",
+      favoritedByCollection: [],
+      reactionsMap: {}
+    };
+
+    await addDoc(collection(db, "chats", activeCallState.chatId, "messages"), callSummaryLogTrackingDocumentDataFieldRecordObj).catch(() => {});
+    await setDoc(doc(db, "chats", activeCallState.chatId), {
+      lastMessage: `✦ Call Connection Record Logs: ${totalDurationLabelValMetricContextStringContentValueText}`,
+      updatedAt: serverTimestamp()
+    }, { merge: true }).catch(() => {});
+  }
+
+  terminateActiveCommunicationSessionInterfaceOverlayContextLine(true, "Communication channel dropped framework cleanup lines running configurations contexts parameters metrics paths.");
+}
+
+function terminateActiveCommunicationSessionInterfaceOverlayContextLine(shouldShowToastNotice, toastLabelContentStringValueContentValueProperty) {
+  audioRingerLoop.pause();
+  clearInterval(window.adnnActiveCallSignalingUnsubscribeInstanceTrackLineA);
+  clearInterval(window.adnnActiveCallSignalingUnsubscribeInstanceTrackLineB);
+
+  if (activeCallState) {
+    clearInterval(activeCallState.chronometerIntervalInstance);
+    if (activeCallState.peerConnection) activeCallState.peerConnection.close();
+    if (activeCallState.localStream) activeCallState.localStream.getTracks().forEach(track => track.stop());
+  }
+
+  activeCallState = null;
+  const overlayFrameViewComponentNode = document.getElementById("adnnCallImmersiveInterfaceOverlayPanelContainerWindow");
+  if (overlayFrameViewComponentNode) overlayFrameViewComponentNode.remove();
+
+  if (shouldShowToastNotice) {
+    alert(toastLabelContentStringValueContentValueProperty || "Realtime secure WebRTC communication pipeline connection session track lifecycle ended framework operation tracks.");
+  }
+}
+
+/**
+ * Communication Overlay Dynamic Component Chronometer Handlers Execution Processing Module
+ */
+function startCommunicationOverlayChronometerCounterTrackMetricTimerLoopEngineInstanceLine() {
+  let secondsAccumulatorValueMetricCounterTrackAmount = 0;
+  const chronometerLabelElementNode = document.getElementById("adnnCallImmersiveChronometerDurationDisplayLabel");
+  
+  clearInterval(activeCallState.chronometerIntervalInstance);
+  activeCallState.chronometerIntervalInstance = setInterval(() => {
+    secondsAccumulatorValueMetricCounterTrackAmount++;
+    const minutesStringVal = String(Math.floor(secondsAccumulatorValueMetricCounterTrackAmount / 60)).padStart(2, "0");
+    const secondsStringVal = String(secondsAccumulatorValueMetricCounterTrackAmount % 60).padStart(2, "0");
+    if (chronometerLabelElementNode) {
+      chronometerLabelElementNode.textContent = `${minutesStringVal}:${secondsStringVal}`;
+    }
+  }, 1000);
+}
+
+/**
+ * Immersive WebRTC Video/Audio Master Layout Grid Panel Component Creator View Renderer
+ */
+function renderCommunicationImmersiveInterfaceOverlayWindowUI() {
+  if (document.getElementById("adnnCallImmersiveInterfaceOverlayPanelContainerWindow")) return;
+
+  const windowContainerCardOverlayViewWrapperNode = document.createElement("div");
+  windowContainerCardOverlayViewWrapperNode.id = "adnnCallImmersiveInterfaceOverlayPanelContainerWindow";
+  windowContainerCardOverlayViewWrapperNode.className = "adnn-call-immersive-interface-overlay-panel-container-window-context-layer-frame-box-slot-locator-instance glass";
+  windowContainerCardOverlayViewWrapperNode.innerHTML = `
+    <div class="call-interface-window-card-box edge">
+      <div class="call-interface-top-metadata-bar-strip">
+        <span class="crypto-lock-icon-tint-badge-span">🔒 End-to-End Encrypted WebRTC Layer</span>
+        <span class="chronometer-duration-timer-display-label-value-metrics-properties" id="adnnCallImmersiveChronometerDurationDisplayLabel">Connecting Secure Route...</span>
+      </div>
+      
+      <div class="call-interface-target-profile-avatar-banner-block">
+        <div class="target-profile-avatar-large-circle-element">${initialsProcessingUtility(activeCallState.partnerName)}</div>
+        <h3>${escapeHtmlSanitizationUtility(activeCallState.partnerName)}</h3>
+        <p id="adnnCallInterfaceDynamicStatusContextLabelMessageLineString">${activeCallState.type === "video" ? "Secure FaceTime Multi-Surface Grid Target Pipeline Connection Node Room" : "Secure Audio Voice Transmission Line Node Terminal Module Channel Connection Line Layout Space Segment"}</p>
+      </div>
+      
+      <div class="adnn-call-video-workspace-layout-grid-stage-frame-container-element-area" id="adnnCallVideoWorkspaceLayoutGridStageFrameContainerElementArea">
+        <div class="camera-tile-window-frame-block-card remote-stream-tile camera-stream-track-muted-disabled-inactive-state-black-placeholder-style-override-class-layer-frame-box-slot-locator-instance" id="adnnCallRemoteVideoTileWindowSlotFrameBoxContainerContextLocationAreaAreaContainerSpaceViewElementComponentNode">
+          <video id="adnnCallRemoteVideoTrackFrameComponentElementView" autoplay playsinline></video>
+          <div class="camera-stream-track-placeholder-fallback-text-overlay-label-box">Contact Camera Inactive</div>
+          <span class="camera-stream-identity-absolute-bottom-left-pill-tag-label-element-badge">Remote Contact Node Station Connection</span>
+        </div>
+        <div class="camera-tile-window-frame-block-card local-stream-tile camera-stream-track-muted-disabled-inactive-state-black-placeholder-style-override-class-layer-frame-box-slot-locator-instance" id="adnnCallLocalVideoTileWindowSlotFrameBoxContainerContextLocationAreaAreaContainerSpaceViewElementComponentNode">
+          <video id="adnnCallLocalVideoTrackFrameComponentElementView" autoplay muted playsinline class="mirror-corrected-stream-track-rendering-engine-element-node"></video>
+          <div class="camera-stream-track-placeholder-fallback-text-overlay-label-box">Local Video Channel Stream Disabled</div>
+          <span class="camera-stream-identity-absolute-bottom-left-pill-tag-label-element-badge">Your Micro Terminal Capture Track Loop (Opposite Mirror Matrix Layout Transformation Space Matrix)</span>
+        </div>
+      </div>
+      
+      <div class="call-interface-actions-toolbar-buttons-row-strip-control-matrix-wrapper-box-container-element">
+        <div class="actions-toolbar-conditional-state-sub-group-flex-layout-strip" id="adnnCallIncomingActionsContextControlsContainerBoxStrip">
+          <button type="button" class="toolbar-functional-action-circle-icon-btn accept-action-green-color-pulse-neon-tint-style-btn" id="adnnCallAcceptActionBtn" title="Accept connection request line parameters mappings">${ICONS.phone}<span>Accept Secure Connection</span></button>
+          <button type="button" class="toolbar-functional-action-circle-icon-btn decline-destructive-action-red-color-style-btn" id="adnnCallDeclineActionBtn" title="Reject request handshake endpoint locations">${ICONS.close}<span>Decline Request</span></button>
+        </div>
+        
+        <div class="actions-toolbar-conditional-state-sub-group-flex-layout-strip hidden" id="adnnCallConnectedActiveActionsContextControlsContainerBoxStrip">
+          <button type="button" class="toolbar-functional-action-circle-icon-btn state-toggle-action-item-icon-btn" id="adnnCallMuteMicToggleActionBtn" title="Toggle microphone track state configuration parameters metrics">${ICONS.mic}</button>
+          <button type="button" class="toolbar-functional-action-circle-icon-btn state-toggle-action-item-icon-btn" id="adnnCallToggleVideoMuteTrackStateActionBtn" title="Toggle video stream capture engine track status states data flag values">${ICONS.video}</button>
+          <button type="button" class="toolbar-functional-action-circle-icon-btn state-toggle-action-item-icon-btn" id="adnnCallToggleSpeakerSinkOutputRouteActionBtn" title="Toggle audio sound output speaker path context framework channels">${ICONS.speaker}</button>
+          <button type="button" class="toolbar-functional-action-circle-icon-btn state-toggle-action-item-icon-btn" id="adnnCallToggleHoldStateActionBtn" title="Put session pipeline on freeze hold status states monitoring metric configurations">${ICONS.hold}</button>
+          <button type="button" class="toolbar-functional-action-circle-icon-btn decline-destructive-action-red-color-style-btn" id="adnnCallEndConnectedActiveSessionActionBtn" title="Disconnect secure pipeline channels tracks framework lines lifecycle tracks path parameters">${ICONS.close}</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(windowContainerCardOverlayViewWrapperNode);
+
+  // Bind Immediate User Control Event Handlers Rules Mapping Configurations Switches Layer Buttons Click Listeners Hooks
+  document.getElementById("adnnCallAcceptActionBtn").addEventListener("click", executeAcceptIncomingCommunicationHandshakeCallLineAction);
+  document.getElementById("adnnCallDeclineActionBtn").addEventListener("click", executeRejectIncomingCommunicationHandshakeCallLineAction);
+  document.getElementById("adnnCallEndConnectedActiveSessionActionBtn").addEventListener("click", executeTerminateActiveCommunicationHandshakeCallLineAction);
+
+  // Bind Active Connected Feature Toggle Controls Switchboard Listeners
+  document.getElementById("adnnCallMuteMicToggleActionBtn").addEventListener("click", (e) => {
+    if (!activeCallState || !activeCallState.localStream) return;
+    const audioTrack = activeCallState.localStream.getAudioTracks()[0];
+    if (audioTrack) {
+      audioTrack.enabled = !audioTrack.enabled;
+      e.currentTarget.classList.toggle("disabled-muted-state-active-glow-style-class-modifier-tint-color", !audioTrack.enabled);
+      e.currentTarget.innerHTML = audioTrack.enabled ? ICONS.mic : ICONS.micOff;
+    }
+  });
+
+  document.getElementById("adnnCallToggleVideoMuteTrackStateActionBtn").addEventListener("click", (e) => {
+    if (!activeCallState || !activeCallState.localStream) return;
+    const videoTrack = activeCallState.localStream.getVideoTracks()[0];
+    if (videoTrack) {
+      videoTrack.enabled = !videoTrack.enabled;
+      e.currentTarget.classList.toggle("disabled-muted-state-active-glow-style-class-modifier-tint-color", !videoTrack.enabled);
+      e.currentTarget.innerHTML = videoTrack.enabled ? ICONS.video : ICONS.videoOff;
+      document.getElementById("adnnCallLocalVideoTileWindowSlotFrameBoxContainerContextLocationAreaAreaContainerSpaceViewElementComponentNode").classList.toggle("camera-stream-track-muted-disabled-inactive-state-black-placeholder-style-override-class-layer-frame-box-slot-locator-instance", !videoTrack.enabled);
+    }
+  });
+
+  document.getElementById("adnnCallToggleSpeakerSinkOutputRouteActionBtn").addEventListener("click", (e) => {
+    // Simulate premium routing layer sink tracking adjustments indicators
+    const isMuted = e.currentTarget.classList.toggle("disabled-muted-state-active-glow-style-class-modifier-tint-color");
+    e.currentTarget.innerHTML = isMuted ? ICONS.speakerOff : ICONS.speaker;
+    const remoteAudioTrackViewRenderingTargetFrameBoxSlotLocatorInstanceElement = document.getElementById("adnnCallRemoteVideoTrackFrameComponentElementView");
+    if (remoteAudioTrackViewRenderingTargetFrameBoxSlotLocatorInstanceElement) {
+      remoteAudioTrackViewRenderingTargetFrameBoxSlotLocatorInstanceElement.muted = isMuted;
+    }
+  });
+
+  document.getElementById("adnnCallToggleHoldStateActionBtn").addEventListener("click", (e) => {
+    const isOnHold = e.currentTarget.classList.toggle("disabled-muted-state-active-glow-style-class-modifier-tint-color");
+    if (activeCallState && activeCallState.peerConnection) {
+      // Broadcast contextual stream tracking adjustments metrics parameters configuration update documents across tracking framework collections index references lines channel
+      updateDoc(doc(db, "calls", activeCallState.callId), {
+        [`sessionHoldStateParametersMap.${currentUser.uid}`]: isOnHold
+      }).catch(() => {});
+    }
+  });
+
+  // Structural dynamic alignment view initialization check logic configuration profiles mapping parameters matrix track nodes
+  if (activeCallState.mode === "incoming") {
+    document.getElementById("adnnCallIncomingActionsContextControlsContainerBoxStrip").classList.remove("hidden");
+    document.getElementById("adnnCallConnectedActiveActionsContextControlsContainerBoxStrip").classList.add("hidden");
+  } else {
+    document.getElementById("adnnCallIncomingActionsContextControlsContainerBoxStrip").classList.add("hidden");
+    document.getElementById("adnnCallConnectedActiveActionsContextControlsContainerBoxStrip").classList.remove("hidden");
+  }
+}
+
+/**
+ * ============================================================================
+ * HIGH PERFORMANCE AUXILIARY DATA CONVERSION TEXT MACRO UTILITIES ALGORITHMS
+ * ============================================================================
+ */
+function emailNormalizationKey(email) {
+  return String(email || "").trim().toLowerCase();
+}
+
+function isPlatformAdministrator(email) {
+  return emailNormalizationKey(email) === ADMIN_EMAIL;
+}
+
+function initialsProcessingUtility(nameStringValueContentText) {
+  const normalizedCleanSegmentsSplitArrayCollectionTokens = String(nameStringValueContentText || "AD").trim().toUpperCase().split(/\s+/).filter(Boolean);
+  if (normalizedCleanSegmentsSplitArrayCollectionTokens.length === 0) return "AD";
+  if (normalizedCleanSegmentsSplitArrayCollectionTokens.length === 1) return normalizedCleanSegmentsSplitArrayCollectionTokens[0].slice(0, 2);
+  return `${normalizedCleanSegmentsSplitArrayCollectionTokens[0][0]}${normalizedCleanSegmentsSplitArrayCollectionTokens[1][0]}`;
+}
+
+function transformTimestampMetricToMillis(firebaseTimestampObj) {
+  if (!firebaseTimestampObj) return Date.now();
+  if (typeof firebaseTimestampObj.toMillis === "function") return firebaseTimestampObj.toMillis();
+  if (firebaseTimestampObj instanceof Date) return firebaseTimestampObj.getTime();
+  const parsedDateInstanceFromRawValueInputStringTrackValue = new Date(firebaseTimestampObj);
+  return Number.isNaN(parsedDateInstanceFromRawValueInputStringTrackValue.getTime()) ? Date.now() : parsedDateInstanceFromRawValueInputStringTrackValue.getTime();
+}
+
+function calculateRelativeHumanizedTimeMetric(firebaseTimestampObj) {
+  const millis = transformTimestampMetricToMillis(firebaseTimestampObj);
+  const diffSeconds = Math.max(0, Math.floor((Date.now() - millis) / 1000));
+  
+  if (diffSeconds < 60) return "Just now";
+  const diffMinutes = Math.floor(diffSeconds / 60);
+  if (diffMinutes < 60) return `${diffMinutes}m ago`;
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+  
+  const targetDateObj = new Date(millis);
+  return targetDateObj.toLocaleDateString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
+function escapeHtmlSanitizationUtility(rawStringContentValueInputTextString) {
+  return String(rawStringContentValueInputTextString || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function synchronizeGlobalPlatformUnreadCountMetrics(chatsCollectionArrayReferenceSource) {
+  let accumulatedTotalUnreadCounterValueSumAmount = 0;
+  chatsCollectionArrayReferenceSource.forEach(chat => {
+    accumulatedTotalUnreadCounterValueSumAmount += isPlatformAdministrator(currentUser?.email) ? (chat.unreadForAdmin || 0) : (chat.unreadForClient || 0);
+  });
+
+  document.querySelectorAll(".adnn-badge-counter").forEach(badge => {
+    badge.textContent = String(accumulatedTotalUnreadCounterValueSumAmount);
+    badge.classList.toggle("hidden", accumulatedTotalUnreadCounterValueSumAmount === 0);
+  });
+}
+
+function terminateAllActiveSubscribers() {
+  clearInterval(unsubscribedChatMeta);
+  clearInterval(unsubscribedMessageFeed);
+  clearInterval(unsubscribedPresenceMeta);
+  clearInterval(unsubscribedCallInbox);
+  clearInterval(window.adnnPresencePulseTrackerIntervalInstance);
+  terminateActiveCommunicationSessionInterfaceOverlayContextLine(false, "System components disconnected execution traces loops parameters profiles context parameters metrics paths.");
+}
+
+/**
+ * High Density Premium Apple Tahoe Architectural Theme Design Language Stylesheet Injector Pipeline Routine Node Element
+ */
+function injectStylesheetRules() {
+  if (document.getElementById("adnnPremiumAppleTahoeChatThemeCoreEngineStylesheetRuleNode")) return;
+  
+  const styleElementNodePointerInstanceReferenceLocationFieldUnit = document.createElement("style");
+  styleElementNodePointerInstanceReferenceLocationFieldUnit.id = "adnnPremiumAppleTahoeChatThemeCoreEngineStylesheetRuleNode";
+  styleElementNodePointerInstanceReferenceLocationFieldUnit.textContent = `
+    :root {
+      --adnn-tahoe-primary-tint: #272dcf;
+      --adnn-tahoe-bg-glass-heavy: linear-gradient(135deg, rgba(28, 28, 32, 0.94), rgba(14, 14, 18, 0.88) 40%, rgba(8, 8, 12, 0.96));
+      --adnn-tahoe-bg-glass-card: rgba(255, 255, 255, 0.04);
+      --adnn-tahoe-border-subtle: rgba(255, 255, 255, 0.09);
+      --adnn-tahoe-text-main: #f5f5f7;
+      --adnn-tahoe-text-muted: rgba(245, 245, 247, 0.55);
+      --adnn-tahoe-bubble-mine: linear-gradient(135deg, rgba(39, 45, 207, 0.92), rgba(20, 24, 150, 0.82));
+      --adnn-tahoe-bubble-other: rgba(255, 255, 255, 0.06);
+      --adnn-tahoe-neon-green: #25d366;
+      --adnn-tahoe-neon-red: #ff3b30;
+      --adnn-chat-vh: 100dvh;
+    }
+
+    .adnn-chat-trigger-premium {
+      position: relative; width: 46px; height: 46px; border-radius: 14px; border: 1px solid var(--adnn-tahoe-border-subtle);
+      background: var(--adnn-tahoe-bg-glass-heavy); color: #fff; cursor: pointer; display: inline-flex; align-items: center;
+      justify-content: center; backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); transition: all 0.2s ease;
+    }
+    .adnn-chat-trigger-premium:hover { transform: scale(1.04); border-color: var(--adnn-tahoe-primary-tint); }
+    .adnn-chat-trigger-premium.floating-action-trigger { position: fixed; right: 24px; bottom: 24px; z-index: 9999; border-radius: 50%; width: 54px; height: 54px; background: var(--adnn-tahoe-primary-tint); }
+    
+    .adnn-badge-counter {
+      position: absolute; top: -4px; right: -4px; background: var(--adnn-tahoe-neon-red); color: #fff; font-size: 10px;
+      font-family: monospace; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 999px; display: grid; place-items: center;
+    }
+    
+    .adnn-chat-overlay-immersive {
+      position: fixed; inset: 0; z-index: 999999; background: rgba(0,0,0,0.45); backdrop-filter: blur(12px);
+      display: flex; align-items: center; justify-content: center; padding: 24px; opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+    }
+    .adnn-chat-overlay-immersive.is-visible { opacity: 1; pointer-events: auto; }
+    
+    .adnn-chat-window-container {
+      width: min(1180px, 100%); height: min(820px, calc(100vh - 48px)); border-radius: 24px; overflow: hidden;
+      display: grid; grid-template-columns: 340px 1fr; background: var(--adnn-tahoe-bg-glass-heavy);
+      border: 1px solid var(--adnn-tahoe-border-subtle); box-shadow: 0 30px 90px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.1);
+    }
+    
+    .adnn-chat-embedded-container-context-frame {
+      width: 100%; height: 100%; display: block;
+    }
+    .adnn-chat-embedded-container-context-frame .adnn-chat-window-container {
+      width: 100%; height: 680px; max-height: none; border-radius: 20px; box-shadow: none;
+    }
+    .adnn-chat-embedded-container-context-frame .adnn-close-overlay-btn { display: none !important; }
+
+    /* Sidebar Framework Architecture Layout Structure */
+    .adnn-chat-sidebar-wrapper {
+      border-right: 1px solid var(--adnn-tahoe-border-subtle); display: grid; grid-template-rows: 76px 54px 1fr; min-height: 0; background: rgba(0,0,0,0.15);
+    }
+    .adnn-sidebar-identity-header {
+      padding: 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--adnn-tahoe-border-subtle);
+    }
+    .adnn-identity-profile-info { display: flex; align-items: center; gap: 12px; color: var(--adnn-tahoe-text-main); }
+    .adnn-identity-avatar-placeholder { width: 40px; height: 40px; border-radius: 12px; background: var(--adnn-tahoe-primary-tint); display: grid; place-items: center; font-weight: 600; font-size: 15px; }
+    .adnn-identity-profile-info h4 { font-size: 15px; font-weight: 500; margin: 0; }
+    .online-pill-indicator { font-size: 10px; margin: 2px 0 0; color: var(--adnn-tahoe-neon-green); font-family: monospace; }
+    .adnn-close-overlay-btn { background: transparent; border: 0; color: #fff; cursor: pointer; width: 32px; height: 32px; display: grid; place-items: center; opacity: 0.6; }
+    .adnn-close-overlay-btn:hover { opacity: 1; }
+    
+    .adnn-sidebar-search-container { padding: 8px 12px; }
+    .adnn-search-input-group {
+      background: rgba(0,0,0,0.22); border-radius: 10px; border: 1px solid var(--adnn-tahoe-border-subtle); display: flex; align-items: center; padding: 0 10px; height: 36px;
+    }
+    .adnn-search-input-group input { background: transparent; border: 0; outline: 0; color: #fff; font-size: 13px; width: 100%; margin-left: 8px; }
+    .search-icon-span { color: var(--adnn-tahoe-text-muted); display: flex; }
+
+    .adnn-sidebar-conversations-list { min-height: 0; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 4px; }
+    .empty-list-notice { padding: 40px 16px; text-align: center; color: var(--adnn-tahoe-text-muted); font-size: 12px; font-family: monospace; }
+    
+    .adnn-sidebar-chat-card-item {
+      display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 14px; cursor: pointer; transition: background 0.15s ease; border: 1px solid transparent;
+    }
+    .adnn-sidebar-chat-card-item:hover { background: rgba(255,255,255,0.03); }
+    .adnn-sidebar-chat-card-item.active-focus { background: rgba(39, 45, 207, 0.15); border-color: rgba(39, 45, 207, 0.25); }
+    .card-item-avatar-element { width: 42px; height: 42px; border-radius: 50%; background: var(--adnn-tahoe-bg-glass-card); border: 1px solid var(--adnn-tahoe-border-subtle); display: grid; place-items: center; font-weight: 500; font-size: 14px; color: #fff; flex-shrink: 0; }
+    .card-item-body-content-block { flex: 1; min-width: 0; }
+    .card-item-header-row { display: flex; justify-content: space-between; align-items: baseline; }
+    .card-item-header-row h5 { margin: 0; font-size: 14px; font-weight: 500; color: var(--adnn-tahoe-text-main); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .timestamp-metric-label { font-size: 10px; color: var(--adnn-tahoe-text-muted); font-family: monospace; }
+    .card-item-footer-row { display: flex; justify-content: space-between; align-items: center; margin-top: 4px; }
+    .message-snippet-paragraph { margin: 0; font-size: 12px; color: var(--adnn-tahoe-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .unread-count-badge-element { background: var(--adnn-tahoe-primary-tint); color: #fff; font-size: 9px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; display: grid; place-items: center; font-family: monospace; }
+
+    /* Main Area View Framework Component Architecture Elements Base Styles */
+    .adnn-chat-main-room-view { min-width: 0; min-height: 0; background: rgba(0,0,0,0.05); position: relative; }
+    .empty-room-fallback-illustration { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; text-align: center; color: var(--adnn-tahoe-text-muted); padding: 32px; }
+    .illustration-art-logo { font-size: 48px; color: var(--adnn-tahoe-primary-tint); margin-bottom: 16px; animation: pulseGlow 3s infinite alternate; }
+    .empty-room-fallback-illustration h3 { font-size: 18px; font-weight: 400; color: var(--adnn-tahoe-text-main); margin: 0 0 8px; }
+    .empty-room-fallback-illustration p { font-size: 13px; max-width: 380px; margin: 0; line-height: 1.5; }
+    
+    .adnn-active-room-layout { display: grid; grid-template-rows: 76px 1fr auto; height: 100%; min-height: 0; position: relative; }
+    .adnn-room-appbar-header { padding: 16px; border-bottom: 1px solid var(--adnn-tahoe-border-subtle); display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.08); }
+    .adnn-back-arrow-mobile-btn { display: none; background: transparent; border: 0; color: #fff; width: 36px; height: 36px; place-items: center; margin-right: 4px; }
+    .adnn-room-meta-target-info { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .adnn-target-avatar-placeholder { width: 44px; height: 44px; border-radius: 50%; background: var(--adnn-tahoe-primary-tint); font-weight: 600; font-size: 15px; color: #fff; display: grid; place-items: center; flex-shrink: 0; }
+    .adnn-room-meta-target-info h4 { margin: 0; font-size: 15px; font-weight: 500; color: var(--adnn-tahoe-text-main); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .subtitle-status-text { margin: 2px 0 0; font-size: 11px; color: var(--adnn-tahoe-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: monospace; }
+    .online-status-active { color: var(--adnn-tahoe-neon-green); }
+    .typing-status-active { color: var(--adnn-tahoe-primary-tint); font-weight: 600; }
+    
+    .adnn-room-actions-header-group { display: flex; align-items: center; gap: 8px; }
+    .adnn-call-trigger-btn { width: 38px; height: 38px; border-radius: 50%; border: 0; background: var(--adnn-tahoe-bg-glass-card); border: 1px solid var(--adnn-tahoe-border-subtle); color: #fff; cursor: pointer; display: grid; place-items: center; transition: all 0.2s ease; }
+    .adnn-call-trigger-btn:hover { background: var(--adnn-tahoe-primary-tint); border-color: transparent; }
+    .adnn-call-trigger-btn svg { width: 16px; height: 16px; }
+
+    /* Feed Messages View Grid Matrix Area Layout */
+    .adnn-chat-messages-scroll-area { min-height: 0; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+    .adnn-message-bubble-wrapper { display: flex; width: 100%; position: relative; }
+    .adnn-message-bubble-wrapper.align-mine { justify-content: flex-end; }
+    .adnn-message-bubble-wrapper.align-other { justify-content: flex-start; }
+    
+    .adnn-message-bubble-body-card-frame {
+      max-width: 75%; padding: 10px 14px; border-radius: 18px; position: relative; transition: transform 0.2s ease;
+    }
+    .adnn-message-bubble-body-card-frame:hover { transform: translateY(-1px); }
+    .align-mine .adnn-message-bubble-body-card-frame { background: var(--adnn-tahoe-bubble-mine); color: #fff; border-bottom-right-radius: 4px; border: 1px solid rgba(255,255,255,0.1); }
+    .align-other .adnn-message-bubble-body-card-frame { background: var(--adnn-tahoe-bubble-other); color: var(--adnn-tahoe-text-main); border: 1px solid var(--adnn-tahoe-border-subtle); border-bottom-left-radius: 4px; }
+    
+    .bubble-text-content-paragraph-layout-row p { margin: 0; font-size: 14.5px; line-height: 1.45; overflow-wrap: anywhere; white-space: pre-wrap; }
+    .bubble-metadata-metrics-row-strip { display: flex; align-items: center; justify-content: flex-end; gap: 4px; margin-top: 4px; font-size: 9.5px; color: rgba(255,255,255,0.5); font-family: monospace; }
+    .align-other .metric-timestamp-clock-label { color: var(--adnn-tahoe-text-muted); }
+    .receipt-double-check-blue-active-color { color: #34b7f1 !important; }
+    
+    /* WhatsApp Context Speed Overlays Actions Framework Strip Box Component Layout Style */
+    .adnn-bubble-contextual-actions-absolute-dropdown-trigger-menu-strip {
+      position: absolute; bottom: 100%; right: 0; background: rgba(20,20,24,0.95); border: 1px solid var(--adnn-tahoe-border-subtle);
+      border-radius: 12px; padding: 4px; display: flex; gap: 2px; opacity: 0; pointer-events: none; transform: translateY(6px); transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1); z-index: 10; backdrop-filter: blur(8px);
+    }
+    .adnn-message-bubble-body-card-frame:hover .adnn-bubble-contextual-actions-absolute-dropdown-trigger-menu-strip { opacity: 1; pointer-events: auto; transform: translateY(0); }
+    .action-strip-dot-btn { background: transparent; border: 0; color: #fff; font-size: 13px; padding: 4px 6px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; opacity: 0.7; }
+    .action-strip-dot-btn:hover { background: rgba(255,255,255,0.1); opacity: 1; }
+    .action-strip-dot-btn svg { width: 12px; height: 12px; }
+    .delete-destructive-action-color-btn:hover { background: var(--adnn-tahoe-neon-red) !important; color: #fff; }
+
+    .bubble-attached-media-frame-box { margin-bottom: 6px; border-radius: 12px; overflow: hidden; cursor: pointer; border: 1px solid rgba(0,0,0,0.15); max-height: 280px; }
+    .bubble-attached-media-frame-box img { width: 100%; height: auto; display: block; object-fit: cover; max-height: 280px; }
+    
+    .bubble-reply-context-reference-quote-box { background: rgba(0,0,0,0.15); border-left: 3px solid var(--adnn-tahoe-primary-tint); padding: 6px 8px; border-radius: 6px; margin-bottom: 6px; font-size: 12px; }
+    .bubble-reply-context-reference-quote-box strong { display: block; color: rgba(255,255,255,0.85); font-size: 11px; }
+    .bubble-reply-context-reference-quote-box p { margin: 2px 0 0; color: rgba(255,255,255,0.65); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .bubble-generic-file-attachment-download-anchor-link { display: flex; align-items: center; gap: 10px; padding: 8px; background: rgba(0,0,0,0.12); border-radius: 10px; text-decoration: none; color: inherit; margin-bottom: 6px; border: 1px solid var(--adnn-tahoe-border-subtle); }
+    .generic-file-icon-avatar-badge { width: 32px; height: 32px; border-radius: 8px; background: rgba(255,255,255,0.08); display: grid; place-items: center; }
+    .generic-file-info-metadata-stack-column { min-width: 0; display: flex; flex-direction: column; }
+    .generic-file-info-metadata-stack-column strong { font-size: 12px; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .generic-file-info-metadata-stack-column small { font-size: 10px; color: var(--adnn-tahoe-text-muted); font-family: monospace; }
+
+    .bubble-reactions-row-strip-wrapper { position: absolute; top: calc(100% - 6px); left: 12px; display: flex; gap: 2px; background: #1c1c1f; border: 1px solid var(--adnn-tahoe-border-subtle); padding: 1px 4px; border-radius: 8px; font-size: 10px; z-index: 2; }
+
+    /* Drag and Drop Asset Context Block View */
+    .adnn-drag-drop-full-box-overlay { position: absolute; inset: 12px; z-index: 100; background: rgba(39, 45, 207, 0.15); backdrop-filter: blur(8px); border-radius: 20px; padding: 24px; pointer-events: none; }
+    .drag-drop-card-view { border: 2px dashed var(--adnn-tahoe-primary-tint); border-radius: 16px; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: #fff; background: rgba(0,0,0,0.6); }
+    .drag-icon-announcement { font-size: 32px; margin-bottom: 8px; }
+    
+    /* Core Input Layout Workspace Component Fields Style Rules Layers */
+    .adnn-chat-footer-composer-wrapper { padding: 12px 16px; border-top: 1px solid var(--adnn-tahoe-border-subtle); background: rgba(0,0,0,0.12); display: flex; flex-direction: column; gap: 8px; }
+    .adnn-master-composer-core-form { display: flex; align-items: center; gap: 10px; }
+    .composer-action-icon-trigger-label, .composer-action-icon-trigger-btn { width: 40px; height: 40px; border-radius: 50%; background: var(--adnn-tahoe-bg-glass-card); border: 1px solid var(--adnn-tahoe-border-subtle); color: var(--adnn-tahoe-text-muted); cursor: pointer; display: grid; place-items: center; transition: all 0.2s ease; flex-shrink: 0; padding: 0; }
+    .composer-action-icon-trigger-label:hover, .composer-action-icon-trigger-btn:hover, .camera-active-glow-neon-tint-accent-color-style { color: #fff; background: rgba(255,255,255,0.08); border-color: var(--adnn-tahoe-primary-tint); }
+    .composer-action-icon-trigger-label svg, .composer-action-icon-trigger-btn svg { width: 16px; height: 16px; }
+    
+    .composer-input-field-workspace-box { flex: 1; position: relative; display: flex; align-items: center; min-width: 0; }
+    .composer-input-field-workspace-box input { width: 100%; height: 40px; border-radius: 20px; background: rgba(0,0,0,0.25); border: 1px solid var(--adnn-tahoe-border-subtle); padding: 0 16px; color: #fff; outline: 0; font-size: 14px; transition: border-color 0.2s ease; }
+    .composer-input-field-workspace-box input:focus { border-color: var(--adnn-tahoe-primary-tint); background: rgba(0,0,0,0.35); }
+    
+    .composer-submit-execution-action-btn { width: 40px; height: 40px; border-radius: 50%; border: 0; background: var(--adnn-tahoe-primary-tint); color: #fff; cursor: pointer; display: grid; place-items: center; flex-shrink: 0; }
+    .composer-submit-execution-action-btn svg { width: 14px; height: 14px; transform: rotate(45deg) translate(-1px, 1px); }
+
+    .adnn-reply-context-banner-preview { background: rgba(0,0,0,0.3); border-radius: 10px; border: 1px solid var(--adnn-tahoe-border-subtle); padding: 8px 12px; display: flex; align-items: center; gap: 12px; position: relative; }
+    .reply-vertical-accent-line { width: 4px; height: 28px; background: var(--adnn-tahoe-primary-tint); border-radius: 2px; }
+    .reply-context-body-content { flex: 1; min-width: 0; font-size: 12px; }
+    .reply-context-body-content strong { display: block; color: #fff; }
+    .reply-context-body-content p { margin: 1px 0 0; color: var(--adnn-tahoe-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .adnn-cancel-reply-context-btn { background: transparent; border: 0; color: var(--adnn-tahoe-text-muted); cursor: pointer; display: flex; padding: 4px; }
+    .adnn-cancel-reply-context-btn:hover { color: #fff; }
+    
+    .adnn-composer-inline-media-preview-container { padding: 6px; background: rgba(0,0,0,0.15); border-radius: 12px; border: 1px solid var(--adnn-tahoe-border-subtle); display: inline-flex; max-width: max-content; }
+    .media-preview-card-frame { position: relative; display: block; }
+    .media-render-target-box img { max-width: 140px; max-height: 100px; border-radius: 8px; object-fit: cover; display: block; border: 1px solid rgba(255,255,255,0.05); }
+    .adnn-remove-attached-media-btn { position: absolute; top: -6px; right: -6px; background: #000; color: #fff; width: 20px; height: 20px; border-radius: 50%; border: 1px solid var(--adnn-tahoe-border-subtle); cursor: pointer; display: grid; place-items: center; font-size: 10px; }
+    
+    .generic-document-file-preview-thumbnail-avatar-card-frame-box { padding: 12px; background: rgba(0,0,0,0.3); border-radius: 8px; display: flex; flex-direction: column; gap: 4px; width: 160px; font-size: 11px; text-align: center; }
+    .generic-document-file-preview-thumbnail-avatar-card-frame-box span { font-size: 20px; }
+    .generic-document-file-preview-thumbnail-avatar-card-frame-box strong { color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .generic-document-file-preview-thumbnail-avatar-card-frame-box small { color: var(--adnn-tahoe-text-muted); font-family: monospace; }
+
+    /* Advanced Composer Camera Mirror Implementation Layout Box Style Component Rules Context Elements Layer Properties */
+    .adnn-composer-integrated-camera-mirror-box { position: relative; width: 100%; max-width: 240px; aspect-ratio: 4/3; border-radius: 14px; overflow: hidden; border: 1px solid var(--adnn-tahoe-primary-tint); box-shadow: 0 12px 30px rgba(0,0,0,0.4); margin-bottom: 4px; }
+    .mirror-corrected-stream { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); background: #000; }
+    .camera-mirror-controls-bar { position: absolute; bottom: 0; inset-inline: 0; background: linear-gradient(transparent, rgba(0,0,0,0.85)); padding: 8px; display: flex; justify-content: center; align-items: center; gap: 24px; }
+    .camera-action-circle-btn { width: 28px; height: 28px; border-radius: 50%; background: #fff; border: 2px solid #000; cursor: pointer; box-shadow: 0 0 10px rgba(255,255,255,0.4); }
+    .camera-action-circle-btn:active { transform: scale(0.92); }
+    .camera-action-close-btn { background: rgba(0,0,0,0.6); border: 0; color: #fff; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; cursor: pointer; }
+
+    /* Advanced Voice Input Field Simulation Layout Layer Styles Rules */
+    .adnn-voice-recording-view-component-layer { display: flex; align-items: center; gap: 10px; width: 100%; padding-left: 6px; }
+    .live-blink-pulse-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--adnn-tahoe-neon-red); animation: liveBlinkPulse 1s infinite alternate; }
+    .voice-duration-chronometer { font-size: 13px; color: #fff; font-family: monospace; }
+    .voice-wave-canvas-visualization-simulation { display: flex; align-items: center; gap: 2px; height: 20px; }
+    .voice-wave-canvas-visualization-simulation span { width: 2px; height: 60%; background: var(--adnn-tahoe-primary-tint); border-radius: 1px; animation: soundWaveSim 0.6s infinite ease-in-out alternate; }
+    .voice-wave-canvas-visualization-simulation span:nth-child(2n) { animation-delay: 0.15s; height: 40%; }
+    .voice-wave-canvas-visualization-simulation span:nth-child(3n) { animation-delay: 0.3s; height: 90%; }
+    .recording-session-active-pulse-red-glow-tint-style { background: var(--adnn-tahoe-neon-red) !important; color: #fff !important; animation: liveBlinkPulse 1.2s infinite alternate; }
+
+    /* Call Summary Logs Custom Visual Layout Block Styling */
+    .call-summary-bubble-card-style { background: rgba(255,255,255,0.02) !important; border: 1px dashed var(--adnn-tahoe-border-subtle) !important; border-radius: 12px !important; text-align: center !important; width: 90% !important; max-width: 440px !important; margin: 4px auto !important; float: none !important; clear: both !important; }
+    .call-summary-bubble-card-style p { font-family: monospace !important; font-size: 11.5px !important; color: var(--adnn-tahoe-text-muted) !important; }
+
+    /* Immersive Realtime Multi-Surface FaceTime Framework Architecture Layout Stage Panels Windows Space Components Styles Rules */
+    .adnn-call-immersive-interface-overlay-panel-container-window-context-layer-frame-box-slot-locator-instance {
+      position: fixed; inset: 0; z-index: 2147483640; background: rgba(8,8,10,0.85); backdrop-filter: blur(28px) saturate(140%); display: flex; align-items: center; justify-content: center; padding: 20px;
+    }
+    .call-interface-window-card-box {
+      width: min(840px, 100%); background: #121214; border-radius: 28px; border: 1px solid var(--adnn-tahoe-border-subtle); padding: 20px; display: flex; flex-direction: column; gap: 16px; box-shadow: 0 40px 120px rgba(0,0,0,0.6);
+    }
+    .call-interface-top-metadata-bar-strip { display: flex; justify-content: space-between; font-size: 11px; font-family: monospace; color: var(--adnn-tahoe-text-muted); border-bottom: 1px solid var(--adnn-tahoe-border-subtle); padding-bottom: 10px; }
+    .crypto-lock-icon-tint-badge-span { color: var(--adnn-tahoe-neon-green); }
+    
+    .call-interface-target-profile-avatar-banner-block { text-align: center; color: #fff; }
+    .target-profile-avatar-large-circle-element { width: 64px; height: 64px; border-radius: 20px; background: var(--adnn-tahoe-primary-tint); font-size: 24px; font-weight: 600; display: grid; place-items: center; margin: 0 auto 10px; box-shadow: 0 8px 24px rgba(39, 45, 207, 0.35); }
+    .call-interface-target-profile-avatar-banner-block h3 { margin: 0; font-size: 18px; font-weight: 500; }
+    .call-interface-target-profile-avatar-banner-block p { margin: 4px 0 0; font-size: 12px; color: var(--adnn-tahoe-text-muted); font-family: monospace; }
+    
+    .adnn-call-video-workspace-layout-grid-stage-frame-container-element-area { display: none; width: 100%; aspect-ratio: 16/9; max-height: 380px; border-radius: 18px; overflow: hidden; border: 1px solid var(--adnn-tahoe-border-subtle); position: relative; background: #000; }
+    .adnn-call-video-workspace-layout-grid-stage-frame-container-element-area.dual-active-camera-grid-layout-activated-style-override-class-layer-frame-box-slot-locator-instance { display: grid !important; grid-template-columns: 1fr 1fr; gap: 8px; padding: 8px; background: rgba(0,0,0,0.4); }
+    
+    .camera-tile-window-frame-block-card { position: relative; height: 100%; width: 100%; border-radius: 12px; overflow: hidden; background: #09090b; border: 1px solid rgba(255,255,255,0.03); }
+    .camera-tile-window-frame-block-card video { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .mirror-corrected-stream-track-rendering-engine-element-node { transform: scaleX(-1); }
+    
+    .camera-stream-track-placeholder-fallback-text-overlay-label-box { position: absolute; inset: 0; display: none; place-items: center; text-align: center; color: var(--adnn-tahoe-text-muted); font-size: 11px; font-family: monospace; letter-spacing: 0.08em; text-transform: uppercase; background: radial-gradient(circle, #1a1a22 30%, #09090b); }
+    .camera-stream-track-muted-disabled-inactive-state-black-placeholder-style-override-class-layer-frame-box-slot-locator-instance video { display: none !important; }
+    .camera-stream-track-muted-disabled-inactive-state-black-placeholder-style-override-class-layer-frame-box-slot-locator-instance .camera-stream-track-placeholder-fallback-text-overlay-label-box { display: grid !important; }
+    .camera-stream-identity-absolute-bottom-left-pill-tag-label-element-badge { position: absolute; left: 10px; bottom: 10px; background: rgba(0,0,0,0.65); padding: 4px 8px; border-radius: 20px; font-size: 10px; color: #fff; backdrop-filter: blur(8px); font-family: monospace; }
+
+    .call-interface-actions-toolbar-buttons-row-strip-control-matrix-wrapper-box-container-element { display: flex; justify-content: center; padding-top: 8px; }
+    .actions-toolbar-conditional-state-sub-group-flex-layout-strip { display: flex; align-items: center; gap: 12px; }
+    .toolbar-functional-action-circle-icon-btn { width: 52px; height: 52px; border-radius: 16px; border: 1px solid var(--adnn-tahoe-border-subtle); background: var(--adnn-tahoe-bg-glass-card); color: #fff; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1); font-size: 16px; padding: 0; }
+    .toolbar-functional-action-circle-icon-btn:hover { background: rgba(255,255,255,0.08); transform: translateY(-2px); }
+    .toolbar-functional-action-circle-icon-btn span { font-size: 9px; display: block; font-family: monospace; color: var(--adnn-tahoe-text-muted); }
+    .toolbar-functional-action-circle-icon-btn svg { width: 18px; height: 18px; display: block; }
+
+    .accept-action-green-color-pulse-neon-tint-style-btn { background: var(--adnn-tahoe-neon-green) !important; border-color: transparent !important; width: auto !important; padding: 0 20px !important; flex-direction: row !important; gap: 8px !important; border-radius: 20px !important; font-weight: 500; font-size: 14px; }
+    .accept-action-green-color-pulse-neon-tint-style-btn span { color: #fff !important; font-size: 13px !important; font-family: inherit !important; }
+    .accept-action-green-color-pulse-neon-tint-style-btn:hover { box-shadow: 0 0 20px rgba(37, 211, 102, 0.45); }
+    
+    .decline-destructive-action-red-color-style-btn { background: var(--adnn-tahoe-neon-red) !important; border-color: transparent !important; border-radius: 50% !important; }
+    .decline-destructive-action-red-color-style-btn:hover { box-shadow: 0 0 20px rgba(255, 59, 48, 0.45); }
+    #adnnCallIncomingActionsContextControlsContainerBoxStrip .decline-destructive-action-red-color-style-btn { width: auto !important; padding: 0 20px !important; flex-direction: row !important; gap: 8px !important; border-radius: 20px !important; font-weight: 500; font-size: 14px; }
+    #adnnCallIncomingActionsContextControlsContainerBoxStrip .decline-destructive-action-red-color-style-btn span { color: #fff !important; font-size: 13px !important; font-family: inherit !important; }
+
+    .disabled-muted-state-active-glow-style-class-modifier-tint-color { background: rgba(255,255,255,0.2) !important; color: var(--adnn-tahoe-neon-red) !important; border-color: rgba(255,59,48,0.3) !important; }
+
+    /* Core Architectural Fluid Adaptation Rules Infrastructure Breakpoints Mapping Layers */
+    @media (max-width: 768px) {
+      .adnn-chat-window-container { grid-template-columns: 1fr; height: 100dvh; border-radius: 0; border: 0; }
+      .adnn-chat-sidebar-wrapper { display: grid !important; }
+      .adnn-chat-main-room-view { display: none; }
+      
+      body.adnn-mobile-room-active-focus-view .adnn-chat-sidebar-wrapper { display: none !important; }
+      body.adnn-mobile-room-active-focus-view .adnn-chat-main-room-view { display: block !important; position: fixed; inset: 0; z-index: 999999; }
+      body.adnn-mobile-room-active-focus-view .adnn-active-room-layout { display: grid !important; }
+      body.adnn-mobile-room-active-focus-view .adnn-back-arrow-mobile-btn { display: grid !important; }
+      
+      .adnn-chat-messages-scroll-area { padding: 12px; }
+      .adnn-message-bubble-body-card-frame { max-width: 88%; }
+      .adnn-chat-overlay-immersive { padding: 0; }
+      
+      .adnn-call-video-workspace-layout-grid-stage-frame-container-element-area.dual-active-camera-grid-layout-activated-style-override-class-layer-frame-box-slot-locator-instance { grid-template-columns: 1fr !important; grid-template-rows: 1fr 1fr; }
+      .call-interface-window-card-box { height: 100%; border-radius: 0; justify-content: space-between; padding-vertical: 32px; }
+    }
+
+    /* Keyframe Operational Vectors Matrix Declarations Animation Layouts Block Unit Context */
+    @keyframes pulseGlow { from { opacity: 0.6; transform: scale(0.98); } to { opacity: 1; transform: scale(1.02); } }
+    @keyframes liveBlinkPulse { from { opacity: 0.3; } to { opacity: 1; } }
+    @keyframes soundWaveSim { from { transform: scaleY(0.3); } to { transform: scaleY(1); } }
+    
+    .hidden { display: none !important; }
+  `;
+  document.head.appendChild(styleElementNodePointerInstanceReferenceLocationFieldUnit);
+}

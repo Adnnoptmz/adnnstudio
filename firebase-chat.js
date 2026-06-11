@@ -85,13 +85,11 @@ let callCameraFacingMode = "user";
 let presenceTimer = null;
 let incomingCallsUnsubscribes = [];
 let activeCallUnsubscribes = [];
-let composerCameraStream = null;
-let composerCameraTargetInputId = "";
 
 if (auth && db) {
   installChatStyles();
   installClientChatShell();
-  installComposerCameraTools();
+  installMessengerExperience();
   if (location.pathname.includes("admin.html")) {
     installAdminChatPanel();
     installAdminMessageCardTools();
@@ -184,11 +182,10 @@ function installClientChatShell() {
     </div>
     <form class="adnn-chat-form" id="adnnChatForm">
       <label class="adnn-chat-media" title="Add media" aria-label="Add media">
-        <input id="adnnChatFile" type="file" accept="image/*,.pdf,.doc,.docx,.zip">
+        <input id="adnnChatFile" type="file" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.zip,.psd,.ai,.fig,.xd">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
         <span class="adnn-chat-file-name" id="adnnChatFileName" hidden></span>
       </label>
-      <button type="button" class="adnn-chat-camera" data-camera-target="adnnChatFile" aria-label="Open camera preview" title="Camera preview">${ADNN_ICON_VIDEO}</button>
       <input id="adnnChatInput" autocomplete="off" maxlength="1800" placeholder="Type a message">
       <button type="submit" aria-label="Send message">
         <svg viewBox="0 0 24 24" fill="currentColor" style="width: 14px; height: 14px; display: block;">
@@ -408,7 +405,7 @@ function installAdminChatPanel() {
         </div>
         <form class="adnn-chat-form" id="adnnAdminChatForm">
           <label class="adnn-chat-media" title="Add media" aria-label="Add media">
-            <input id="adnnAdminChatFile" type="file" accept="image/*,.pdf,.doc,.docx,.zip">
+            <input id="adnnAdminChatFile" type="file" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.zip,.psd,.ai,.fig,.xd">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
             <span class="adnn-chat-file-name" id="adnnAdminChatFileName" hidden></span>
           </label>
@@ -508,11 +505,10 @@ function installDesignerChatPanel() {
     </div>
     <form class="adnn-chat-form" id="adnnDesignerChatForm">
       <label class="adnn-chat-media" title="Add media" aria-label="Add media">
-        <input id="adnnDesignerChatFile" type="file" accept="image/*,.pdf,.doc,.docx,.zip">
+        <input id="adnnDesignerChatFile" type="file" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.zip,.psd,.ai,.fig,.xd">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
         <span class="adnn-chat-file-name" id="adnnDesignerChatFileName" hidden></span>
       </label>
-      <button type="button" class="adnn-chat-camera" data-camera-target="adnnDesignerChatFile" aria-label="Open camera preview" title="Camera preview">${ADNN_ICON_VIDEO}</button>
       <input id="adnnDesignerChatInput" autocomplete="off" maxlength="1800" placeholder="Message designers">
       <button type="submit" aria-label="Send designer message">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12 20 5l-5.8 14-3-5.9L4 12Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
@@ -713,7 +709,7 @@ function installDirectChatPanel() {
       </div>
       <div class="adnn-chat-messages" id="adnnDirectMessages"></div>
       <form class="adnn-chat-form" id="adnnDirectChatForm">
-        <label class="adnn-chat-media" title="Add media" aria-label="Add media"><input id="adnnDirectChatFile" type="file" accept="image/*,.pdf,.doc,.docx,.zip"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span class="adnn-chat-file-name" id="adnnDirectChatFileName" hidden></span></label>
+        <label class="adnn-chat-media" title="Add media" aria-label="Add media"><input id="adnnDirectChatFile" type="file" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.zip,.psd,.ai,.fig,.xd"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span class="adnn-chat-file-name" id="adnnDirectChatFileName" hidden></span></label>
         <input id="adnnDirectChatInput" autocomplete="off" maxlength="1800" placeholder="Message user" disabled>
         <button type="submit" aria-label="Send direct message" disabled><svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px;display:block;"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg></button>
       </form>
@@ -735,7 +731,7 @@ function installMobileDirectComposer() {
   form.hidden = true;
   form.innerHTML = `
     <label class="adnn-mobile-direct-upload" title="Add media" aria-label="Add media">
-      <input id="adnnMobileDirectFile" type="file" accept="image/*,.pdf,.doc,.docx,.zip">
+      <input id="adnnMobileDirectFile" type="file" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.zip,.psd,.ai,.fig,.xd">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
     </label>
     <input id="adnnMobileDirectInput" autocomplete="off" maxlength="1800" placeholder="Message" inputmode="text">
@@ -1566,9 +1562,6 @@ function createPeerConnection(callId, isAnswerer) {
         activeCallState.remoteStream.addTrack(track);
       }
       if (track.kind === "video") {
-        activeCallState.remoteVideoOn = true;
-        activeCallState.remoteVideoDisabledByPeer = false;
-        activeCallState.remoteVideoTrackReady = true;
         markRemoteVideoActive(track);
         track.onunmute = () => {
           if (!activeCallState) return;
@@ -1852,8 +1845,8 @@ function attachCallMedia() {
   const localHasVideo = !!activeCallState?.videoOn && !activeCallState?.holdOn && getLiveVideoTracks(localStream).length > 0;
   const remoteTracks = getLiveVideoTracks(remoteStream);
   const remoteVisibleTracks = getVisibleRemoteVideoTracks(remoteStream);
-  const remoteTrackReady = true;
-  const remoteHasVideo = !!activeCallState?.remoteVideoOn && !activeCallState?.remoteHoldOn && remoteTracks.length > 0 && !activeCallState?.remoteVideoDisabledByPeer;
+  const remoteTrackReady = !!activeCallState?.remoteVideoTrackReady || remoteVisibleTracks.length > 0 || (!!activeCallState?.remoteVideoOn && remoteTracks.length > 0 && !activeCallState?.remoteVideoDisabledByPeer);
+  const remoteHasVideo = !!activeCallState?.remoteVideoOn && !activeCallState?.remoteHoldOn && remoteTracks.length > 0 && remoteTrackReady && !activeCallState?.remoteVideoDisabledByPeer;
   const videoMode = localHasVideo || remoteHasVideo;
   const singleVideoMode = (localHasVideo && !remoteHasVideo) || (!localHasVideo && remoteHasVideo);
 
@@ -2415,96 +2408,97 @@ function getChatAudio() {
 }
 
 
-function installComposerCameraTools() {
-  if (document.body?.dataset.adnnComposerCameraReady === "1") return;
-  if (document.body) document.body.dataset.adnnComposerCameraReady = "1";
-  document.addEventListener("click", (event) => {
-    const cameraButton = event.target?.closest?.(".adnn-chat-camera[data-camera-target]");
-    if (cameraButton) {
-      event.preventDefault();
-      openComposerCamera(cameraButton.dataset.cameraTarget || "");
-      return;
-    }
-    if (event.target?.closest?.("[data-adnn-camera-close]")) {
-      closeComposerCamera();
-      return;
-    }
-    if (event.target?.closest?.("[data-adnn-camera-capture]")) {
-      captureComposerCameraPhoto();
-    }
+function installMessengerExperience() {
+  if (document.documentElement.dataset.adnnMessengerExperience === "true") return;
+  document.documentElement.dataset.adnnMessengerExperience = "true";
+
+  const enhance = () => {
+    document.querySelectorAll(".adnn-chat-drawer, .adnn-admin-chat-panel, .adnn-direct-chat-panel").forEach(enhanceMessengerSurface);
+    document.querySelectorAll(".adnn-chat-messages").forEach(enhanceMessageTimeline);
+    document.querySelectorAll(".adnn-chat-form").forEach(enhanceMessengerComposer);
+  };
+
+  enhance();
+  const observer = new MutationObserver(enhance);
+  observer.observe(document.documentElement, { childList: true, subtree: true });
+  window.addEventListener("hashchange", enhance);
+}
+
+function enhanceMessengerSurface(surface) {
+  if (!surface || surface.dataset.messengerEnhanced === "true") return;
+  surface.dataset.messengerEnhanced = "true";
+  surface.classList.add("adnn-messenger-surface");
+
+  const head = surface.querySelector(".adnn-chat-head, .adnn-admin-chat-title, .adnn-direct-title");
+  if (head && !head.querySelector(".adnn-messenger-presence-pill")) {
+    const pill = document.createElement("span");
+    pill.className = "adnn-messenger-presence-pill";
+    pill.innerHTML = `<span></span> secure live chat`;
+    head.appendChild(pill);
+  }
+
+  const messages = surface.querySelector(".adnn-chat-messages");
+  if (messages && !surface.querySelector(".adnn-messenger-search")) {
+    const search = document.createElement("label");
+    search.className = "adnn-messenger-search";
+    search.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.8 18.1a7.3 7.3 0 1 1 5.2-2.1l4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><input type="search" placeholder="Search messages, files, calls..." autocomplete="off">`;
+    messages.parentElement?.insertBefore(search, messages);
+    search.querySelector("input")?.addEventListener("input", (event) => filterMessengerMessages(messages, event.target.value));
+  }
+}
+
+function enhanceMessageTimeline(messages) {
+  if (!messages || messages.dataset.timelineEnhanced === "true") return;
+  messages.dataset.timelineEnhanced = "true";
+  const empty = document.createElement("div");
+  empty.className = "adnn-messenger-empty-state";
+  empty.innerHTML = `<strong>Start the conversation</strong><span>Share ideas, images, files, voice notes, and jump into audio or camera-to-camera calls.</span>`;
+  messages.prepend(empty);
+}
+
+function enhanceMessengerComposer(form) {
+  if (!form || form.dataset.composerEnhanced === "true") return;
+  form.dataset.composerEnhanced = "true";
+  const input = form.querySelector('input[type="text"], input:not([type]), textarea, #adnnChatInput, #adnnAdminChatInput, #adnnDirectChatInput');
+  const file = form.querySelector('input[type="file"]');
+  if (file) file.setAttribute("accept", "image/*,video/*,audio/*,.pdf,.doc,.docx,.zip,.psd,.ai,.fig,.xd");
+
+  const tools = document.createElement("div");
+  tools.className = "adnn-messenger-tools";
+  tools.innerHTML = `
+    <button type="button" data-quick="Hello AdnnStudio, I need help with a design update.">Brief</button>
+    <button type="button" data-quick="Can you review this and share your feedback?">Review</button>
+    <button type="button" data-quick="I uploaded the file. Please check it when available.">File sent</button>
+    <button type="button" data-emoji="✨">✨</button>
+    <button type="button" data-emoji="👍">👍</button>
+    <button type="button" data-emoji="🙏">🙏</button>`;
+  form.insertAdjacentElement("beforebegin", tools);
+  tools.addEventListener("click", (event) => {
+    const button = event.target.closest("button");
+    if (!button || !input) return;
+    const addition = button.dataset.quick || button.dataset.emoji || "";
+    insertComposerText(input, addition);
   });
 }
 
-async function openComposerCamera(targetInputId) {
-  if (!targetInputId || !navigator.mediaDevices?.getUserMedia) {
-    showChatAlert({ text: "Camera preview is not available in this browser." }, "Camera");
-    return;
-  }
-  closeComposerCamera();
-  composerCameraTargetInputId = targetInputId;
-  const overlay = document.createElement("div");
-  overlay.id = "adnnComposerCameraModal";
-  overlay.className = "adnn-composer-camera-modal";
-  overlay.innerHTML = `
-    <div class="adnn-composer-camera-card" role="dialog" aria-modal="true" aria-label="Camera preview">
-      <div class="adnn-composer-camera-head">
-        <div><strong>Camera preview</strong><small>Mirror preview before sending</small></div>
-        <button type="button" class="adnn-composer-camera-close" data-adnn-camera-close aria-label="Close camera">${ADNN_ICON_CLOSE}</button>
-      </div>
-      <div class="adnn-composer-camera-stage">
-        <video id="adnnComposerCameraVideo" autoplay muted playsinline></video>
-        <span class="adnn-composer-camera-badge">Live</span>
-      </div>
-      <div class="adnn-composer-camera-actions">
-        <button type="button" data-adnn-camera-close>Cancel</button>
-        <button type="button" class="is-primary" data-adnn-camera-capture>Use photo</button>
-      </div>
-    </div>`;
-  document.body.appendChild(overlay);
-  try {
-    composerCameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
-    const video = document.getElementById("adnnComposerCameraVideo");
-    if (video) {
-      video.srcObject = composerCameraStream;
-      await video.play?.().catch(() => {});
-    }
-  } catch (error) {
-    closeComposerCamera();
-    showChatAlert({ text: "Please allow camera access to use camera preview." }, "Camera blocked");
-  }
+function insertComposerText(input, addition) {
+  const value = String(input.value || "");
+  const start = Number.isFinite(input.selectionStart) ? input.selectionStart : value.length;
+  const end = Number.isFinite(input.selectionEnd) ? input.selectionEnd : value.length;
+  const spacer = value && !/\s$/.test(value.slice(0, start)) && addition.length > 2 ? " " : "";
+  input.value = `${value.slice(0, start)}${spacer}${addition}${value.slice(end)}`;
+  input.focus();
+  const pos = start + spacer.length + addition.length;
+  try { input.setSelectionRange(pos, pos); } catch (error) {}
+  input.dispatchEvent(new Event("input", { bubbles: true }));
 }
 
-function closeComposerCamera() {
-  try { composerCameraStream?.getTracks?.().forEach((track) => track.stop()); } catch (error) {}
-  composerCameraStream = null;
-  composerCameraTargetInputId = "";
-  document.getElementById("adnnComposerCameraModal")?.remove();
-}
-
-function captureComposerCameraPhoto() {
-  const video = document.getElementById("adnnComposerCameraVideo");
-  const input = document.getElementById(composerCameraTargetInputId);
-  if (!video || !input) return closeComposerCamera();
-  const width = video.videoWidth || 1080;
-  const height = video.videoHeight || 1440;
-  const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
-  const context = canvas.getContext("2d");
-  if (!context) return closeComposerCamera();
-  context.translate(width, 0);
-  context.scale(-1, 1);
-  context.drawImage(video, 0, 0, width, height);
-  canvas.toBlob((blob) => {
-    if (!blob) return closeComposerCamera();
-    const file = new File([blob], `camera-${Date.now()}.jpg`, { type: "image/jpeg" });
-    const transfer = new DataTransfer();
-    transfer.items.add(file);
-    input.files = transfer.files;
-    input.dispatchEvent(new Event("change", { bubbles: true }));
-    closeComposerCamera();
-    showChatAlert({ text: "Camera photo is ready in the composer. Add a message or press send." }, "Camera preview");
-  }, "image/jpeg", 0.92);
+function filterMessengerMessages(messages, term) {
+  const needle = String(term || "").trim().toLowerCase();
+  messages.querySelectorAll(".adnn-chat-bubble").forEach((bubble) => {
+    const match = !needle || bubble.textContent.toLowerCase().includes(needle);
+    bubble.classList.toggle("is-search-hidden", !match);
+  });
 }
 
 function installChatStyles() {
@@ -2655,15 +2649,15 @@ function installChatStyles() {
 
     .adnn-chat-form {
       display: grid;
-      grid-template-columns: 42px 42px minmax(0, 1fr) 42px;
+      grid-template-columns: 42px minmax(0, 1fr) 42px;
       gap: 8px;
       padding: 12px;
       border-top: 1px solid var(--adnn-line);
       align-items: end;
     }
-    .adnn-chat-media, .adnn-chat-camera { width:42px; height:42px; border-radius:50%; display:grid; place-items:center; position:relative; background: rgba(255,255,255,.05); color: var(--adnn-text); cursor:pointer; border: 1px solid var(--adnn-line); }
+    .adnn-chat-media { width:42px; height:42px; border-radius:50%; display:grid; place-items:center; position:relative; background: rgba(255,255,255,.05); color: var(--adnn-text); cursor:pointer; border: 1px solid var(--adnn-line); }
     .adnn-chat-media input { position:absolute; width:1px; height:1px; opacity:0; pointer-events:none; }
-    .adnn-chat-media svg, .adnn-chat-camera svg { width:18px; height:18px; display: block; transition: transform .22s ease; }
+    .adnn-chat-media svg { width:18px; height:18px; display: block; transition: transform .22s ease; }
     .adnn-chat-media.has-file { color:#fff; background: var(--adnn-accent); border-color: rgba(255,255,255,0.15); }
     .adnn-chat-media.has-file svg { transform: rotate(45deg); }
     .adnn-chat-file-name { position:absolute; left:0; bottom:calc(100% + 8px); width:max-content; max-width:min(280px, calc(100vw - 48px)); min-height:42px; padding:7px 10px; border-radius:16px; color:#fff; background: rgba(39,45,207,.9); font-size:10px; font-family: var(--font-mono, monospace); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; pointer-events:none; box-shadow:0 14px 34px rgba(39,45,207,.30); display:flex; align-items:center; gap:8px; }
@@ -2673,21 +2667,6 @@ function installChatStyles() {
     .adnn-chat-file-name .adnn-file-copy strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:11px; font-weight:600; }
     .adnn-chat-file-name .adnn-file-copy small { opacity:.74; font-size:9px; }
     .adnn-chat-file-name[hidden] { display:none !important; }
-    .adnn-chat-camera { height:42px; border-radius:50%; display:grid; place-items:center; border:1px solid var(--adnn-line); background:rgba(255,255,255,.05); color:var(--adnn-text); cursor:pointer; padding:0; transition:transform .18s ease, background .18s ease, border-color .18s ease; }
-    .adnn-chat-camera:hover { transform:translateY(-1px); background:rgba(39,45,207,.18); border-color:rgba(141,150,255,.38); }
-    .adnn-composer-camera-modal { position:fixed; inset:0; z-index:100001; display:grid; place-items:center; padding:18px; background:rgba(0,0,0,.68); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px); }
-    .adnn-composer-camera-card { width:min(420px, calc(100vw - 28px)); border:1px solid var(--adnn-line); border-radius:28px; overflow:hidden; background:linear-gradient(135deg, rgba(34,34,38,.94), rgba(12,12,16,.9)); box-shadow:0 28px 90px rgba(0,0,0,.48), inset 0 1px 0 rgba(255,255,255,.12); color:var(--adnn-text); }
-    .adnn-composer-camera-head { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:14px 16px; border-bottom:1px solid var(--adnn-line); }
-    .adnn-composer-camera-head strong { font-size:15px; font-weight:600; letter-spacing:-.01em; }
-    .adnn-composer-camera-head small { display:block; margin-top:3px; color:var(--adnn-muted); font-family:var(--font-mono, monospace); font-size:10px; text-transform:uppercase; letter-spacing:.12em; }
-    .adnn-composer-camera-close { width:36px; height:36px; border:0; border-radius:50%; background:rgba(255,255,255,.08); color:inherit; cursor:pointer; display:grid; place-items:center; }
-    .adnn-composer-camera-stage { position:relative; margin:14px; border-radius:22px; overflow:hidden; background:#050507; aspect-ratio:3/4; border:1px solid var(--adnn-line); }
-    .adnn-composer-camera-stage video { width:100%; height:100%; object-fit:cover; transform:scaleX(-1); display:block; }
-    .adnn-composer-camera-badge { position:absolute; right:12px; top:12px; padding:7px 10px; border-radius:999px; background:rgba(0,0,0,.42); color:#fff; font-family:var(--font-mono, monospace); font-size:10px; letter-spacing:.1em; text-transform:uppercase; }
-    .adnn-composer-camera-actions { display:flex; gap:10px; padding:0 14px 14px; }
-    .adnn-composer-camera-actions button { flex:1; min-height:44px; border:1px solid var(--adnn-line); border-radius:16px; color:var(--adnn-text); background:rgba(255,255,255,.06); cursor:pointer; font-weight:600; }
-    .adnn-composer-camera-actions .is-primary { color:#fff; border-color:rgba(255,255,255,.16); background:linear-gradient(135deg, rgba(39,45,207,.96), rgba(20,25,160,.85)); }
-
     .adnn-chat-form input { min-width:0; height:44px; border: 1px solid var(--adnn-line); border-radius:16px; padding:0 16px; background: rgba(0,0,0,0.2); color:var(--adnn-text); outline:0; font-size:16px; }
     .adnn-chat-form input::placeholder { color: var(--adnn-muted); }
     .adnn-chat-form input:focus { border-color: var(--adnn-accent); }
@@ -2837,7 +2816,7 @@ function installChatStyles() {
       .adnn-direct-room .adnn-chat-messages { min-height:0; overflow:auto; padding:12px 12px 10px; overscroll-behavior:contain; }
       .adnn-direct-room .adnn-chat-form { position:sticky; bottom:0; z-index:5; border-top:1px solid var(--adnn-line); padding:8px 10px calc(8px + env(safe-area-inset-bottom)); background:rgba(10,10,13,.96); backdrop-filter:blur(14px); }
       .adnn-direct-room .adnn-chat-form input { height:42px; font-size:16px; border-radius:18px; }
-      .adnn-direct-room .adnn-chat-form button, .adnn-direct-room .adnn-chat-media, .adnn-chat-camera { width:42px; height:42px; border-radius:50%; flex:0 0 42px; }
+      .adnn-direct-room .adnn-chat-form button, .adnn-direct-room .adnn-chat-media { width:42px; height:42px; border-radius:50%; flex:0 0 42px; }
     }
 
 
@@ -2915,7 +2894,7 @@ function installChatStyles() {
       .adnn-admin-chat-room .adnn-chat-form { position:sticky; bottom:0; z-index:4; padding-bottom:calc(10px + env(safe-area-inset-bottom)); }
       .adnn-chat-form { grid-template-columns:42px minmax(0,1fr) 42px; }
       .adnn-chat-form input { height:42px; border-radius: 14px; }
-      .adnn-chat-form button, .adnn-chat-media, .adnn-chat-camera { width:42px; height:42px; }
+      .adnn-chat-form button, .adnn-chat-media { width:42px; height:42px; }
       .admin-main-viewport:has(#adnnAdminChatPanel) { overflow:hidden; padding-bottom:0 !important; }
 
 

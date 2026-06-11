@@ -29,7 +29,6 @@ let activeMessagesUnsubscribe = null;
 let adminChatsUnsubscribe = null;
 
 // Audio context states
-let chatNotificationAudio = null;
 let activeCallState = null;
 let activeMediaRecorder = null;
 let voiceRecordTimer = null;
@@ -72,18 +71,15 @@ if (db && auth) {
    ========================================================================== */
 
 function setupStandardUserPortal() {
-  // Target containers inside user portals
   const userChatContainer = document.getElementById("directChatMount");
   const adminSupportContainer = document.getElementById("clientChatMount");
 
-  // Hook operational layout interfaces directly inside "User Chats" navigation scope
   if (userChatContainer) {
     userChatContainer.innerHTML = buildMessengerMarkupFrame("direct");
     initializeMessengerControllers("direct");
     bindEcosystemStreams("direct");
   }
 
-  // Hook operational layout interfaces directly inside "Admin Support" navigation scope
   if (adminSupportContainer) {
     adminSupportContainer.innerHTML = buildMessengerMarkupFrame("support");
     initializeMessengerControllers("support");
@@ -115,17 +111,14 @@ function setupAdminWorkspacePortal() {
     </div>
   `;
 
-  // Establish Admin Master Snapshot Monitor Streams
   if (adminChatsUnsubscribe) adminChatsUnsubscribe();
   adminChatsUnsubscribe = onSnapshot(collection(db, "chats"), (snapshot) => {
     const chats = [];
     snapshot.forEach(docSnap => chats.push({ id: docSnap.id, ...docSnap.data() }));
-    // Sort chronologically by update timestamp metadata markers
     chats.sort((a, b) => toUnixEpochMillis(b.updatedAt) - toUnixEpochMillis(a.updatedAt));
     renderAdminSidebarMatrix(chats);
   });
 
-  // Bind dynamic searching logic directly across the console panel interface
   document.getElementById("adminSidebarSearch")?.addEventListener("input", (e) => {
     const term = e.target.value.toLowerCase().trim();
     document.querySelectorAll(".adnn-admin-list-item-btn").forEach(item => {
@@ -184,10 +177,7 @@ function loadAdminSelectedConversationStream(chat) {
 
   targetRoom.innerHTML = buildMessengerMarkupFrame(chat.type);
   initializeMessengerControllers(chat.type);
-  
-  // Clear administrative notification targets upon reading the stream thread collection docs
   updateDoc(doc(db, "chats", chat.id), { unreadForAdmin: 0 }).catch(() => {});
-  
   bindEcosystemStreams(chat.type);
 }
 
@@ -269,8 +259,8 @@ function bindEcosystemStreams(type) {
   if (!isAdminEmail(activeUser.email)) {
     if (type === "support") {
       activeChatId = `support_${activeUser.uid}`;
+      establishActiveMessagePipelineListeners(activeChatId, prefix, type);
     } else {
-      // In User Chats pane, wait for Admin paired connection initialization setup mapping paths
       if (activeChatUnsubscribe) activeChatUnsubscribe();
       activeChatUnsubscribe = onSnapshot(
         query(collection(db, "chats"), where("type", "==", "direct"), where("participantUids", "array-contains", activeUser.uid)),
@@ -278,7 +268,6 @@ function bindEcosystemStreams(type) {
           const validPairedChannels = [];
           snapshot.forEach(docSnap => validPairedChannels.push({ id: docSnap.id, ...docSnap.data() }));
           if (validPairedChannels.length > 0) {
-            // Pick the chronologically top paired active pipeline session trace target entry
             activeChatId = validPairedChannels[0].id;
             establishActiveMessagePipelineListeners(activeChatId, prefix, type);
           } else {
@@ -286,8 +275,8 @@ function bindEcosystemStreams(type) {
           }
         }
       );
-      return;
     }
+    return;
   }
 
   establishActiveMessagePipelineListeners(activeChatId, prefix, type);
@@ -296,7 +285,6 @@ function bindEcosystemStreams(type) {
 function establishActiveMessagePipelineListeners(chatId, prefix, type) {
   if (!chatId) return;
 
-  // Track state targets across channel layout frameworks
   const headerTitle = document.getElementById(`${prefix}HeaderTitle`);
   const headerAvatar = document.getElementById(`${prefix}HeaderAvatar`);
   const headerStatus = document.getElementById(`${prefix}HeaderStatus`);
@@ -309,7 +297,6 @@ function establishActiveMessagePipelineListeners(chatId, prefix, type) {
     if (type === "support") {
       resolvedTitle = isAdminEmail(activeUser.email) ? `Client: ${data.clientName || data.clientEmail}` : "AdnnStudio Support Portal";
     } else {
-      // Handle formatting names for direct peer mappings dynamically
       if (!isAdminEmail(activeUser.email)) {
         const names = data.participantNames || {};
         const otherUid = data.participantUids?.find(uid => uid !== activeUser.uid);
@@ -320,7 +307,6 @@ function establishActiveMessagePipelineListeners(chatId, prefix, type) {
     if (headerTitle) headerTitle.textContent = resolvedTitle;
     if (headerAvatar) headerAvatar.textContent = resolvedTitle.slice(0, 2).toUpperCase();
 
-    // Trigger explicit secondary check trace monitoring live connection statuses
     if (type === "support") {
       monitorTargetPresence(isAdminEmail(activeUser.email) ? data.clientUid : ADMIN_ALIAS_UID, headerStatus);
     } else {
@@ -329,7 +315,6 @@ function establishActiveMessagePipelineListeners(chatId, prefix, type) {
     }
   });
 
-  // Attach structural collection query pipelines listening for message arrivals
   const msgQuery = query(collection(db, "chats", chatId, "messages"), orderBy("createdAt", "asc"), limit(CALL_MESSAGE_LIMIT));
   
   if (activeMessagesUnsubscribe) activeMessagesUnsubscribe();
@@ -371,7 +356,6 @@ function initializeMessengerControllers(type) {
   let currentAttachmentFile = null;
   let activeQuotedMessageId = null;
 
-  // Typing indicators logic metrics stream triggers
   textInput?.addEventListener("input", () => {
     if (!activeChatId) return;
     const isTyping = textInput.value.length > 0;
@@ -380,7 +364,7 @@ function initializeMessengerControllers(type) {
     }, { merge: true });
   });
 
-  // Track remote status variations to paint dynamic layout elements safely
+  // Track dynamic remote typing notifications
   onSnapshot(collection(db, "chats", activeChatId || "null", "typing"), (snapshot) => {
     let remoteTypingDetected = false;
     snapshot.forEach(docSnap => {
@@ -393,7 +377,6 @@ function initializeMessengerControllers(type) {
     if (indicator) indicator.hidden = !remoteTypingDetected;
   });
 
-  // Intercept standard attachment events inside the panel architecture
   fileInput?.addEventListener("change", (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -425,16 +408,13 @@ function initializeMessengerControllers(type) {
     if (bar) bar.hidden = true;
   });
 
-  // WhatsApp Voice Message Processing Framework Loop
+  // Native touch & click listeners targeting audio message builders
   voiceActionBtn?.addEventListener("mousedown", startVoiceRecordingPipeline);
   voiceActionBtn?.addEventListener("mouseup", () => endVoiceRecordingPipeline(prefix));
-  voiceActionBtn?.addEventListener("mouseleave", () => endVoiceRecordingPipeline(prefix, true)); // Cancel if dragged off
-  
-  // Mobile touch alignment equivalents mapping native interactions
+  voiceActionBtn?.addEventListener("mouseleave", () => endVoiceRecordingPipeline(prefix, true));
   voiceActionBtn?.addEventListener("touchstart", (e) => { e.preventDefault(); startVoiceRecordingPipeline(); });
   voiceActionBtn?.addEventListener("touchend", (e) => { e.preventDefault(); endVoiceRecordingPipeline(prefix); });
 
-  // Handle transaction dispatches globally
   form?.addEventListener("submit", async (e) => {
     e.preventDefault();
     if (!activeChatId) return;
@@ -448,7 +428,6 @@ function initializeMessengerControllers(type) {
     const panel = document.getElementById(`${prefix}UploadPreviewPanel`);
     if (panel) panel.hidden = true;
 
-    // Reset Quote context structures explicitly
     const quotedIdSnapshot = activeQuotedMessageId;
     activeQuotedMessageId = null;
     const quoteBar = document.getElementById(`${prefix}QuoteContextBar`);
@@ -475,7 +454,6 @@ function initializeMessengerControllers(type) {
 
       await addDoc(collection(db, "chats", activeChatId, "messages"), msgPayload);
       
-      // Paint transaction counters based on incoming data variations
       const chatUpdateMeta = {
         lastMessage: text || (originalFile ? "Premium Asset Attached" : "Voice Note"),
         lastSenderUid: activeUser.uid,
@@ -494,8 +472,6 @@ function initializeMessengerControllers(type) {
       }
 
       await updateDoc(doc(db, "chats", activeChatId), chatUpdateMeta);
-      
-      // Stop local typing loops
       setDoc(doc(db, "chats", activeChatId, "typing", activeUser.uid), { isTyping: false }, { merge: true });
 
     } catch (err) {
@@ -503,11 +479,10 @@ function initializeMessengerControllers(type) {
     }
   });
 
-  // Call Button Triggers Injection routing dynamically
   document.getElementById(`${prefix}AudioCallTrigger`)?.addEventListener("click", () => initiateEcosystemCall("audio", type));
   document.getElementById(`${prefix}VideoCallTrigger`)?.addEventListener("click", () => initiateEcosystemCall("video", type));
 
-  // Expose global quote hook context mappings inside window closures safely
+  // Dynamic injection routing mapping reply triggers universally
   window[`hookReplyContext_${prefix}`] = function(messageId, senderName, textSummary) {
     activeQuotedMessageId = messageId;
     const bar = document.getElementById(`${prefix}QuoteContextBar`);
@@ -541,14 +516,12 @@ function renderEcosystemMessagesViewport(messages, prefix, chatId) {
     const bubble = document.createElement("div");
     bubble.className = `adnn-whatsapp-message-bubble ${isMine ? "is-sender-bubble" : "is-receiver-bubble"}`;
     
-    // Evaluate Quote mapping configurations explicitly
     let quoteMarkup = "";
     if (msg.replyToMessageId) {
       quoteMarkup = `<div class="adnn-bubble-quoted-context-wrapper">Awaiting parent context data...</div>`;
       resolveQuotedBubbleContextAsync(chatId, msg.replyToMessageId, bubble);
     }
 
-    // Evaluate Media Attachment Elements layout parameters
     let mediaMarkup = "";
     if (msg.mediaUrl) {
       if (msg.mediaType?.startsWith("image/")) {
@@ -564,15 +537,13 @@ function renderEcosystemMessagesViewport(messages, prefix, chatId) {
       }
     }
 
-    // Render precise Read Receipts ticks indicators matrix parameters
     let receiptsTicks = "";
     if (isMine) {
       const readers = msg.readBy || [];
-      const readDelivered = readers.length > 1; // Includes sender plus partner target document traces
+      const readDelivered = readers.length > 1;
       receiptsTicks = `<span class="adnn-receipt-tick-marks ${readDelivered ? "is-fully-read-blue" : ""}">&#10004;&#10004;</span>`;
     }
 
-    // Setup Reaction Engine UI elements mapping collection hooks inside layouts
     const currentReactions = msg.reactions || {};
     let reactionsRowMarkup = "";
     if (Object.keys(currentReactions).length > 0) {
@@ -608,7 +579,6 @@ function renderEcosystemMessagesViewport(messages, prefix, chatId) {
     viewport.appendChild(bubble);
   });
 
-  // Lock scroll metrics straight onto terminal bases instantly
   viewport.scrollTop = viewport.scrollHeight;
 }
 
@@ -644,10 +614,9 @@ async function startVoiceRecordingPipeline() {
       const audioBlob = new Blob(chunks, { type: "audio/ogg; codecs=opus" });
       const convertedVoiceFile = new File([audioBlob], `voice_note_${Date.now()}.ogg`, { type: "audio/ogg" });
       
-      // Stop all capturing audio hardware tracks safely
       stream.getTracks().forEach(track => track.stop());
       
-      if (voiceDurationCounter > 1) { // Prevent blank clicks
+      if (voiceDurationCounter > 1) { 
         const cloudData = await executeCloudMediaUpload(convertedVoiceFile, activeChatId);
         await addDoc(collection(db, "chats", activeChatId, "messages"), {
           senderUid: activeUser.uid,
@@ -674,7 +643,7 @@ function endVoiceRecordingPipeline(prefix, cancelPlayback = false) {
   if (!activeMediaRecorder || activeMediaRecorder.state === "inactive") return;
 
   if (cancelPlayback) {
-    voiceDurationCounter = 0; // Drop data collection array sets
+    voiceDurationCounter = 0;
   }
   activeMediaRecorder.stop();
 }
@@ -730,7 +699,6 @@ function markMessagesAsReadEcosystem(chatId, type) {
     });
   });
 
-  // Nullify channel navigation alert counters
   const trackingObj = {};
   if (type === "support") {
     trackingObj[isAdminEmail(activeUser.email) ? "unreadForAdmin" : "unreadForClient"] = 0;
@@ -778,7 +746,6 @@ async function initiateEcosystemCall(kind, chatType) {
     const localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: wantsVideo });
     const callId = `call_${Date.now()}_${activeUser.uid.slice(0, 5)}`;
     
-    // Evaluate operational targets
     let receiverTargetId = ADMIN_ALIAS_UID;
     let destinationLabelName = "AdnnStudio Support Console";
     
@@ -793,9 +760,8 @@ async function initiateEcosystemCall(kind, chatType) {
       destinationLabelName = chatDoc.data().clientName || "Client Target";
     }
 
-    // Provision local signaling state parameters globally
     activeCallState = {
-      callId, role: "caller", kind, isPolitePeer: false, // Impolite peer drives renegotiation offer cycles
+      callId, role: "caller", kind, isPolitePeer: false,
       localStream, remoteStream: new MediaStream(), peerConnection: null, receiverUid: receiverTargetId,
       chatId: activeChatId, label: destinationLabelName
     };
@@ -803,7 +769,6 @@ async function initiateEcosystemCall(kind, chatType) {
     renderActiveCallHardwareOverlayWindow();
     instantiateWebRTCPeerConnection(callId, wantsVideo);
 
-    // Build operational WebRTC Offer descriptions
     const offer = await activeCallState.peerConnection.createOffer();
     await activeCallState.peerConnection.setLocalDescription(offer);
 
@@ -831,12 +796,10 @@ function instantiateWebRTCPeerConnection(callId, wantsVideo) {
 
   activeCallState.peerConnection = pc;
 
-  // Bind local tracking data directly into peer connection tracks pipeline channels
   activeCallState.localStream.getTracks().forEach(track => {
     pc.addTrack(track, activeCallState.localStream);
   });
 
-  // Track operational connection state variations checking link viability status metrics
   pc.onicecandidate = (e) => {
     if (!e.candidate) return;
     const pathCollection = activeCallState.role === "caller" ? "offerCandidates" : "answerCandidates";
@@ -855,7 +818,6 @@ function instantiateWebRTCPeerConnection(callId, wantsVideo) {
     if (remoteVideoElement) remoteVideoElement.srcObject = activeCallState.remoteStream;
   };
 
-  // Build the live snapshot monitor layer mapping signal parameter paths directly
   onSnapshot(doc(db, "calls", callId), async (snapshot) => {
     if (!snapshot.exists()) return;
     const data = snapshot.data();
@@ -869,14 +831,12 @@ function instantiateWebRTCPeerConnection(callId, wantsVideo) {
       terminateLiveHardwareCallSession(false);
     }
 
-    // Sync remote muting transformations straight inside active viewport layers dynamically
     const remoteVideoPanel = document.getElementById("adnnRemoteVideoMount");
     if (remoteVideoPanel) {
       remoteVideoPanel.style.opacity = data.cameraOn === false ? "0" : "1";
     }
   });
 
-  // Monitor incoming candidate elements from the remote peer signaling data maps
   const targetsCollection = activeCallState.role === "caller" ? "answerCandidates" : "offerCandidates";
   onSnapshot(collection(db, "calls", callId, targetsCollection), snapshot => {
     snapshot.docChanges().forEach(change => {
@@ -888,7 +848,6 @@ function instantiateWebRTCPeerConnection(callId, wantsVideo) {
 }
 
 function renderActiveIncomingCallOverlay(callId, callData) {
-  // Prevent stacking identical element nodes on screen
   if (document.getElementById("adnnCallOverlayContainer")) return;
 
   const ringOverlay = document.createElement("div");
@@ -981,7 +940,6 @@ function renderActiveCallHardwareOverlayWindow() {
   const localVideoElement = document.getElementById("adnnLocalVideoMount");
   if (localVideoElement) localVideoElement.srcObject = activeCallState.localStream;
 
-  // Control modifiers adjustments actions hooks
   document.getElementById("adnnToggleMicHardwareBtn")?.addEventListener("click", (e) => {
     const audioTrack = activeCallState.localStream.getAudioTracks()[0];
     if (audioTrack) {
@@ -1028,7 +986,6 @@ function terminateLiveHardwareCallSession(explicitlyTriggeredByLocalPeer = true)
     updateDoc(doc(db, "calls", activeCallState.callId), { status: "ended" }).catch(() => {});
   }
 
-  // Clear hardware streaming assets pointers paths from execution channels safely
   if (activeCallState.localStream) {
     activeCallState.localStream.getTracks().forEach(track => track.stop());
   }
@@ -1073,7 +1030,6 @@ function terminateAllSystemListeners() {
 }
 
 async function resolveUserProfile(uid, email) {
-  // Check the design database maps dynamically path collection routes
   const clientDoc = await getDoc(doc(db, "clients", uid)).catch(() => null);
   if (clientDoc?.exists()) return { uid, role: "client", ...clientDoc.data() };
 
@@ -1114,10 +1070,6 @@ function escapeHtmlString(str) {
     .replace(/"/g, "&quot;").replace(/'/g, "&#039;");
 }
 
-function isAdminEmail(email) {
-  return String(email || "").trim().toLowerCase() === ADMIN_EMAIL;
-}
-
 /* ==========================================================================
    PORTAL EXTRA-PREMIUM GLOW INTERACTION BRAND STYLING LAYOUT RULES
    ========================================================================== */
@@ -1131,7 +1083,8 @@ function injectGlobalAppStyles() {
     .adnn-whatsapp-messenger-frame {
       display: grid;
       grid-template-rows: 64px 1fr auto;
-      height: min(640px, calc(100svh - 240px));
+      height: 100% !important;
+      min-height: 480px;
       background: linear-gradient(145deg, rgba(20, 20, 25, 0.96), rgba(10, 10, 14, 0.98));
       border-radius: 24px;
       overflow: hidden;
@@ -1141,7 +1094,7 @@ function injectGlobalAppStyles() {
 
     #clientChatMount.adnn-designer-chat-panel {
       display: block !important;
-      height: auto !important;
+      height: 560px !important;
       border: 0 !important;
       background: transparent !important;
     }
@@ -1304,6 +1257,7 @@ function injectGlobalAppStyles() {
       line-height: 1.5;
       display: flex;
       flex-direction: column;
+      margin-bottom: 4px;
       animation: bubbleArrivalAnimation 0.25s cubic-bezier(0.1, 1, 0.1, 1) both;
     }
 
@@ -1563,7 +1517,7 @@ function injectGlobalAppStyles() {
     .adnn-webrtc-stream-track-video-tile-node { width: 100%; height: 100%; object-fit: cover; background: #050507; }
     .is-local-mirror-track {
       position: absolute; bottom: 14px; right: 14px; width: 25%; aspect-ratio: 3/4;
-      border-radius: 12px; border: 1px solid rgba(255,255,255,0.2); transform: scaleX(-1); /* Correct perspective mirror lines */
+      border-radius: 12px; border: 1px solid rgba(255,255,255,0.2); transform: scaleX(-1);
     }
     .adnn-active-call-floating-identity-row { margin-bottom: 20px; text-align: left; padding: 0 4px; }
     .adnn-active-call-floating-identity-row h3 { margin: 0 0 4px; font-size: 17px; font-weight: 500; }

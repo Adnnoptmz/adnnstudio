@@ -225,9 +225,26 @@ function renderThreadList(chats, list, roomId, scope) {
 
 function renderPassiveRoom(roomId, title, message, placeholder) {
   const target = document.getElementById(roomId);
-  if (!target || rooms.has(roomId)) return;
+  if (!target) return;
+  
+  // Create state for passive room to handle composer controls correctly
+  const state = {
+    roomId,
+    chatId: "passive_" + roomId,
+    chatData: { type: "support" },
+    files: [],
+    replyTo: null,
+    voice: null,
+    recorder: null,
+    chunks: [],
+    recordTimer: null,
+    seconds: 0,
+    unsubs: []
+  };
+  rooms.set(roomId, state);
+
   target.innerHTML = `
-    <div class="adnn-room-shell adnn-room-shell-passive">
+    <div class="adnn-room-shell" data-room="${roomId}">
       <div class="adnn-room-head" role="toolbar" aria-label="Chat status">
         <span class="adnn-avatar">${initials(title)}</span>
         <div class="adnn-room-title">
@@ -235,18 +252,32 @@ function renderPassiveRoom(roomId, title, message, placeholder) {
           <small>${escapeHtml(message)}</small>
         </div>
       </div>
-      <main class="adnn-message-scroll">
+      <div class="adnn-call-dock" data-call-dock style="display:none !important;"></div>
+      <main class="adnn-message-scroll" data-message-scroll>
         <div class="adnn-chat-empty">${escapeHtml(message)}</div>
       </main>
+      <div class="adnn-drop-layer" data-drop-layer>Drop files to attach</div>
       <footer class="adnn-composer-wrap">
-        <form class="adnn-composer">
-          <button type="button" class="adnn-attach-btn" disabled>${ICON.clip}</button>
-          <textarea rows="1" disabled placeholder="${escapeAttr(placeholder)}"></textarea>
-          <button type="button" class="adnn-voice-btn" disabled>${ICON.mic}</button>
+        <div class="adnn-typing-line" data-typing-line hidden></div>
+        <div class="adnn-reply-bar" data-reply-bar hidden>
+          <span></span>
+          <button type="button" data-clear-reply>${ICON.x}</button>
+        </div>
+        <div class="adnn-file-preview" data-file-preview hidden></div>
+        <div class="adnn-voice-preview" data-voice-preview hidden></div>
+        <form class="adnn-composer" data-composer>
+          <label class="adnn-attach-btn" title="Attach files">
+            ${ICON.clip}
+            <input type="file" data-file-input multiple>
+          </label>
+          <textarea data-text rows="1" maxlength="1800" placeholder="${escapeAttr(placeholder)}"></textarea>
+          <button type="button" class="adnn-voice-btn" data-voice>${ICON.mic}</button>
+          <button type="submit" class="adnn-send-btn" data-send hidden>${ICON.send}</button>
         </form>
       </footer>
     </div>
   `;
+  bindRoomControls(state);
 }
 
 function openRoom(chatId, chatData, roomId) {
@@ -361,6 +392,10 @@ function bindRoomControls(state) {
   });
   form?.addEventListener("submit", (event) => {
     event.preventDefault();
+    if (state.chatId.startsWith("passive_")) {
+      showToast("Please select an active conversation thread first.");
+      return;
+    }
     sendCurrentMessage(state);
   });
   fileInput?.addEventListener("change", () => {
@@ -1389,8 +1424,22 @@ function injectChatStyles() {
     .adnn-call-meta strong, .adnn-call-meta small { display:block; }
     .adnn-call-meta small { color:rgba(255,255,255,.55); margin-top:3px; }
     .adnn-chat-toast { position:fixed; left:50%; bottom:28px; transform:translateX(-50%); z-index:2147483640; padding:10px 14px; border-radius:999px; background:#111; color:#fff; border:1px solid rgba(255,255,255,.1); box-shadow:0 16px 50px rgba(0,0,0,.3); }
+    
+    /* Responsive Overwrites Encapsulated to prevent breaking layout.html / account.html previews */
     @media (max-width:760px) {
-      .adnn-chat-layout { position:fixed; inset:0; z-index:2147483200; height:100svh; min-height:0; border:0; border-radius:0; grid-template-columns:1fr; }
+      .adnn-chat-app { display: block !important; }
+      /* Ensure the absolute container layout limits only within explicit viewport breaks */
+      .adnn-chat-app .adnn-chat-layout.is-room-open, 
+      body.adnn-chat-mobile-lock .adnn-chat-layout { 
+        position:fixed !important; 
+        inset:0 !important; 
+        z-index:2147483200 !important; 
+        height:100svh !important; 
+        width:100vw !important;
+        border:0 !important; 
+        border-radius:0 !important; 
+      }
+      .adnn-chat-layout { grid-template-columns:1fr; height: 100%; }
       .adnn-chat-thread-panel { border-right:0; }
       .adnn-chat-layout .adnn-chat-room { display:none; }
       .adnn-chat-layout.is-single .adnn-chat-room { display:block; height:100svh; }

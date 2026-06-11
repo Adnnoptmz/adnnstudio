@@ -170,6 +170,8 @@ function renderThreadList(chats, list, roomId, scope) {
     list.innerHTML = `<div class="adnn-chat-empty">No conversations yet.</div>`;
     return;
   }
+  const currentState = rooms.get(roomId);
+  let currentRow = null;
   chats.forEach((chat) => {
     const title = getChatTitle(chat, scope);
     const unread = scope === "admin" ? Number(chat.unreadForAdmin || 0) : Number(chat.unreadForClient || 0);
@@ -192,8 +194,17 @@ function renderThreadList(chats, list, roomId, scope) {
       openRoom(chat.id, chat, roomId);
       document.querySelector(".adnn-chat-layout")?.classList.add("is-room-open");
     });
+    if (currentState?.chatId === chat.id) {
+      row.classList.add("is-active");
+      currentRow = row;
+    }
     list.appendChild(row);
   });
+  if (scope === "admin" && !currentRow && chats[0]) {
+    const firstRow = list.querySelector(".adnn-thread");
+    firstRow?.classList.add("is-active");
+    openRoom(chats[0].id, chats[0], roomId);
+  }
 }
 
 function openRoom(chatId, chatData, roomId) {
@@ -217,11 +228,32 @@ function openRoom(chatId, chatData, roomId) {
   };
   rooms.set(roomId, state);
   target.innerHTML = roomMarkup(roomId);
+  ensureRoomChrome(state);
   bindRoomControls(state);
   watchRoomMeta(state);
   watchMessages(state);
   watchTyping(state);
   resetUnread(chatData);
+}
+
+function ensureRoomChrome(state) {
+  const shell = roomShell(state);
+  const head = shell?.querySelector(".adnn-room-head");
+  if (!shell || !head) return;
+  if (!head.querySelector('[data-call="audio"]')) {
+    head.insertAdjacentHTML("beforeend", `<button type="button" class="adnn-call-btn" data-call="audio" title="Audio call" aria-label="Audio call">${ICON.phone}</button>`);
+  }
+  if (!head.querySelector('[data-call="video"]')) {
+    head.insertAdjacentHTML("beforeend", `<button type="button" class="adnn-call-btn" data-call="video" title="Video call" aria-label="Video call">${ICON.video}</button>`);
+  }
+  head.querySelectorAll("[data-call]").forEach((btn) => {
+    btn.hidden = false;
+    btn.removeAttribute("hidden");
+    btn.style.setProperty("display", "grid", "important");
+    btn.style.setProperty("visibility", "visible", "important");
+    btn.style.setProperty("opacity", "1", "important");
+    btn.style.setProperty("pointer-events", "auto", "important");
+  });
 }
 
 function roomMarkup(roomId) {

@@ -1561,15 +1561,9 @@ function createPeerConnection(callId, isAnswerer) {
         activeCallState.remoteStream.addTrack(track);
       }
       if (track.kind === "video") {
-        if (activeCallState && track.readyState !== "ended" && !track.muted) {
-          activeCallState.remoteVideoOn = true;
-          activeCallState.remoteVideoDisabledByPeer = false;
-        }
         markRemoteVideoActive(track);
         track.onunmute = () => {
           if (!activeCallState) return;
-          activeCallState.remoteVideoOn = true;
-          activeCallState.remoteVideoDisabledByPeer = false;
           activeCallState.remoteVideoTrackReady = true;
           markRemoteVideoActive(track);
         };
@@ -1626,11 +1620,16 @@ function watchActiveCall(callId, isAnswerer) {
         if (getVisibleRemoteVideoTracks(activeCallState.remoteStream).length) activeCallState.remoteVideoTrackReady = true;
         attachCallMedia();
       } else {
-        activeCallState.remoteVideoDisabledByPeer = true;
-        activeCallState.remoteVideoOn = false;
-        activeCallState.remoteVideoTrackReady = false;
-        clearVideoElement(document.getElementById("adnnCallRemoteVideo"));
-        attachCallMedia();
+        // Only kill remote video if no live WebRTC track is already active.
+        // The Firestore media flag can lag behind the actual WebRTC track state.
+        const liveRemoteTracks = getVisibleRemoteVideoTracks(activeCallState.remoteStream);
+        if (!liveRemoteTracks.length) {
+          activeCallState.remoteVideoDisabledByPeer = true;
+          activeCallState.remoteVideoOn = false;
+          activeCallState.remoteVideoTrackReady = false;
+          clearVideoElement(document.getElementById("adnnCallRemoteVideo"));
+          attachCallMedia();
+        }
       }
     }
     const remoteHold = call.hold?.[getRemoteCallUid()];

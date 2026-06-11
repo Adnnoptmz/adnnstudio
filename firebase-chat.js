@@ -53,9 +53,7 @@ const ADNN_ICON_MAXIMIZE = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d=
 const ADNN_ICON_CLOSE = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>`;
 const ADNN_ICON_BACK = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 const ADNN_ICON_VIDEO_OFF = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5A2.5 2.5 0 0 1 6.5 5h7A2.5 2.5 0 0 1 16 7.5v5.1M14 19H6.5A2.5 2.5 0 0 1 4 16.5v-9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="m16 10 4-2.4v7M4 4l16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-const CALL_MESSAGE_LIMIT = 120;
-const ADNN_CHAT_REACTIONS = ["❤️", "👍", "😂", "😮", "🙏", "✅"];
-const ADNN_CHAT_QUICK_REPLIES = ["Received, checking this now.", "Can you share one more detail?", "Perfect, I will update you shortly.", "Approved from my side."];
+const CALL_MESSAGE_LIMIT = 80;
 
 let activeUser = null;
 let clientChatId = "";
@@ -91,7 +89,6 @@ let activeCallUnsubscribes = [];
 if (auth && db) {
   installChatStyles();
   installClientChatShell();
-  installMessengerExperience();
   if (location.pathname.includes("admin.html")) {
     installAdminChatPanel();
     installAdminMessageCardTools();
@@ -184,11 +181,11 @@ function installClientChatShell() {
     </div>
     <form class="adnn-chat-form" id="adnnChatForm">
       <label class="adnn-chat-media" title="Add media" aria-label="Add media">
-        <input id="adnnChatFile" type="file" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.zip">
+        <input id="adnnChatFile" type="file" accept="image/*,.pdf,.doc,.docx,.zip">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
         <span class="adnn-chat-file-name" id="adnnChatFileName" hidden></span>
       </label>
-      <input id="adnnChatInput" autocomplete="off" maxlength="1800" placeholder="Message AdnnStudio">
+      <input id="adnnChatInput" autocomplete="off" maxlength="1800" placeholder="Type a message">
       <button type="submit" aria-label="Send message">
         <svg viewBox="0 0 24 24" fill="currentColor" style="width: 14px; height: 14px; display: block;">
   <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
@@ -330,10 +327,6 @@ async function sendClientMessage(event) {
     senderEmail: emailKey(activeUser.email),
     senderName: activeUser.displayName || activeUser.email || "Client",
     senderRole: "client",
-    replyTo: consumeReplyTarget(clientChatId),
-    reactions: {},
-    favoriteBy: [],
-    status: "sent",
     createdAt: serverTimestamp()
   });
   await setDoc(doc(db, "chats", clientChatId), {
@@ -411,11 +404,11 @@ function installAdminChatPanel() {
         </div>
         <form class="adnn-chat-form" id="adnnAdminChatForm">
           <label class="adnn-chat-media" title="Add media" aria-label="Add media">
-            <input id="adnnAdminChatFile" type="file" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.zip">
+            <input id="adnnAdminChatFile" type="file" accept="image/*,.pdf,.doc,.docx,.zip">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
             <span class="adnn-chat-file-name" id="adnnAdminChatFileName" hidden></span>
           </label>
-          <input id="adnnAdminChatInput" autocomplete="off" maxlength="1800" placeholder="Message client">
+          <input id="adnnAdminChatInput" autocomplete="off" maxlength="1800" placeholder="Message">
           <button type="submit" aria-label="Send reply">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12 20 5l-5.8 14-3-5.9L4 12Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
           </button>
@@ -511,7 +504,7 @@ function installDesignerChatPanel() {
     </div>
     <form class="adnn-chat-form" id="adnnDesignerChatForm">
       <label class="adnn-chat-media" title="Add media" aria-label="Add media">
-        <input id="adnnDesignerChatFile" type="file" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.zip">
+        <input id="adnnDesignerChatFile" type="file" accept="image/*,.pdf,.doc,.docx,.zip">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
         <span class="adnn-chat-file-name" id="adnnDesignerChatFileName" hidden></span>
       </label>
@@ -611,10 +604,6 @@ async function sendDesignerMessage(event) {
     senderEmail: emailKey(activeUser.email),
     senderName: activeDesignerProfile?.name || activeUser.displayName || activeUser.email || "Designer",
     senderRole: "designer",
-    replyTo: consumeReplyTarget(designerChatId),
-    reactions: {},
-    favoriteBy: [],
-    status: "sent",
     createdAt: serverTimestamp()
   });
   await setDoc(doc(db, "chats", designerChatId), {
@@ -719,7 +708,7 @@ function installDirectChatPanel() {
       </div>
       <div class="adnn-chat-messages" id="adnnDirectMessages"></div>
       <form class="adnn-chat-form" id="adnnDirectChatForm">
-        <label class="adnn-chat-media" title="Add media" aria-label="Add media"><input id="adnnDirectChatFile" type="file" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.zip"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span class="adnn-chat-file-name" id="adnnDirectChatFileName" hidden></span></label>
+        <label class="adnn-chat-media" title="Add media" aria-label="Add media"><input id="adnnDirectChatFile" type="file" accept="image/*,.pdf,.doc,.docx,.zip"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span class="adnn-chat-file-name" id="adnnDirectChatFileName" hidden></span></label>
         <input id="adnnDirectChatInput" autocomplete="off" maxlength="1800" placeholder="Message user" disabled>
         <button type="submit" aria-label="Send direct message" disabled><svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px;display:block;"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg></button>
       </form>
@@ -741,10 +730,10 @@ function installMobileDirectComposer() {
   form.hidden = true;
   form.innerHTML = `
     <label class="adnn-mobile-direct-upload" title="Add media" aria-label="Add media">
-      <input id="adnnMobileDirectFile" type="file" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.zip">
+      <input id="adnnMobileDirectFile" type="file" accept="image/*,.pdf,.doc,.docx,.zip">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
     </label>
-    <input id="adnnMobileDirectInput" autocomplete="off" maxlength="1800" placeholder="Message client" inputmode="text">
+    <input id="adnnMobileDirectInput" autocomplete="off" maxlength="1800" placeholder="Message" inputmode="text">
     <button type="submit" aria-label="Send message"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg></button>
   `;
   form.addEventListener("submit", sendMobileDirectMessage);
@@ -779,10 +768,6 @@ async function sendMobileDirectMessage(event) {
     senderEmail: emailKey(activeUser.email),
     senderName: getOwnDirectName(activeDirectChat),
     senderRole: "user",
-    replyTo: consumeReplyTarget(activeDirectChatId),
-    reactions: {},
-    favoriteBy: [],
-    status: "sent",
     createdAt: serverTimestamp()
   });
   await setDoc(doc(db, "chats", activeDirectChatId), { lastMessage, lastSenderUid: activeUser.uid, updatedAt: serverTimestamp() }, { merge: true });
@@ -946,10 +931,6 @@ async function sendDirectMessage(event) {
     senderEmail: emailKey(activeUser.email),
     senderName: getOwnDirectName(activeDirectChat),
     senderRole: "user",
-    replyTo: consumeReplyTarget(activeDirectChatId),
-    reactions: {},
-    favoriteBy: [],
-    status: "sent",
     createdAt: serverTimestamp()
   });
   await setDoc(doc(db, "chats", activeDirectChatId), { lastMessage, lastSenderUid: activeUser.uid, updatedAt: serverTimestamp() }, { merge: true });
@@ -2290,10 +2271,6 @@ async function sendAdminMessage(event) {
     senderEmail: emailKey(activeUser.email),
     senderName: "AdnnStudio",
     senderRole: "admin",
-    replyTo: consumeReplyTarget(selectedAdminChatId),
-    reactions: {},
-    favoriteBy: [],
-    status: "sent",
     createdAt: serverTimestamp()
   });
   await setDoc(doc(db, "chats", selectedAdminChatId), chatUpdate, { merge: true });
@@ -2304,22 +2281,12 @@ async function sendAdminMessage(event) {
 
 function messageBubble(message, mine, chatId) {
   const bubble = document.createElement("article");
-  bubble.className = `adnn-chat-bubble${mine ? " is-mine" : ""}${message.callEvent ? " is-call-event" : ""}${isFavoriteMessage(message) ? " is-favorite" : ""}`;
-  bubble.dataset.messageId = message.id || "";
-  bubble.dataset.chatText = [message.senderName || "", message.text || "", message.mediaName || "", message.callEvent ? "call" : ""].join(" ").toLowerCase();
+  bubble.className = `adnn-chat-bubble${mine ? " is-mine" : ""}${message.callEvent ? " is-call-event" : ""}`;
   if (message.senderName && !mine) {
     const name = document.createElement("strong");
     name.className = "adnn-chat-sender";
     name.textContent = message.senderName;
     bubble.appendChild(name);
-  }
-  if (message.replyTo?.text || message.replyTo?.senderName) {
-    const reply = document.createElement("button");
-    reply.type = "button";
-    reply.className = "adnn-chat-reply-preview";
-    reply.textContent = `${message.replyTo.senderName || "Reply"}: ${message.replyTo.text || message.replyTo.mediaName || "Attachment"}`;
-    reply.addEventListener("click", () => scrollToMessage(message.replyTo.id));
-    bubble.appendChild(reply);
   }
   if (isSafeUrl(message.mediaUrl)) {
     bubble.appendChild(createMediaAttachment(message));
@@ -2333,89 +2300,24 @@ function messageBubble(message, mine, chatId) {
   } else {
     text.textContent = message.text || "";
   }
-  time.textContent = `${relativeTime(message.createdAt)}${mine && !message.callEvent ? " · sent" : ""}`;
+  time.textContent = relativeTime(message.createdAt);
   if (text.textContent) bubble.appendChild(text);
   bubble.appendChild(time);
-  if (!message.callEvent) bubble.appendChild(messageActions(message, chatId));
-  bubble.appendChild(renderReactions(message, chatId));
-  return bubble;
-}
-
-function messageActions(message, chatId) {
-  const actions = document.createElement("div");
-  actions.className = "adnn-chat-message-actions";
-  const react = document.createElement("button");
-  react.type = "button";
-  react.className = "adnn-chat-mini-action";
-  react.title = "React";
-  react.innerHTML = "♡";
-  react.addEventListener("click", (event) => openReactionBar(event.currentTarget, chatId, message.id));
-  actions.appendChild(react);
-
-  const reply = document.createElement("button");
-  reply.type = "button";
-  reply.className = "adnn-chat-mini-action";
-  reply.title = "Reply";
-  reply.innerHTML = "↩";
-  reply.addEventListener("click", () => setReplyTarget(chatId, message));
-  actions.appendChild(reply);
-
-  const fav = document.createElement("button");
-  fav.type = "button";
-  fav.className = `adnn-chat-mini-action${isFavoriteMessage(message) ? " is-on" : ""}`;
-  fav.title = "Favorite";
-  fav.innerHTML = "☆";
-  fav.addEventListener("click", () => toggleFavoriteMessage(chatId, message.id, fav));
-  actions.appendChild(fav);
-
   if (canDeleteMessage(message)) {
     const deleteButton = document.createElement("button");
     deleteButton.type = "button";
-    deleteButton.className = "adnn-chat-mini-action is-danger";
+    deleteButton.className = "adnn-chat-delete";
     deleteButton.title = "Delete message";
     deleteButton.setAttribute("aria-label", "Delete message");
-    deleteButton.innerHTML = "⌫";
+    deleteButton.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4h6m-8.5 4h11M9 8v10m6-10v10M7.5 8l.7 12h7.6l.7-12" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
     deleteButton.addEventListener("click", () => deleteChatMessage(chatId, message.id, deleteButton));
-    actions.appendChild(deleteButton);
+    bubble.appendChild(deleteButton);
   }
-  return actions;
-}
-
-function renderReactions(message, chatId = "") {
-  const wrap = document.createElement("div");
-  wrap.className = "adnn-chat-reactions";
-  const reactions = message.reactions || {};
-  Object.entries(reactions).forEach(([emoji, users]) => {
-    const count = Array.isArray(users) ? users.length : Number(users) || 0;
-    if (!count) return;
-    const chip = document.createElement("button");
-    chip.type = "button";
-    chip.textContent = `${emoji} ${count}`;
-    chip.className = Array.isArray(users) && users.includes(activeUser?.uid) ? "is-mine" : "";
-    chip.addEventListener("click", () => toggleReaction(chatId, message.id, emoji));
-    wrap.appendChild(chip);
-  });
-  if (!wrap.children.length) wrap.hidden = true;
-  return wrap;
+  return bubble;
 }
 
 function createMediaAttachment(message) {
   const mediaType = String(message.mediaType || "");
-  if (mediaType.startsWith("audio/")) {
-    const audio = document.createElement("audio");
-    audio.className = "adnn-chat-audio";
-    audio.controls = true;
-    audio.src = message.mediaUrl;
-    return audio;
-  }
-  if (mediaType.startsWith("video/")) {
-    const video = document.createElement("video");
-    video.className = "adnn-chat-video";
-    video.controls = true;
-    video.playsInline = true;
-    video.src = message.mediaUrl;
-    return video;
-  }
   if (mediaType.startsWith("image/")) {
     const link = document.createElement("a");
     link.className = "adnn-chat-attachment is-image";
@@ -2437,218 +2339,6 @@ function createMediaAttachment(message) {
   link.rel = "noopener noreferrer";
   link.textContent = message.mediaName || "Open attachment";
   return link;
-}
-
-const adnnReplyTargets = new Map();
-let adnnRecorderState = null;
-
-function installMessengerExperience() {
-  window.setTimeout(() => {
-    document.querySelectorAll(".adnn-chat-form").forEach(enhanceComposer);
-    installGlobalChatSearch();
-  }, 0);
-  const observer = new MutationObserver(() => {
-    document.querySelectorAll(".adnn-chat-form:not([data-pro-composer])").forEach(enhanceComposer);
-  });
-  observer.observe(document.documentElement, { childList: true, subtree: true });
-}
-
-function enhanceComposer(form) {
-  if (!form || form.dataset.proComposer === "true") return;
-  form.dataset.proComposer = "true";
-  const tools = document.createElement("div");
-  tools.className = "adnn-chat-pro-tools";
-  tools.innerHTML = `
-    <button type="button" data-chat-tool="emoji" title="Emoji">☺</button>
-    <button type="button" data-chat-tool="voice" title="Voice note">◉</button>
-    <button type="button" data-chat-tool="search" title="Search messages">⌕</button>
-    <button type="button" data-chat-tool="quick" title="Quick replies">＋</button>
-    <span class="adnn-chat-recorder" hidden>Recording voice note…</span>`;
-  form.prepend(tools);
-  tools.querySelector('[data-chat-tool="emoji"]')?.addEventListener("click", (event) => openEmojiTray(event.currentTarget, form));
-  tools.querySelector('[data-chat-tool="voice"]')?.addEventListener("click", (event) => toggleVoiceRecording(event.currentTarget, form));
-  tools.querySelector('[data-chat-tool="search"]')?.addEventListener("click", () => toggleSearchForForm(form));
-  tools.querySelector('[data-chat-tool="quick"]')?.addEventListener("click", (event) => openQuickReplyTray(event.currentTarget, form));
-}
-
-function installGlobalChatSearch() {
-  if (document.getElementById("adnnChatSearchDock")) return;
-  const dock = document.createElement("div");
-  dock.id = "adnnChatSearchDock";
-  dock.className = "adnn-chat-search-dock";
-  dock.hidden = true;
-  dock.innerHTML = `<input id="adnnChatSearchInput" placeholder="Search messages, files, calls"><button type="button" aria-label="Close search">×</button>`;
-  document.body.appendChild(dock);
-  dock.querySelector("input")?.addEventListener("input", (event) => filterVisibleMessages(event.currentTarget.value));
-  dock.querySelector("button")?.addEventListener("click", () => { dock.hidden = true; filterVisibleMessages(""); });
-}
-
-function toggleSearchForForm() {
-  const dock = document.getElementById("adnnChatSearchDock");
-  if (!dock) return;
-  dock.hidden = !dock.hidden;
-  if (!dock.hidden) window.setTimeout(() => dock.querySelector("input")?.focus(), 50);
-}
-
-function filterVisibleMessages(value) {
-  const queryText = String(value || "").trim().toLowerCase();
-  document.querySelectorAll(".adnn-chat-bubble").forEach((bubble) => {
-    bubble.classList.toggle("is-filtered-out", !!queryText && !String(bubble.dataset.chatText || "").includes(queryText));
-  });
-}
-
-function getComposerInput(form) {
-  return form?.querySelector('input[type="text"], input:not([type]), textarea, #adnnChatInput, #adnnAdminChatInput, #adnnDirectChatInput, #adnnDesignerChatInput');
-}
-
-function openEmojiTray(anchor, form) {
-  openFloatingTray(anchor, ADNN_CHAT_REACTIONS, (emoji) => {
-    const input = getComposerInput(form);
-    if (!input) return;
-    input.value = `${input.value || ""}${emoji}`;
-    input.focus();
-  });
-}
-
-function openQuickReplyTray(anchor, form) {
-  openFloatingTray(anchor, ADNN_CHAT_QUICK_REPLIES, (text) => {
-    const input = getComposerInput(form);
-    if (!input) return;
-    input.value = text;
-    input.focus();
-  });
-}
-
-function openFloatingTray(anchor, items, onPick) {
-  document.querySelector(".adnn-chat-floating-tray")?.remove();
-  const tray = document.createElement("div");
-  tray.className = "adnn-chat-floating-tray";
-  items.forEach((item) => {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.textContent = item;
-    btn.addEventListener("click", () => { onPick(item); tray.remove(); });
-    tray.appendChild(btn);
-  });
-  document.body.appendChild(tray);
-  const rect = anchor.getBoundingClientRect();
-  tray.style.left = `${Math.min(rect.left, window.innerWidth - 260)}px`;
-  tray.style.top = `${Math.max(12, rect.top - tray.offsetHeight - 10)}px`;
-  window.setTimeout(() => document.addEventListener("click", function close(event) {
-    if (!tray.contains(event.target) && event.target !== anchor) { tray.remove(); document.removeEventListener("click", close); }
-  }), 0);
-}
-
-function openReactionBar(anchor, chatId, messageId) {
-  openFloatingTray(anchor, ADNN_CHAT_REACTIONS, (emoji) => toggleReaction(chatId, messageId, emoji));
-}
-
-async function toggleReaction(chatId, messageId, emoji) {
-  if (!chatId || !messageId || !activeUser?.uid) return;
-  const ref = doc(db, "chats", chatId, "messages", messageId);
-  const snap = await getDoc(ref).catch(() => null);
-  const data = snap?.data?.() || {};
-  const reactions = data.reactions || {};
-  const users = Array.isArray(reactions[emoji]) ? reactions[emoji] : [];
-  reactions[emoji] = users.includes(activeUser.uid) ? users.filter((uid) => uid !== activeUser.uid) : [...users, activeUser.uid];
-  await setDoc(ref, { reactions }, { merge: true }).catch(() => {});
-}
-
-function isFavoriteMessage(message) {
-  return Array.isArray(message.favoriteBy) && message.favoriteBy.includes(activeUser?.uid);
-}
-
-async function toggleFavoriteMessage(chatId, messageId, button) {
-  if (!chatId || !messageId || !activeUser?.uid) return;
-  button?.classList.toggle("is-on");
-  const ref = doc(db, "chats", chatId, "messages", messageId);
-  const snap = await getDoc(ref).catch(() => null);
-  const data = snap?.data?.() || {};
-  const users = Array.isArray(data.favoriteBy) ? data.favoriteBy : [];
-  const favoriteBy = users.includes(activeUser.uid) ? users.filter((uid) => uid !== activeUser.uid) : [...users, activeUser.uid];
-  await setDoc(ref, { favoriteBy }, { merge: true }).catch(() => {});
-}
-
-function setReplyTarget(chatId, message) {
-  if (!chatId || !message?.id) return;
-  adnnReplyTargets.set(chatId, { id: message.id, text: message.text || "", mediaName: message.mediaName || "", senderName: message.senderName || "Message" });
-  showChatAlert({ text: `Replying to ${message.senderName || "message"}` }, "Reply");
-}
-
-function consumeReplyTarget(chatId) {
-  const value = adnnReplyTargets.get(chatId) || null;
-  adnnReplyTargets.delete(chatId);
-  return value;
-}
-
-function scrollToMessage(messageId) {
-  if (!messageId) return;
-  const node = document.querySelector(`[data-message-id="${CSS.escape(messageId)}"]`);
-  if (!node) return;
-  node.scrollIntoView({ behavior: "smooth", block: "center" });
-  node.classList.add("is-highlighted");
-  window.setTimeout(() => node.classList.remove("is-highlighted"), 1400);
-}
-
-async function toggleVoiceRecording(button, form) {
-  if (adnnRecorderState?.recorder?.state === "recording") {
-    adnnRecorderState.recorder.stop();
-    button.classList.remove("is-recording");
-    form.querySelector(".adnn-chat-recorder")?.setAttribute("hidden", "");
-    return;
-  }
-  if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
-    showChatAlert({ text: "Voice notes need a secure browser with microphone access." }, "Voice note");
-    return;
-  }
-  const stream = await navigator.mediaDevices.getUserMedia({ audio: true }).catch(() => null);
-  if (!stream) return;
-  const chunks = [];
-  const recorder = new MediaRecorder(stream);
-  adnnRecorderState = { recorder, form, startedAt: Date.now(), stream };
-  recorder.addEventListener("dataavailable", (event) => { if (event.data?.size) chunks.push(event.data); });
-  recorder.addEventListener("stop", async () => {
-    stream.getTracks().forEach((track) => track.stop());
-    const blob = new Blob(chunks, { type: recorder.mimeType || "audio/webm" });
-    const file = new File([blob], `voice-note-${Date.now()}.webm`, { type: blob.type });
-    await sendVoiceMessageForForm(form, file);
-    adnnRecorderState = null;
-  });
-  button.classList.add("is-recording");
-  form.querySelector(".adnn-chat-recorder")?.removeAttribute("hidden");
-  recorder.start();
-}
-
-function getChatContextForForm(form) {
-  const id = form?.id || "";
-  if (id === "adnnAdminChatForm") return { chatId: selectedAdminChatId, senderRole: "admin", senderName: "AdnnStudio", unreadField: "unreadForClient" };
-  if (id === "adnnDirectChatForm") return { chatId: activeDirectChatId, senderRole: "user", senderName: getOwnDirectName(activeDirectChat), unreadField: "" };
-  if (id === "adnnDesignerChatForm") return { chatId: designerChatId, senderRole: "designer", senderName: activeDesignerProfile?.name || activeUser?.displayName || activeUser?.email || "Designer", unreadField: "" };
-  return { chatId: clientChatId, senderRole: "client", senderName: activeUser?.displayName || activeUser?.email || "Client", unreadField: "unreadForAdmin" };
-}
-
-async function sendVoiceMessageForForm(form, file) {
-  if (!activeUser) return;
-  const ctx = getChatContextForForm(form);
-  if (!ctx.chatId) return;
-  const media = await uploadChatFile(file, ctx.chatId).catch(() => null);
-  if (!media?.mediaUrl) return;
-  await addDoc(collection(db, "chats", ctx.chatId, "messages"), {
-    text: "Voice message",
-    ...media,
-    senderUid: activeUser.uid,
-    senderEmail: emailKey(activeUser.email),
-    senderName: ctx.senderName,
-    senderRole: ctx.senderRole,
-    replyTo: consumeReplyTarget(ctx.chatId),
-    reactions: {},
-    favoriteBy: [],
-    status: "sent",
-    createdAt: serverTimestamp()
-  });
-  const update = { lastMessage: "Voice message", lastSenderUid: activeUser.uid, updatedAt: serverTimestamp() };
-  if (ctx.unreadField) update[ctx.unreadField] = increment(1);
-  await setDoc(doc(db, "chats", ctx.chatId), update, { merge: true });
 }
 
 async function deleteChatMessage(chatId, messageId, button) {
@@ -3412,34 +3102,6 @@ function installChatStyles() {
 
     }
   `;
-    .adnn-chat-form { grid-template-columns:auto 1fr auto; }
-    .adnn-chat-pro-tools { grid-column:1 / -1; display:flex; align-items:center; gap:8px; padding:0 2px 8px; }
-    .adnn-chat-pro-tools button { width:32px; height:32px; border:1px solid rgba(255,255,255,.09); border-radius:13px; background:rgba(255,255,255,.055); color:var(--adnn-text); cursor:pointer; display:grid; place-items:center; font:600 14px/1 var(--font-mono, monospace); }
-    .adnn-chat-pro-tools button:hover, .adnn-chat-pro-tools button.is-recording { background:rgba(39,45,207,.55); color:#fff; }
-    .adnn-chat-recorder { color:#ff453a; font-size:11px; font-family:var(--font-mono, monospace); letter-spacing:.04em; }
-    .adnn-chat-search-dock { position:fixed; z-index:100000; left:50%; top:18px; transform:translateX(-50%); width:min(520px, calc(100vw - 26px)); display:flex; gap:8px; padding:10px; border:1px solid rgba(255,255,255,.12); border-radius:20px; background:rgba(18,18,24,.88); box-shadow:0 24px 80px rgba(0,0,0,.45); backdrop-filter:blur(22px) saturate(160%); -webkit-backdrop-filter:blur(22px) saturate(160%); }
-    .adnn-chat-search-dock[hidden] { display:none !important; }
-    .adnn-chat-search-dock input { flex:1; border:0; outline:0; border-radius:14px; padding:0 12px; min-height:38px; background:rgba(255,255,255,.08); color:#fff; }
-    .adnn-chat-search-dock button { width:38px; border:0; border-radius:14px; background:rgba(255,255,255,.08); color:#fff; cursor:pointer; }
-    .adnn-chat-bubble.is-filtered-out { display:none !important; }
-    .adnn-chat-bubble.is-highlighted { outline:2px solid rgba(125,135,255,.85); outline-offset:3px; }
-    .adnn-chat-message-actions { display:flex; gap:5px; margin-top:7px; opacity:0; transform:translateY(3px); transition:opacity .18s ease, transform .18s ease; }
-    .adnn-chat-bubble:hover .adnn-chat-message-actions, .adnn-chat-bubble:focus-within .adnn-chat-message-actions { opacity:1; transform:translateY(0); }
-    .adnn-chat-mini-action { min-width:28px; height:28px; border:1px solid rgba(255,255,255,.09); border-radius:999px; background:rgba(0,0,0,.14); color:rgba(255,255,255,.84); cursor:pointer; display:grid; place-items:center; font:700 12px/1 var(--font-mono, monospace); }
-    .adnn-chat-mini-action:hover, .adnn-chat-mini-action.is-on { background:rgba(39,45,207,.72); color:#fff; }
-    .adnn-chat-mini-action.is-danger:hover { background:rgba(255,59,48,.7); }
-    .adnn-chat-reactions { display:flex; gap:5px; flex-wrap:wrap; margin-top:6px; }
-    .adnn-chat-reactions[hidden] { display:none !important; }
-    .adnn-chat-reactions button { border:1px solid rgba(255,255,255,.1); border-radius:999px; background:rgba(255,255,255,.08); color:#fff; font-size:11px; padding:4px 7px; cursor:pointer; }
-    .adnn-chat-reactions button.is-mine { background:rgba(39,45,207,.55); }
-    .adnn-chat-reply-preview { width:100%; max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:left; border:0; border-left:3px solid rgba(125,135,255,.8); border-radius:10px; padding:7px 9px; margin-bottom:5px; color:rgba(255,255,255,.75); background:rgba(255,255,255,.07); cursor:pointer; }
-    .adnn-chat-bubble.is-favorite { box-shadow:0 0 0 1px rgba(255,214,10,.18), 0 18px 48px rgba(0,0,0,.22); }
-    .adnn-chat-audio { width:min(260px, 70vw); filter:invert(1) hue-rotate(180deg); }
-    .adnn-chat-video { width:min(320px, 78vw); max-height:240px; border-radius:16px; background:#050507; display:block; }
-    .adnn-chat-floating-tray { position:fixed; z-index:100001; min-width:180px; max-width:260px; display:flex; gap:6px; flex-wrap:wrap; padding:10px; border:1px solid rgba(255,255,255,.12); border-radius:18px; background:rgba(18,18,24,.92); box-shadow:0 24px 70px rgba(0,0,0,.45); backdrop-filter:blur(22px) saturate(160%); -webkit-backdrop-filter:blur(22px) saturate(160%); }
-    .adnn-chat-floating-tray button { border:1px solid rgba(255,255,255,.09); border-radius:13px; min-height:32px; padding:0 10px; background:rgba(255,255,255,.07); color:#fff; cursor:pointer; }
-    .adnn-call-card::after { content:"Tahoe Glass call engine"; color:rgba(255,255,255,.28); font:10px/1.2 var(--font-mono, monospace); letter-spacing:.08em; text-transform:uppercase; }
-
   document.head.appendChild(style);
 
   const mobileComposerStyle = document.createElement("style");

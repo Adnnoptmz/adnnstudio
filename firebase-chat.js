@@ -177,11 +177,12 @@ function renderThreadList(chats, list, roomId, scope) {
     row.type = "button";
     row.className = "adnn-thread";
     row.dataset.chatId = chat.id;
+    const preview = isCallSummaryText(chat.lastMessage) ? "No messages yet." : (chat.lastMessage || "No messages yet.");
     row.innerHTML = `
       <span class="adnn-avatar">${initials(title)}</span>
       <span class="adnn-thread-copy">
         <strong>${escapeHtml(title)}</strong>
-        <small>${escapeHtml(chat.lastMessage || "No messages yet.")}</small>
+        <small>${escapeHtml(preview)}</small>
       </span>
       ${unread > 0 ? `<b>${unread}</b>` : ""}
     `;
@@ -379,11 +380,12 @@ function renderMessages(state, messages) {
   const scroller = roomShell(state).querySelector("[data-message-scroll]");
   if (!scroller) return;
   scroller.innerHTML = "";
-  if (!messages.length) {
+  const visibleMessages = messages.filter((message) => !isHiddenSystemMessage(message));
+  if (!visibleMessages.length) {
     scroller.innerHTML = `<div class="adnn-chat-empty">No messages yet.</div>`;
     return;
   }
-  messages.forEach((message) => {
+  visibleMessages.forEach((message) => {
     const mine = message.senderUid === activeUser.uid || (isAdminEmail(activeUser.email) && message.senderUid === ADMIN_ALIAS_UID);
     const row = document.createElement("div");
     row.className = `adnn-message-row ${mine ? "is-mine" : "is-peer"}`;
@@ -418,7 +420,13 @@ function renderMessages(state, messages) {
 
 function handleMessageAction(event, state, message) {
   const btn = event.target.closest("[data-action]");
-  if (!btn) return;
+  if (!btn) {
+    document.querySelectorAll(".adnn-message.is-menu-open").forEach((item) => {
+      if (item !== event.currentTarget) item.classList.remove("is-menu-open");
+    });
+    event.currentTarget.classList.toggle("is-menu-open");
+    return;
+  }
   event.stopPropagation();
   const action = btn.dataset.action;
   if (action === "reply") {
@@ -453,7 +461,11 @@ async function sendCurrentMessage(state) {
   try {
     const attachments = [];
     for (const item of stagedFiles) attachments.push(await uploadChatFile(item.file, state.chatId, false));
-    if (stagedVoice) attachments.push(await uploadChatFile(stagedVoice.file, state.chatId, true));
+    if (stagedVoice) {
+      const voiceAttachment = await uploadChatFile(stagedVoice.file, state.chatId, true);
+      voiceAttachment.duration = stagedVoice.seconds;
+      attachments.push(voiceAttachment);
+    }
     const payload = {
       text,
       attachments,
@@ -583,8 +595,9 @@ function renderVoicePreview(state) {
   if (!target) return;
   target.hidden = !state.voice;
   target.innerHTML = state.voice ? `
+    <span class="adnn-voice-preview-icon">${ICON.mic}</span>
     <audio controls src="${state.voice.url}"></audio>
-    <span>${state.voice.seconds}s voice message</span>
+    <span>${formatDuration(state.voice.seconds)}</span>
     <button type="button" data-delete-voice>${ICON.x}</button>
   ` : "";
   target.querySelector("[data-delete-voice]")?.addEventListener("click", () => {
@@ -1047,7 +1060,7 @@ function renderAttachments(message) {
     : message.mediaUrl ? [{ url: message.mediaUrl, name: message.mediaName, type: message.mediaType, voice: message.mediaType?.startsWith("audio/") }] : [];
   return items.map((item) => {
     if (item.type?.startsWith("image/")) return `<a href="${escapeAttr(item.url)}" target="_blank" class="adnn-attachment-img"><img src="${escapeAttr(item.url)}" alt="${escapeAttr(item.name || "image")}"></a>`;
-    if (item.type?.startsWith("audio/") || item.voice) return `<div class="adnn-voice-bubble"><audio controls src="${escapeAttr(item.url)}"></audio></div>`;
+    if (item.type?.startsWith("audio/") || item.voice) return `<div class="adnn-voice-bubble"><span>${ICON.mic}</span><audio controls src="${escapeAttr(item.url)}"></audio><small>${formatDuration(item.duration || 0)}</small></div>`;
     return `<a href="${escapeAttr(item.url)}" target="_blank" rel="noopener" class="adnn-doc-bubble"><span>${fileExt(item.name || "file")}</span><strong>${escapeHtml(item.name || "Open file")}</strong></a>`;
   }).join("");
 }
@@ -1061,6 +1074,15 @@ function renderReactions(message) {
 
 function firstAttachmentName(message) {
   return message.attachments?.[0]?.name || message.mediaName || "";
+}
+
+function isHiddenSystemMessage(message) {
+  return !!message.callEvent || isCallSummaryText(message.text);
+}
+
+function isCallSummaryText(value) {
+  const text = String(value || "").toLowerCase();
+  return /^incoming (audio|video) call/.test(text) || /^outgoing (audio|video) call/.test(text) || /^call (ended|missed|rejected)/.test(text);
 }
 
 function resetBodyMobileLock() {
@@ -1137,6 +1159,13 @@ function formatBytes(bytes) {
   return `${(size / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function formatDuration(seconds) {
+  const safe = Math.max(0, Number(seconds) || 0);
+  const min = Math.floor(safe / 60);
+  const sec = safe % 60;
+  return `${min}:${String(sec).padStart(2, "0")}`;
+}
+
 function fileExt(name) {
   const ext = String(name || "file").split(".").pop().slice(0, 4).toUpperCase();
   return ext || "FILE";
@@ -1155,8 +1184,10 @@ function injectChatStyles() {
   const style = document.createElement("style");
   style.id = "adnnChatRuntimeStyles";
   style.textContent = `
+    .adnn-chat-app, .adnn-chat-app * { box-sizing:border-box; }
+    .adnn-chat-app [hidden], .adnn-call-overlay [hidden] { display:none !important; }
     .adnn-chat-app { width:100%; min-height:0; color:#fff; }
-    .adnn-chat-layout { height:min(690px, calc(100svh - 190px)); min-height:520px; display:grid; grid-template-columns:minmax(240px, 330px) minmax(0,1fr); overflow:hidden; border:1px solid rgba(255,255,255,.1); border-radius:24px; background:linear-gradient(145deg, rgba(22,22,28,.92), rgba(4,4,7,.96)); box-shadow:0 24px 90px rgba(0,0,0,.32); }
+    .adnn-chat-layout { height:clamp(600px, calc(100svh - 210px), 820px); min-height:0; display:grid; grid-template-columns:minmax(240px, 330px) minmax(0,1fr); overflow:hidden; border:1px solid rgba(255,255,255,.1); border-radius:24px; background:linear-gradient(145deg, rgba(22,22,28,.92), rgba(4,4,7,.96)); box-shadow:0 24px 90px rgba(0,0,0,.32); }
     .adnn-chat-layout.is-single { grid-template-columns:1fr; }
     .adnn-chat-thread-panel { display:grid; grid-template-rows:auto 1fr; min-width:0; border-right:1px solid rgba(255,255,255,.08); background:rgba(255,255,255,.025); }
     .adnn-chat-thread-head { min-height:68px; padding:14px 16px; display:grid; gap:10px; align-content:center; border-bottom:1px solid rgba(255,255,255,.07); }
@@ -1171,11 +1202,11 @@ function injectChatStyles() {
     .adnn-thread-copy small { color:rgba(255,255,255,.48); font-size:12px; }
     .adnn-thread b { min-width:18px; height:18px; border-radius:999px; display:grid; place-items:center; background:#ff2602; font-size:10px; }
     .adnn-avatar { width:42px; height:42px; border-radius:16px; display:grid; place-items:center; background:linear-gradient(145deg,#3036e8,#161bba); color:#fff; font-size:12px; flex:0 0 auto; box-shadow:inset 0 1px 0 rgba(255,255,255,.18); }
-    .adnn-chat-room { min-width:0; min-height:0; position:relative; }
+    .adnn-chat-room { min-width:0; min-height:0; height:100%; position:relative; overflow:hidden; }
     .adnn-chat-welcome, .adnn-chat-empty { height:100%; display:grid; place-items:center; align-content:center; gap:8px; text-align:center; color:rgba(255,255,255,.48); padding:28px; }
     .adnn-chat-logo { width:58px; height:58px; border-radius:18px; display:grid; place-items:center; background:#272dcf; color:#fff; font-size:36px; font-weight:700; }
-    .adnn-room-shell { height:100%; min-height:0; display:grid; grid-template-rows:70px minmax(0,1fr) auto; position:relative; background:radial-gradient(circle at 92% 6%, rgba(39,45,207,.16), transparent 32%), #050506; }
-    .adnn-room-head { display:flex; align-items:center; gap:12px; padding:12px 16px; border-bottom:1px solid rgba(255,255,255,.08); background:rgba(10,10,14,.75); backdrop-filter:blur(18px); }
+    .adnn-room-shell { position:absolute; inset:0; height:100%; min-height:0; max-height:100%; display:grid; grid-template-rows:70px minmax(0,1fr) auto; overflow:hidden; background:radial-gradient(circle at 92% 6%, rgba(39,45,207,.16), transparent 32%), #050506; }
+    .adnn-room-head { display:flex; align-items:center; gap:12px; padding:12px 16px; border-bottom:1px solid rgba(255,255,255,.08); background:rgba(10,10,14,.9); backdrop-filter:blur(18px); position:relative; z-index:20; }
     .adnn-back-btn { display:none; }
     .adnn-room-title { flex:1; min-width:0; display:grid; gap:2px; }
     .adnn-room-title strong, .adnn-room-title small { overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
@@ -1183,9 +1214,10 @@ function injectChatStyles() {
     .adnn-room-title small { font-size:12px; color:rgba(255,255,255,.5); }
     .adnn-room-title small.is-online { color:#53d769; }
     .adnn-call-btn, .adnn-back-btn, .adnn-attach-btn, .adnn-voice-btn, .adnn-send-btn, .adnn-composer button { width:42px; height:42px; border:0; border-radius:50%; display:grid; place-items:center; color:#fff; background:rgba(255,255,255,.06); cursor:pointer; transition:.2s ease; flex:0 0 auto; }
+    .adnn-call-btn { background:rgba(255,255,255,.08); box-shadow:inset 0 1px 0 rgba(255,255,255,.08); }
     .adnn-call-btn:hover, .adnn-attach-btn:hover, .adnn-voice-btn:hover { background:rgba(255,255,255,.1); transform:translateY(-1px); }
     .adnn-call-btn svg, .adnn-back-btn svg, .adnn-attach-btn svg, .adnn-voice-btn svg, .adnn-send-btn svg { width:19px; height:19px; }
-    .adnn-message-scroll { overflow:auto; padding:18px; display:flex; flex-direction:column; gap:10px; scroll-behavior:smooth; }
+    .adnn-message-scroll { min-height:0; height:100%; overflow-y:auto; overflow-x:hidden; padding:18px; display:flex; flex-direction:column; gap:10px; scroll-behavior:smooth; }
     .adnn-message-row { display:flex; width:100%; }
     .adnn-message-row.is-mine { justify-content:flex-end; }
     .adnn-message-row.is-peer { justify-content:flex-start; }
@@ -1196,8 +1228,10 @@ function injectChatStyles() {
     .adnn-message-name { display:block; margin-bottom:4px; color:#9da4ff; font-size:12px; font-weight:500; }
     .adnn-message-meta { display:flex; align-items:center; justify-content:flex-end; gap:4px; margin-top:5px; color:rgba(255,255,255,.45); font-size:10px; }
     .adnn-ticks.is-read { color:#63c6ff; }
-    .adnn-message-actions { position:absolute; bottom:calc(100% + 7px); right:8px; display:flex; gap:4px; padding:5px; border-radius:14px; border:1px solid rgba(255,255,255,.12); background:rgba(9,9,12,.94); opacity:0; pointer-events:none; transform:translateY(5px) scale(.98); transition:.18s ease; z-index:5; box-shadow:0 18px 50px rgba(0,0,0,.35); }
-    .adnn-message:hover .adnn-message-actions, .adnn-message:focus-within .adnn-message-actions { opacity:1; pointer-events:auto; transform:translateY(0) scale(1); }
+    .adnn-message-actions { position:absolute; top:50%; display:flex; gap:4px; padding:5px; border-radius:14px; border:1px solid rgba(255,255,255,.12); background:rgba(9,9,12,.96); opacity:0; pointer-events:none; transform:translateY(-50%) scale(.96); transition:.18s ease; z-index:30; box-shadow:0 18px 50px rgba(0,0,0,.35); }
+    .is-mine .adnn-message-actions { right:calc(100% + 8px); }
+    .is-peer .adnn-message-actions { left:calc(100% + 8px); }
+    .adnn-message:hover .adnn-message-actions, .adnn-message:focus-within .adnn-message-actions, .adnn-message.is-menu-open .adnn-message-actions { opacity:1; pointer-events:auto; transform:translateY(-50%) scale(1); }
     .adnn-message-actions button { border:0; border-radius:10px; background:rgba(255,255,255,.07); color:#fff; padding:7px 9px; font-size:12px; cursor:pointer; }
     .adnn-message-actions .is-danger { color:#ff6b5c; }
     .adnn-reactions { position:absolute; right:10px; bottom:-14px; border:1px solid rgba(255,255,255,.1); border-radius:999px; background:#09090c; color:#fff; padding:2px 7px; font-size:12px; cursor:pointer; }
@@ -1208,8 +1242,12 @@ function injectChatStyles() {
     .adnn-attachment-img img { display:block; width:min(320px, 100%); max-height:260px; object-fit:cover; border-radius:14px; margin-bottom:7px; }
     .adnn-doc-bubble { display:flex; align-items:center; gap:10px; min-width:220px; text-decoration:none; color:#fff; padding:10px; border-radius:14px; background:rgba(0,0,0,.22); margin-bottom:7px; }
     .adnn-doc-bubble span { width:42px; height:42px; border-radius:12px; display:grid; place-items:center; background:#272dcf; font-size:11px; }
-    .adnn-voice-bubble audio { width:250px; max-width:100%; height:36px; }
-    .adnn-composer-wrap { position:relative; border-top:1px solid rgba(255,255,255,.08); background:rgba(8,8,12,.86); padding:10px; }
+    .adnn-voice-bubble { min-width:250px; display:flex; align-items:center; gap:9px; padding:8px 10px; border-radius:999px; background:rgba(0,0,0,.22); margin-bottom:7px; }
+    .adnn-voice-bubble span { width:30px; height:30px; border-radius:50%; display:grid; place-items:center; background:rgba(255,255,255,.1); color:#fff; flex:0 0 auto; }
+    .adnn-voice-bubble span svg { width:15px; height:15px; }
+    .adnn-voice-bubble audio { width:190px; max-width:100%; height:32px; }
+    .adnn-voice-bubble small { color:rgba(255,255,255,.55); font-size:11px; }
+    .adnn-composer-wrap { position:relative; z-index:22; border-top:1px solid rgba(255,255,255,.08); background:rgba(8,8,12,.94); padding:10px; box-shadow:0 -18px 45px rgba(0,0,0,.24); }
     .adnn-composer { display:flex; align-items:flex-end; gap:9px; }
     .adnn-composer textarea { flex:1; min-height:42px; max-height:118px; resize:none; border:1px solid rgba(255,255,255,.09); border-radius:22px; background:#020203; color:#fff; outline:0; padding:12px 15px; font:inherit; font-size:14px; line-height:1.35; }
     .adnn-attach-btn input { display:none; }
@@ -1231,6 +1269,8 @@ function injectChatStyles() {
     .adnn-file-chip button, .adnn-reply-bar button, .adnn-voice-preview button { width:28px; height:28px; border-radius:50%; border:0; background:rgba(255,255,255,.08); color:#fff; display:grid; place-items:center; cursor:pointer; }
     .adnn-file-chip button svg, .adnn-reply-bar button svg, .adnn-voice-preview button svg { width:14px; height:14px; }
     .adnn-voice-preview { display:flex; align-items:center; gap:10px; padding:0 0 9px; color:#fff; }
+    .adnn-voice-preview-icon { width:34px; height:34px; border-radius:50%; display:grid; place-items:center; background:#272dcf; flex:0 0 auto; }
+    .adnn-voice-preview-icon svg { width:16px; height:16px; }
     .adnn-voice-preview audio { height:34px; max-width:260px; }
     .adnn-drop-layer { position:absolute; inset:72px 12px 82px; display:none; place-items:center; border:1px dashed rgba(141,150,255,.5); border-radius:24px; background:rgba(39,45,207,.16); color:#fff; z-index:8; backdrop-filter:blur(12px); }
     .adnn-room-shell.is-dragging .adnn-drop-layer { display:grid; }
@@ -1269,7 +1309,8 @@ function injectChatStyles() {
       .adnn-call-btn, .adnn-back-btn, .adnn-attach-btn, .adnn-voice-btn, .adnn-send-btn { width:39px; height:39px; }
       .adnn-composer-wrap { padding:8px; }
       .adnn-composer textarea { font-size:16px; }
-      .adnn-message-actions { right:auto; left:4px; max-width:calc(100vw - 28px); overflow:auto; }
+      .is-mine .adnn-message-actions, .is-peer .adnn-message-actions { top:auto; bottom:calc(100% + 8px); left:0; right:auto; transform:translateY(4px) scale(.96); max-width:calc(100vw - 28px); overflow:auto; }
+      .adnn-message:hover .adnn-message-actions, .adnn-message:focus-within .adnn-message-actions, .adnn-message.is-menu-open .adnn-message-actions { transform:translateY(0) scale(1); }
       .adnn-call-stage { grid-template-columns:1fr; aspect-ratio:9/12; }
     }
   `;

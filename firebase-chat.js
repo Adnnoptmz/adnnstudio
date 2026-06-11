@@ -65,7 +65,10 @@ if (db && auth) {
   onAuthStateChanged(auth, async (user) => {
     cleanupAll();
     activeUser = user;
-    if (!user) return;
+    if (!user) {
+      if (location.pathname.includes("admin.html")) buildAdminChatShellOnly("Sign in with the tagged admin Google account to activate chats.");
+      return;
+    }
     activeProfile = await getProfile(user.uid, user.email);
     startPresence(user);
     watchIncomingCalls();
@@ -94,7 +97,18 @@ function buildAdminChatPortal() {
   if (!target) return;
   target.className = "admin-view-panel-container adnn-chat-app";
   target.innerHTML = appFrameMarkup("Studio Chats", "adminThreads", "adminRoom", true);
+  renderPassiveRoom("adminRoom", "Studio chats", "Loading conversations...", "Select a client chat to send a message");
   watchChatThreads("admin", "adminThreads", "adminRoom", {});
+}
+
+function buildAdminChatShellOnly(message) {
+  const target = document.getElementById("chats_view");
+  if (!target) return;
+  target.className = "admin-view-panel-container adnn-chat-app";
+  target.innerHTML = appFrameMarkup("Studio Chats", "adminThreads", "adminRoom", true);
+  const list = document.getElementById("adminThreads");
+  if (list) list.innerHTML = `<div class="adnn-chat-empty">${escapeHtml(message)}</div>`;
+  renderPassiveRoom("adminRoom", "Studio chats", message, "Admin verification required");
 }
 
 function appFrameMarkup(title, listId, roomId, searchable = false) {
@@ -154,6 +168,7 @@ function watchChatThreads(scope, listId, roomId, options = {}) {
     renderThreadList(chats, list, roomId, scope);
   }, () => {
     if (list) list.innerHTML = `<div class="adnn-chat-empty">Unable to load chats.</div>`;
+    if (scope === "admin") renderPassiveRoom(roomId, "Chats unavailable", "Open a client chat after your admin account is verified.", "Waiting for chat access");
   });
   const search = document.getElementById(`${listId}Search`);
   search?.addEventListener("input", () => {
@@ -168,6 +183,7 @@ function renderThreadList(chats, list, roomId, scope) {
   list.innerHTML = "";
   if (!chats.length) {
     list.innerHTML = `<div class="adnn-chat-empty">No conversations yet.</div>`;
+    if (scope === "admin") renderPassiveRoom(roomId, "No client chats yet", "Client conversations will appear here.", "Waiting for a client chat");
     return;
   }
   const currentState = rooms.get(roomId);
@@ -207,6 +223,32 @@ function renderThreadList(chats, list, roomId, scope) {
   }
 }
 
+function renderPassiveRoom(roomId, title, message, placeholder) {
+  const target = document.getElementById(roomId);
+  if (!target || rooms.has(roomId)) return;
+  target.innerHTML = `
+    <div class="adnn-room-shell adnn-room-shell-passive">
+      <div class="adnn-room-head" role="toolbar" aria-label="Chat status">
+        <span class="adnn-avatar">${initials(title)}</span>
+        <div class="adnn-room-title">
+          <strong>${escapeHtml(title)}</strong>
+          <small>${escapeHtml(message)}</small>
+        </div>
+      </div>
+      <main class="adnn-message-scroll">
+        <div class="adnn-chat-empty">${escapeHtml(message)}</div>
+      </main>
+      <footer class="adnn-composer-wrap">
+        <form class="adnn-composer">
+          <button type="button" class="adnn-attach-btn" disabled>${ICON.clip}</button>
+          <textarea rows="1" disabled placeholder="${escapeAttr(placeholder)}"></textarea>
+          <button type="button" class="adnn-voice-btn" disabled>${ICON.mic}</button>
+        </form>
+      </footer>
+    </div>
+  `;
+}
+
 function openRoom(chatId, chatData, roomId) {
   const target = document.getElementById(roomId);
   if (!target) return;
@@ -238,37 +280,52 @@ function openRoom(chatId, chatData, roomId) {
 
 function ensureRoomChrome(state) {
   const shell = roomShell(state);
-  const head = shell?.querySelector(".adnn-room-head");
-  if (!shell || !head) return;
-  if (!head.querySelector('[data-call="audio"]')) {
-    head.insertAdjacentHTML("beforeend", `<button type="button" class="adnn-call-btn" data-call="audio" title="Audio call" aria-label="Audio call">${ICON.phone}</button>`);
+  if (!shell) return;
+  let dock = shell.querySelector("[data-call-dock]");
+  if (!dock) {
+    const head = shell.querySelector(".adnn-room-head");
+    if (head) {
+      head.insertAdjacentHTML("afterend", `<div class="adnn-call-dock" data-call-dock></div>`);
+      dock = shell.querySelector("[data-call-dock]");
+    }
   }
-  if (!head.querySelector('[data-call="video"]')) {
-    head.insertAdjacentHTML("beforeend", `<button type="button" class="adnn-call-btn" data-call="video" title="Video call" aria-label="Video call">${ICON.video}</button>`);
+  if (dock) {
+    if (!dock.querySelector('[data-call="audio"]')) {
+      dock.insertAdjacentHTML("beforeend", `<button type="button" class="adnn-call-btn" data-call="audio" title="Audio call" aria-label="Audio call">${ICON.phone}</button>`);
+    }
+    if (!dock.querySelector('[data-call="video"]')) {
+      dock.insertAdjacentHTML("beforeend", `<button type="button" class="adnn-call-btn" data-call="video" title="Video call" aria-label="Video call">${ICON.video}</button>`);
+    }
+    dock.querySelectorAll("[data-call]").forEach((btn) => {
+      btn.removeAttribute("hidden");
+      btn.hidden = false;
+      btn.style.setProperty("display", "grid", "important");
+      btn.style.setProperty("visibility", "visible", "important");
+      btn.style.setProperty("opacity", "1", "important");
+      btn.style.setProperty("pointer-events", "auto", "important");
+    });
+    dock.style.setProperty("display", "flex", "important");
+    dock.style.setProperty("visibility", "visible", "important");
+    dock.style.setProperty("opacity", "1", "important");
+    dock.style.setProperty("pointer-events", "auto", "important");
   }
-  head.querySelectorAll("[data-call]").forEach((btn) => {
-    btn.hidden = false;
-    btn.removeAttribute("hidden");
-    btn.style.setProperty("display", "grid", "important");
-    btn.style.setProperty("visibility", "visible", "important");
-    btn.style.setProperty("opacity", "1", "important");
-    btn.style.setProperty("pointer-events", "auto", "important");
-  });
 }
 
 function roomMarkup(roomId) {
   return `
     <div class="adnn-room-shell" data-room="${roomId}">
-      <header class="adnn-room-head">
+      <div class="adnn-room-head" role="toolbar" aria-label="Chat tools">
         <button type="button" class="adnn-back-btn" data-chat-back>${ICON.back}</button>
         <span class="adnn-avatar" data-chat-avatar>AD</span>
         <div class="adnn-room-title">
           <strong data-chat-title>Opening chat...</strong>
           <small data-chat-presence>Checking status...</small>
         </div>
-        <button type="button" class="adnn-call-btn" data-call="audio" title="Audio call">${ICON.phone}</button>
-        <button type="button" class="adnn-call-btn" data-call="video" title="Video call">${ICON.video}</button>
-      </header>
+      </div>
+      <div class="adnn-call-dock" data-call-dock style="display: flex !important; visibility: visible !important; opacity: 1 !important;">
+        <button type="button" class="adnn-call-btn" data-call="audio" title="Audio call" aria-label="Audio call" style="display: grid !important; visibility: visible !important; opacity: 1 !important;">${ICON.phone}</button>
+        <button type="button" class="adnn-call-btn" data-call="video" title="Video call" aria-label="Video call" style="display: grid !important; visibility: visible !important; opacity: 1 !important;">${ICON.video}</button>
+      </div>
       <main class="adnn-message-scroll" data-message-scroll>
         <div class="adnn-chat-empty">Loading messages...</div>
       </main>
@@ -1238,7 +1295,8 @@ function injectChatStyles() {
     .adnn-chat-welcome, .adnn-chat-empty { height:100%; display:grid; place-items:center; align-content:center; gap:8px; text-align:center; color:rgba(255,255,255,.48); padding:28px; }
     .adnn-chat-logo { width:58px; height:58px; border-radius:18px; display:grid; place-items:center; background:#272dcf; color:#fff; font-size:36px; font-weight:700; }
     .adnn-chat-app .adnn-room-shell { position:absolute !important; inset:0 !important; height:100% !important; min-height:0 !important; max-height:100% !important; overflow:hidden !important; background:radial-gradient(circle at 92% 6%, rgba(39,45,207,.16), transparent 32%), #050506; --adnn-head-h:70px; --adnn-composer-h:78px; }
-    .adnn-chat-app .adnn-room-shell > .adnn-room-head { position:absolute !important; top:0 !important; left:0 !important; right:0 !important; height:70px !important; min-height:70px !important; display:flex !important; align-items:center !important; gap:12px; padding:12px 16px; border-bottom:1px solid rgba(255,255,255,.08); background:rgba(10,10,14,.94); backdrop-filter:blur(18px); z-index:90 !important; visibility:visible !important; opacity:1 !important; transform:none !important; }
+    .adnn-chat-app .adnn-room-shell > .adnn-room-head { position:absolute !important; top:0 !important; left:0 !important; right:0 !important; height:70px !important; min-height:70px !important; display:flex !important; align-items:center !important; gap:12px; padding:12px 120px 12px 16px; border-bottom:1px solid rgba(255,255,255,.08); background:rgba(10,10,14,.94); backdrop-filter:blur(18px); z-index:90 !important; visibility:visible !important; opacity:1 !important; transform:none !important; }
+    .adnn-chat-app .adnn-room-shell > .adnn-call-dock { position:absolute !important; top:14px !important; right:16px !important; z-index:160 !important; display:flex !important; align-items:center !important; gap:8px !important; visibility:visible !important; opacity:1 !important; pointer-events:auto !important; }
     .adnn-back-btn { display:none; }
     .adnn-chat-app .adnn-room-shell > .adnn-room-head .adnn-room-title { flex:1; min-width:0; display:grid !important; gap:2px; }
     .adnn-room-title strong, .adnn-room-title small { overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
@@ -1246,7 +1304,7 @@ function injectChatStyles() {
     .adnn-room-title small { font-size:12px; color:rgba(255,255,255,.5); }
     .adnn-room-title small.is-online { color:#53d769; }
     .adnn-call-btn, .adnn-back-btn, .adnn-attach-btn, .adnn-voice-btn, .adnn-send-btn, .adnn-composer button { width:42px; height:42px; border:0; border-radius:50%; display:grid; place-items:center; color:#fff; background:rgba(255,255,255,.06); cursor:pointer; transition:.2s ease; flex:0 0 auto; }
-    .adnn-chat-app .adnn-room-shell > .adnn-room-head .adnn-call-btn { display:grid !important; visibility:visible !important; opacity:1 !important; pointer-events:auto !important; background:rgba(255,255,255,.08); box-shadow:inset 0 1px 0 rgba(255,255,255,.08); }
+    .adnn-chat-app .adnn-room-shell .adnn-call-dock .adnn-call-btn { display:grid !important; visibility:visible !important; opacity:1 !important; pointer-events:auto !important; background:rgba(255,255,255,.08); box-shadow:inset 0 1px 0 rgba(255,255,255,.08); }
     .adnn-chat-app .adnn-room-shell > .adnn-room-head .adnn-back-btn { display:none !important; }
     .adnn-call-btn:hover, .adnn-attach-btn:hover, .adnn-voice-btn:hover { background:rgba(255,255,255,.1); transform:translateY(-1px); }
     .adnn-call-btn svg, .adnn-back-btn svg, .adnn-attach-btn svg, .adnn-voice-btn svg, .adnn-send-btn svg { width:19px; height:19px; }
@@ -1338,7 +1396,8 @@ function injectChatStyles() {
       .adnn-chat-app .adnn-room-shell { height:100svh !important; --adnn-head-h:62px; --adnn-composer-h:76px; }
       .adnn-message { max-width:86%; }
       .adnn-chat-app .adnn-room-shell > .adnn-message-scroll { top:62px !important; bottom:76px !important; padding:12px 10px; }
-      .adnn-chat-app .adnn-room-shell > .adnn-room-head { height:62px !important; min-height:62px !important; padding:10px; gap:8px; }
+      .adnn-chat-app .adnn-room-shell > .adnn-room-head { height:62px !important; min-height:62px !important; padding:10px 100px 10px 10px; gap:8px; }
+      .adnn-chat-app .adnn-room-shell > .adnn-call-dock { top:11px !important; right:10px !important; gap:6px !important; }
       .adnn-call-btn, .adnn-back-btn, .adnn-attach-btn, .adnn-voice-btn, .adnn-send-btn { width:39px; height:39px; }
       .adnn-chat-app .adnn-room-shell > .adnn-composer-wrap { min-height:76px !important; padding:8px; }
       .adnn-composer textarea { font-size:16px; }
@@ -1348,4 +1407,6 @@ function injectChatStyles() {
     }
   `;
   document.head.appendChild(style);
+}
+
 }

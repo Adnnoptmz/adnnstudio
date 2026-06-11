@@ -1561,9 +1561,15 @@ function createPeerConnection(callId, isAnswerer) {
         activeCallState.remoteStream.addTrack(track);
       }
       if (track.kind === "video") {
+        if (activeCallState && track.readyState !== "ended" && !track.muted) {
+          activeCallState.remoteVideoOn = true;
+          activeCallState.remoteVideoDisabledByPeer = false;
+        }
         markRemoteVideoActive(track);
         track.onunmute = () => {
           if (!activeCallState) return;
+          activeCallState.remoteVideoOn = true;
+          activeCallState.remoteVideoDisabledByPeer = false;
           activeCallState.remoteVideoTrackReady = true;
           markRemoteVideoActive(track);
         };

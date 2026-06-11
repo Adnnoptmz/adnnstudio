@@ -1249,20 +1249,63 @@ function getAudioSender(pc) {
   return pc?.getSenders?.().find((sender) => sender.track?.kind === "audio") || null;
 }
 
-async function sendLocalVideoTrack(track) {
-  if (!activeCallState?.pc || !track) return false;
-  const pc = activeCallState.pc;
+function createCallBlankVideo() {
+  if (typeof document === "undefined") return null;
+  const canvas = document.createElement("canvas");
+  canvas.width = 16;
+  canvas.height = 9;
+  const context = canvas.getContext?.("2d");
+  if (context) {
+    context.fillStyle = "#000";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+  }
+  const stream = canvas.captureStream?.(1);
+  const track = stream?.getVideoTracks?.()[0] || null;
+  if (!track) return null;
+  track.enabled = true;
+  return { canvas, stream, track };
+}
+
+function stopCallBlankVideo(blankVideo) {
+  try { blankVideo?.track?.stop?.(); } catch (error) {}
+}
+
+function getActiveBlankVideoTrack() {
+  if (!activeCallState) return null;
+  if (!activeCallState.blankVideo?.track || activeCallState.blankVideo.track.readyState === "ended") {
+    activeCallState.blankVideo = createCallBlankVideo();
+  }
+  return activeCallState.blankVideo?.track || null;
+}
+
+async function replacePeerVideoTrack(pc, track) {
+  if (!pc) return false;
   let sender = pc.getSenders?.().find((item) => item.track?.kind === "video");
   if (!sender) sender = pc.getTransceivers?.().find((item) => item.sender && item.receiver?.track?.kind === "video")?.sender;
   if (!sender) sender = pc.getTransceivers?.().find((item) => item.sender && !item.sender.track && item.receiver?.track?.kind === "video")?.sender;
+  if (!sender) sender = getVideoSender(pc);
   if (sender?.replaceTrack) {
     await sender.replaceTrack(track);
     setVideoTransceiverDirection(pc, "sendrecv");
     return true;
   }
-  pc.addTrack(track, activeCallState.stream);
+  if (track && pc.addTransceiver) {
+    pc.addTransceiver(track, { direction: "sendrecv" });
+    return true;
+  }
   setVideoTransceiverDirection(pc, "sendrecv");
-  return true;
+  return false;
+}
+
+async function sendLocalVideoTrack(track) {
+  if (!activeCallState?.pc || !track) return false;
+  return replacePeerVideoTrack(activeCallState.pc, track);
+}
+
+async function attachInitialCallTracks(pc, stream, blankVideoTrack = null) {
+  stream.getAudioTracks().forEach((track) => pc.addTrack(track, stream));
+  const realVideoTrack = getLiveVideoTracks(stream)[0] || null;
+  await replacePeerVideoTrack(pc, realVideoTrack || blankVideoTrack);
 }
 
 function setVideoTransceiverDirection(pc, direction = "sendrecv") {
@@ -1447,7 +1490,8 @@ async function startRealtimeCall(kind = "audio", target = null) {
     }, { merge: true });
     const pc = createPeerConnection(callRef.id, false);
     setVideoTransceiverDirection(pc, "sendrecv");
-    stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+    const blankVideo = wantsVideo ? null : createCallBlankVideo();
+    await attachInitialCallTracks(pc, stream, blankVideo?.track || null);
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
     await setDoc(callRef, { offer: { type: offer.type, sdp: offer.sdp }, updatedAt: serverTimestamp() }, { merge: true });
@@ -1460,6 +1504,7 @@ async function startRealtimeCall(kind = "audio", target = null) {
       kind,
       pc,
       stream,
+      blankVideo,
       remoteStream: new MediaStream(),
       speakerOn: true,
       micMuted: false,
@@ -1659,12 +1704,13 @@ async function acceptIncomingCall() {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: wantsVideo });
     const pc = createPeerConnection(activeCallState.callId, true);
     setVideoTransceiverDirection(pc, "sendrecv");
-    stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+    const blankVideo = wantsVideo ? null : createCallBlankVideo();
+    await attachInitialCallTracks(pc, stream, blankVideo?.track || null);
     await pc.setRemoteDescription(new RTCSessionDescription(call.offer));
     const answer = await pc.createAnswer();
     await pc.setLocalDescription(answer);
     const callerVideoOn = call.media?.[call.callerUid]?.videoOn ?? wantsVideo;
-    Object.assign(activeCallState, { pc, stream, videoOn: wantsVideo, remoteVideoOn: !!callerVideoOn, remoteVideoDisabledByPeer: !callerVideoOn, remoteVideoTrackReady: false, remoteVideoLastUnmutedAt: 0, status: "connected", startedAt: Date.now(), mode: "active", callerUid: call.callerUid, receiverUid: call.receiverUid });
+    Object.assign(activeCallState, { pc, stream, blankVideo, videoOn: wantsVideo, remoteVideoOn: !!callerVideoOn, remoteVideoDisabledByPeer: !callerVideoOn, remoteVideoTrackReady: false, remoteVideoLastUnmutedAt: 0, status: "connected", startedAt: Date.now(), mode: "active", callerUid: call.callerUid, receiverUid: call.receiverUid });
     stopCallRinger();
     await setDoc(callRef, { answer: { type: answer.type, sdp: answer.sdp }, status: "accepted", [`media.${ownCallUid()}`]: { videoOn: wantsVideo, updatedAt: Date.now() }, answeredAt: serverTimestamp(), updatedAt: serverTimestamp() }, { merge: true });
     await updateCallInbox(call.receiverUid, activeCallState.callId, "accepted");
@@ -1864,7 +1910,8 @@ function applyLocalVideoState() {
     if (sender && realTrack && sender.track?.id !== realTrack.id) sender.replaceTrack(realTrack).catch(() => {});
   } else {
     activeCallState.stream.getVideoTracks().forEach((track) => { track.enabled = false; });
-    if (sender) sender.replaceTrack(null).catch(() => {});
+    const blankTrack = getActiveBlankVideoTrack();
+    if (sender) sender.replaceTrack(blankTrack).catch(() => {});
   }
 }
 
@@ -1990,7 +2037,7 @@ async function convertCallToVideo() {
       activeCallState.stream.removeTrack(track);
     });
     const sender = activeCallState.pc.getSenders?.().find((item) => item.track?.kind === "video") || getVideoSender(activeCallState.pc);
-    await sender?.replaceTrack?.(null).catch(() => {});
+    await sender?.replaceTrack?.(getActiveBlankVideoTrack()).catch(() => {});
     setVideoTransceiverDirection(activeCallState.pc, "sendrecv");
     activeCallState.videoOn = false;
     await announceCallMediaUpdate(false);
@@ -2009,9 +2056,9 @@ async function convertCallToVideo() {
       activeCallState.stream.removeTrack(oldTrack);
     });
     activeCallState.stream.addTrack(track);
-    await sendLocalVideoTrack(track);
     activeCallState.videoOn = true;
     activeCallState.kind = "video";
+    await sendLocalVideoTrack(track);
     await announceCallMediaUpdate(true);
     attachCallMedia();
     await renegotiateActiveCall("video-on", { force: true });
@@ -2101,6 +2148,7 @@ async function endBrowserCall(showNotice = true, notice = "Call ended") {
   }
   state?.pc?.close?.();
   state?.stream?.getTracks?.().forEach((track) => track.stop());
+  stopCallBlankVideo(state?.blankVideo);
   activeCallState = null;
   const overlay = document.getElementById("adnnCallOverlay");
   if (overlay) overlay.remove();

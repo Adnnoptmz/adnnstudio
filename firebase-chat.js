@@ -53,7 +53,9 @@ const ADNN_ICON_MAXIMIZE = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d=
 const ADNN_ICON_CLOSE = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>`;
 const ADNN_ICON_BACK = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 const ADNN_ICON_VIDEO_OFF = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5A2.5 2.5 0 0 1 6.5 5h7A2.5 2.5 0 0 1 16 7.5v5.1M14 19H6.5A2.5 2.5 0 0 1 4 16.5v-9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="m16 10 4-2.4v7M4 4l16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-const CALL_MESSAGE_LIMIT = 80;
+const CALL_MESSAGE_LIMIT = 120;
+const ADNN_CHAT_REACTIONS = ["❤️", "👍", "😂", "😮", "🙏", "✅"];
+const ADNN_CHAT_QUICK_REPLIES = ["Received, checking this now.", "Can you share one more detail?", "Perfect, I will update you shortly.", "Approved from my side."];
 
 let activeUser = null;
 let clientChatId = "";
@@ -89,6 +91,7 @@ let activeCallUnsubscribes = [];
 if (auth && db) {
   installChatStyles();
   installClientChatShell();
+  installMessengerExperience();
   if (location.pathname.includes("admin.html")) {
     installAdminChatPanel();
     installAdminMessageCardTools();
@@ -181,11 +184,11 @@ function installClientChatShell() {
     </div>
     <form class="adnn-chat-form" id="adnnChatForm">
       <label class="adnn-chat-media" title="Add media" aria-label="Add media">
-        <input id="adnnChatFile" type="file" accept="image/*,.pdf,.doc,.docx,.zip">
+        <input id="adnnChatFile" type="file" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.zip">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
         <span class="adnn-chat-file-name" id="adnnChatFileName" hidden></span>
       </label>
-      <input id="adnnChatInput" autocomplete="off" maxlength="1800" placeholder="Type a message">
+      <input id="adnnChatInput" autocomplete="off" maxlength="1800" placeholder="Message AdnnStudio">
       <button type="submit" aria-label="Send message">
         <svg viewBox="0 0 24 24" fill="currentColor" style="width: 14px; height: 14px; display: block;">
   <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
@@ -327,7 +330,10 @@ async function sendClientMessage(event) {
     senderEmail: emailKey(activeUser.email),
     senderName: activeUser.displayName || activeUser.email || "Client",
     senderRole: "client",
-    ...getAdnnReplyPayload(clientChatId),
+    replyTo: consumeReplyTarget(clientChatId),
+    reactions: {},
+    favoriteBy: [],
+    status: "sent",
     createdAt: serverTimestamp()
   });
   await setDoc(doc(db, "chats", clientChatId), {
@@ -405,11 +411,11 @@ function installAdminChatPanel() {
         </div>
         <form class="adnn-chat-form" id="adnnAdminChatForm">
           <label class="adnn-chat-media" title="Add media" aria-label="Add media">
-            <input id="adnnAdminChatFile" type="file" accept="image/*,.pdf,.doc,.docx,.zip">
+            <input id="adnnAdminChatFile" type="file" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.zip">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
             <span class="adnn-chat-file-name" id="adnnAdminChatFileName" hidden></span>
           </label>
-          <input id="adnnAdminChatInput" autocomplete="off" maxlength="1800" placeholder="Message">
+          <input id="adnnAdminChatInput" autocomplete="off" maxlength="1800" placeholder="Message client">
           <button type="submit" aria-label="Send reply">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12 20 5l-5.8 14-3-5.9L4 12Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
           </button>
@@ -505,7 +511,7 @@ function installDesignerChatPanel() {
     </div>
     <form class="adnn-chat-form" id="adnnDesignerChatForm">
       <label class="adnn-chat-media" title="Add media" aria-label="Add media">
-        <input id="adnnDesignerChatFile" type="file" accept="image/*,.pdf,.doc,.docx,.zip">
+        <input id="adnnDesignerChatFile" type="file" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.zip">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
         <span class="adnn-chat-file-name" id="adnnDesignerChatFileName" hidden></span>
       </label>
@@ -605,7 +611,10 @@ async function sendDesignerMessage(event) {
     senderEmail: emailKey(activeUser.email),
     senderName: activeDesignerProfile?.name || activeUser.displayName || activeUser.email || "Designer",
     senderRole: "designer",
-    ...getAdnnReplyPayload(designerChatId),
+    replyTo: consumeReplyTarget(designerChatId),
+    reactions: {},
+    favoriteBy: [],
+    status: "sent",
     createdAt: serverTimestamp()
   });
   await setDoc(doc(db, "chats", designerChatId), {
@@ -710,7 +719,7 @@ function installDirectChatPanel() {
       </div>
       <div class="adnn-chat-messages" id="adnnDirectMessages"></div>
       <form class="adnn-chat-form" id="adnnDirectChatForm">
-        <label class="adnn-chat-media" title="Add media" aria-label="Add media"><input id="adnnDirectChatFile" type="file" accept="image/*,.pdf,.doc,.docx,.zip"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span class="adnn-chat-file-name" id="adnnDirectChatFileName" hidden></span></label>
+        <label class="adnn-chat-media" title="Add media" aria-label="Add media"><input id="adnnDirectChatFile" type="file" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.zip"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span class="adnn-chat-file-name" id="adnnDirectChatFileName" hidden></span></label>
         <input id="adnnDirectChatInput" autocomplete="off" maxlength="1800" placeholder="Message user" disabled>
         <button type="submit" aria-label="Send direct message" disabled><svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px;display:block;"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg></button>
       </form>
@@ -732,10 +741,10 @@ function installMobileDirectComposer() {
   form.hidden = true;
   form.innerHTML = `
     <label class="adnn-mobile-direct-upload" title="Add media" aria-label="Add media">
-      <input id="adnnMobileDirectFile" type="file" accept="image/*,.pdf,.doc,.docx,.zip">
+      <input id="adnnMobileDirectFile" type="file" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.zip">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
     </label>
-    <input id="adnnMobileDirectInput" autocomplete="off" maxlength="1800" placeholder="Message" inputmode="text">
+    <input id="adnnMobileDirectInput" autocomplete="off" maxlength="1800" placeholder="Message client" inputmode="text">
     <button type="submit" aria-label="Send message"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg></button>
   `;
   form.addEventListener("submit", sendMobileDirectMessage);
@@ -770,7 +779,10 @@ async function sendMobileDirectMessage(event) {
     senderEmail: emailKey(activeUser.email),
     senderName: getOwnDirectName(activeDirectChat),
     senderRole: "user",
-    ...getAdnnReplyPayload(activeDirectChatId),
+    replyTo: consumeReplyTarget(activeDirectChatId),
+    reactions: {},
+    favoriteBy: [],
+    status: "sent",
     createdAt: serverTimestamp()
   });
   await setDoc(doc(db, "chats", activeDirectChatId), { lastMessage, lastSenderUid: activeUser.uid, updatedAt: serverTimestamp() }, { merge: true });
@@ -934,6 +946,10 @@ async function sendDirectMessage(event) {
     senderEmail: emailKey(activeUser.email),
     senderName: getOwnDirectName(activeDirectChat),
     senderRole: "user",
+    replyTo: consumeReplyTarget(activeDirectChatId),
+    reactions: {},
+    favoriteBy: [],
+    status: "sent",
     createdAt: serverTimestamp()
   });
   await setDoc(doc(db, "chats", activeDirectChatId), { lastMessage, lastSenderUid: activeUser.uid, updatedAt: serverTimestamp() }, { merge: true });
@@ -2274,7 +2290,10 @@ async function sendAdminMessage(event) {
     senderEmail: emailKey(activeUser.email),
     senderName: "AdnnStudio",
     senderRole: "admin",
-    ...getAdnnReplyPayload(selectedAdminChatId),
+    replyTo: consumeReplyTarget(selectedAdminChatId),
+    reactions: {},
+    favoriteBy: [],
+    status: "sent",
     createdAt: serverTimestamp()
   });
   await setDoc(doc(db, "chats", selectedAdminChatId), chatUpdate, { merge: true });
@@ -2285,12 +2304,22 @@ async function sendAdminMessage(event) {
 
 function messageBubble(message, mine, chatId) {
   const bubble = document.createElement("article");
-  bubble.className = `adnn-chat-bubble${mine ? " is-mine" : ""}${message.callEvent ? " is-call-event" : ""}`;
+  bubble.className = `adnn-chat-bubble${mine ? " is-mine" : ""}${message.callEvent ? " is-call-event" : ""}${isFavoriteMessage(message) ? " is-favorite" : ""}`;
+  bubble.dataset.messageId = message.id || "";
+  bubble.dataset.chatText = [message.senderName || "", message.text || "", message.mediaName || "", message.callEvent ? "call" : ""].join(" ").toLowerCase();
   if (message.senderName && !mine) {
     const name = document.createElement("strong");
     name.className = "adnn-chat-sender";
     name.textContent = message.senderName;
     bubble.appendChild(name);
+  }
+  if (message.replyTo?.text || message.replyTo?.senderName) {
+    const reply = document.createElement("button");
+    reply.type = "button";
+    reply.className = "adnn-chat-reply-preview";
+    reply.textContent = `${message.replyTo.senderName || "Reply"}: ${message.replyTo.text || message.replyTo.mediaName || "Attachment"}`;
+    reply.addEventListener("click", () => scrollToMessage(message.replyTo.id));
+    bubble.appendChild(reply);
   }
   if (isSafeUrl(message.mediaUrl)) {
     bubble.appendChild(createMediaAttachment(message));
@@ -2304,24 +2333,89 @@ function messageBubble(message, mine, chatId) {
   } else {
     text.textContent = message.text || "";
   }
-  time.textContent = relativeTime(message.createdAt);
+  time.textContent = `${relativeTime(message.createdAt)}${mine && !message.callEvent ? " · sent" : ""}`;
   if (text.textContent) bubble.appendChild(text);
   bubble.appendChild(time);
+  if (!message.callEvent) bubble.appendChild(messageActions(message, chatId));
+  bubble.appendChild(renderReactions(message, chatId));
+  return bubble;
+}
+
+function messageActions(message, chatId) {
+  const actions = document.createElement("div");
+  actions.className = "adnn-chat-message-actions";
+  const react = document.createElement("button");
+  react.type = "button";
+  react.className = "adnn-chat-mini-action";
+  react.title = "React";
+  react.innerHTML = "♡";
+  react.addEventListener("click", (event) => openReactionBar(event.currentTarget, chatId, message.id));
+  actions.appendChild(react);
+
+  const reply = document.createElement("button");
+  reply.type = "button";
+  reply.className = "adnn-chat-mini-action";
+  reply.title = "Reply";
+  reply.innerHTML = "↩";
+  reply.addEventListener("click", () => setReplyTarget(chatId, message));
+  actions.appendChild(reply);
+
+  const fav = document.createElement("button");
+  fav.type = "button";
+  fav.className = `adnn-chat-mini-action${isFavoriteMessage(message) ? " is-on" : ""}`;
+  fav.title = "Favorite";
+  fav.innerHTML = "☆";
+  fav.addEventListener("click", () => toggleFavoriteMessage(chatId, message.id, fav));
+  actions.appendChild(fav);
+
   if (canDeleteMessage(message)) {
     const deleteButton = document.createElement("button");
     deleteButton.type = "button";
-    deleteButton.className = "adnn-chat-delete";
+    deleteButton.className = "adnn-chat-mini-action is-danger";
     deleteButton.title = "Delete message";
     deleteButton.setAttribute("aria-label", "Delete message");
-    deleteButton.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4h6m-8.5 4h11M9 8v10m6-10v10M7.5 8l.7 12h7.6l.7-12" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+    deleteButton.innerHTML = "⌫";
     deleteButton.addEventListener("click", () => deleteChatMessage(chatId, message.id, deleteButton));
-    bubble.appendChild(deleteButton);
+    actions.appendChild(deleteButton);
   }
-  return bubble;
+  return actions;
+}
+
+function renderReactions(message, chatId = "") {
+  const wrap = document.createElement("div");
+  wrap.className = "adnn-chat-reactions";
+  const reactions = message.reactions || {};
+  Object.entries(reactions).forEach(([emoji, users]) => {
+    const count = Array.isArray(users) ? users.length : Number(users) || 0;
+    if (!count) return;
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.textContent = `${emoji} ${count}`;
+    chip.className = Array.isArray(users) && users.includes(activeUser?.uid) ? "is-mine" : "";
+    chip.addEventListener("click", () => toggleReaction(chatId, message.id, emoji));
+    wrap.appendChild(chip);
+  });
+  if (!wrap.children.length) wrap.hidden = true;
+  return wrap;
 }
 
 function createMediaAttachment(message) {
   const mediaType = String(message.mediaType || "");
+  if (mediaType.startsWith("audio/")) {
+    const audio = document.createElement("audio");
+    audio.className = "adnn-chat-audio";
+    audio.controls = true;
+    audio.src = message.mediaUrl;
+    return audio;
+  }
+  if (mediaType.startsWith("video/")) {
+    const video = document.createElement("video");
+    video.className = "adnn-chat-video";
+    video.controls = true;
+    video.playsInline = true;
+    video.src = message.mediaUrl;
+    return video;
+  }
   if (mediaType.startsWith("image/")) {
     const link = document.createElement("a");
     link.className = "adnn-chat-attachment is-image";
@@ -2343,6 +2437,218 @@ function createMediaAttachment(message) {
   link.rel = "noopener noreferrer";
   link.textContent = message.mediaName || "Open attachment";
   return link;
+}
+
+const adnnReplyTargets = new Map();
+let adnnRecorderState = null;
+
+function installMessengerExperience() {
+  window.setTimeout(() => {
+    document.querySelectorAll(".adnn-chat-form").forEach(enhanceComposer);
+    installGlobalChatSearch();
+  }, 0);
+  const observer = new MutationObserver(() => {
+    document.querySelectorAll(".adnn-chat-form:not([data-pro-composer])").forEach(enhanceComposer);
+  });
+  observer.observe(document.documentElement, { childList: true, subtree: true });
+}
+
+function enhanceComposer(form) {
+  if (!form || form.dataset.proComposer === "true") return;
+  form.dataset.proComposer = "true";
+  const tools = document.createElement("div");
+  tools.className = "adnn-chat-pro-tools";
+  tools.innerHTML = `
+    <button type="button" data-chat-tool="emoji" title="Emoji">☺</button>
+    <button type="button" data-chat-tool="voice" title="Voice note">◉</button>
+    <button type="button" data-chat-tool="search" title="Search messages">⌕</button>
+    <button type="button" data-chat-tool="quick" title="Quick replies">＋</button>
+    <span class="adnn-chat-recorder" hidden>Recording voice note…</span>`;
+  form.prepend(tools);
+  tools.querySelector('[data-chat-tool="emoji"]')?.addEventListener("click", (event) => openEmojiTray(event.currentTarget, form));
+  tools.querySelector('[data-chat-tool="voice"]')?.addEventListener("click", (event) => toggleVoiceRecording(event.currentTarget, form));
+  tools.querySelector('[data-chat-tool="search"]')?.addEventListener("click", () => toggleSearchForForm(form));
+  tools.querySelector('[data-chat-tool="quick"]')?.addEventListener("click", (event) => openQuickReplyTray(event.currentTarget, form));
+}
+
+function installGlobalChatSearch() {
+  if (document.getElementById("adnnChatSearchDock")) return;
+  const dock = document.createElement("div");
+  dock.id = "adnnChatSearchDock";
+  dock.className = "adnn-chat-search-dock";
+  dock.hidden = true;
+  dock.innerHTML = `<input id="adnnChatSearchInput" placeholder="Search messages, files, calls"><button type="button" aria-label="Close search">×</button>`;
+  document.body.appendChild(dock);
+  dock.querySelector("input")?.addEventListener("input", (event) => filterVisibleMessages(event.currentTarget.value));
+  dock.querySelector("button")?.addEventListener("click", () => { dock.hidden = true; filterVisibleMessages(""); });
+}
+
+function toggleSearchForForm() {
+  const dock = document.getElementById("adnnChatSearchDock");
+  if (!dock) return;
+  dock.hidden = !dock.hidden;
+  if (!dock.hidden) window.setTimeout(() => dock.querySelector("input")?.focus(), 50);
+}
+
+function filterVisibleMessages(value) {
+  const queryText = String(value || "").trim().toLowerCase();
+  document.querySelectorAll(".adnn-chat-bubble").forEach((bubble) => {
+    bubble.classList.toggle("is-filtered-out", !!queryText && !String(bubble.dataset.chatText || "").includes(queryText));
+  });
+}
+
+function getComposerInput(form) {
+  return form?.querySelector('input[type="text"], input:not([type]), textarea, #adnnChatInput, #adnnAdminChatInput, #adnnDirectChatInput, #adnnDesignerChatInput');
+}
+
+function openEmojiTray(anchor, form) {
+  openFloatingTray(anchor, ADNN_CHAT_REACTIONS, (emoji) => {
+    const input = getComposerInput(form);
+    if (!input) return;
+    input.value = `${input.value || ""}${emoji}`;
+    input.focus();
+  });
+}
+
+function openQuickReplyTray(anchor, form) {
+  openFloatingTray(anchor, ADNN_CHAT_QUICK_REPLIES, (text) => {
+    const input = getComposerInput(form);
+    if (!input) return;
+    input.value = text;
+    input.focus();
+  });
+}
+
+function openFloatingTray(anchor, items, onPick) {
+  document.querySelector(".adnn-chat-floating-tray")?.remove();
+  const tray = document.createElement("div");
+  tray.className = "adnn-chat-floating-tray";
+  items.forEach((item) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.textContent = item;
+    btn.addEventListener("click", () => { onPick(item); tray.remove(); });
+    tray.appendChild(btn);
+  });
+  document.body.appendChild(tray);
+  const rect = anchor.getBoundingClientRect();
+  tray.style.left = `${Math.min(rect.left, window.innerWidth - 260)}px`;
+  tray.style.top = `${Math.max(12, rect.top - tray.offsetHeight - 10)}px`;
+  window.setTimeout(() => document.addEventListener("click", function close(event) {
+    if (!tray.contains(event.target) && event.target !== anchor) { tray.remove(); document.removeEventListener("click", close); }
+  }), 0);
+}
+
+function openReactionBar(anchor, chatId, messageId) {
+  openFloatingTray(anchor, ADNN_CHAT_REACTIONS, (emoji) => toggleReaction(chatId, messageId, emoji));
+}
+
+async function toggleReaction(chatId, messageId, emoji) {
+  if (!chatId || !messageId || !activeUser?.uid) return;
+  const ref = doc(db, "chats", chatId, "messages", messageId);
+  const snap = await getDoc(ref).catch(() => null);
+  const data = snap?.data?.() || {};
+  const reactions = data.reactions || {};
+  const users = Array.isArray(reactions[emoji]) ? reactions[emoji] : [];
+  reactions[emoji] = users.includes(activeUser.uid) ? users.filter((uid) => uid !== activeUser.uid) : [...users, activeUser.uid];
+  await setDoc(ref, { reactions }, { merge: true }).catch(() => {});
+}
+
+function isFavoriteMessage(message) {
+  return Array.isArray(message.favoriteBy) && message.favoriteBy.includes(activeUser?.uid);
+}
+
+async function toggleFavoriteMessage(chatId, messageId, button) {
+  if (!chatId || !messageId || !activeUser?.uid) return;
+  button?.classList.toggle("is-on");
+  const ref = doc(db, "chats", chatId, "messages", messageId);
+  const snap = await getDoc(ref).catch(() => null);
+  const data = snap?.data?.() || {};
+  const users = Array.isArray(data.favoriteBy) ? data.favoriteBy : [];
+  const favoriteBy = users.includes(activeUser.uid) ? users.filter((uid) => uid !== activeUser.uid) : [...users, activeUser.uid];
+  await setDoc(ref, { favoriteBy }, { merge: true }).catch(() => {});
+}
+
+function setReplyTarget(chatId, message) {
+  if (!chatId || !message?.id) return;
+  adnnReplyTargets.set(chatId, { id: message.id, text: message.text || "", mediaName: message.mediaName || "", senderName: message.senderName || "Message" });
+  showChatAlert({ text: `Replying to ${message.senderName || "message"}` }, "Reply");
+}
+
+function consumeReplyTarget(chatId) {
+  const value = adnnReplyTargets.get(chatId) || null;
+  adnnReplyTargets.delete(chatId);
+  return value;
+}
+
+function scrollToMessage(messageId) {
+  if (!messageId) return;
+  const node = document.querySelector(`[data-message-id="${CSS.escape(messageId)}"]`);
+  if (!node) return;
+  node.scrollIntoView({ behavior: "smooth", block: "center" });
+  node.classList.add("is-highlighted");
+  window.setTimeout(() => node.classList.remove("is-highlighted"), 1400);
+}
+
+async function toggleVoiceRecording(button, form) {
+  if (adnnRecorderState?.recorder?.state === "recording") {
+    adnnRecorderState.recorder.stop();
+    button.classList.remove("is-recording");
+    form.querySelector(".adnn-chat-recorder")?.setAttribute("hidden", "");
+    return;
+  }
+  if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+    showChatAlert({ text: "Voice notes need a secure browser with microphone access." }, "Voice note");
+    return;
+  }
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: true }).catch(() => null);
+  if (!stream) return;
+  const chunks = [];
+  const recorder = new MediaRecorder(stream);
+  adnnRecorderState = { recorder, form, startedAt: Date.now(), stream };
+  recorder.addEventListener("dataavailable", (event) => { if (event.data?.size) chunks.push(event.data); });
+  recorder.addEventListener("stop", async () => {
+    stream.getTracks().forEach((track) => track.stop());
+    const blob = new Blob(chunks, { type: recorder.mimeType || "audio/webm" });
+    const file = new File([blob], `voice-note-${Date.now()}.webm`, { type: blob.type });
+    await sendVoiceMessageForForm(form, file);
+    adnnRecorderState = null;
+  });
+  button.classList.add("is-recording");
+  form.querySelector(".adnn-chat-recorder")?.removeAttribute("hidden");
+  recorder.start();
+}
+
+function getChatContextForForm(form) {
+  const id = form?.id || "";
+  if (id === "adnnAdminChatForm") return { chatId: selectedAdminChatId, senderRole: "admin", senderName: "AdnnStudio", unreadField: "unreadForClient" };
+  if (id === "adnnDirectChatForm") return { chatId: activeDirectChatId, senderRole: "user", senderName: getOwnDirectName(activeDirectChat), unreadField: "" };
+  if (id === "adnnDesignerChatForm") return { chatId: designerChatId, senderRole: "designer", senderName: activeDesignerProfile?.name || activeUser?.displayName || activeUser?.email || "Designer", unreadField: "" };
+  return { chatId: clientChatId, senderRole: "client", senderName: activeUser?.displayName || activeUser?.email || "Client", unreadField: "unreadForAdmin" };
+}
+
+async function sendVoiceMessageForForm(form, file) {
+  if (!activeUser) return;
+  const ctx = getChatContextForForm(form);
+  if (!ctx.chatId) return;
+  const media = await uploadChatFile(file, ctx.chatId).catch(() => null);
+  if (!media?.mediaUrl) return;
+  await addDoc(collection(db, "chats", ctx.chatId, "messages"), {
+    text: "Voice message",
+    ...media,
+    senderUid: activeUser.uid,
+    senderEmail: emailKey(activeUser.email),
+    senderName: ctx.senderName,
+    senderRole: ctx.senderRole,
+    replyTo: consumeReplyTarget(ctx.chatId),
+    reactions: {},
+    favoriteBy: [],
+    status: "sent",
+    createdAt: serverTimestamp()
+  });
+  const update = { lastMessage: "Voice message", lastSenderUid: activeUser.uid, updatedAt: serverTimestamp() };
+  if (ctx.unreadField) update[ctx.unreadField] = increment(1);
+  await setDoc(doc(db, "chats", ctx.chatId), update, { merge: true });
 }
 
 async function deleteChatMessage(chatId, messageId, button) {
@@ -3106,6 +3412,34 @@ function installChatStyles() {
 
     }
   `;
+    .adnn-chat-form { grid-template-columns:auto 1fr auto; }
+    .adnn-chat-pro-tools { grid-column:1 / -1; display:flex; align-items:center; gap:8px; padding:0 2px 8px; }
+    .adnn-chat-pro-tools button { width:32px; height:32px; border:1px solid rgba(255,255,255,.09); border-radius:13px; background:rgba(255,255,255,.055); color:var(--adnn-text); cursor:pointer; display:grid; place-items:center; font:600 14px/1 var(--font-mono, monospace); }
+    .adnn-chat-pro-tools button:hover, .adnn-chat-pro-tools button.is-recording { background:rgba(39,45,207,.55); color:#fff; }
+    .adnn-chat-recorder { color:#ff453a; font-size:11px; font-family:var(--font-mono, monospace); letter-spacing:.04em; }
+    .adnn-chat-search-dock { position:fixed; z-index:100000; left:50%; top:18px; transform:translateX(-50%); width:min(520px, calc(100vw - 26px)); display:flex; gap:8px; padding:10px; border:1px solid rgba(255,255,255,.12); border-radius:20px; background:rgba(18,18,24,.88); box-shadow:0 24px 80px rgba(0,0,0,.45); backdrop-filter:blur(22px) saturate(160%); -webkit-backdrop-filter:blur(22px) saturate(160%); }
+    .adnn-chat-search-dock[hidden] { display:none !important; }
+    .adnn-chat-search-dock input { flex:1; border:0; outline:0; border-radius:14px; padding:0 12px; min-height:38px; background:rgba(255,255,255,.08); color:#fff; }
+    .adnn-chat-search-dock button { width:38px; border:0; border-radius:14px; background:rgba(255,255,255,.08); color:#fff; cursor:pointer; }
+    .adnn-chat-bubble.is-filtered-out { display:none !important; }
+    .adnn-chat-bubble.is-highlighted { outline:2px solid rgba(125,135,255,.85); outline-offset:3px; }
+    .adnn-chat-message-actions { display:flex; gap:5px; margin-top:7px; opacity:0; transform:translateY(3px); transition:opacity .18s ease, transform .18s ease; }
+    .adnn-chat-bubble:hover .adnn-chat-message-actions, .adnn-chat-bubble:focus-within .adnn-chat-message-actions { opacity:1; transform:translateY(0); }
+    .adnn-chat-mini-action { min-width:28px; height:28px; border:1px solid rgba(255,255,255,.09); border-radius:999px; background:rgba(0,0,0,.14); color:rgba(255,255,255,.84); cursor:pointer; display:grid; place-items:center; font:700 12px/1 var(--font-mono, monospace); }
+    .adnn-chat-mini-action:hover, .adnn-chat-mini-action.is-on { background:rgba(39,45,207,.72); color:#fff; }
+    .adnn-chat-mini-action.is-danger:hover { background:rgba(255,59,48,.7); }
+    .adnn-chat-reactions { display:flex; gap:5px; flex-wrap:wrap; margin-top:6px; }
+    .adnn-chat-reactions[hidden] { display:none !important; }
+    .adnn-chat-reactions button { border:1px solid rgba(255,255,255,.1); border-radius:999px; background:rgba(255,255,255,.08); color:#fff; font-size:11px; padding:4px 7px; cursor:pointer; }
+    .adnn-chat-reactions button.is-mine { background:rgba(39,45,207,.55); }
+    .adnn-chat-reply-preview { width:100%; max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:left; border:0; border-left:3px solid rgba(125,135,255,.8); border-radius:10px; padding:7px 9px; margin-bottom:5px; color:rgba(255,255,255,.75); background:rgba(255,255,255,.07); cursor:pointer; }
+    .adnn-chat-bubble.is-favorite { box-shadow:0 0 0 1px rgba(255,214,10,.18), 0 18px 48px rgba(0,0,0,.22); }
+    .adnn-chat-audio { width:min(260px, 70vw); filter:invert(1) hue-rotate(180deg); }
+    .adnn-chat-video { width:min(320px, 78vw); max-height:240px; border-radius:16px; background:#050507; display:block; }
+    .adnn-chat-floating-tray { position:fixed; z-index:100001; min-width:180px; max-width:260px; display:flex; gap:6px; flex-wrap:wrap; padding:10px; border:1px solid rgba(255,255,255,.12); border-radius:18px; background:rgba(18,18,24,.92); box-shadow:0 24px 70px rgba(0,0,0,.45); backdrop-filter:blur(22px) saturate(160%); -webkit-backdrop-filter:blur(22px) saturate(160%); }
+    .adnn-chat-floating-tray button { border:1px solid rgba(255,255,255,.09); border-radius:13px; min-height:32px; padding:0 10px; background:rgba(255,255,255,.07); color:#fff; cursor:pointer; }
+    .adnn-call-card::after { content:"Tahoe Glass call engine"; color:rgba(255,255,255,.28); font:10px/1.2 var(--font-mono, monospace); letter-spacing:.08em; text-transform:uppercase; }
+
   document.head.appendChild(style);
 
   const mobileComposerStyle = document.createElement("style");
@@ -3420,286 +3754,3 @@ function escapeHtml(value) {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
 }
-
-
-/* ADNN Studio safe messenger enhancements: layered on top of the original working chat engine. */
-const ADNN_CHAT_REPLY_KEY = "adnn.chat.reply.v2";
-let adnnChatRecorder = null;
-let adnnChatRecorderChunks = [];
-let adnnChatRecorderTarget = null;
-let adnnEnhancedBaseMessageBubble = null;
-
-function getAdnnReplyStore() {
-  try { return JSON.parse(sessionStorage.getItem(ADNN_CHAT_REPLY_KEY) || "{}"); } catch { return {}; }
-}
-
-function setAdnnReplyStore(store) {
-  try { sessionStorage.setItem(ADNN_CHAT_REPLY_KEY, JSON.stringify(store || {})); } catch {}
-}
-
-function getAdnnReplyPayload(chatId) {
-  const store = getAdnnReplyStore();
-  const reply = chatId ? store[chatId] : null;
-  if (!reply) return {};
-  delete store[chatId];
-  setAdnnReplyStore(store);
-  removeAdnnReplyPreview(chatId);
-  return { replyTo: reply };
-}
-
-function setAdnnReply(chatId, message) {
-  if (!chatId || !message) return;
-  const store = getAdnnReplyStore();
-  store[chatId] = {
-    id: message.id || "",
-    text: String(message.text || message.mediaName || "Media").slice(0, 180),
-    senderName: message.senderName || "Message"
-  };
-  setAdnnReplyStore(store);
-  renderAdnnReplyPreview(chatId);
-}
-
-function findAdnnFormForChat(chatId) {
-  if (chatId === clientChatId) return document.getElementById("adnnChatForm");
-  if (chatId === designerChatId) return document.getElementById("adnnDesignerChatForm");
-  if (chatId === activeDirectChatId) return document.getElementById("adnnDirectChatForm");
-  if (chatId === selectedAdminChatId) return document.getElementById("adnnAdminChatForm");
-  return null;
-}
-
-function renderAdnnReplyPreview(chatId) {
-  const form = findAdnnFormForChat(chatId);
-  if (!form) return;
-  const store = getAdnnReplyStore();
-  const reply = store[chatId];
-  removeAdnnReplyPreview(chatId);
-  if (!reply) return;
-  const preview = document.createElement("div");
-  preview.className = "adnn-reply-preview";
-  preview.dataset.chatId = chatId;
-  preview.innerHTML = `<span><strong>Replying to ${escapeHtml(reply.senderName || "message")}</strong>${escapeHtml(reply.text || "Media")}</span><button type="button" aria-label="Cancel reply">${ADNN_ICON_CLOSE}</button>`;
-  preview.querySelector("button")?.addEventListener("click", () => {
-    const next = getAdnnReplyStore();
-    delete next[chatId];
-    setAdnnReplyStore(next);
-    removeAdnnReplyPreview(chatId);
-  });
-  form.insertAdjacentElement("beforebegin", preview);
-}
-
-function removeAdnnReplyPreview(chatId) {
-  document.querySelectorAll(`.adnn-reply-preview[data-chat-id="${CSS.escape(chatId || "")}"]`).forEach((el) => el.remove());
-}
-
-function addAdnnActionButton(toolbar, label, text, handler) {
-  const btn = document.createElement("button");
-  btn.type = "button";
-  btn.className = "adnn-msg-action";
-  btn.textContent = text;
-  btn.title = label;
-  btn.setAttribute("aria-label", label);
-  btn.addEventListener("click", handler);
-  toolbar.appendChild(btn);
-}
-
-async function toggleAdnnReaction(chatId, message, reaction) {
-  if (!chatId || !message?.id || !activeUser) return;
-  const key = `reactions.${activeUser.uid}`;
-  const current = message.reactions?.[activeUser.uid];
-  try {
-    await updateDoc(doc(db, "chats", chatId, "messages", message.id), { [key]: current === reaction ? null : reaction });
-  } catch (error) {
-    console.warn("AdnnStudio reaction blocked by Firestore rules", error);
-    alert("Reaction could not be saved. Firestore rules only allow some message updates right now.");
-  }
-}
-
-async function toggleAdnnFavorite(chatId, message) {
-  if (!chatId || !message?.id || !activeUser) return;
-  const key = `favorites.${activeUser.uid}`;
-  const value = !(message.favorites && message.favorites[activeUser.uid]);
-  try {
-    await updateDoc(doc(db, "chats", chatId, "messages", message.id), { [key]: value || null });
-  } catch (error) {
-    console.warn("AdnnStudio favorite blocked by Firestore rules", error);
-    alert("Favorite could not be saved. Firestore rules need to allow this field for all chat members.");
-  }
-}
-
-function enhanceAdnnBubble(bubble, message, mine, chatId) {
-  bubble.dataset.messageId = message.id || "";
-  bubble.dataset.chatId = chatId || "";
-  bubble.dataset.searchText = `${message.senderName || ""} ${message.text || ""} ${message.mediaName || ""}`.toLowerCase();
-
-  if (message.replyTo?.text) {
-    const quote = document.createElement("div");
-    quote.className = "adnn-reply-quote";
-    quote.innerHTML = `<strong>${escapeHtml(message.replyTo.senderName || "Reply")}</strong><span>${escapeHtml(message.replyTo.text || "Media")}</span>`;
-    bubble.insertBefore(quote, bubble.firstChild);
-  }
-
-  const reactionValues = Object.values(message.reactions || {}).filter(Boolean);
-  if (reactionValues.length) {
-    const bar = document.createElement("div");
-    bar.className = "adnn-reaction-bar";
-    [...new Set(reactionValues)].forEach((emoji) => {
-      const count = reactionValues.filter((item) => item === emoji).length;
-      const pill = document.createElement("span");
-      pill.textContent = `${emoji} ${count > 1 ? count : ""}`.trim();
-      bar.appendChild(pill);
-    });
-    bubble.appendChild(bar);
-  }
-
-  const toolbar = document.createElement("div");
-  toolbar.className = "adnn-message-toolbar";
-  ["👍", "❤️", "😂", "😮"].forEach((emoji) => addAdnnActionButton(toolbar, `React ${emoji}`, emoji, () => toggleAdnnReaction(chatId, message, emoji)));
-  addAdnnActionButton(toolbar, "Reply", "↩", () => setAdnnReply(chatId, message));
-  addAdnnActionButton(toolbar, "Favorite", message.favorites?.[activeUser?.uid] ? "★" : "☆", () => toggleAdnnFavorite(chatId, message));
-  if (message.text) addAdnnActionButton(toolbar, "Copy", "⧉", () => navigator.clipboard?.writeText(message.text).catch(() => {}));
-  bubble.appendChild(toolbar);
-  return bubble;
-}
-
-function installAdnnEnhancedMessageBubble() {
-  if (adnnEnhancedBaseMessageBubble || typeof messageBubble !== "function") return;
-  adnnEnhancedBaseMessageBubble = messageBubble;
-  messageBubble = function(message, mine, chatId) {
-    return enhanceAdnnBubble(adnnEnhancedBaseMessageBubble(message, mine, chatId), message, mine, chatId);
-  };
-}
-
-function installAdnnSearchBars() {
-  const pairs = [
-    ["adnnChatMessages", "adnnChatDrawer", "Search private chat"],
-    ["adnnAdminMessages", "adnnAdminChatRoom", "Search messages"],
-    ["adnnDirectMessages", "adnnDirectRoom", "Search people/messages"],
-    ["adnnDesignerMessages", "adnnDesignerChatPanel", "Search designer chat"]
-  ];
-  pairs.forEach(([messagesId, scopeId, placeholder]) => {
-    const scope = document.getElementById(scopeId) || document.getElementById(messagesId)?.parentElement;
-    const messages = document.getElementById(messagesId);
-    if (!scope || !messages || scope.querySelector(`.adnn-chat-search[data-target="${messagesId}"]`)) return;
-    const search = document.createElement("input");
-    search.type = "search";
-    search.className = "adnn-chat-search";
-    search.dataset.target = messagesId;
-    search.placeholder = placeholder;
-    search.autocomplete = "off";
-    search.addEventListener("input", () => {
-      const term = search.value.trim().toLowerCase();
-      messages.querySelectorAll(".adnn-chat-bubble").forEach((bubble) => {
-        bubble.hidden = Boolean(term) && !String(bubble.dataset.searchText || bubble.textContent || "").toLowerCase().includes(term);
-      });
-    });
-    messages.insertAdjacentElement("beforebegin", search);
-  });
-}
-
-function installAdnnVoiceButtons() {
-  const specs = [
-    ["adnnChatForm", "adnnChatFile"],
-    ["adnnAdminChatForm", "adnnAdminChatFile"],
-    ["adnnDirectChatForm", "adnnDirectChatFile"],
-    ["adnnDesignerChatForm", "adnnDesignerChatFile"]
-  ];
-  specs.forEach(([formId, fileId]) => {
-    const form = document.getElementById(formId);
-    const file = document.getElementById(fileId);
-    if (!form || !file || form.querySelector(".adnn-voice-button")) return;
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "adnn-voice-button";
-    btn.textContent = "🎙";
-    btn.title = "Record voice message";
-    btn.setAttribute("aria-label", "Record voice message");
-    btn.addEventListener("click", () => toggleAdnnVoiceRecording(form, file, btn));
-    form.insertBefore(btn, form.querySelector("button[type='submit']"));
-  });
-}
-
-async function toggleAdnnVoiceRecording(form, fileInput, button) {
-  if (adnnChatRecorder?.state === "recording") {
-    adnnChatRecorder.stop();
-    button.classList.remove("is-recording");
-    button.textContent = "🎙";
-    return;
-  }
-  if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
-    alert("Voice recording is not supported in this browser.");
-    return;
-  }
-  const stream = await navigator.mediaDevices.getUserMedia({ audio: true }).catch((error) => {
-    alert(`Microphone could not start. ${error?.message || "Check browser permission."}`);
-    return null;
-  });
-  if (!stream) return;
-  adnnChatRecorderChunks = [];
-  adnnChatRecorderTarget = { form, fileInput, button };
-  adnnChatRecorder = new MediaRecorder(stream);
-  adnnChatRecorder.ondataavailable = (event) => { if (event.data?.size) adnnChatRecorderChunks.push(event.data); };
-  adnnChatRecorder.onstop = () => {
-    stream.getTracks().forEach((track) => track.stop());
-    const blob = new Blob(adnnChatRecorderChunks, { type: adnnChatRecorder.mimeType || "audio/webm" });
-    const file = new File([blob], `voice-message-${Date.now()}.webm`, { type: blob.type });
-    const transfer = new DataTransfer();
-    transfer.items.add(file);
-    adnnChatRecorderTarget.fileInput.files = transfer.files;
-    adnnChatRecorderTarget.form.requestSubmit();
-    adnnChatRecorder = null;
-    adnnChatRecorderTarget = null;
-  };
-  adnnChatRecorder.start();
-  button.classList.add("is-recording");
-  button.textContent = "■";
-}
-
-function installAdnnDragUpload() {
-  ["adnnChatForm", "adnnAdminChatForm", "adnnDirectChatForm", "adnnDesignerChatForm"].forEach((formId) => {
-    const form = document.getElementById(formId);
-    const file = form?.querySelector("input[type='file']");
-    if (!form || !file || form.dataset.dragReady === "true") return;
-    form.dataset.dragReady = "true";
-    ["dragover", "dragenter"].forEach((type) => form.addEventListener(type, (event) => { event.preventDefault(); form.classList.add("is-dragging"); }));
-    ["dragleave", "drop"].forEach((type) => form.addEventListener(type, () => form.classList.remove("is-dragging")));
-    form.addEventListener("drop", (event) => {
-      event.preventDefault();
-      if (!event.dataTransfer?.files?.length) return;
-      file.files = event.dataTransfer.files;
-      form.requestSubmit();
-    });
-  });
-}
-
-function installAdnnVideoPreviewPolish() {
-  document.querySelectorAll("video").forEach((video) => {
-    const isLocal = /local|self|preview|own/i.test(video.id + " " + video.className + " " + (video.getAttribute("aria-label") || ""));
-    if (isLocal) video.classList.add("adnn-local-camera-mirror");
-  });
-}
-
-function installAdnnEnhancementStyles() {
-  if (document.getElementById("adnnChatEnhancementStyles")) return;
-  const style = document.createElement("style");
-  style.id = "adnnChatEnhancementStyles";
-  style.textContent = `
-    .adnn-chat-search{width:calc(100% - 24px);margin:10px 12px 8px;padding:10px 12px;border:1px solid rgba(255,255,255,.14);border-radius:16px;background:rgba(255,255,255,.07);color:inherit;outline:0;backdrop-filter:blur(16px)}
-    .adnn-chat-search::placeholder{color:rgba(255,255,255,.48)}
-    .adnn-chat-bubble{position:relative}.adnn-message-toolbar{display:flex;gap:4px;margin-top:5px;opacity:.18;transition:opacity .18s ease}.adnn-chat-bubble:hover .adnn-message-toolbar,.adnn-chat-bubble:focus-within .adnn-message-toolbar{opacity:1}.adnn-msg-action{width:24px;height:24px;border:0;border-radius:999px;background:rgba(255,255,255,.12);color:inherit;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px}.adnn-msg-action:hover{background:rgba(255,255,255,.22)}
-    .adnn-reaction-bar{display:flex;gap:4px;flex-wrap:wrap;margin-top:5px}.adnn-reaction-bar span{padding:2px 7px;border-radius:999px;background:rgba(255,255,255,.14);font-size:12px}.adnn-reply-quote{border-inline-start:3px solid rgba(255,255,255,.45);padding:6px 8px;margin-bottom:6px;border-radius:10px;background:rgba(255,255,255,.08);display:grid;gap:2px}.adnn-reply-quote strong{font-size:11px}.adnn-reply-quote span{font-size:12px;opacity:.82}.adnn-reply-preview{margin:6px 10px 0;padding:8px 10px;border-radius:14px;background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.12);display:flex;align-items:center;justify-content:space-between;gap:10px}.adnn-reply-preview span{display:grid;gap:2px;font-size:12px}.adnn-reply-preview button{border:0;background:transparent;color:inherit;cursor:pointer;width:24px;height:24px}.adnn-voice-button{border:0;border-radius:999px;min-width:36px;height:36px;background:rgba(255,255,255,.12);color:inherit;cursor:pointer}.adnn-voice-button.is-recording{background:#ff4d67;color:#fff;animation:adnnPulse 1s infinite}.adnn-chat-form.is-dragging{outline:2px dashed rgba(255,255,255,.45);outline-offset:4px}.adnn-local-camera-mirror{transform:scaleX(-1)}@keyframes adnnPulse{50%{transform:scale(.92);opacity:.72}}
-  `;
-  document.head.appendChild(style);
-}
-
-function runAdnnMessengerEnhancements() {
-  installAdnnEnhancedMessageBubble();
-  installAdnnEnhancementStyles();
-  installAdnnSearchBars();
-  installAdnnVoiceButtons();
-  installAdnnDragUpload();
-  installAdnnVideoPreviewPolish();
-}
-
-runAdnnMessengerEnhancements();
-window.addEventListener("DOMContentLoaded", runAdnnMessengerEnhancements);
-setInterval(runAdnnMessengerEnhancements, 1200);

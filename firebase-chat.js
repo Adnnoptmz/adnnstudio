@@ -1205,19 +1205,20 @@ function injectChatStyles() {
     .adnn-chat-room { min-width:0; min-height:0; height:100%; position:relative; overflow:hidden; }
     .adnn-chat-welcome, .adnn-chat-empty { height:100%; display:grid; place-items:center; align-content:center; gap:8px; text-align:center; color:rgba(255,255,255,.48); padding:28px; }
     .adnn-chat-logo { width:58px; height:58px; border-radius:18px; display:grid; place-items:center; background:#272dcf; color:#fff; font-size:36px; font-weight:700; }
-    .adnn-room-shell { position:absolute; inset:0; height:100%; min-height:0; max-height:100%; overflow:hidden; background:radial-gradient(circle at 92% 6%, rgba(39,45,207,.16), transparent 32%), #050506; --adnn-head-h:70px; --adnn-composer-h:78px; }
-    .adnn-room-head { position:absolute; top:0; left:0; right:0; height:var(--adnn-head-h); display:flex; align-items:center; gap:12px; padding:12px 16px; border-bottom:1px solid rgba(255,255,255,.08); background:rgba(10,10,14,.9); backdrop-filter:blur(18px); z-index:20; }
+    .adnn-chat-app .adnn-room-shell { position:absolute !important; inset:0 !important; height:100% !important; min-height:0 !important; max-height:100% !important; overflow:hidden !important; background:radial-gradient(circle at 92% 6%, rgba(39,45,207,.16), transparent 32%), #050506; --adnn-head-h:70px; --adnn-composer-h:78px; }
+    .adnn-chat-app .adnn-room-shell > .adnn-room-head { position:absolute !important; top:0 !important; left:0 !important; right:0 !important; height:70px !important; min-height:70px !important; display:flex !important; align-items:center !important; gap:12px; padding:12px 16px; border-bottom:1px solid rgba(255,255,255,.08); background:rgba(10,10,14,.94); backdrop-filter:blur(18px); z-index:90 !important; visibility:visible !important; opacity:1 !important; transform:none !important; }
     .adnn-back-btn { display:none; }
-    .adnn-room-title { flex:1; min-width:0; display:grid; gap:2px; }
+    .adnn-chat-app .adnn-room-shell > .adnn-room-head .adnn-room-title { flex:1; min-width:0; display:grid !important; gap:2px; }
     .adnn-room-title strong, .adnn-room-title small { overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
     .adnn-room-title strong { font-size:15px; font-weight:500; }
     .adnn-room-title small { font-size:12px; color:rgba(255,255,255,.5); }
     .adnn-room-title small.is-online { color:#53d769; }
     .adnn-call-btn, .adnn-back-btn, .adnn-attach-btn, .adnn-voice-btn, .adnn-send-btn, .adnn-composer button { width:42px; height:42px; border:0; border-radius:50%; display:grid; place-items:center; color:#fff; background:rgba(255,255,255,.06); cursor:pointer; transition:.2s ease; flex:0 0 auto; }
-    .adnn-call-btn { background:rgba(255,255,255,.08); box-shadow:inset 0 1px 0 rgba(255,255,255,.08); }
+    .adnn-chat-app .adnn-room-shell > .adnn-room-head .adnn-call-btn { display:grid !important; visibility:visible !important; opacity:1 !important; pointer-events:auto !important; background:rgba(255,255,255,.08); box-shadow:inset 0 1px 0 rgba(255,255,255,.08); }
+    .adnn-chat-app .adnn-room-shell > .adnn-room-head .adnn-back-btn { display:none !important; }
     .adnn-call-btn:hover, .adnn-attach-btn:hover, .adnn-voice-btn:hover { background:rgba(255,255,255,.1); transform:translateY(-1px); }
     .adnn-call-btn svg, .adnn-back-btn svg, .adnn-attach-btn svg, .adnn-voice-btn svg, .adnn-send-btn svg { width:19px; height:19px; }
-    .adnn-message-scroll { position:absolute; top:var(--adnn-head-h); left:0; right:0; bottom:var(--adnn-composer-h); min-height:0; overflow-y:auto; overflow-x:hidden; padding:18px; display:flex; flex-direction:column; gap:10px; scroll-behavior:smooth; }
+    .adnn-chat-app .adnn-room-shell > .adnn-message-scroll { position:absolute !important; top:70px !important; left:0 !important; right:0 !important; bottom:78px !important; min-height:0 !important; overflow-y:auto !important; overflow-x:hidden !important; padding:18px; display:flex !important; flex-direction:column; gap:10px; scroll-behavior:smooth; z-index:1; }
     .adnn-message-row { display:flex; width:100%; }
     .adnn-message-row.is-mine { justify-content:flex-end; }
     .adnn-message-row.is-peer { justify-content:flex-start; }
@@ -1247,7 +1248,7 @@ function injectChatStyles() {
     .adnn-voice-bubble span svg { width:15px; height:15px; }
     .adnn-voice-bubble audio { width:190px; max-width:100%; height:32px; }
     .adnn-voice-bubble small { color:rgba(255,255,255,.55); font-size:11px; }
-    .adnn-composer-wrap { position:absolute; left:0; right:0; bottom:0; min-height:var(--adnn-composer-h); z-index:22; border-top:1px solid rgba(255,255,255,.08); background:rgba(8,8,12,.94); padding:10px; box-shadow:0 -18px 45px rgba(0,0,0,.24); }
+    .adnn-chat-app .adnn-room-shell > .adnn-composer-wrap { position:absolute !important; left:0 !important; right:0 !important; bottom:0 !important; min-height:78px !important; z-index:92 !important; border-top:1px solid rgba(255,255,255,.08); background:rgba(8,8,12,.96); padding:10px; box-shadow:0 -18px 45px rgba(0,0,0,.24); visibility:visible !important; opacity:1 !important; transform:none !important; }
     .adnn-composer { display:flex; align-items:flex-end; gap:9px; }
     .adnn-composer textarea { flex:1; min-height:42px; max-height:118px; resize:none; border:1px solid rgba(255,255,255,.09); border-radius:22px; background:#020203; color:#fff; outline:0; padding:12px 15px; font:inherit; font-size:14px; line-height:1.35; }
     .adnn-attach-btn input { display:none; }
@@ -1301,13 +1302,13 @@ function injectChatStyles() {
       .adnn-chat-layout.is-single .adnn-chat-room { display:block; height:100svh; }
       .adnn-chat-layout.is-room-open .adnn-chat-thread-panel { display:none; }
       .adnn-chat-layout.is-room-open .adnn-chat-room { display:block; height:100svh; }
-      .adnn-back-btn { display:grid; }
-      .adnn-room-shell { height:100svh; --adnn-head-h:62px; --adnn-composer-h:76px; }
+      .adnn-chat-app .adnn-room-shell > .adnn-room-head .adnn-back-btn { display:grid !important; }
+      .adnn-chat-app .adnn-room-shell { height:100svh !important; --adnn-head-h:62px; --adnn-composer-h:76px; }
       .adnn-message { max-width:86%; }
-      .adnn-message-scroll { padding:12px 10px; }
-      .adnn-room-head { padding:10px; gap:8px; }
+      .adnn-chat-app .adnn-room-shell > .adnn-message-scroll { top:62px !important; bottom:76px !important; padding:12px 10px; }
+      .adnn-chat-app .adnn-room-shell > .adnn-room-head { height:62px !important; min-height:62px !important; padding:10px; gap:8px; }
       .adnn-call-btn, .adnn-back-btn, .adnn-attach-btn, .adnn-voice-btn, .adnn-send-btn { width:39px; height:39px; }
-      .adnn-composer-wrap { padding:8px; }
+      .adnn-chat-app .adnn-room-shell > .adnn-composer-wrap { min-height:76px !important; padding:8px; }
       .adnn-composer textarea { font-size:16px; }
       .is-mine .adnn-message-actions, .is-peer .adnn-message-actions { top:auto; bottom:calc(100% + 8px); left:0; right:auto; transform:translateY(4px) scale(.96); max-width:calc(100vw - 28px); overflow:auto; }
       .adnn-message:hover .adnn-message-actions, .adnn-message:focus-within .adnn-message-actions, .adnn-message.is-menu-open .adnn-message-actions { transform:translateY(0) scale(1); }

@@ -227,7 +227,6 @@ function renderPassiveRoom(roomId, title, message, placeholder) {
   const target = document.getElementById(roomId);
   if (!target) return;
   
-  // Create state for passive room to handle composer controls correctly
   const state = {
     roomId,
     chatId: "passive_" + roomId,
@@ -1425,10 +1424,8 @@ function injectChatStyles() {
     .adnn-call-meta small { color:rgba(255,255,255,.55); margin-top:3px; }
     .adnn-chat-toast { position:fixed; left:50%; bottom:28px; transform:translateX(-50%); z-index:2147483640; padding:10px 14px; border-radius:999px; background:#111; color:#fff; border:1px solid rgba(255,255,255,.1); box-shadow:0 16px 50px rgba(0,0,0,.3); }
     
-    /* Responsive Overwrites Encapsulated to prevent breaking layout.html / account.html previews */
     @media (max-width:760px) {
       .adnn-chat-app { display: block !important; }
-      /* Ensure the absolute container layout limits only within explicit viewport breaks */
       .adnn-chat-app .adnn-chat-layout.is-room-open, 
       body.adnn-chat-mobile-lock .adnn-chat-layout { 
         position:fixed !important; 

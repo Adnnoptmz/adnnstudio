@@ -89,7 +89,6 @@ let activeCallUnsubscribes = [];
 if (auth && db) {
   installChatStyles();
   installClientChatShell();
-  installMessengerExperience();
   if (location.pathname.includes("admin.html")) {
     installAdminChatPanel();
     installAdminMessageCardTools();
@@ -182,7 +181,7 @@ function installClientChatShell() {
     </div>
     <form class="adnn-chat-form" id="adnnChatForm">
       <label class="adnn-chat-media" title="Add media" aria-label="Add media">
-        <input id="adnnChatFile" type="file" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.zip,.psd,.ai,.fig,.xd">
+        <input id="adnnChatFile" type="file" accept="image/*,.pdf,.doc,.docx,.zip">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
         <span class="adnn-chat-file-name" id="adnnChatFileName" hidden></span>
       </label>
@@ -405,7 +404,7 @@ function installAdminChatPanel() {
         </div>
         <form class="adnn-chat-form" id="adnnAdminChatForm">
           <label class="adnn-chat-media" title="Add media" aria-label="Add media">
-            <input id="adnnAdminChatFile" type="file" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.zip,.psd,.ai,.fig,.xd">
+            <input id="adnnAdminChatFile" type="file" accept="image/*,.pdf,.doc,.docx,.zip">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
             <span class="adnn-chat-file-name" id="adnnAdminChatFileName" hidden></span>
           </label>
@@ -505,7 +504,7 @@ function installDesignerChatPanel() {
     </div>
     <form class="adnn-chat-form" id="adnnDesignerChatForm">
       <label class="adnn-chat-media" title="Add media" aria-label="Add media">
-        <input id="adnnDesignerChatFile" type="file" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.zip,.psd,.ai,.fig,.xd">
+        <input id="adnnDesignerChatFile" type="file" accept="image/*,.pdf,.doc,.docx,.zip">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
         <span class="adnn-chat-file-name" id="adnnDesignerChatFileName" hidden></span>
       </label>
@@ -709,7 +708,7 @@ function installDirectChatPanel() {
       </div>
       <div class="adnn-chat-messages" id="adnnDirectMessages"></div>
       <form class="adnn-chat-form" id="adnnDirectChatForm">
-        <label class="adnn-chat-media" title="Add media" aria-label="Add media"><input id="adnnDirectChatFile" type="file" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.zip,.psd,.ai,.fig,.xd"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span class="adnn-chat-file-name" id="adnnDirectChatFileName" hidden></span></label>
+        <label class="adnn-chat-media" title="Add media" aria-label="Add media"><input id="adnnDirectChatFile" type="file" accept="image/*,.pdf,.doc,.docx,.zip"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span class="adnn-chat-file-name" id="adnnDirectChatFileName" hidden></span></label>
         <input id="adnnDirectChatInput" autocomplete="off" maxlength="1800" placeholder="Message user" disabled>
         <button type="submit" aria-label="Send direct message" disabled><svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px;display:block;"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg></button>
       </form>
@@ -731,7 +730,7 @@ function installMobileDirectComposer() {
   form.hidden = true;
   form.innerHTML = `
     <label class="adnn-mobile-direct-upload" title="Add media" aria-label="Add media">
-      <input id="adnnMobileDirectFile" type="file" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.zip,.psd,.ai,.fig,.xd">
+      <input id="adnnMobileDirectFile" type="file" accept="image/*,.pdf,.doc,.docx,.zip">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
     </label>
     <input id="adnnMobileDirectInput" autocomplete="off" maxlength="1800" placeholder="Message" inputmode="text">
@@ -2405,100 +2404,6 @@ function getChatAudio() {
   chatAudio.preload = "auto";
   chatAudio.volume = 0.28;
   return chatAudio;
-}
-
-
-function installMessengerExperience() {
-  if (document.documentElement.dataset.adnnMessengerExperience === "true") return;
-  document.documentElement.dataset.adnnMessengerExperience = "true";
-
-  const enhance = () => {
-    document.querySelectorAll(".adnn-chat-drawer, .adnn-admin-chat-panel, .adnn-direct-chat-panel").forEach(enhanceMessengerSurface);
-    document.querySelectorAll(".adnn-chat-messages").forEach(enhanceMessageTimeline);
-    document.querySelectorAll(".adnn-chat-form").forEach(enhanceMessengerComposer);
-  };
-
-  enhance();
-  const observer = new MutationObserver(enhance);
-  observer.observe(document.documentElement, { childList: true, subtree: true });
-  window.addEventListener("hashchange", enhance);
-}
-
-function enhanceMessengerSurface(surface) {
-  if (!surface || surface.dataset.messengerEnhanced === "true") return;
-  surface.dataset.messengerEnhanced = "true";
-  surface.classList.add("adnn-messenger-surface");
-
-  const head = surface.querySelector(".adnn-chat-head, .adnn-admin-chat-title, .adnn-direct-title");
-  if (head && !head.querySelector(".adnn-messenger-presence-pill")) {
-    const pill = document.createElement("span");
-    pill.className = "adnn-messenger-presence-pill";
-    pill.innerHTML = `<span></span> secure live chat`;
-    head.appendChild(pill);
-  }
-
-  const messages = surface.querySelector(".adnn-chat-messages");
-  if (messages && !surface.querySelector(".adnn-messenger-search")) {
-    const search = document.createElement("label");
-    search.className = "adnn-messenger-search";
-    search.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.8 18.1a7.3 7.3 0 1 1 5.2-2.1l4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><input type="search" placeholder="Search messages, files, calls..." autocomplete="off">`;
-    messages.parentElement?.insertBefore(search, messages);
-    search.querySelector("input")?.addEventListener("input", (event) => filterMessengerMessages(messages, event.target.value));
-  }
-}
-
-function enhanceMessageTimeline(messages) {
-  if (!messages || messages.dataset.timelineEnhanced === "true") return;
-  messages.dataset.timelineEnhanced = "true";
-  const empty = document.createElement("div");
-  empty.className = "adnn-messenger-empty-state";
-  empty.innerHTML = `<strong>Start the conversation</strong><span>Share ideas, images, files, voice notes, and jump into audio or camera-to-camera calls.</span>`;
-  messages.prepend(empty);
-}
-
-function enhanceMessengerComposer(form) {
-  if (!form || form.dataset.composerEnhanced === "true") return;
-  form.dataset.composerEnhanced = "true";
-  const input = form.querySelector('input[type="text"], input:not([type]), textarea, #adnnChatInput, #adnnAdminChatInput, #adnnDirectChatInput');
-  const file = form.querySelector('input[type="file"]');
-  if (file) file.setAttribute("accept", "image/*,video/*,audio/*,.pdf,.doc,.docx,.zip,.psd,.ai,.fig,.xd");
-
-  const tools = document.createElement("div");
-  tools.className = "adnn-messenger-tools";
-  tools.innerHTML = `
-    <button type="button" data-quick="Hello AdnnStudio, I need help with a design update.">Brief</button>
-    <button type="button" data-quick="Can you review this and share your feedback?">Review</button>
-    <button type="button" data-quick="I uploaded the file. Please check it when available.">File sent</button>
-    <button type="button" data-emoji="✨">✨</button>
-    <button type="button" data-emoji="👍">👍</button>
-    <button type="button" data-emoji="🙏">🙏</button>`;
-  form.insertAdjacentElement("beforebegin", tools);
-  tools.addEventListener("click", (event) => {
-    const button = event.target.closest("button");
-    if (!button || !input) return;
-    const addition = button.dataset.quick || button.dataset.emoji || "";
-    insertComposerText(input, addition);
-  });
-}
-
-function insertComposerText(input, addition) {
-  const value = String(input.value || "");
-  const start = Number.isFinite(input.selectionStart) ? input.selectionStart : value.length;
-  const end = Number.isFinite(input.selectionEnd) ? input.selectionEnd : value.length;
-  const spacer = value && !/\s$/.test(value.slice(0, start)) && addition.length > 2 ? " " : "";
-  input.value = `${value.slice(0, start)}${spacer}${addition}${value.slice(end)}`;
-  input.focus();
-  const pos = start + spacer.length + addition.length;
-  try { input.setSelectionRange(pos, pos); } catch (error) {}
-  input.dispatchEvent(new Event("input", { bubbles: true }));
-}
-
-function filterMessengerMessages(messages, term) {
-  const needle = String(term || "").trim().toLowerCase();
-  messages.querySelectorAll(".adnn-chat-bubble").forEach((bubble) => {
-    const match = !needle || bubble.textContent.toLowerCase().includes(needle);
-    bubble.classList.toggle("is-search-hidden", !match);
-  });
 }
 
 function installChatStyles() {

@@ -587,14 +587,18 @@
   .adnn-switch i { width:22px; height:22px; border-radius:50%; background:#fff; box-shadow:0 8px 20px rgba(0,0,0,.22); transform:translateX(0); transition:transform .22s cubic-bezier(.16,1,.3,1), background .2s ease; }
   .adnn-switch input:checked + i { transform:translateX(22px); background:#fff; }
   .adnn-switch:has(input:checked) { background:#272dcf; border-color:#272dcf; }
-  .adnn-os-card { min-height:144px; align-items:stretch !important; background:radial-gradient(circle at 88% 8%, rgba(39,45,207,.28), transparent 32%), linear-gradient(145deg, rgba(255,255,255,.08), rgba(255,255,255,.025)) !important; cursor:pointer; isolation:isolate; }
-  .adnn-os-orb { width:68px; height:68px; border-radius:24px; display:grid; place-items:center; background:linear-gradient(145deg,#3036e8,#1419a8); color:#fff; font-size:36px; font-weight:800; box-shadow:inset 0 1px 0 rgba(255,255,255,.24), 0 24px 70px rgba(39,45,207,.32); transform:translateZ(0); transition:transform .28s cubic-bezier(.16,1,.3,1); }
-  .adnn-os-card.is-playing .adnn-os-orb { transform:rotate(-8deg) scale(1.08); }
-  .adnn-os-meta { display:grid; gap:6px; min-width:0; }
-  .adnn-os-version { font-family:var(--font-mono); color:#5360ff !important; letter-spacing:.18em; text-transform:uppercase; }
-  .adnn-os-play { min-width:44px; min-height:44px; border:1px solid var(--line); border-radius:999px; display:grid; place-items:center; background:rgba(255,255,255,.06); color:var(--text); font-size:18px; }
-  .adnn-os-spark { position:absolute; width:8px; height:8px; border-radius:50%; background:#5360ff; pointer-events:none; z-index:2; animation:adnnSpark .72s ease forwards; }
-  @keyframes adnnSpark { to { transform:translate(var(--x), var(--y)) scale(.1); opacity:0; } }
+
+  .adnn-os-card { min-height:82px; border-radius:999px !important; display:grid !important; grid-template-columns:92px minmax(0,1fr) 92px; align-items:center !important; gap:12px; padding:14px 22px !important; background:linear-gradient(90deg, rgba(39,45,207,.84), #272dcf 45%, #5360ff) !important; color:#fff !important; cursor:pointer; isolation:isolate; box-shadow:0 24px 80px rgba(39,45,207,.28), inset 0 1px 0 rgba(255,255,255,.32); }
+  .adnn-os-card::after { content:""; position:absolute; inset:-35%; z-index:-1; opacity:0; transform:scale(.74); background:radial-gradient(circle at var(--tap-x, 50%) var(--tap-y, 50%), rgba(255,255,255,.52), rgba(255,255,255,.16) 14%, transparent 33%); pointer-events:none; }
+  .adnn-os-card.is-playing::after { animation:adnnOsWave .82s cubic-bezier(.16,1,.3,1); }
+  .adnn-os-card.is-playing .adnn-os-dots { filter:drop-shadow(0 0 12px rgba(255,255,255,.92)) drop-shadow(0 0 28px rgba(39,45,207,.95)); transform:scale(1.04); }
+  .adnn-os-meta { display:grid; justify-items:center; gap:2px; min-width:0; text-align:center; }
+  .adnn-os-meta strong { color:#fff !important; font-size:clamp(22px, 3vw, 34px) !important; line-height:1; font-weight:750 !important; letter-spacing:-.04em; text-shadow:0 2px 18px rgba(255,255,255,.24); }
+  .adnn-os-meta span { color:rgba(255,255,255,.72) !important; font-family:var(--font-mono); font-size:10px !important; letter-spacing:.16em; text-transform:uppercase; }
+  .adnn-os-dots { width:88px; height:54px; display:block; opacity:.72; transition:transform .28s cubic-bezier(.16,1,.3,1), filter .28s ease; background-image:radial-gradient(circle, rgba(255,255,255,.76) 0 2px, transparent 2.8px); background-size:12px 12px; }
+  .adnn-os-dots.left { justify-self:start; -webkit-mask-image:linear-gradient(90deg, rgba(0,0,0,1), transparent); mask-image:linear-gradient(90deg, rgba(0,0,0,1), transparent); }
+  .adnn-os-dots.right { justify-self:end; -webkit-mask-image:linear-gradient(270deg, rgba(0,0,0,1), transparent); mask-image:linear-gradient(270deg, rgba(0,0,0,1), transparent); }
+  @keyframes adnnOsWave { 0% { opacity:0; transform:scale(.72); } 28% { opacity:1; } 100% { opacity:0; transform:scale(1.22); } }
   :root.adnn-reduce-motion *, :root.adnn-reduce-motion *::before, :root.adnn-reduce-motion *::after { animation:none !important; transition:none !important; scroll-behavior:auto !important; }
   .adnn-card-maker-form { display:grid; gap:14px; margin-top:22px; }
   .adnn-card-maker-form .grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
@@ -608,7 +612,7 @@
   .adnn-live-sheet-table th { position:sticky; top:0; z-index:2; background:rgba(12,12,16,.96); color:var(--text); font-weight:600; }
   .adnn-live-sheet-table td { color:var(--muted); line-height:1.45; }
   :root.light-theme .adnn-live-sheet-table th { background:rgba(255,255,255,.96); }
-  @media (max-width:720px) { .adnn-card-maker-form .grid { grid-template-columns:1fr; } .settings-card { gap:14px; } .adnn-os-card { display:grid !important; grid-template-columns:68px minmax(0,1fr) auto; align-items:center !important; } }
+  @media (max-width:720px) { .adnn-card-maker-form .grid { grid-template-columns:1fr; } .settings-card { gap:14px; } .adnn-os-card { display:grid !important; grid-template-columns:54px minmax(0,1fr) 54px; align-items:center !important; padding:12px 14px !important; } .adnn-os-dots { width:54px; height:40px; } }
 </style>
 
 </head>
@@ -799,7 +803,7 @@
     <label class="settings-card adnn-setting-card"><div><strong>Browser notifications</strong><span>Allow system notifications for new messages and missed calls.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_browser_notifications"><i></i></span></label>
     <label class="settings-card adnn-setting-card"><div><strong>Message sound</strong><span>Play a soft tone for new chat and missed call alerts.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_message_sounds"><i></i></span></label>
     <label class="settings-card adnn-setting-card"><div><strong>Reduce motion</strong><span>Calm animations for a lighter, accessibility-friendly dashboard.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_reduce_motion"><i></i></span></label>
-    <div class="settings-card adnn-os-card" role="button" tabindex="0"><span class="adnn-os-orb">a</span><div class="adnn-os-meta"><strong>ADNN OS</strong><span class="adnn-os-version">Version 2.3 Fire</span><span>Touch this card for a small playful system reaction.</span></div><span class="adnn-os-play" data-os-play-label>tap</span></div>
+    <div class="settings-card adnn-os-card" role="button" tabindex="0" aria-label="OS 1.07"><span class="adnn-os-dots left" aria-hidden="true"></span><div class="adnn-os-meta"><strong>OS 1.07</strong><span>touch the dots</span></div><span class="adnn-os-dots right" aria-hidden="true"></span></div>
   </div>
 </section>
     </main>
@@ -808,7 +812,7 @@
   <script src="firebase-config.js"></script>
   <script src="designer-users.js"></script>
   <script type="module" src="firebase-designer-auth.js"></script>
-  <script type="module" src="firebase-chat.js?v=20260612-message-card-settings-sheet"></script>
+  <script type="module" src="firebase-chat.js?v=20260612-os107-chat-final"></script>
   <script type="module" src="firebase-designer-items.js"></script>
   <script>
     const userKey = "adnnDesignerUser";
@@ -1235,23 +1239,16 @@
   document.addEventListener("pointerdown", (event) => {
     const card = event.target.closest(".adnn-os-card");
     if (!card) return;
-    const count = Number(card.dataset.taps || 0) + 1;
-    card.dataset.taps = String(count);
-    card.classList.add("is-playing");
-    const label = card.querySelector("[data-os-play-label]");
-    if (label) label.textContent = count % 5 === 0 ? "mini fireworks" : count % 2 ? "boop" : "smooth";
     const rect = card.getBoundingClientRect();
-    for (let i = 0; i < 9; i++) {
-      const dot = document.createElement("span");
-      dot.className = "adnn-os-spark";
-      dot.style.left = `${event.clientX - rect.left}px`;
-      dot.style.top = `${event.clientY - rect.top}px`;
-      dot.style.setProperty("--x", `${Math.cos(i / 9 * Math.PI * 2) * (34 + i * 3)}px`);
-      dot.style.setProperty("--y", `${Math.sin(i / 9 * Math.PI * 2) * (34 + i * 3)}px`);
-      card.appendChild(dot);
-      setTimeout(() => dot.remove(), 760);
-    }
-    setTimeout(() => card.classList.remove("is-playing"), 300);
+    const x = ((event.clientX - rect.left) / Math.max(1, rect.width)) * 100;
+    const y = ((event.clientY - rect.top) / Math.max(1, rect.height)) * 100;
+    card.style.setProperty("--tap-x", `${Math.max(0, Math.min(100, x))}%`);
+    card.style.setProperty("--tap-y", `${Math.max(0, Math.min(100, y))}%`);
+    card.classList.remove("is-playing");
+    void card.offsetWidth;
+    card.classList.add("is-playing");
+    if (navigator.vibrate) navigator.vibrate(12);
+    setTimeout(() => card.classList.remove("is-playing"), 840);
   });
   apply();
 })();

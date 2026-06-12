@@ -615,6 +615,15 @@
   @media (max-width:720px) { .adnn-card-maker-form .grid { grid-template-columns:1fr; } .settings-card { gap:14px; } .adnn-os-card { display:grid !important; grid-template-columns:54px minmax(0,1fr) 54px; align-items:center !important; padding:12px 14px !important; } .adnn-os-dots { width:54px; height:40px; } }
 </style>
 
+
+<style id="adnnFinalRoundOverrides">
+  .adnn-os-card { cursor: default !important; pointer-events: auto !important; }
+  .adnn-os-card::after { display:none !important; animation:none !important; }
+  .adnn-os-card.is-playing .adnn-os-dots, .adnn-os-card .adnn-os-dots { transform:none !important; filter:none !important; }
+  .mobile-home-button img, .header-home-button img, .adnn-sidebar-home img, .sidebar-brand img, .brand img { object-fit:contain; }
+  .side-notification-badge { min-width:18px; height:18px; padding:0 5px; border-radius:999px; display:grid; place-items:center; background:#ff2602; color:#fff; font-size:10px; line-height:1; box-shadow:0 0 0 2px rgba(0,0,0,.18), 0 8px 22px rgba(255,38,2,.38); }
+  .side-notification-badge[hidden] { display:none !important; }
+</style>
 </head>
 <body class="auth-pending locked">
   <div class="auth-gate">
@@ -803,7 +812,7 @@
     <label class="settings-card adnn-setting-card"><div><strong>Browser notifications</strong><span>Allow system notifications for new messages and missed calls.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_browser_notifications"><i></i></span></label>
     <label class="settings-card adnn-setting-card"><div><strong>Message sound</strong><span>Play a soft tone for new chat and missed call alerts.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_message_sounds"><i></i></span></label>
     <label class="settings-card adnn-setting-card"><div><strong>Reduce motion</strong><span>Calm animations for a lighter, accessibility-friendly dashboard.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_reduce_motion"><i></i></span></label>
-    <div class="settings-card adnn-os-card" role="button" tabindex="0" aria-label="OS 1.07"><span class="adnn-os-dots left" aria-hidden="true"></span><div class="adnn-os-meta"><strong>OS 1.07</strong><span>touch the dots</span></div><span class="adnn-os-dots right" aria-hidden="true"></span></div>
+    <div class="settings-card adnn-os-card" role="button" tabindex="0" aria-label="OS 1.07"><span class="adnn-os-dots left" aria-hidden="true"></span><div class="adnn-os-meta"><strong>OS 1.07</strong><span>system version</span></div><span class="adnn-os-dots right" aria-hidden="true"></span></div>
   </div>
 </section>
     </main>
@@ -812,7 +821,7 @@
   <script src="firebase-config.js"></script>
   <script src="designer-users.js"></script>
   <script type="module" src="firebase-designer-auth.js"></script>
-  <script type="module" src="firebase-chat.js?v=20260612-os107-chat-final"></script>
+  <script type="module" src="firebase-chat.js?v=20260612-notify-call-wave-fix"></script>
   <script type="module" src="firebase-designer-items.js"></script>
   <script>
     const userKey = "adnnDesignerUser";
@@ -1254,5 +1263,23 @@
 })();
 </script>
 
+
+<script id="adnnFinalRoundGuards">
+(function(){
+  document.addEventListener('pointerdown', function(event){
+    if (event.target.closest('.adnn-os-card')) {
+      event.stopPropagation();
+    }
+  }, true);
+  document.addEventListener('click', function(event){
+    const logout = event.target.closest('.logout, .sidebar-logout-item, .account-logout, #headerLogoutButton, #sidebarLogoutButton, #sidebarLogoutActionBtn');
+    if (!logout) return;
+    if (!window.confirm('Log out of this ADNN account?')) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    }
+  }, true);
+})();
+</script>
 </body>
 </html>

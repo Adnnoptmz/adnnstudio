@@ -1646,7 +1646,7 @@
   <script type="module">
     import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-    import { addDoc, collection, doc, getDoc, getDocs, getFirestore, onSnapshot, query, serverTimestamp, setDoc, Timestamp, where } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { addDoc, collection, doc, getDoc, getDocs, getFirestore, onSnapshot, query, serverTimestamp, setDoc, Timestamp, updateDoc, where } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     const config = window.ADNN_FIREBASE_CONFIG;
     const app = config ? (getApps()[0] || initializeApp(config)) : null;
@@ -1839,13 +1839,33 @@
           .forEach((item) => {
             const row = document.createElement("div");
             row.style.cssText = "display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;border:1px solid var(--line);border-radius:16px;padding:12px 14px;background:rgba(255,255,255,.04);";
+            const isClientRecord = collectionName === "clients";
+            const isInactive = String(item.status || "").toLowerCase() === "inactive" || item.active === false;
             row.innerHTML = `
               <span style="min-width:0;display:block;overflow:hidden;text-overflow:ellipsis;">
                 <strong style="display:block;font-weight:500;">${escapeHtml(item.name || item.displayEmail || item.email || item.authEmail || "Account")}</strong>
                 <strong style="display:block;margin-top:4px;color:var(--muted);font-family:var(--font-mono);font-size:11px;">${escapeHtml(item.email || item.displayEmail || item.authEmail || item.designerId || item.id)}</strong>
               </span>
-              <small style="color:var(--muted);font-family:var(--font-mono);font-size:10px;">${escapeHtml(item.role || item.status || "Active")}</small>
+              <span style="display:flex;align-items:center;gap:8px;justify-content:end;">
+                <small style="color:${isInactive ? "#ff7a69" : "var(--muted)"};font-family:var(--font-mono);font-size:10px;">${escapeHtml(isInactive ? "Inactive" : (item.role || item.status || "Active"))}</small>
+                ${isClientRecord ? `<button type="button" class="adnn-client-status-btn" data-client-status="${escapeHtml(item.id)}" data-next-status="${isInactive ? "active" : "inactive"}">${isInactive ? "Activate" : "Deactivate"}</button>` : ""}
+              </span>
             `;
+            row.querySelector("[data-client-status]")?.addEventListener("click", async (event) => {
+              const button = event.currentTarget;
+              button.disabled = true;
+              const next = button.dataset.nextStatus;
+              try {
+                await updateDoc(doc(db, "clients", item.id), {
+                  status: next === "active" ? "active" : "inactive",
+                  active: next === "active",
+                  updatedAt: serverTimestamp()
+                });
+              } catch (error) {
+                alert("Could not update client status.");
+                button.disabled = false;
+              }
+            });
             container.appendChild(row);
           });
       }, () => {
@@ -2191,7 +2211,7 @@
       }
     });
   </script>
-  <script type="module" src="firebase-chat.js?v=20260612-notify-call-wave-fix"></script>
+  <script type="module" src="firebase-chat.js?v=20260612-sidebar-settings-pin-fix"></script>
 
 <script id="adnn-settings-upgrade-js">
 (function setupAdnnSettingsUpgrade(){

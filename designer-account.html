@@ -624,6 +624,27 @@
   .side-notification-badge { min-width:18px; height:18px; padding:0 5px; border-radius:999px; display:grid; place-items:center; background:#ff2602; color:#fff; font-size:10px; line-height:1; box-shadow:0 0 0 2px rgba(0,0,0,.18), 0 8px 22px rgba(255,38,2,.38); }
   .side-notification-badge[hidden] { display:none !important; }
 </style>
+<style id="adnn-fullscreen-dashboard-fix">
+  body > .shell { height:100vh !important; min-height:100vh !important; overflow:hidden !important; }
+  body > .shell > main.glass { height:100vh !important; min-height:0 !important; display:flex !important; flex-direction:column !important; overflow:hidden !important; padding:clamp(14px,2.2vw,28px) !important; }
+  body > .shell > main.glass > .portal-top { flex:0 0 auto !important; }
+  body > .shell > main.glass > .view.active { flex:1 1 auto !important; width:100% !important; max-width:none !important; min-height:0 !important; height:auto !important; overflow:auto !important; margin:0 !important; border-radius:28px !important; }
+  body > .shell > main.glass > .view.active#chat, body > .shell > main.glass > .view.active#admin-support { overflow:hidden !important; padding:0 !important; }
+  .view > p.lead { display:none !important; }
+  .adnn-os-card { min-height:112px !important; grid-template-columns:64px minmax(0,1fr) auto !important; border-radius:28px !important; padding:18px !important; overflow:hidden !important; background:linear-gradient(135deg, rgba(255,255,255,.14), rgba(255,255,255,.045) 36%, rgba(39,45,207,.20)) !important; box-shadow:0 28px 90px rgba(0,0,0,.18), inset 0 1px 0 rgba(255,255,255,.18) !important; cursor:pointer !important; pointer-events:auto !important; }
+  .adnn-os-card::after { content:"" !important; display:block !important; position:absolute !important; inset:-45% !important; background:radial-gradient(circle at 22% 18%, rgba(255,255,255,.45), transparent 20%), radial-gradient(circle at 84% 76%, rgba(39,45,207,.42), transparent 24%) !important; opacity:.62 !important; z-index:-1 !important; transform:none !important; animation:none !important; }
+  .adnn-os-orb { width:64px; height:64px; border-radius:22px; display:grid; place-items:center; background:linear-gradient(145deg,#ffffff,#dfe3ff 44%,#272dcf); box-shadow:0 18px 40px rgba(39,45,207,.36), inset 0 1px 0 rgba(255,255,255,.9); }
+  .adnn-os-orb i { width:24px; height:24px; border-radius:9px; background:#fff; box-shadow:0 0 24px rgba(255,255,255,.95), 0 0 42px rgba(39,45,207,.75); clip-path:polygon(50% 0,63% 37%,100% 50%,63% 63%,50% 100%,37% 63%,0 50%,37% 37%); }
+  .adnn-os-meta strong { font-size:16px !important; letter-spacing:-.01em !important; }
+  .adnn-os-meta span { font-size:12px !important; opacity:.72 !important; }
+  .adnn-os-status { padding:8px 11px; border-radius:999px; background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.14); font:11px var(--font-mono); color:var(--text); }
+  @media (max-width:900px) {
+    body > .shell { height:calc(100svh - 65px) !important; min-height:0 !important; }
+    body > .shell > main.glass { height:100% !important; padding:12px !important; }
+    body > .shell > main.glass > .view.active { border-radius:22px !important; padding:18px !important; }
+    body > .shell > main.glass > .view.active#chat, body > .shell > main.glass > .view.active#admin-support { padding:0 !important; border-radius:0 !important; }
+  }
+</style>
 </head>
 <body class="auth-pending locked">
   <div class="auth-gate">
@@ -737,7 +758,7 @@
         </a>
       </div>
       <section id="notifications" class="view">
-        <p class="lead">Private studio alerts and workspace updates will appear here.</p>
+        
         <div class="designer-feed" id="designerNotificationsList"><div class="empty-card"><span><strong>No notifications yet</strong><span>Nothing has been shared with this designer account yet.</span></span></div></div>
       </section>
 
@@ -812,7 +833,7 @@
     <label class="settings-card adnn-setting-card"><div><strong>Browser notifications</strong><span>Allow system notifications for new messages and missed calls.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_browser_notifications"><i></i></span></label>
     <label class="settings-card adnn-setting-card"><div><strong>Message sound</strong><span>Play a soft tone for new chat and missed call alerts.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_message_sounds"><i></i></span></label>
     <label class="settings-card adnn-setting-card"><div><strong>Reduce motion</strong><span>Calm animations for a lighter, accessibility-friendly dashboard.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_reduce_motion"><i></i></span></label>
-    <div class="settings-card adnn-os-card" role="button" tabindex="0" aria-label="OS 1.07"><span class="adnn-os-dots left" aria-hidden="true"></span><div class="adnn-os-meta"><strong>OS 1.07</strong><span>system version</span></div><span class="adnn-os-dots right" aria-hidden="true"></span></div>
+    <div class="settings-card adnn-os-card" role="button" tabindex="0" aria-label="ADNN OS 1.07"><span class="adnn-os-orb" aria-hidden="true"><i></i></span><div class="adnn-os-meta"><strong>ADNN OS</strong><span>1.07 secure workspace core</span></div><span class="adnn-os-status">Live</span></div>
   </div>
 </section>
     </main>
@@ -821,7 +842,7 @@
   <script src="firebase-config.js"></script>
   <script src="designer-users.js"></script>
   <script type="module" src="firebase-designer-auth.js"></script>
-  <script type="module" src="firebase-chat.js?v=20260612-sidebar-settings-pin-fix"></script>
+  <script type="module" src="firebase-chat.js?v=20260612-fullscreen-os-esc"></script>
   <script type="module" src="firebase-designer-items.js"></script>
   <script>
     const userKey = "adnnDesignerUser";

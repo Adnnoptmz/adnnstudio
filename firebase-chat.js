@@ -3048,25 +3048,31 @@ function bindGlobalDismissers() {
       event.stopImmediatePropagation();
     }
   }, true);
-  document.addEventListener("keydown", (event) => {
+  const escapeCloser = (event) => {
     if (event.key !== "Escape") return;
     closeFloatingReactionSheet();
     closeMessageMenus();
     document.querySelectorAll("[data-room-menu], [data-outer-menu], [data-room-searchbar], [data-composer-panel], [data-emoji-panel]").forEach((node) => { node.hidden = true; });
     closeOpenChatThreadPanels();
-  });
+  };
+  document.addEventListener("keydown", escapeCloser, true);
+  window.addEventListener("keydown", escapeCloser, true);
 }
 
 function closeOpenChatThreadPanels() {
+  const active = document.activeElement;
+  if (active && active !== document.body && typeof active.blur === "function") active.blur();
   document.querySelectorAll(".adnn-chat-layout.is-room-open").forEach((layout) => {
     layout.classList.remove("is-room-open");
     layout.querySelectorAll(".adnn-thread.is-active").forEach((row) => row.classList.remove("is-active"));
   });
   rooms.forEach((state) => {
     const target = document.getElementById(state.roomId);
-    target?.closest(".adnn-chat-layout")?.classList.remove("is-room-open");
+    const layout = target?.closest(".adnn-chat-layout");
+    layout?.classList.remove("is-room-open");
+    layout?.querySelectorAll(".adnn-thread.is-active").forEach((row) => row.classList.remove("is-active"));
   });
-    document.body.classList.remove("adnn-chat-mobile-lock");
+  document.body.classList.remove("adnn-chat-mobile-lock");
 }
 
 function setupSidebarReorder() {

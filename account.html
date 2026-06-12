@@ -1203,7 +1203,6 @@
       }
     @media (max-width:900px) {
 	      .mobile-header-bar { display:flex; }
-	      body.adnn-chat-mobile-lock .mobile-header-bar { display:none !important; }
 	      body > .shell { grid-template-columns:1fr !important; }
 	      body.sidebar-collapsed > .shell { grid-template-columns:1fr !important; }
 	      body > .shell > aside {
@@ -1229,6 +1228,24 @@
 	      body > .shell > main > .view.active { border-radius:24px; }
 	      .settings-card { align-items:flex-start; flex-direction:column; }
 	    }
+  
+
+    /* Unified dashboard chrome: the sidebar logo is the desktop home button. */
+    .adnn-sidebar-home { color:var(--text); text-decoration:none; cursor:pointer; }
+    .portal-top { display:none !important; }
+    body > .shell > main { padding:clamp(18px,3vw,32px) !important; }
+    body.chat-view-active > .shell > main { padding:12px !important; overflow:hidden !important; }
+    body.chat-view-active > .shell > main > .view.active { width:100% !important; height:calc(100vh - 24px) !important; min-height:0 !important; padding:0 !important; border-radius:24px !important; overflow:hidden !important; background:transparent !important; border:0 !important; box-shadow:none !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important; }
+    body.chat-view-active .adnn-chat-app { height:100% !important; }
+    @media (max-width:900px) {
+      .mobile-header-bar { position:sticky; top:0; z-index:1200; }
+      body.mobile-sidebar-open { overflow:hidden; }
+    }
+    @media (max-width:760px) {
+      body.chat-view-active > .shell > main { height:100svh !important; min-height:100svh !important; padding:0 !important; border-radius:0 !important; overflow:hidden !important; }
+      body.chat-view-active > .shell > main > .view.active { height:100svh !important; border-radius:0 !important; }
+    }
+
   </style>
 </head>
 <body class="auth-pending locked">
@@ -1274,10 +1291,10 @@
   <div class="shell">
 	    <aside class="glass">
 	      <div class="sidebar-header">
-	        <div class="sidebar-brand">
+	        <a href="index.html#home" class="sidebar-brand adnn-sidebar-home" aria-label="Back home" title="Back home">
 	          <img src="adnn icon.svg" alt="Adnn Studio">
 	          <span>Adnn Account</span>
-	        </div>
+	        </a>
 	        <button type="button" class="sidebar-toggle-trigger" id="sidebarCollapseBtn" title="Collapse menu" aria-label="Collapse menu">
 	          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="11 17 6 12 11 7"></polyline><polyline points="18 17 13 12 18 7"></polyline></svg>
 	        </button>
@@ -1627,7 +1644,6 @@
 	      document.querySelectorAll(".view").forEach((section) => section.classList.toggle("active", section.id === selected));
 	      document.querySelectorAll("[data-view-link]").forEach((link) => link.classList.toggle("active", link.dataset.viewLink === selected));
 	      document.body.classList.toggle("chat-view-active", selected === "chat" || selected === "admin-support");
-	      if (selected !== "chat" && selected !== "admin-support") document.body.classList.remove("adnn-chat-mobile-lock");
 	      if (location.hash.replace("#", "") !== selected) history.replaceState(null, "", `#${selected}`);
 	      const headingMap = {
 	        notifications: ["Private Account", "Notifications"],
@@ -2113,7 +2129,8 @@
 	    if (localStorage.getItem(sidebarStorageKey) === "true") {
 	      document.body.classList.add("sidebar-collapsed");
 	    }
-	    document.getElementById("mobileMenuTriggerBtn")?.addEventListener("click", () => {
+	    document.getElementById("mobileMenuTriggerBtn")?.addEventListener("click", (event) => {
+	      event.stopPropagation();
 	      document.body.classList.toggle("mobile-sidebar-open");
 	    });
 	    document.getElementById("sidebarDimOverlay")?.addEventListener("click", () => {
@@ -2386,6 +2403,6 @@
 	    }
 	  </script>
   <script type="module" src="firebase-account.js" onerror="window.adnnAccountModuleFallback && window.adnnAccountModuleFallback()"></script>
-  <script type="module" src="firebase-chat.js?v=20260612-thread-lock-admin-rewrite"></script>
+  <script type="module" src="firebase-chat.js?v=20260612-unified-chat-ui"></script>
 </body>
 </html>

@@ -156,6 +156,13 @@ const liveSnapshotKeys = new Map();
 const pendingToastKeys = new Map();
 const threadUnreadCache = new Map();
 let notificationPermissionAsked = false;
+let chatSettingsEventsBound = false;
+const CHAT_THEME_STORAGE_KEY = "adnn_chat_light_mode";
+const CHAT_INAPP_NOTIFICATION_KEY = "adnn_inapp_notifications";
+const CHAT_BROWSER_NOTIFICATION_KEY = "adnn_browser_notifications";
+const CHAT_SOUND_KEY = "adnn_message_sounds";
+const CHAT_REDUCE_MOTION_KEY = "adnn_reduce_motion";
+const CHAT_TOTAL_UNREAD_STORAGE_KEY = "adnn_chat_unread_total";
 
 const ICON = {
   back: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>`,
@@ -192,6 +199,8 @@ bootChatRuntime();
 
 async function bootChatRuntime() {
   injectChatStyles();
+  syncChatSettingsFromStorage();
+  bindChatSettingsEvents();
   bindGlobalDismissers();
   bindConnectivitySignals();
   bindNotificationPermissionPrimer();
@@ -502,6 +511,7 @@ function isVisibleToAdminInbox(chat) {
 
 function renderThreadList(chats, list, roomId, scope) {
   list.innerHTML = "";
+  updateChatNavigationBadges(chats, scope);
   if (!chats.length) {
     list.innerHTML = `<div class="adnn-chat-empty">No conversations yet.</div>`;
     renderPassiveRoom(roomId, scope === "admin" ? "No client chats yet" : "No direct chats yet", "Conversations will appear here as soon as they are created.", "Waiting for chat");
@@ -2890,7 +2900,7 @@ function sleep(ms) {
 function bindNotificationPermissionPrimer() {
   if (!("Notification" in window)) return;
   const ask = () => {
-    if (notificationPermissionAsked || Notification.permission !== "default") return;
+    if (notificationPermissionAsked || Notification.permission !== "default" || !chatSettingBool(CHAT_BROWSER_NOTIFICATION_KEY, true)) return;
     notificationPermissionAsked = true;
     Notification.requestPermission().catch(() => {});
     window.removeEventListener("click", ask);
@@ -2900,12 +2910,107 @@ function bindNotificationPermissionPrimer() {
   window.addEventListener("keydown", ask, { passive: true });
 }
 
+function chatSettingBool(key, fallback = false) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw === null) return !!fallback;
+    return raw === "true" || raw === "1" || raw === "yes";
+  } catch (_) {
+    return !!fallback;
+  }
+}
+
+function syncChatSettingsFromStorage() {
+  const root = document.documentElement;
+  root.classList.toggle("adnn-chat-light", chatSettingBool(CHAT_THEME_STORAGE_KEY, false));
+  root.classList.toggle("adnn-reduce-motion", chatSettingBool(CHAT_REDUCE_MOTION_KEY, false));
+}
+
+function bindChatSettingsEvents() {
+  if (chatSettingsEventsBound) return;
+  chatSettingsEventsBound = true;
+  const sync = () => syncChatSettingsFromStorage();
+  window.addEventListener("storage", sync);
+  window.addEventListener("adnn-settings-changed", sync);
+}
+
 function notifyBrowser(title, body, icon = "") {
+  if (!chatSettingBool(CHAT_BROWSER_NOTIFICATION_KEY, true)) return;
   if (!("Notification" in window) || Notification.permission !== "granted") return;
   try {
     const note = new Notification(title, { body, icon: safeImageUrl(icon) || undefined, tag: `adnn-${title}-${body}`.slice(0, 64) });
     setTimeout(() => note.close?.(), 6500);
   } catch (_) {}
+}
+
+function showInAppNotification(title, body, options = {}) {
+  if (!chatSettingBool(CHAT_INAPP_NOTIFICATION_KEY, true)) return;
+  let stack = document.getElementById("adnnInAppNotificationStack");
+  if (!stack) {
+    stack = document.createElement("div");
+    stack.id = "adnnInAppNotificationStack";
+    stack.className = "adnn-inapp-stack";
+    document.body.appendChild(stack);
+  }
+  const card = document.createElement("button");
+  card.type = "button";
+  card.className = `adnn-inapp-card ${options.tone === "missed" ? "is-missed" : ""}`;
+  card.innerHTML = `
+    ${avatarMarkup(title || "AD", options.icon || "")}
+    <span><strong>${escapeHtml(title || "New update")}</strong><small>${escapeHtml(body || "New message")}</small></span>
+    ${options.count ? `<b>${options.count > 99 ? "99+" : options.count}</b>` : ""}
+  `;
+  card.addEventListener("click", () => {
+    card.remove();
+    if (options.href) location.href = options.href;
+  });
+  stack.prepend(card);
+  playNotificationTone(options.tone);
+  setTimeout(() => card.remove(), options.timeout || 6200);
+}
+
+function playNotificationTone(tone = "message") {
+  if (!chatSettingBool(CHAT_SOUND_KEY, true)) return;
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.frequency.value = tone === "missed" ? 330 : 540;
+    osc.type = "sine";
+    gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.045, ctx.currentTime + 0.018);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.16);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.18);
+    setTimeout(() => ctx.close?.(), 260);
+  } catch (_) {}
+}
+
+function updateBadgeNode(node, value) {
+  if (!node) return;
+  const safe = Math.max(0, Number(value) || 0);
+  node.textContent = String(safe > 99 ? "99+" : safe);
+  node.hidden = safe <= 0;
+  node.style.display = safe > 0 ? "grid" : "none";
+}
+
+function updateChatNavigationBadges(chats = [], scope = "user") {
+  const counts = { chat: 0, support: 0, admin: 0 };
+  chats.forEach((chat) => {
+    const unread = getUnreadCount(chat, scope);
+    if (chat.type === "support") counts.support += unread;
+    else counts.chat += unread;
+    counts.admin += unread;
+  });
+  const total = counts.chat + counts.support;
+  document.querySelectorAll('[data-account-badge="chat"]').forEach((node) => updateBadgeNode(node, counts.chat));
+  document.querySelectorAll('[data-account-badge="support"]').forEach((node) => updateBadgeNode(node, counts.support));
+  document.querySelectorAll('[data-admin-chat-badge]').forEach((node) => updateBadgeNode(node, counts.admin));
+  document.querySelectorAll('.adnn-chat-count').forEach((node) => updateBadgeNode(node, total));
+  try { localStorage.setItem(CHAT_TOTAL_UNREAD_STORAGE_KEY, String(total)); } catch (_) {}
 }
 
 function notifyThreadUnread(chat, title, unread) {
@@ -2915,7 +3020,13 @@ function notifyThreadUnread(chat, title, unread) {
   if (previous === undefined || !unread || unread <= previous) return;
   if (selfUidSet().has(chat.lastSenderUid) || selfUidSet().has(chat.lastSenderAliasUid)) return;
   const body = normalizeLastMessage(chat);
-  showToast(`${title}: ${body}`, "ok");
+  const tone = chat.lastMessageKind === "call" && /missed/i.test(body) ? "missed" : "message";
+  showInAppNotification(title, body, {
+    tone,
+    count: unread,
+    icon: getChatPhoto(chat, isAdminEmail(activeUser?.email) ? "admin" : "user"),
+    href: location.pathname.includes("designer-account.html") ? "designer-account.html#chat" : location.pathname.includes("admin.html") ? "admin.html#chats_view" : "account.html#chat"
+  });
   notifyBrowser(title, body, getChatPhoto(chat, isAdminEmail(activeUser?.email) ? "admin" : "user"));
 }
 
@@ -2933,8 +3044,13 @@ function notifyIncomingMessages(state, messages) {
     if (isMineMessage(msg)) return;
     const title = msg.senderName || getChatTitle(state.chatData, isAdminEmail(activeUser?.email) ? "admin" : "user");
     const body = isCallEventMessage(msg) ? callSummaryLastMessage(msg) : (msg.text || attachmentSummary(msg.attachments || []) || "New message");
-    if (document.visibilityState === "hidden") notifyBrowser(title, body, getChatPhoto(state.chatData, isAdminEmail(activeUser?.email) ? "admin" : "user"));
-    else showToast(`${title}: ${body}`, "ok");
+    const tone = isCallEventMessage(msg) && (msg.callStatus === "missed" || msg.endedReason === "timeout") ? "missed" : "message";
+    showInAppNotification(title, body, {
+      tone,
+      icon: getChatPhoto(state.chatData, isAdminEmail(activeUser?.email) ? "admin" : "user"),
+      href: location.pathname.includes("designer-account.html") ? "designer-account.html#chat" : location.pathname.includes("admin.html") ? "admin.html#chats_view" : "account.html#chat"
+    });
+    notifyBrowser(title, body, getChatPhoto(state.chatData, isAdminEmail(activeUser?.email) ? "admin" : "user"));
   });
 }
 
@@ -3263,6 +3379,34 @@ function injectChatStyles() {
       .adnn-message { max-width:78%; }
     }
 
+
+    .adnn-inapp-stack { position:fixed; right:18px; top:18px; z-index:2147483500; display:grid; gap:10px; width:min(360px, calc(100vw - 28px)); pointer-events:none; }
+    .adnn-inapp-card { pointer-events:auto; width:100%; min-height:70px; border:1px solid rgba(255,255,255,.14); border-radius:22px; display:grid; grid-template-columns:46px minmax(0,1fr) auto; align-items:center; gap:12px; padding:12px; background:linear-gradient(145deg, rgba(22,22,28,.96), rgba(4,4,7,.98)); color:#fff; text-align:left; box-shadow:0 24px 80px rgba(0,0,0,.38); backdrop-filter:blur(18px); animation:adnnNotifyIn .32s cubic-bezier(.16,1,.3,1); cursor:pointer; }
+    .adnn-inapp-card strong, .adnn-inapp-card small { display:block; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+    .adnn-inapp-card strong { font-size:13px; font-weight:650; }
+    .adnn-inapp-card small { color:rgba(255,255,255,.58); font-size:12px; margin-top:3px; }
+    .adnn-inapp-card b { min-width:22px; height:22px; padding:0 6px; border-radius:999px; display:grid; place-items:center; background:var(--adnn-danger); color:#fff; font-size:11px; }
+    .adnn-inapp-card.is-missed { border-color:rgba(255,38,2,.36); }
+    @keyframes adnnNotifyIn { from { opacity:0; transform:translateY(-10px) scale(.96); } to { opacity:1; transform:translateY(0) scale(1); } }
+    :root.adnn-chat-light .adnn-chat-app { --adnn-bg:#f6f7fb; --adnn-panel:#ffffff; --adnn-soft:rgba(7,10,25,.065); --adnn-line:rgba(7,10,25,.11); --adnn-text:#12131a; --adnn-muted:rgba(18,19,26,.56); color:#12131a; }
+    :root.adnn-chat-light .adnn-chat-layout { background:linear-gradient(145deg, rgba(255,255,255,.98), rgba(237,239,250,.98)); box-shadow:0 24px 90px rgba(14,18,48,.16); }
+    :root.adnn-chat-light .adnn-chat-thread-panel { background:rgba(255,255,255,.72); border-right-color:rgba(7,10,25,.08); }
+    :root.adnn-chat-light .adnn-chat-thread-head, :root.adnn-chat-light .adnn-room-head, :root.adnn-chat-light .adnn-composer-wrap, :root.adnn-chat-light .adnn-room-searchbar { background:rgba(255,255,255,.92); border-color:rgba(7,10,25,.1); color:#12131a; }
+    :root.adnn-chat-light .adnn-room-shell { background:radial-gradient(circle at 92% 6%, rgba(39,45,207,.12), transparent 32%), #f8f9ff; }
+    :root.adnn-chat-light .adnn-thread, :root.adnn-chat-light .adnn-call-btn, :root.adnn-chat-light .adnn-back-btn, :root.adnn-chat-light .adnn-attach-btn, :root.adnn-chat-light .adnn-voice-btn, :root.adnn-chat-light .adnn-plus-btn, :root.adnn-chat-light .adnn-emoji-btn, :root.adnn-chat-light .adnn-room-menu button, :root.adnn-chat-light .adnn-outer-menu button { color:#11131b; }
+    :root.adnn-chat-light .adnn-call-btn, :root.adnn-chat-light .adnn-back-btn, :root.adnn-chat-light .adnn-attach-btn, :root.adnn-chat-light .adnn-voice-btn, :root.adnn-chat-light .adnn-plus-btn, :root.adnn-chat-light .adnn-emoji-btn, :root.adnn-chat-light .adnn-room-menu, :root.adnn-chat-light .adnn-outer-menu { background:rgba(10,14,30,.07); border-color:rgba(7,10,25,.1); }
+    :root.adnn-chat-light .adnn-thread:hover, :root.adnn-chat-light .adnn-thread.is-active { background:rgba(39,45,207,.12); }
+    :root.adnn-chat-light .adnn-thread-copy small, :root.adnn-chat-light .adnn-thread-side time, :root.adnn-chat-light .adnn-room-title small, :root.adnn-chat-light .adnn-chat-empty, :root.adnn-chat-light .adnn-chat-welcome { color:rgba(18,19,26,.55); }
+    :root.adnn-chat-light .adnn-chat-search, :root.adnn-chat-light .adnn-composer textarea, :root.adnn-chat-light .adnn-room-searchbar input { background:#fff; color:#11131b; border-color:rgba(7,10,25,.1); }
+    :root.adnn-chat-light .adnn-chat-search input { color:#11131b; }
+    :root.adnn-chat-light .adnn-message { background:#ffffff; color:#11131b; border-color:rgba(7,10,25,.08); box-shadow:0 12px 28px rgba(12,16,46,.08); }
+    :root.adnn-chat-light .is-mine .adnn-message { color:#fff; background:linear-gradient(145deg,var(--adnn-primary),var(--adnn-primary2)); }
+    :root.adnn-chat-light .adnn-date-separator, :root.adnn-chat-light .adnn-reply-preview, :root.adnn-chat-light .adnn-doc-bubble, :root.adnn-chat-light .adnn-voice-bubble { background:rgba(7,10,25,.06); color:#11131b; }
+    :root.adnn-chat-light .adnn-message-meta, :root.adnn-chat-light .adnn-voice-bubble small, :root.adnn-chat-light .adnn-doc-bubble small { color:rgba(18,19,26,.5); }
+    :root.adnn-chat-light .adnn-inapp-card { background:linear-gradient(145deg, rgba(255,255,255,.98), rgba(238,240,250,.98)); color:#11131b; border-color:rgba(7,10,25,.1); box-shadow:0 24px 80px rgba(14,18,48,.16); }
+    :root.adnn-chat-light .adnn-inapp-card small { color:rgba(18,19,26,.56); }
+    :root.adnn-reduce-motion .adnn-chat-app *, :root.adnn-reduce-motion .adnn-call-popout, :root.adnn-reduce-motion .adnn-inapp-card { transition:none !important; animation:none !important; scroll-behavior:auto !important; }
+
     @media (max-width:760px) {
       .adnn-chat-app { display:block !important; min-height:0 !important; }
       .adnn-chat-layout { grid-template-columns:1fr; height:100svh !important; min-height:0 !important; overflow:hidden !important; border-radius:0; border-left:0; border-right:0; }
@@ -3318,7 +3462,7 @@ function injectChatStyles() {
 
 // Expose a tiny debug surface without coupling the site to internals.
 window.ADNN_CHAT_RUNTIME = Object.freeze({
-  version: "2.2.0-calls-reactions-notifications",
+  version: "2.3.0-message-card-settings-sheet",
   refresh: refreshAllConnections,
   get activeUser() { return activeUser ? { uid: activeUser.uid, email: activeUser.email } : null; },
   get activeCall() { return activeCall ? { callId: activeCall.callId, kind: activeCall.kind, role: activeCall.role } : null; },

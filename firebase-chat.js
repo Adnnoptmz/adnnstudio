@@ -162,6 +162,7 @@ const globalUnsubs = [];
 const liveSnapshotKeys = new Map();
 const pendingToastKeys = new Map();
 const threadUnreadCache = new Map();
+const threadNotifyState = new Map();
 let notificationPermissionAsked = false;
 let chatSettingsEventsBound = false;
 const CHAT_THEME_STORAGE_KEY = "adnn_chat_light_mode";
@@ -1039,6 +1040,12 @@ function renderMessages(state, messages) {
   state.lastRenderSignature = signature;
 
   scroller.innerHTML = "";
+  const dateTrack = document.createElement("div");
+  dateTrack.className = "adnn-date-track";
+  dateTrack.dataset.dateTrack = "";
+  dateTrack.hidden = true;
+  scroller.appendChild(dateTrack);
+  ensureDateTrack(scroller);
   if (!visible.length) {
     scroller.innerHTML = `<div class="adnn-chat-empty">No messages yet. Say hello.</div>`;
     return;
@@ -1074,6 +1081,34 @@ function renderMessages(state, messages) {
 
   filterMessages(state, shell.querySelector("[data-message-search]")?.value || "");
   if (nearBottom) scrollToBottom(state);
+  updateDateTrack(scroller);
+}
+
+function ensureDateTrack(scroller) {
+  if (!scroller || scroller.dataset.dateTrackBound) return;
+  scroller.dataset.dateTrackBound = "1";
+  let hideTimer = null;
+  scroller.addEventListener("scroll", () => {
+    updateDateTrack(scroller);
+    const pill = scroller.querySelector("[data-date-track]");
+    if (pill) pill.hidden = false;
+    clearTimeout(hideTimer);
+    hideTimer = setTimeout(() => { if (pill) pill.hidden = true; }, 1150);
+  }, { passive: true });
+}
+
+function updateDateTrack(scroller) {
+  const pill = scroller?.querySelector("[data-date-track]");
+  if (!pill) return;
+  const seps = Array.from(scroller.querySelectorAll(".adnn-date-separator"));
+  if (!seps.length) { pill.hidden = true; return; }
+  const top = scroller.getBoundingClientRect().top + 18;
+  let active = seps[0];
+  for (const sep of seps) {
+    if (sep.getBoundingClientRect().top <= top) active = sep;
+    else break;
+  }
+  pill.textContent = active.textContent || "Today";
 }
 
 function renderMessageBubble(message, mine) {
@@ -1338,7 +1373,7 @@ function renderAttachments(message) {
       return `<div class="adnn-video-bubble"><video controls playsinline src="${escapeAttr(item.url)}"></video><small>${escapeHtml(item.name || "Video")}</small></div>`;
     }
     if (type.startsWith("audio/") || item.voice) {
-      return `<div class="adnn-voice-bubble"><span>${ICON.mic}</span><audio controls preload="metadata" src="${escapeAttr(item.url)}"></audio><small>${formatDuration(item.duration || 0)}</small></div>`;
+      return `<div class="adnn-voice-bubble"><button type="button" data-wave-play="${escapeAttr(item.url)}">${ICON.play}</button><div class="adnn-voice-wave">${waveBars(item.duration || 8)}</div><audio preload="metadata" src="${escapeAttr(item.url)}" hidden></audio><small>${formatDuration(item.duration || 0)}</small></div>`;
     }
     return `<a href="${escapeAttr(item.url)}" target="_blank" rel="noopener" class="adnn-doc-bubble"><span>${fileExt(item.name || "file")}</span><strong>${escapeHtml(item.name || "Open file")}</strong><small>${formatBytes(item.size || 0)}</small>${ICON.download}</a>`;
   }).join("");
@@ -2058,6 +2093,8 @@ function showIncomingCall(callId, call) {
 
 async function acceptCall(callId, call) {
   if (activeCall) return;
+  stopIncomingRingtone();
+  stopOutgoingDialTone();
   try {
     const wantsVideo = call.kind === "video";
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: wantsVideo });
@@ -2113,6 +2150,7 @@ function createCallState(callId, role, kind, stream, chatId, chatData, remoteUid
     videoSender: null,
     unsubs: [],
     remoteCandidateQueue: [],
+    lastRemoteOfferSdp: "",
     summaryWritten: false
   };
 }
@@ -2158,7 +2196,10 @@ async function setupPeerConnection(call, caller) {
   pc.ontrack = (event) => {
     const streams = event.streams?.length ? event.streams : [new MediaStream([event.track])];
     streams[0].getTracks().forEach((track) => {
-      if (!call.remoteStream.getTracks().some((existing) => existing.id === track.id)) call.remoteStream.addTrack(track);
+      if (!call.remoteStream.getTracks().some((existing) => existing.id === track.id)) {
+        call.remoteStream.addTrack(track);
+        track.onunmute = () => attachCallMedia();
+      }
     });
     attachCallMedia();
   };
@@ -2188,6 +2229,16 @@ function watchActiveCall(callId) {
       await activeCall.pc.setRemoteDescription(new RTCSessionDescription(data.answer)).catch(() => {});
       await flushRemoteCandidates(activeCall);
     }
+    if (activeCall.role === "receiver" && data.offer && data.kind === "video" && activeCall.pc?.signalingState === "stable" && data.offer.sdp !== activeCall.lastRemoteOfferSdp) {
+      activeCall.lastRemoteOfferSdp = data.offer.sdp;
+      await activeCall.pc.setRemoteDescription(new RTCSessionDescription(data.offer)).catch(() => {});
+      await flushRemoteCandidates(activeCall);
+      const answer = await activeCall.pc.createAnswer().catch(() => null);
+      if (answer) {
+        await activeCall.pc.setLocalDescription(answer).catch(() => {});
+        await updateDoc(doc(db, COLLECTIONS.calls, callId), { answer: { type: answer.type, sdp: answer.sdp }, updatedAt: serverTimestamp(), updatedAtMs: Date.now() }).catch(() => {});
+      }
+    }
     if (data.kind && data.kind !== activeCall.kind) {
       activeCall.kind = data.kind;
       refreshCallControls();
@@ -2198,6 +2249,8 @@ function watchActiveCall(callId) {
     attachCallMedia();
     updateHoldUi();
     if (data.status === "accepted") {
+      stopOutgoingDialTone();
+      stopIncomingRingtone();
       activeCall.acceptedAtMs = data.acceptedAtMs || activeCall.acceptedAtMs || Date.now();
       startCallTimer();
     }
@@ -2263,7 +2316,8 @@ function attachCallMedia() {
   remoteVideo?.play?.().catch(() => {});
 
   const localOn = activeCall.kind === "video" && !activeCall.onHold && activeCall.cameraOn && activeCall.localStream.getVideoTracks().some((track) => track.readyState !== "ended" && track.enabled !== false);
-  const remoteOn = activeCall.kind === "video" && !activeCall.remoteOnHold && activeCall.remoteCameraOn && activeCall.remoteStream.getVideoTracks().some((track) => track.readyState !== "ended");
+  const remoteHasVideo = activeCall.remoteStream.getVideoTracks().some((track) => track.readyState !== "ended");
+  const remoteOn = activeCall.kind === "video" && !activeCall.remoteOnHold && (activeCall.remoteCameraOn || remoteHasVideo) && remoteHasVideo;
   if (localTile) localTile.hidden = !localOn;
   if (remoteTile) remoteTile.hidden = !remoteOn;
   if (audioFace) audioFace.hidden = localOn || remoteOn;
@@ -2317,8 +2371,11 @@ async function upgradeCallToVideo(button) {
     activeCall.kind = "video";
     activeCall.cameraOn = true;
     activeCall.localStream.getVideoTracks().forEach((track) => { track.enabled = !activeCall.onHold; });
+    const offer = await activeCall.pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
+    await activeCall.pc.setLocalDescription(offer);
     await updateDoc(doc(db, COLLECTIONS.calls, activeCall.callId), {
       kind: "video",
+      offer: { type: offer.type, sdp: offer.sdp },
       [`media.${fieldKey(ownCallUid())}.cameraOn`]: true,
       [`media.${fieldKey(ownCallUid())}.updatedAt`]: Date.now(),
       updatedAt: serverTimestamp(),
@@ -2394,6 +2451,8 @@ function updateHoldUi(button = null) {
 }
 
 function startCallTimer() {
+  stopOutgoingDialTone();
+  stopIncomingRingtone();
   if (!activeCall) return;
   if (callTimer) return;
   const startedAt = activeCall.acceptedAtMs || Date.now();
@@ -2783,8 +2842,18 @@ function bindGlobalDismissers() {
   document.addEventListener("click", (event) => {
     if (!event.target.closest("[data-room-menu-trigger], [data-room-menu]")) document.querySelectorAll("[data-room-menu]").forEach((menu) => { menu.hidden = true; });
     if (!event.target.closest("[data-chat-menu], [data-outer-menu]")) document.querySelectorAll("[data-outer-menu]").forEach((menu) => { menu.hidden = true; });
+    if (!event.target.closest("[data-toggle-panel], [data-composer-panel]")) document.querySelectorAll("[data-composer-panel]").forEach((panel) => { panel.hidden = true; });
+    if (!event.target.closest("[data-emoji-trigger], [data-emoji-panel]")) document.querySelectorAll("[data-emoji-panel]").forEach((panel) => { panel.hidden = true; });
     if (!event.target.closest(".adnn-message")) closeMessageMenus();
   });
+  document.addEventListener("click", (event) => {
+    const logout = event.target.closest(".logout, .sidebar-logout-item, .account-logout, #headerLogoutButton, #sidebarLogoutButton, #sidebarLogoutActionBtn");
+    if (!logout) return;
+    if (!window.confirm("Log out of this ADNN account?")) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    }
+  }, true);
   document.addEventListener("keydown", (event) => {
     if (event.key !== "Escape") return;
     closeFloatingReactionSheet();
@@ -2881,6 +2950,15 @@ function autoSizeTextArea(node) {
   if (!node) return;
   node.style.height = "auto";
   node.style.height = `${Math.min(128, node.scrollHeight)}px`;
+}
+
+function waveBars(seed = 8) {
+  const count = 34;
+  const base = Math.max(1, Number(seed) || 8);
+  return Array.from({ length: count }, (_, i) => {
+    const h = 18 + Math.round(Math.abs(Math.sin((i + 1) * 1.7 + base)) * 30) + (i % 5) * 2;
+    return `<span style="--h:${Math.min(58, h)}%"></span>`;
+  }).join("");
 }
 
 function bestAudioMimeType() {
@@ -3244,10 +3322,22 @@ function playNotificationTone(tone = "message") {
 
 function updateBadgeNode(node, value) {
   if (!node) return;
+  node.classList?.add("side-notification-badge");
   const safe = Math.max(0, Number(value) || 0);
   node.textContent = String(safe > 99 ? "99+" : safe);
   node.hidden = safe <= 0;
   node.style.display = safe > 0 ? "grid" : "none";
+}
+
+function ensureSidebarBadges() {
+  document.querySelectorAll(".side-nav a, .side-nav button, .sidebar-link-item, .account-popover button").forEach((item) => {
+    if (item.querySelector(".side-notification-badge")) return;
+    const badge = document.createElement("span");
+    badge.className = "side-notification-badge";
+    badge.hidden = true;
+    badge.textContent = "0";
+    item.appendChild(badge);
+  });
 }
 
 function updateChatNavigationBadges(chats = [], scope = "user") {
@@ -3263,20 +3353,32 @@ function updateChatNavigationBadges(chats = [], scope = "user") {
   document.querySelectorAll('[data-account-badge="support"]').forEach((node) => updateBadgeNode(node, counts.support));
   document.querySelectorAll('[data-admin-chat-badge]').forEach((node) => updateBadgeNode(node, counts.admin));
   document.querySelectorAll('.adnn-chat-count').forEach((node) => updateBadgeNode(node, total));
+  ensureSidebarBadges();
+  document.querySelectorAll('[data-section="chat"] .side-notification-badge, [data-view="chat"] .side-notification-badge, a[href*="chat"] .side-notification-badge').forEach((node) => updateBadgeNode(node, total));
   try { localStorage.setItem(CHAT_TOTAL_UNREAD_STORAGE_KEY, String(total)); } catch (_) {}
 }
 
 function notifyThreadUnread(chat, title, unread) {
   const key = `thread:${chat.id}`;
-  const previous = threadUnreadCache.get(key);
+  const previousUnread = threadUnreadCache.get(key);
   threadUnreadCache.set(key, unread || 0);
-  if (previous === undefined || !unread || unread <= previous) return;
+
+  const lastMs = toMillis(chat.updatedAt || chat.updatedAtMs || chat.createdAt || chat.createdAtMs);
+  const sig = `${lastMs}:${chat.lastMessage || ""}:${chat.lastSenderUid || ""}:${chat.lastMessageKind || ""}`;
+  const previousSig = threadNotifyState.get(key);
+  threadNotifyState.set(key, sig);
+
+  if (previousUnread === undefined && previousSig === undefined) return;
+  const unreadIncreased = unread && (previousUnread === undefined || unread > previousUnread);
+  const messageChanged = previousSig && sig !== previousSig;
+  if (!unreadIncreased && !messageChanged) return;
   if (selfUidSet().has(chat.lastSenderUid) || selfUidSet().has(chat.lastSenderAliasUid)) return;
+
   const body = normalizeLastMessage(chat);
   const tone = chat.lastMessageKind === "call" && /missed/i.test(body) ? "missed" : "message";
   showInAppNotification(title, body, {
     tone,
-    count: unread,
+    count: unread || 1,
     icon: getChatPhoto(chat, isAdminEmail(activeUser?.email) ? "admin" : "user"),
     href: location.pathname.includes("designer-account.html") ? "designer-account.html#chat" : location.pathname.includes("admin.html") ? "admin.html#chats_view" : "account.html#chat"
   });
@@ -3453,7 +3555,8 @@ function injectChatStyles() {
     .adnn-room-head { position:absolute !important; top:0 !important; left:0 !important; right:0 !important; width:100% !important; height:var(--head) !important; min-height:var(--head) !important; display:flex !important; align-items:center !important; gap:10px; padding:12px 14px; border-bottom:1px solid rgba(255,255,255,.08); background:rgba(10,10,14,.95); backdrop-filter:blur(18px); z-index:95 !important; }
     .adnn-back-btn, .adnn-call-btn, .adnn-attach-btn, .adnn-voice-btn, .adnn-send-btn, .adnn-plus-btn, .adnn-emoji-btn { width:42px; height:42px; border:0; border-radius:50%; display:grid; place-items:center; color:#fff; background:rgba(255,255,255,.07); cursor:pointer; transition:.18s ease; flex:0 0 auto; }
     .adnn-back-btn { display:none; }
-    .adnn-call-btn:hover, .adnn-attach-btn:hover, .adnn-voice-btn:hover, .adnn-plus-btn:hover, .adnn-emoji-btn:hover { background:rgba(255,255,255,.12); transform:translateY(-1px); }
+    .adnn-call-btn:hover, .adnn-attach-btn:hover, .adnn-voice-btn:hover, .adnn-plus-btn:hover, .adnn-emoji-btn:hover, .adnn-send-btn:hover { background:rgba(255,255,255,.13); transform:translateY(-2px) scale(1.045); box-shadow:0 10px 28px rgba(39,45,207,.22); }
+    .adnn-call-btn:active, .adnn-attach-btn:active, .adnn-voice-btn:active, .adnn-plus-btn:active, .adnn-emoji-btn:active, .adnn-send-btn:active, .adnn-room-menu button:active, .adnn-message-actions button:active { transform:scale(.88); transition:.08s cubic-bezier(.2,.9,.2,1.25); }
     .adnn-back-btn svg, .adnn-call-btn svg, .adnn-attach-btn svg, .adnn-voice-btn svg, .adnn-send-btn svg, .adnn-plus-btn svg, .adnn-emoji-btn svg { width:19px; height:19px; }
     .adnn-room-title { flex:1; min-width:0; display:grid; gap:2px; }
     .adnn-room-title strong, .adnn-room-title small { overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
@@ -3466,7 +3569,8 @@ function injectChatStyles() {
     .adnn-room-searchbar button { width:36px; border:0; border-radius:12px; background:rgba(255,255,255,.08); color:#fff; display:grid; place-items:center; }
     .adnn-message-scroll { position:absolute !important; top:var(--head) !important; left:0 !important; right:0 !important; bottom:var(--composer) !important; min-height:0 !important; overflow-y:auto !important; overflow-x:hidden !important; padding:18px; display:flex !important; flex-direction:column; gap:10px; scroll-behavior:smooth; z-index:1; }
     .adnn-room-searchbar:not([hidden]) + .adnn-message-scroll { top:calc(var(--head) + 52px) !important; }
-    .adnn-date-separator { align-self:center; position:relative; z-index:1; padding:5px 10px; border-radius:999px; background:rgba(255,255,255,.08); color:rgba(255,255,255,.62); font-size:11px; backdrop-filter:blur(10px); }
+    .adnn-date-separator { align-self:center; position:relative; z-index:1; padding:5px 10px; border-radius:999px; background:rgba(255,255,255,.08); color:rgba(255,255,255,.62); font-size:11px; backdrop-filter:blur(10px); flex:0 0 auto; }
+    .adnn-date-track { position:sticky; top:8px; align-self:center; z-index:35; padding:6px 12px; border-radius:999px; background:rgba(18,18,22,.78); color:#fff; font-size:11px; backdrop-filter:blur(18px); box-shadow:0 12px 35px rgba(0,0,0,.28); pointer-events:none; }
     .adnn-message-row { display:flex; width:100%; }
     .adnn-message-row.is-mine { justify-content:flex-end; }
     .adnn-message-row.is-peer { justify-content:flex-start; }
@@ -3511,9 +3615,11 @@ function injectChatStyles() {
     .adnn-doc-bubble small { color:rgba(255,255,255,.52); font-size:11px; }
     .adnn-doc-bubble svg { width:16px; height:16px; opacity:.75; }
     .adnn-voice-bubble { min-width:min(285px, 76vw); display:flex; align-items:center; gap:9px; padding:8px 10px; border-radius:999px; background:rgba(0,0,0,.22); margin-bottom:7px; }
-    .adnn-voice-bubble span { width:30px; height:30px; border-radius:50%; display:grid; place-items:center; background:rgba(255,255,255,.1); color:#fff; flex:0 0 auto; }
-    .adnn-voice-bubble span svg { width:15px; height:15px; }
-    .adnn-voice-bubble audio { width:190px; max-width:100%; height:32px; }
+    .adnn-voice-bubble button { width:30px; height:30px; border:0; border-radius:50%; display:grid; place-items:center; background:rgba(255,255,255,.12); color:#fff; flex:0 0 auto; cursor:pointer; }
+    .adnn-voice-bubble button svg { width:15px; height:15px; }
+    .adnn-voice-wave { flex:1; min-width:110px; height:34px; display:flex; align-items:center; gap:2px; }
+    .adnn-voice-wave span { width:3px; height:var(--h); min-height:5px; max-height:24px; border-radius:999px; background:linear-gradient(180deg, rgba(255,255,255,.95), rgba(141,150,255,.6)); opacity:.95; }
+    .adnn-voice-bubble audio { width:0; max-width:0; height:0; }
     .adnn-voice-bubble small { color:rgba(255,255,255,.55); font-size:11px; }
     .adnn-composer-wrap { position:absolute !important; left:0 !important; right:0 !important; bottom:0 !important; min-height:var(--composer) !important; z-index:92 !important; border-top:1px solid rgba(255,255,255,.08); background:rgba(8,8,12,.97); padding:10px; box-shadow:0 -18px 45px rgba(0,0,0,.24); visibility:visible !important; opacity:1 !important; transform:none !important; }
     .adnn-connection-strip { display:none !important; }
@@ -3540,7 +3646,8 @@ function injectChatStyles() {
     .adnn-file-chip button, .adnn-reply-bar button, .adnn-voice-preview button { width:28px; height:28px; border-radius:50%; border:0; background:rgba(255,255,255,.08); color:#fff; display:grid; place-items:center; cursor:pointer; }
     .adnn-file-chip button svg, .adnn-reply-bar button svg, .adnn-voice-preview button svg { width:14px; height:14px; }
     .adnn-voice-preview { display:flex; align-items:center; gap:10px; padding:0 0 8px; color:#fff; }
-    .adnn-voice-preview-icon { width:34px; height:34px; border-radius:50%; display:grid; place-items:center; background:var(--adnn-primary); flex:0 0 auto; }
+    .adnn-voice-preview .adnn-voice-wave { max-width:260px; }
+    .adnn-voice-preview-icon { width:34px; height:34px; border:0; border-radius:50%; display:grid; place-items:center; background:var(--adnn-primary); color:#fff; flex:0 0 auto; cursor:pointer; }
     .adnn-voice-preview-icon svg { width:16px; height:16px; }
     .adnn-voice-preview audio { height:34px; max-width:260px; }
     .adnn-composer-panel, .adnn-emoji-panel { position:absolute; left:10px; right:10px; bottom:calc(100% - 3px); padding:10px; border:1px solid rgba(255,255,255,.1); border-radius:20px; background:rgba(8,8,12,.98); box-shadow:0 -20px 65px rgba(0,0,0,.38); backdrop-filter:blur(18px); z-index:130; }
@@ -3662,6 +3769,9 @@ function injectChatStyles() {
     :root.adnn-chat-light .adnn-inapp-card { background:linear-gradient(145deg, rgba(255,255,255,.98), rgba(238,240,250,.98)); color:#11131b; border-color:rgba(7,10,25,.1); box-shadow:0 24px 80px rgba(14,18,48,.16); }
     :root.adnn-chat-light .adnn-inapp-card small { color:rgba(18,19,26,.56); }
     :root.adnn-reduce-motion .adnn-chat-app *, :root.adnn-reduce-motion .adnn-call-popout, :root.adnn-reduce-motion .adnn-inapp-card { transition:none !important; animation:none !important; scroll-behavior:auto !important; }
+
+    .side-notification-badge { min-width:18px; height:18px; padding:0 5px; border-radius:999px; display:grid; place-items:center; background:#ff2602; color:#fff; font-size:10px; line-height:1; box-shadow:0 0 0 2px rgba(0,0,0,.18), 0 8px 22px rgba(255,38,2,.38); }
+    .side-notification-badge[hidden] { display:none !important; }
 
     @media (max-width:760px) {
       .adnn-chat-app { display:block !important; min-height:0 !important; }

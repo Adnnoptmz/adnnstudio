@@ -171,6 +171,8 @@ const CHAT_BROWSER_NOTIFICATION_KEY = "adnn_browser_notifications";
 const CHAT_SOUND_KEY = "adnn_message_sounds";
 const CHAT_REDUCE_MOTION_KEY = "adnn_reduce_motion";
 const CHAT_TOTAL_UNREAD_STORAGE_KEY = "adnn_chat_unread_total";
+const PINNED_CHAT_STORAGE_KEY = "adnn_pinned_chat_ids";
+const NAV_ORDER_STORAGE_KEY = "adnn_sidebar_nav_order";
 
 const ICON = {
   back: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>`,
@@ -212,6 +214,8 @@ async function bootChatRuntime() {
   bindGlobalDismissers();
   bindConnectivitySignals();
   bindNotificationPermissionPrimer();
+  setupSidebarReorder();
+  ensureSidebarBadges();
 
   if (!FIREBASE_CONFIG) {
     renderSignedOutShell("Firebase config is missing. Define window.ADNN_FIREBASE_CONFIG before loading firebase-chat.js.");
@@ -582,14 +586,23 @@ function renderThreadList(chats, list, roomId, scope) {
 
   const currentState = rooms.get(roomId);
   let currentRow = null;
+  const pinnedChats = getPinnedChats();
 
-  chats.forEach((chat) => {
+  const sortedChats = chats.slice().sort((a, b) => {
+    const aPinned = pinnedChats.has(a.id) ? 1 : 0;
+    const bPinned = pinnedChats.has(b.id) ? 1 : 0;
+    if (aPinned !== bPinned) return bPinned - aPinned;
+    return toMillis(b.updatedAt || b.createdAt || b.updatedAtMs) - toMillis(a.updatedAt || a.createdAt || a.updatedAtMs);
+  });
+
+  sortedChats.forEach((chat) => {
     const title = getChatTitle(chat, scope);
     const unread = getUnreadCount(chat, scope);
+    const pinned = pinnedChats.has(chat.id);
     notifyThreadUnread(chat, title, unread);
     const row = document.createElement("button");
     row.type = "button";
-    row.className = "adnn-thread";
+    row.className = `adnn-thread ${pinned ? "is-pinned" : ""}`;
     row.dataset.chatId = chat.id;
     row.dataset.filterText = `${title} ${chat.clientEmail || ""} ${chat.lastMessage || ""}`.toLowerCase();
 
@@ -603,11 +616,18 @@ function renderThreadList(chats, list, roomId, scope) {
         <small>${escapeHtml(preview)}</small>
       </span>
       <span class="adnn-thread-side">
+        <button type="button" class="adnn-pin-chat" data-pin-chat="${escapeAttr(chat.id)}" title="${pinned ? "Unpin chat" : "Pin chat"}" aria-label="${pinned ? "Unpin chat" : "Pin chat"}">${pinned ? "●" : "○"}</button>
         <time>${escapeHtml(stamp)}</time>
         ${unread > 0 ? `<b>${unread > 99 ? "99+" : unread}</b>` : ""}
       </span>
     `;
     hydrateThreadAvatar(row, chat, scope, title);
+    row.querySelector("[data-pin-chat]")?.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      togglePinnedChat(chat.id);
+      renderThreadList(chats, list, roomId, scope);
+    });
     row.addEventListener("click", () => {
       list.querySelectorAll(".adnn-thread").forEach((item) => item.classList.remove("is-active"));
       row.classList.add("is-active");
@@ -623,11 +643,11 @@ function renderThreadList(chats, list, roomId, scope) {
     list.appendChild(row);
   });
 
-  const shouldAutoOpen = scope === "admin" && !currentRow && chats[0] && !window.matchMedia("(max-width: 760px)").matches;
+  const shouldAutoOpen = scope === "admin" && !currentRow && sortedChats[0] && !window.matchMedia("(max-width: 760px)").matches;
   if (shouldAutoOpen) {
     const firstRow = list.querySelector(".adnn-thread");
     firstRow?.classList.add("is-active");
-    openRoom(chats[0].id, chats[0], roomId);
+    openRoom(sortedChats[0].id, sortedChats[0], roomId);
   }
 }
 
@@ -638,6 +658,21 @@ function filterThreadList(listId, rawValue) {
   list.querySelectorAll(".adnn-thread").forEach((row) => {
     row.hidden = !!needle && !row.dataset.filterText?.includes(needle);
   });
+}
+
+function getPinnedChats() {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(PINNED_CHAT_STORAGE_KEY) || "[]"));
+  } catch (_) {
+    return new Set();
+  }
+}
+
+function togglePinnedChat(chatId) {
+  const pinned = getPinnedChats();
+  if (pinned.has(chatId)) pinned.delete(chatId);
+  else pinned.add(chatId);
+  try { localStorage.setItem(PINNED_CHAT_STORAGE_KEY, JSON.stringify(Array.from(pinned))); } catch (_) {}
 }
 
 async function hydrateThreadAvatar(row, chat, scope, title) {
@@ -2864,6 +2899,78 @@ function bindGlobalDismissers() {
   });
 }
 
+function setupSidebarReorder() {
+  const applyOrder = (container) => {
+    const items = Array.from(container.querySelectorAll(":scope > a[data-view-link], :scope > button[data-view-link], :scope > .sidebar-link-item[data-target-view]"));
+    const key = `${NAV_ORDER_STORAGE_KEY}:${location.pathname}:${container.className || container.tagName}`;
+    let saved = [];
+    try { saved = JSON.parse(localStorage.getItem(key) || "[]"); } catch (_) {}
+    saved.forEach((id) => {
+      const item = items.find((node) => navItemId(node) === id);
+      if (item) container.appendChild(item);
+    });
+
+    Array.from(container.querySelectorAll(":scope > a[data-view-link], :scope > button[data-view-link], :scope > .sidebar-link-item[data-target-view]")).forEach((item) => {
+      if (item.dataset.reorderReady === "true") return;
+      item.dataset.reorderReady = "true";
+      item.draggable = false;
+      item.addEventListener("pointermove", (event) => {
+        const rect = item.getBoundingClientRect();
+        item.classList.toggle("can-drag", event.clientX - rect.left <= 30);
+      });
+      item.addEventListener("pointerleave", () => item.classList.remove("can-drag"));
+      item.addEventListener("pointerdown", (event) => {
+        const rect = item.getBoundingClientRect();
+        item.draggable = event.clientX - rect.left <= 30;
+      });
+      item.addEventListener("dragstart", (event) => {
+        if (!item.draggable) return event.preventDefault();
+        item.classList.add("is-dragging");
+        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.setData("text/plain", navItemId(item));
+      });
+      item.addEventListener("dragend", () => {
+        item.classList.remove("is-dragging", "can-drag");
+        item.draggable = false;
+        saveOrder(container, key);
+      });
+    });
+
+    container.addEventListener("dragover", (event) => {
+      const dragging = container.querySelector(".is-dragging");
+      if (!dragging) return;
+      event.preventDefault();
+      const after = getDragAfterElement(container, event.clientY);
+      if (after == null) container.appendChild(dragging);
+      else container.insertBefore(dragging, after);
+    });
+    container.addEventListener("drop", () => saveOrder(container, key));
+  };
+
+  const run = () => document.querySelectorAll(".side-nav, .sidebar-navigation, .sidebar-bottom-utilities").forEach(applyOrder);
+  run();
+  window.addEventListener("load", run, { once: true });
+}
+
+function navItemId(item) {
+  return item.dataset.viewLink || item.dataset.targetView || item.getAttribute("href") || item.id || item.textContent.trim();
+}
+
+function saveOrder(container, key) {
+  const ids = Array.from(container.querySelectorAll(":scope > a[data-view-link], :scope > button[data-view-link], :scope > .sidebar-link-item[data-target-view]")).map(navItemId);
+  try { localStorage.setItem(key, JSON.stringify(ids)); } catch (_) {}
+}
+
+function getDragAfterElement(container, y) {
+  const items = Array.from(container.querySelectorAll(":scope > a[data-view-link]:not(.is-dragging), :scope > button[data-view-link]:not(.is-dragging), :scope > .sidebar-link-item[data-target-view]:not(.is-dragging)"));
+  return items.reduce((closest, child) => {
+    const box = child.getBoundingClientRect();
+    const offset = y - box.top - box.height / 2;
+    if (offset < 0 && offset > closest.offset) return { offset, element: child };
+    return closest;
+  }, { offset: Number.NEGATIVE_INFINITY, element: null }).element;
+}
+
 function closeMessageMenus() {
   document.querySelectorAll(".adnn-message.is-menu-open").forEach((item) => item.classList.remove("is-menu-open"));
   document.querySelectorAll("[data-reaction-palette]").forEach((item) => { item.hidden = true; });
@@ -3352,6 +3459,7 @@ function updateChatNavigationBadges(chats = [], scope = "user") {
   document.querySelectorAll('[data-account-badge="chat"]').forEach((node) => updateBadgeNode(node, counts.chat));
   document.querySelectorAll('[data-account-badge="support"]').forEach((node) => updateBadgeNode(node, counts.support));
   document.querySelectorAll('[data-admin-chat-badge]').forEach((node) => updateBadgeNode(node, counts.admin));
+  document.querySelectorAll('[data-target-view="chats_view"] .side-notification-badge, [data-view-link="chat"] .side-notification-badge, [data-view-link="admin-support"] .side-notification-badge').forEach((node) => updateBadgeNode(node, total));
   document.querySelectorAll('.adnn-chat-count').forEach((node) => updateBadgeNode(node, total));
   ensureSidebarBadges();
   document.querySelectorAll('[data-section="chat"] .side-notification-badge, [data-view="chat"] .side-notification-badge, a[href*="chat"] .side-notification-badge').forEach((node) => updateBadgeNode(node, total));
@@ -3590,7 +3698,11 @@ function injectChatStyles() {
     .adnn-message-actions { position:absolute; top:50%; display:flex; align-items:center; gap:4px; padding:5px; border-radius:15px; border:1px solid rgba(255,255,255,.12); background:rgba(9,9,12,.97); opacity:0; pointer-events:none; transform:translateY(-50%) scale(.96); transition:.18s ease; z-index:35; box-shadow:0 18px 50px rgba(0,0,0,.35); }
     .is-mine .adnn-message-actions { right:calc(100% + 8px); }
     .is-peer .adnn-message-actions { left:calc(100% + 8px); }
-    .adnn-message:hover .adnn-message-actions, .adnn-message:focus-within .adnn-message-actions, .adnn-message.is-menu-open .adnn-message-actions { opacity:1; pointer-events:auto; transform:translateY(-50%) scale(1); }
+    .adnn-message::before { content:""; position:absolute; top:-8px; bottom:-8px; width:22px; pointer-events:auto; }
+    .is-mine .adnn-message::before { right:100%; }
+    .is-peer .adnn-message::before { left:100%; }
+    .adnn-message .adnn-message-actions { transition:opacity .18s ease .32s, transform .18s ease .32s; }
+    .adnn-message:hover .adnn-message-actions, .adnn-message:focus-within .adnn-message-actions, .adnn-message.is-menu-open .adnn-message-actions { opacity:1; pointer-events:auto; transform:translateY(-50%) scale(1); transition-delay:0s; }
     .adnn-message-actions button { min-width:36px; min-height:34px; border:0; border-radius:12px; background:rgba(255,255,255,.07); color:#fff; padding:7px 8px; font-size:12px; cursor:pointer; display:grid; place-items:center; gap:2px; }
     .adnn-message-actions button svg { width:16px; height:16px; }
     .adnn-message-actions button span { font-size:9px; line-height:1; }
@@ -3772,6 +3884,28 @@ function injectChatStyles() {
 
     .side-notification-badge { min-width:18px; height:18px; padding:0 5px; border-radius:999px; display:grid; place-items:center; background:#ff2602; color:#fff; font-size:10px; line-height:1; box-shadow:0 0 0 2px rgba(0,0,0,.18), 0 8px 22px rgba(255,38,2,.38); }
     .side-notification-badge[hidden] { display:none !important; }
+    .side-nav a.can-drag, .side-nav button.can-drag, .sidebar-link-item.can-drag { cursor:grab; }
+    .side-nav a.is-dragging, .side-nav button.is-dragging, .sidebar-link-item.is-dragging { opacity:.45; transform:scale(.98); }
+    .side-nav a::before, .side-nav button::before, .sidebar-link-item::before { content:""; position:absolute; left:5px; top:50%; width:4px; height:18px; border-radius:999px; opacity:0; transform:translateY(-50%); background:linear-gradient(#fff8,#fff2); transition:.18s ease; }
+    .side-nav a.can-drag::before, .side-nav button.can-drag::before, .sidebar-link-item.can-drag::before { opacity:.62; }
+    .adnn-pin-chat { width:22px; height:22px; border:0; border-radius:999px; display:grid; place-items:center; color:rgba(255,255,255,.42); background:rgba(255,255,255,.05); font-size:10px; cursor:pointer; }
+    .adnn-thread.is-pinned .adnn-pin-chat { color:#fff; background:rgba(39,45,207,.72); box-shadow:0 0 18px rgba(39,45,207,.34); }
+    .adnn-thread.is-pinned { background:linear-gradient(135deg, rgba(39,45,207,.18), rgba(255,255,255,.035)); }
+    .settings-grid { display:grid !important; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:12px !important; align-items:stretch; }
+    .settings-card.adnn-setting-card, .settings-card.adnn-os-card { min-height:68px !important; border-radius:20px !important; padding:14px 16px !important; border:1px solid rgba(255,255,255,.1) !important; background:linear-gradient(145deg, rgba(255,255,255,.075), rgba(255,255,255,.025)) !important; box-shadow:0 16px 45px rgba(0,0,0,.14), inset 0 1px 0 rgba(255,255,255,.1) !important; display:grid !important; grid-template-columns:minmax(0,1fr) auto !important; gap:12px !important; align-items:center !important; transition:transform .18s ease, border-color .18s ease, background .18s ease !important; }
+    .settings-card.adnn-setting-card:hover, .settings-card.adnn-os-card:hover { transform:translateY(-2px); border-color:rgba(39,45,207,.34) !important; background:linear-gradient(145deg, rgba(39,45,207,.13), rgba(255,255,255,.035)) !important; }
+    .settings-card.adnn-setting-card strong, .settings-card.adnn-os-card strong { margin:0 0 2px !important; font-size:13px !important; line-height:1.2 !important; letter-spacing:0 !important; font-weight:560 !important; }
+    .settings-card.adnn-setting-card span, .settings-card.adnn-os-card span { font-size:11px !important; line-height:1.35 !important; opacity:.68; }
+    .settings-card .settings-inline-btn, .settings-card .apple-home-btn { width:40px !important; height:40px !important; min-width:40px !important; border-radius:14px !important; }
+    .adnn-client-status-btn { min-height:32px; border:1px solid rgba(255,255,255,.12); border-radius:999px; padding:0 12px; background:rgba(255,255,255,.07); color:#fff; font-size:11px; cursor:pointer; transition:.18s ease; }
+    .adnn-client-status-btn:hover { background:rgba(39,45,207,.22); border-color:rgba(39,45,207,.38); }
+    .adnn-client-status-btn:disabled { opacity:.5; cursor:wait; }
+    .adnn-os-card { grid-template-columns:36px minmax(0,1fr) 36px !important; cursor:pointer !important; }
+    .adnn-os-card::after { display:block !important; content:""; position:absolute; inset:-30%; z-index:-1; opacity:0; transform:scale(.8); background:radial-gradient(circle at var(--tap-x,50%) var(--tap-y,50%), rgba(255,255,255,.34), rgba(39,45,207,.24) 18%, transparent 42%); pointer-events:none; }
+    .adnn-os-card.is-playing::after { animation:adnnOsWave .75s cubic-bezier(.16,1,.3,1); }
+    .adnn-os-dots { width:34px !important; height:34px !important; border-radius:14px !important; opacity:.9; }
+    .adnn-os-meta { min-width:0; }
+    @keyframes adnnOsWave { 0%{opacity:0;transform:scale(.6)} 34%{opacity:1} 100%{opacity:0;transform:scale(1.15)} }
 
     @media (max-width:760px) {
       .adnn-chat-app { display:block !important; min-height:0 !important; }

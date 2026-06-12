@@ -93,6 +93,9 @@ const DEFAULT_CONFIG = {
   snapshotMaxRetryMs: 30000,
   uploadChunkLabelEveryPct: 5,
   deleteStorageOnDeleteForAll: false,
+  messageToneFile: "Message Notification.wav",
+  outgoingCallToneFile: "call ringer_01.mp3",
+  incomingCallToneFile: "ring-app.mp3",
   iceServers: [
     { urls: "stun:stun.l.google.com:19302" },
     { urls: "stun:stun1.l.google.com:19302" }
@@ -144,6 +147,10 @@ let connectionBannerTimer = null;
 let incomingCallUnsub = null;
 let callTimer = null;
 let activeCall = null;
+let globalThreadBadgeUnsub = null;
+let outgoingDialAudio = null;
+let incomingRingAudio = null;
+let lastSoundAtMs = 0;
 let sessionStarted = false;
 let offlinePersistenceState = "unknown";
 let lastConnectivityLabel = "";
@@ -261,6 +268,7 @@ async function handleAuthState(user) {
   sessionStarted = true;
   startPresence(activeUser);
   watchIncomingCalls();
+  watchGlobalThreadBadges();
 
   if (location.pathname.includes("admin.html")) buildAdminChatPortal();
   else buildUserChatPortals();
@@ -376,12 +384,7 @@ function appFrameMarkup({ title, subtitle, listId, roomId, searchable = false, s
     <div class="adnn-chat-shell" data-chat-shell>
       <div class="adnn-chat-layout ${single ? "is-single" : ""} ${admin ? "is-admin" : ""}" data-chat-layout>
         ${listMarkup}
-        <section class="adnn-chat-room" id="${escapeAttr(roomId)}">
-          <div class="adnn-chat-welcome">
-            <h3>${single ? "Opening chat" : "Select a chat"}</h3>
-            <p>${single ? "Messages will appear here." : "Messages, calls, files, replies, reactions, and read receipts will appear here."}</p>
-          </div>
-        </section>
+        <section class="adnn-chat-room" id="${escapeAttr(roomId)}"></section>
       </div>
     </div>
   `;
@@ -457,7 +460,7 @@ function watchChatThreads(scope, listId, roomId, options = {}) {
     let chats = Array.from(sources.values()).flatMap((items) => Array.from(items.values()));
     const unique = new Map();
     chats.forEach((chat) => unique.set(chat.id, { ...(unique.get(chat.id) || {}), ...chat }));
-    chats = Array.from(unique.values());
+    chats = Array.from(unique.values()).filter(isChatVisibleForCurrentUser);
     if (scope === "admin") chats = chats.filter(isVisibleToAdminInbox);
     if (options.directOnly || options.excludeSupport) chats = chats.filter((chat) => chat.type !== "support");
     chats.sort((a, b) => toMillis(b.updatedAt || b.createdAt || b.updatedAtMs) - toMillis(a.updatedAt || a.createdAt || a.updatedAtMs));
@@ -507,6 +510,64 @@ function isVisibleToAdminInbox(chat) {
   if (chat.type === "support") return true;
   const participants = Array.isArray(chat.participantUids) ? chat.participantUids : [];
   return participants.includes(ADMIN_ALIAS_UID) || participants.includes(activeUser?.uid);
+}
+
+function isChatVisibleForCurrentUser(chat) {
+  if (!chat) return false;
+  const deletedFor = Array.isArray(chat.deletedFor) ? chat.deletedFor : [];
+  return !deletedFor.some((uid) => selfUidSet().has(uid));
+}
+
+function isChatBlockedForMe(chat) {
+  const blockedBy = Array.isArray(chat?.blockedBy) ? chat.blockedBy : [];
+  return blockedBy.some((uid) => selfUidSet().has(uid));
+}
+
+function isBlockedByRemote(chat) {
+  const blockedBy = Array.isArray(chat?.blockedBy) ? chat.blockedBy : [];
+  return blockedBy.some((uid) => !selfUidSet().has(uid));
+}
+
+function updateRoomBlockUi(state) {
+  const shell = roomShell(state);
+  if (!shell) return;
+  const btn = shell.querySelector('[data-block-label]');
+  if (btn) btn.textContent = isChatBlockedForMe(state.chatData) ? 'Unblock' : 'Block';
+  shell.classList.toggle('is-blocked-by-me', isChatBlockedForMe(state.chatData));
+  shell.classList.toggle('is-blocked-by-remote', isBlockedByRemote(state.chatData));
+}
+
+async function toggleBlockChat(state) {
+  if (!state || state.chatId.startsWith('passive_')) return;
+  const self = ownCallUid();
+  const blocked = isChatBlockedForMe(state.chatData);
+  const current = Array.isArray(state.chatData.blockedBy) ? state.chatData.blockedBy : [];
+  const next = blocked ? current.filter((uid) => uid !== self && uid !== activeUser?.uid) : uniqueClean([...current, self]);
+  await withRetry(() => updateDoc(doc(db, COLLECTIONS.chats, state.chatId), {
+    blockedBy: next,
+    updatedAt: serverTimestamp(),
+    updatedAtMs: Date.now()
+  }), { label: blocked ? 'unblock chat' : 'block chat' })
+    .then(() => showToast(blocked ? 'Chat unblocked.' : 'Chat blocked.', blocked ? 'ok' : 'warn'))
+    .catch((error) => showToast(readableFirebaseError(error), 'bad'));
+}
+
+async function deleteChatForMe(state) {
+  if (!state || state.chatId.startsWith('passive_')) return;
+  const ok = await confirmDanger('Delete chat?', 'This removes this conversation from your chat list on this device/account. The other user keeps their copy.', 'Delete chat');
+  if (!ok) return;
+  await withRetry(() => updateDoc(doc(db, COLLECTIONS.chats, state.chatId), {
+    deletedFor: arrayUnion(...Array.from(selfUidSet())),
+    updatedAt: serverTimestamp(),
+    updatedAtMs: Date.now()
+  }), { label: 'delete chat' })
+    .then(() => {
+      showToast('Chat deleted from your list.', 'ok');
+      closeRoomOnMobile(state.roomId);
+      const room = document.getElementById(state.roomId);
+      if (room) room.innerHTML = '';
+    })
+    .catch((error) => showToast(readableFirebaseError(error), 'bad'));
 }
 
 function renderThreadList(chats, list, roomId, scope) {
@@ -702,9 +763,9 @@ function roomMarkup(roomId) {
           <button type="button" class="adnn-call-btn" data-room-menu-trigger title="Chat menu" aria-label="Chat menu">${ICON.more}</button>
         </div>
         <div class="adnn-room-menu" data-room-menu hidden>
-          <button type="button" data-room-menu-action="refresh">Reconnect</button>
           <button type="button" data-room-menu-action="scroll-bottom">Go to latest</button>
-          <button type="button" data-room-menu-action="clear-reply">Clear reply</button>
+          <button type="button" data-room-menu-action="block" data-block-label>Block</button>
+          <button type="button" data-room-menu-action="delete-chat" class="is-danger">Delete chat</button>
         </div>
       </header>
       <div class="adnn-room-searchbar" data-room-searchbar hidden>
@@ -775,9 +836,9 @@ function bindRoomControls(state) {
     const btn = event.target.closest("[data-room-menu-action]");
     if (!btn) return;
     const action = btn.dataset.roomMenuAction;
-    if (action === "refresh") refreshAllConnections();
     if (action === "scroll-bottom") scrollToBottom(state, true);
-    if (action === "clear-reply") { state.replyTo = null; renderReplyBar(state); }
+    if (action === "block") toggleBlockChat(state);
+    if (action === "delete-chat") deleteChatForMe(state);
     shell.querySelector("[data-room-menu]").hidden = true;
   });
 
@@ -889,6 +950,7 @@ function watchRoomMeta(state) {
     const titleNode = shell.querySelector("[data-chat-title]");
     if (avatar) setAvatarNode(avatar, title, getChatPhoto(state.chatData, scope));
     if (titleNode) titleNode.textContent = title;
+    updateRoomBlockUi(state);
     watchPresence(state);
   }, (error) => showRoomConnection(state, readableFirebaseError(error), "bad"), state.unsubs);
 }
@@ -1115,15 +1177,33 @@ function openReactionSheet(anchor, state, message) {
   sheet.dataset.floatingReaction = "1";
   sheet.innerHTML = REACTION_SET.map((emoji) => `<button type="button" data-emoji="${escapeAttr(emoji)}">${escapeHtml(emoji)}</button>`).join("");
   document.body.appendChild(sheet);
-  const rect = anchor.getBoundingClientRect();
-  const sheetRect = sheet.getBoundingClientRect();
+
   const gap = 8;
-  const preferredLeft = rect.left + rect.width / 2 - sheetRect.width / 2;
-  const left = clamp(preferredLeft, gap, window.innerWidth - sheetRect.width - gap);
-  const above = rect.top - sheetRect.height - gap;
-  const top = above > gap ? above : clamp(rect.bottom + gap, gap, window.innerHeight - sheetRect.height - gap);
-  sheet.style.left = `${left}px`;
-  sheet.style.top = `${top}px`;
+  const viewportW = Math.max(280, window.innerWidth || document.documentElement.clientWidth || 320);
+  const viewportH = Math.max(360, window.innerHeight || document.documentElement.clientHeight || 480);
+  sheet.style.maxWidth = `${Math.max(220, viewportW - gap * 2)}px`;
+
+  if (viewportW <= 760) {
+    sheet.style.left = `${gap}px`;
+    sheet.style.right = `${gap}px`;
+    sheet.style.bottom = `calc(${gap}px + env(safe-area-inset-bottom))`;
+    sheet.style.top = "auto";
+    sheet.style.justifyContent = "center";
+  } else {
+    const rect = anchor.getBoundingClientRect();
+    const sheetRect = sheet.getBoundingClientRect();
+    const width = Math.min(sheetRect.width || 360, viewportW - gap * 2);
+    const height = Math.min(sheetRect.height || 54, viewportH - gap * 2);
+    const preferredLeft = rect.left + rect.width / 2 - width / 2;
+    const left = clamp(preferredLeft, gap, viewportW - width - gap);
+    const above = rect.top - height - gap;
+    const top = above > gap ? above : clamp(rect.bottom + gap, gap, viewportH - height - gap);
+    sheet.style.left = `${left}px`;
+    sheet.style.right = "auto";
+    sheet.style.top = `${top}px`;
+    sheet.style.bottom = "auto";
+  }
+
   sheet.querySelectorAll("button").forEach((btn) => {
     btn.addEventListener("click", (event) => {
       event.stopPropagation();
@@ -1332,6 +1412,8 @@ async function sendCurrentMessage(state) {
   const textNode = shell.querySelector("[data-text]");
   const text = textNode?.value.trim() || "";
   if (!text && state.files.length === 0 && !state.voice) return;
+  if (isChatBlockedForMe(state.chatData)) return showToast("Unblock this chat first.", "warn");
+  if (isBlockedByRemote(state.chatData)) return showToast("This chat is blocked by the other user.", "warn");
 
   if (navigator.onLine === false && (state.files.length || state.voice)) {
     showToast("Files and voice notes need connection to upload. Your staged items are kept here.", "warn");
@@ -1421,6 +1503,58 @@ async function sendCurrentMessage(state) {
   }
 }
 
+
+function getUnreadTargetUids(chat) {
+  const participants = Array.isArray(chat?.participantUids) ? chat.participantUids : [];
+  if (participants.length > 2 || chat?.type === 'group' || chat?.isGroup) {
+    return participants.filter((uid) => !selfUidSet().has(uid));
+  }
+  const remoteUid = getRemoteUid(chat);
+  return remoteUid ? [remoteUid] : [];
+}
+
+async function writeOfflineMissedCallMessage(chatId, chatData, kind, receiverUid) {
+  const callId = `offline_${Date.now()}_${makeId('call')}`;
+  const endedAtMs = Date.now();
+  const payload = {
+    type: 'call',
+    system: 'call',
+    callEvent: true,
+    callId,
+    callStatus: 'missed',
+    endedReason: 'offline',
+    kind: kind === 'video' ? 'video' : 'audio',
+    callerUid: ownCallUid(),
+    callerName: ownDisplayName(),
+    callerPhotoURL: ownPhotoUrl(),
+    receiverUid,
+    receiverName: getChatTitle(chatData, 'user'),
+    receiverPhotoURL: getChatPhoto(chatData, 'user'),
+    durationMs: 0,
+    createdAt: serverTimestamp(),
+    createdAtMs: endedAtMs,
+    updatedAt: serverTimestamp(),
+    updatedAtMs: endedAtMs,
+    senderUid: ownCallUid(),
+    senderAliasUid: ownCallUid(),
+    senderRealUid: activeUser?.uid || ownCallUid(),
+    senderName: ownDisplayName(),
+    readBy: Array.from(selfUidSet()),
+    deletedFor: []
+  };
+  await setDoc(doc(db, COLLECTIONS.chats, chatId, COLLECTIONS.messages, `call_${callId}`), payload, { merge: true });
+  const update = {
+    lastMessage: callSummaryLastMessage(payload),
+    lastMessageKind: 'call',
+    lastSenderUid: ownCallUid(),
+    lastSenderAliasUid: ownCallUid(),
+    updatedAt: serverTimestamp(),
+    updatedAtMs: endedAtMs
+  };
+  if (receiverUid) update[`unreadBy.${fieldKey(receiverUid)}`] = increment(1);
+  await setDoc(doc(db, COLLECTIONS.chats, chatId), update, { merge: true });
+}
+
 async function updateChatAfterSend(state, lastMessage, attachments = []) {
   const remoteUid = getRemoteUid(state.chatData);
   const payload = {
@@ -1439,7 +1573,9 @@ async function updateChatAfterSend(state, lastMessage, attachments = []) {
     payload.unreadForClient = increment(1);
     payload.unreadForAdmin = increment(1);
   }
-  if (remoteUid) payload.unreadBy = { [fieldKey(remoteUid)]: increment(1) };
+  getUnreadTargetUids(state.chatData).forEach((uid) => {
+    payload[`unreadBy.${fieldKey(uid)}`] = increment(1);
+  });
   await withRetry(() => setDoc(doc(db, COLLECTIONS.chats, state.chatId), payload, { merge: true }), { label: "update chat" });
 }
 
@@ -1686,7 +1822,7 @@ function resetUnread(chat) {
   const chatId = chat.id || rooms.values().next().value?.chatId;
   if (!chatId || String(chatId).startsWith("passive_")) return;
   const field = isAdminEmail(activeUser.email) ? "unreadForAdmin" : "unreadForClient";
-  const payload = { [field]: 0, unreadBy: { [fieldKey(ownCallUid())]: 0 } };
+  const payload = { [field]: 0, [`unreadBy.${fieldKey(ownCallUid())}`]: 0 };
   updateDoc(doc(db, COLLECTIONS.chats, chatId), payload).catch(() => {});
 }
 
@@ -1782,13 +1918,16 @@ async function startCall(kind, chatId, chatData) {
   if (activeCall) return showToast("Another call is already active.", "warn");
   const receiverUid = getRemoteUid(chatData);
   if (!receiverUid) return showToast("No receiver is available for this chat.", "bad");
+  if (isChatBlockedForMe(chatData) || isBlockedByRemote(chatData)) return showToast("This chat is blocked. Call not connected.", "warn");
   if (!navigator.mediaDevices?.getUserMedia || typeof RTCPeerConnection === "undefined") {
     return showToast("This browser does not support secure audio/video calls.", "bad");
   }
 
   const remoteStatus = await getPresenceInfo(receiverUid);
   if (!remoteStatus.online) {
-    return showToast(`${getChatTitle(chatData, "user")} is offline. Call not connected.`, "warn");
+    await writeOfflineMissedCallMessage(chatId, chatData, kind, receiverUid).catch(() => {});
+    showInAppNotification(getChatTitle(chatData, "user"), `Missed ${kind === "video" ? "video" : "audio"} call · user offline`, { tone: "missed", icon: getChatPhoto(chatData, "user") });
+    return showToast(`${getChatTitle(chatData, "user")} is offline. Missed call saved.`, "warn");
   }
 
   try {
@@ -1823,6 +1962,7 @@ async function startCall(kind, chatId, chatData) {
     });
 
     renderCallOverlay();
+    startOutgoingDialTone();
     await setupPeerConnection(activeCall, true);
     const offer = await activeCall.pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
     await activeCall.pc.setLocalDescription(offer);
@@ -1875,12 +2015,14 @@ function showIncomingCall(callId, call) {
   document.body.appendChild(overlay);
   placeCallPopout(overlay);
   makeDraggable(overlay, overlay.querySelector("[data-call-drag]"));
+  startIncomingRingtone();
   notifyBrowser(`${call.callerName || "Incoming call"}`, `${call.kind === "video" ? "Video" : "Audio"} call`, call.callerPhotoURL);
   if (navigator.vibrate) navigator.vibrate([80, 40, 80]);
 
   const timeout = setTimeout(() => {
     callWatch?.();
     overlay.remove();
+    stopIncomingRingtone();
     markCallMissed(callId);
   }, Math.max(1000, Number(call.expiresAtMs || 0) - Date.now()));
   const callWatch = onSnapshot(doc(db, COLLECTIONS.calls, callId), (snapshot) => {
@@ -1890,6 +2032,7 @@ function showIncomingCall(callId, call) {
       clearTimeout(timeout);
       callWatch?.();
       overlay.remove();
+      stopIncomingRingtone();
     }
   }, () => {});
 
@@ -1897,6 +2040,7 @@ function showIncomingCall(callId, call) {
     clearTimeout(timeout);
     callWatch?.();
     overlay.remove();
+    stopIncomingRingtone();
     const endedAtMs = Date.now();
     updateDoc(doc(db, COLLECTIONS.calls, callId), { status: "ended", endedReason: "rejected", endedAtMs, durationMs: 0, summaryWriterUid: ownCallUid(), updatedAt: serverTimestamp(), updatedAtMs: endedAtMs }).catch(() => {});
     writeCallSummaryMessage({ ...call, callId }, "ended", "rejected", { endedAtMs, durationMs: 0 }).catch(() => {});
@@ -1907,6 +2051,7 @@ function showIncomingCall(callId, call) {
     clearTimeout(timeout);
     callWatch?.();
     overlay.remove();
+    stopIncomingRingtone();
     await acceptCall(callId, call);
   });
 }
@@ -2295,6 +2440,8 @@ function endCall(updateRemote = true) {
   call.pc?.close?.();
   if (call.ringTimer) clearTimeout(call.ringTimer);
   cleanupCallInbox(call.callId, ownCallUid());
+  stopOutgoingDialTone();
+  stopIncomingRingtone();
   document.getElementById("adnnCallOverlay")?.remove();
   document.getElementById("adnnIncomingCallOverlay")?.remove();
   if (callTimer) clearInterval(callTimer);
@@ -2365,7 +2512,7 @@ async function writeCallSummaryMessage(call, status = "ended", endedReason = "ha
 
 function callSummaryLastMessage(message) {
   const kind = message.kind === "video" ? "video" : "audio";
-  if (message.callStatus === "missed" || message.endedReason === "timeout") return `Missed ${kind} call`;
+  if (message.callStatus === "missed" || message.endedReason === "timeout" || message.endedReason === "offline") return `Missed ${kind} call`;
   if (message.endedReason === "rejected") return `Declined ${kind} call`;
   return `${kind[0].toUpperCase()}${kind.slice(1)} call · ${formatDuration(Math.round((message.durationMs || 0) / 1000))}`;
 }
@@ -2394,6 +2541,7 @@ function getChatTitle(chat, scope = "user") {
     if (isAdminEmail(activeUser?.email) || scope === "admin") return chat.clientName || chat.clientEmail || "Client";
     return CHAT_CONFIG.supportTitle;
   }
+  if (chat.type === "group" || chat.isGroup) return chat.groupName || chat.title || "Group chat";
   const names = chat.participantNames || {};
   const uid = getRemoteUid(chat);
   return names[uid] || chat.title || chat.clientName || chat.clientEmail || "Workspace Chat";
@@ -2637,6 +2785,14 @@ function bindGlobalDismissers() {
     if (!event.target.closest("[data-chat-menu], [data-outer-menu]")) document.querySelectorAll("[data-outer-menu]").forEach((menu) => { menu.hidden = true; });
     if (!event.target.closest(".adnn-message")) closeMessageMenus();
   });
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") return;
+    closeFloatingReactionSheet();
+    closeMessageMenus();
+    document.querySelectorAll("[data-room-menu], [data-outer-menu], [data-room-searchbar], [data-composer-panel], [data-emoji-panel]").forEach((node) => { node.hidden = true; });
+    document.querySelectorAll(".adnn-chat-layout.is-room-open").forEach((layout) => layout.classList.remove("is-room-open"));
+    document.body.classList.remove("adnn-chat-mobile-lock");
+  });
 }
 
 function closeMessageMenus() {
@@ -2650,6 +2806,10 @@ function cleanupSession({ keepFirebase = false } = {}) {
   listWatchers.clear();
   incomingCallUnsub?.();
   incomingCallUnsub = null;
+  globalThreadBadgeUnsub?.();
+  globalThreadBadgeUnsub = null;
+  stopOutgoingDialTone();
+  stopIncomingRingtone();
   rooms.forEach((state) => cleanupRoomState(state));
   rooms.clear();
   liveSnapshotKeys.forEach((watcher) => watcher.stop?.());
@@ -2897,6 +3057,115 @@ function sleep(ms) {
 }
 
 
+
+function watchGlobalThreadBadges() {
+  globalThreadBadgeUnsub?.();
+  globalThreadBadgeUnsub = null;
+  if (!db || !activeUser) return;
+
+  const owner = [];
+  const sources = new Map();
+  const render = () => {
+    let chats = Array.from(sources.values()).flatMap((items) => Array.from(items.values()));
+    const unique = new Map();
+    chats.forEach((chat) => unique.set(chat.id, { ...(unique.get(chat.id) || {}), ...chat }));
+    chats = Array.from(unique.values()).filter(isChatVisibleForCurrentUser);
+    const scope = isAdminEmail(activeUser?.email) ? 'admin' : 'user';
+    if (scope === 'admin') chats = chats.filter(isVisibleToAdminInbox);
+    updateChatNavigationBadges(chats, scope);
+    chats.forEach((chat) => notifyThreadUnread(chat, getChatTitle(chat, scope), getUnreadCount(chat, scope)));
+  };
+  const listen = (key, refOrQuery) => resilientSnapshot(`globalThreads:${key}`, refOrQuery, (snapshot) => {
+    sources.set(key, new Map(snapshot.docs.map((item) => [item.id, { id: item.id, ...item.data(), __pending: item.metadata.hasPendingWrites }])));
+    render();
+  }, () => render(), owner);
+
+  if (isAdminEmail(activeUser.email)) {
+    listen('support', query(collection(db, COLLECTIONS.chats), where('type', '==', 'support')));
+    listen('admin-alias', query(collection(db, COLLECTIONS.chats), where('participantUids', 'array-contains', ADMIN_ALIAS_UID)));
+  } else {
+    listen('participant', query(collection(db, COLLECTIONS.chats), where('participantUids', 'array-contains', activeUser.uid)));
+  }
+  globalThreadBadgeUnsub = () => owner.forEach((fn) => fn?.());
+  globalUnsubs.push(() => globalThreadBadgeUnsub?.());
+}
+
+function assetUrl(fileName) {
+  const clean = String(fileName || '').trim();
+  if (!clean) return '';
+  try { return new URL(clean, location.href).href; } catch (_) { return clean; }
+}
+
+function createLoopingAudio(fileName, volume = 0.62) {
+  const url = assetUrl(fileName);
+  if (!url) return null;
+  const audio = new Audio(url);
+  audio.loop = true;
+  audio.preload = 'auto';
+  audio.volume = volume;
+  return audio;
+}
+
+function playOneShotAudio(fileName, fallbackTone = 'message') {
+  if (!chatSettingBool(CHAT_SOUND_KEY, true)) return;
+  const now = Date.now();
+  if (now - lastSoundAtMs < 220) return;
+  lastSoundAtMs = now;
+  const url = assetUrl(fileName);
+  if (!url) return playSynthTone(fallbackTone);
+  try {
+    const audio = new Audio(url);
+    audio.volume = fallbackTone === 'missed' ? 0.72 : 0.58;
+    const play = audio.play();
+    if (play?.catch) play.catch(() => playSynthTone(fallbackTone));
+  } catch (_) {
+    playSynthTone(fallbackTone);
+  }
+}
+
+function startOutgoingDialTone() {
+  if (!chatSettingBool(CHAT_SOUND_KEY, true)) return;
+  stopOutgoingDialTone();
+  outgoingDialAudio = createLoopingAudio(CHAT_CONFIG.outgoingCallToneFile, 0.58);
+  outgoingDialAudio?.play?.().catch(() => {});
+}
+
+function stopOutgoingDialTone() {
+  try { outgoingDialAudio?.pause?.(); if (outgoingDialAudio) outgoingDialAudio.currentTime = 0; } catch (_) {}
+  outgoingDialAudio = null;
+}
+
+function startIncomingRingtone() {
+  if (!chatSettingBool(CHAT_SOUND_KEY, true)) return;
+  stopIncomingRingtone();
+  incomingRingAudio = createLoopingAudio(CHAT_CONFIG.incomingCallToneFile, 0.72);
+  incomingRingAudio?.play?.().catch(() => {});
+}
+
+function stopIncomingRingtone() {
+  try { incomingRingAudio?.pause?.(); if (incomingRingAudio) incomingRingAudio.currentTime = 0; } catch (_) {}
+  incomingRingAudio = null;
+}
+
+function playSynthTone(tone = 'message') {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.frequency.value = tone === 'missed' ? 330 : 540;
+    osc.type = 'sine';
+    gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.045, ctx.currentTime + 0.018);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.16);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.18);
+    setTimeout(() => ctx.close?.(), 260);
+  } catch (_) {}
+}
+
 function bindNotificationPermissionPrimer() {
   if (!("Notification" in window)) return;
   const ask = () => {
@@ -2970,23 +3239,7 @@ function showInAppNotification(title, body, options = {}) {
 }
 
 function playNotificationTone(tone = "message") {
-  if (!chatSettingBool(CHAT_SOUND_KEY, true)) return;
-  try {
-    const AudioCtx = window.AudioContext || window.webkitAudioContext;
-    if (!AudioCtx) return;
-    const ctx = new AudioCtx();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.frequency.value = tone === "missed" ? 330 : 540;
-    osc.type = "sine";
-    gain.gain.setValueAtTime(0.0001, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.045, ctx.currentTime + 0.018);
-    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.16);
-    osc.connect(gain).connect(ctx.destination);
-    osc.start();
-    osc.stop(ctx.currentTime + 0.18);
-    setTimeout(() => ctx.close?.(), 260);
-  } catch (_) {}
+  playOneShotAudio(CHAT_CONFIG.messageToneFile, tone);
 }
 
 function updateBadgeNode(node, value) {
@@ -3164,6 +3417,9 @@ function injectChatStyles() {
     .adnn-outer-menu, .adnn-room-menu { position:absolute; right:10px; top:calc(100% + 8px); min-width:210px; z-index:220; padding:8px; border:1px solid rgba(255,255,255,.12); border-radius:18px; background:rgba(8,8,12,.98); box-shadow:0 24px 80px rgba(0,0,0,.46); backdrop-filter:blur(18px); }
     .adnn-outer-menu button, .adnn-room-menu button { width:100%; border:0; border-radius:12px; padding:10px 11px; display:flex; color:#fff; background:transparent; cursor:pointer; text-align:left; }
     .adnn-outer-menu button:hover, .adnn-room-menu button:hover { background:rgba(255,255,255,.08); }
+    .adnn-room-menu .is-danger { color:#ff6b5c; }
+    .adnn-room-shell.is-blocked-by-me .adnn-composer textarea::placeholder { color:#ffc66d; }
+    .adnn-room-shell.is-blocked-by-me .adnn-composer::after, .adnn-room-shell.is-blocked-by-remote .adnn-composer::after { content:"Chat blocked"; position:absolute; left:72px; bottom:100%; margin-bottom:6px; padding:5px 9px; border-radius:999px; background:rgba(255,198,109,.12); color:#ffc66d; font-size:11px; pointer-events:none; }
     .adnn-outer-menu small { display:block; padding:8px 10px 4px; color:var(--adnn-muted); }
     .adnn-chat-layout { height:clamp(620px, calc(100svh - 42px), 920px); min-height:0; display:grid; grid-template-columns:minmax(300px, 390px) minmax(0,1fr); grid-template-rows:minmax(0,1fr); overflow:hidden; border:1px solid var(--adnn-line); border-radius:26px; background:linear-gradient(145deg, rgba(22,22,28,.94), rgba(4,4,7,.98)); box-shadow:0 24px 90px rgba(0,0,0,.34); }
     .adnn-chat-layout.is-single { grid-template-columns:1fr; }
@@ -3191,8 +3447,8 @@ function injectChatStyles() {
     .adnn-avatar img { width:100%; height:100%; object-fit:cover; display:block; border-radius:inherit; }
     .adnn-avatar.is-pending:after { content:""; position:absolute; right:-1px; bottom:-1px; width:12px; height:12px; border:2px solid #0b0b10; border-radius:50%; background:#f1c40f; }
     .adnn-chat-room { min-width:0; min-height:0; width:100%; height:100%; position:relative; overflow:hidden; isolation:isolate; }
-    .adnn-chat-welcome, .adnn-chat-empty { height:100%; min-height:180px; display:grid; place-items:center; align-content:center; gap:8px; text-align:center; color:rgba(255,255,255,.48); padding:28px; }
-    .adnn-chat-welcome h3, .adnn-chat-welcome p { margin:0; }
+    .adnn-chat-welcome { display:none !important; }
+    .adnn-chat-empty { height:100%; min-height:140px; display:grid; place-items:center; align-content:center; gap:8px; text-align:center; color:rgba(255,255,255,.48); padding:24px; }
     .adnn-room-shell { position:absolute !important; inset:0 !important; height:100% !important; min-height:0 !important; max-height:100% !important; overflow:hidden !important; background:radial-gradient(circle at 92% 6%, rgba(39,45,207,.17), transparent 32%), var(--adnn-bg); --head:72px; --composer:76px; }
     .adnn-room-head { position:absolute !important; top:0 !important; left:0 !important; right:0 !important; width:100% !important; height:var(--head) !important; min-height:var(--head) !important; display:flex !important; align-items:center !important; gap:10px; padding:12px 14px; border-bottom:1px solid rgba(255,255,255,.08); background:rgba(10,10,14,.95); backdrop-filter:blur(18px); z-index:95 !important; }
     .adnn-back-btn, .adnn-call-btn, .adnn-attach-btn, .adnn-voice-btn, .adnn-send-btn, .adnn-plus-btn, .adnn-emoji-btn { width:42px; height:42px; border:0; border-radius:50%; display:grid; place-items:center; color:#fff; background:rgba(255,255,255,.07); cursor:pointer; transition:.18s ease; flex:0 0 auto; }
@@ -3210,7 +3466,7 @@ function injectChatStyles() {
     .adnn-room-searchbar button { width:36px; border:0; border-radius:12px; background:rgba(255,255,255,.08); color:#fff; display:grid; place-items:center; }
     .adnn-message-scroll { position:absolute !important; top:var(--head) !important; left:0 !important; right:0 !important; bottom:var(--composer) !important; min-height:0 !important; overflow-y:auto !important; overflow-x:hidden !important; padding:18px; display:flex !important; flex-direction:column; gap:10px; scroll-behavior:smooth; z-index:1; }
     .adnn-room-searchbar:not([hidden]) + .adnn-message-scroll { top:calc(var(--head) + 52px) !important; }
-    .adnn-date-separator { align-self:center; position:sticky; top:10px; z-index:3; padding:5px 10px; border-radius:999px; background:rgba(255,255,255,.08); color:rgba(255,255,255,.62); font-size:11px; backdrop-filter:blur(10px); }
+    .adnn-date-separator { align-self:center; position:relative; z-index:1; padding:5px 10px; border-radius:999px; background:rgba(255,255,255,.08); color:rgba(255,255,255,.62); font-size:11px; backdrop-filter:blur(10px); }
     .adnn-message-row { display:flex; width:100%; }
     .adnn-message-row.is-mine { justify-content:flex-end; }
     .adnn-message-row.is-peer { justify-content:flex-start; }
@@ -3261,7 +3517,7 @@ function injectChatStyles() {
     .adnn-voice-bubble small { color:rgba(255,255,255,.55); font-size:11px; }
     .adnn-composer-wrap { position:absolute !important; left:0 !important; right:0 !important; bottom:0 !important; min-height:var(--composer) !important; z-index:92 !important; border-top:1px solid rgba(255,255,255,.08); background:rgba(8,8,12,.97); padding:10px; box-shadow:0 -18px 45px rgba(0,0,0,.24); visibility:visible !important; opacity:1 !important; transform:none !important; }
     .adnn-connection-strip { display:none !important; }
-    .adnn-composer { display:flex; align-items:flex-end; gap:8px; }
+    .adnn-composer { position:relative; display:flex; align-items:flex-end; gap:8px; }
     .adnn-composer textarea { flex:1; min-height:42px; max-height:128px; resize:none; border:1px solid rgba(255,255,255,.09); border-radius:22px; background:#020203; color:#fff; outline:0; padding:12px 15px; font:inherit; font-size:14px; line-height:1.35; }
     .adnn-attach-btn input, .adnn-composer-panel input { display:none; }
     .adnn-send-btn { background:var(--adnn-primary); }
@@ -3427,7 +3683,7 @@ function injectChatStyles() {
       .adnn-room-actions .adnn-call-btn[data-room-search] { display:none; }
       .adnn-message-scroll { padding:12px 10px !important; }
       .adnn-message { max-width:87%; }
-      .is-mine .adnn-message-actions, .is-peer .adnn-message-actions { top:auto; bottom:calc(100% + 8px); left:auto; right:0; transform:translateY(4px) scale(.96); max-width:calc(100vw - 24px); overflow:auto; }
+      .is-mine .adnn-message-actions, .is-peer .adnn-message-actions { position:fixed !important; left:10px !important; right:10px !important; top:auto !important; bottom:calc(82px + env(safe-area-inset-bottom)) !important; width:auto !important; max-width:none !important; justify-content:center; overflow-x:auto; transform:translateY(12px) scale(.98); border-radius:20px; padding:7px; }
       .adnn-message:hover .adnn-message-actions, .adnn-message:focus-within .adnn-message-actions, .adnn-message.is-menu-open .adnn-message-actions { transform:translateY(0) scale(1); }
       .adnn-composer-wrap { padding:6px 8px max(8px, env(safe-area-inset-bottom)); }
       .adnn-composer { gap:6px; }
@@ -3438,7 +3694,7 @@ function injectChatStyles() {
       .adnn-call-stage { grid-template-columns:1fr; aspect-ratio:9/12; }
       .adnn-call-card.is-audio .adnn-call-stage { aspect-ratio:1/1; }
       .adnn-call-popout { width:calc(100vw - 16px); max-height:calc(100svh - 16px); }
-      .adnn-floating-reaction-sheet { left:8px !important; right:8px !important; width:auto; justify-content:flex-start; border-radius:22px; }
+      .adnn-floating-reaction-sheet { left:8px !important; right:8px !important; width:auto !important; max-width:calc(100vw - 16px) !important; justify-content:center; border-radius:22px; bottom:calc(8px + env(safe-area-inset-bottom)) !important; top:auto !important; }
       .adnn-chat-app .adnn-room-shell { grid-template-rows:64px minmax(0,1fr) auto !important; --head:64px; --composer:74px; }
       .adnn-chat-app .adnn-room-shell > .adnn-room-head { padding:9px 8px !important; gap:7px !important; min-width:0 !important; overflow:visible !important; }
       .adnn-chat-app .adnn-room-shell > .adnn-room-head .adnn-room-title { min-width:0 !important; }

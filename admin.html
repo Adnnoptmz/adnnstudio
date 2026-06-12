@@ -789,6 +789,9 @@
       .mobile-header-bar {
         display: flex;
       }
+      body.chat-view-active .mobile-header-bar {
+        display: none !important;
+      }
 
       .admin-sidebar {
         position: fixed;
@@ -868,9 +871,7 @@
       body.chat-view-active .dashboard-main,
       body.chat-view-active main {
         height:100svh !important;
-        height:100dvh !important;
         min-height:100svh !important;
-        min-height:100dvh !important;
         padding-top:0 !important;
         overflow:hidden !important;
       }
@@ -1845,6 +1846,6 @@
       }
     });
   </script>
-  <script type="module" src="firebase-chat.js?v=20260611-mobile-fit"></script>
+  <script type="module" src="firebase-chat.js?v=20260612-mobile-chat-admin"></script>
 </body>
 </html>

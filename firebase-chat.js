@@ -152,6 +152,7 @@ let outgoingDialAudio = null;
 let incomingRingAudio = null;
 let lastSoundAtMs = 0;
 let sessionStarted = false;
+let notificationsReadyAtMs = Date.now() + 2600;
 let offlinePersistenceState = "unknown";
 let lastConnectivityLabel = "";
 
@@ -271,12 +272,16 @@ async function handleAuthState(user) {
   }));
 
   sessionStarted = true;
+  notificationsReadyAtMs = Date.now() + 2600;
+  threadUnreadCache.clear();
+  threadNotifyState.clear();
   startPresence(activeUser);
   watchIncomingCalls();
   watchGlobalThreadBadges();
 
   if (location.pathname.includes("admin.html")) buildAdminChatPortal();
   else buildUserChatPortals();
+  setupProfileNameConfirmEditor();
 
   publishConnectionState(navigator.onLine === false ? "Offline mode" : "Connected", navigator.onLine === false ? "warn" : "ok");
 }
@@ -731,6 +736,7 @@ function openRoom(chatId, chatData, roomId) {
   cleanupRoomState(old);
 
   const state = createRoomState(roomId, chatId, { ...chatData, id: chatId });
+  state.suppressNotifyUntilMs = Date.now() + 1400;
   rooms.set(roomId, state);
   target.innerHTML = roomMarkup(roomId);
   document.body.classList.toggle("adnn-chat-mobile-lock", window.matchMedia("(max-width: 760px)").matches);
@@ -766,7 +772,8 @@ function createRoomState(roomId, chatId, chatData) {
     menuMessageId: "",
     presenceUnsub: null,
     notifiedMessageIds: new Set(),
-    messagesHydrated: false
+    messagesHydrated: false,
+    suppressNotifyUntilMs: Date.now() + 1400
   };
 }
 
@@ -1115,8 +1122,28 @@ function renderMessages(state, messages) {
   });
 
   filterMessages(state, shell.querySelector("[data-message-search]")?.value || "");
+  bindReplyPreviewJumps(scroller);
   if (nearBottom) scrollToBottom(state);
   updateDateTrack(scroller);
+}
+
+function bindReplyPreviewJumps(scroller) {
+  if (!scroller) return;
+  scroller.querySelectorAll("[data-scroll-reply]").forEach((button) => {
+    if (button.dataset.jumpBound === "true") return;
+    button.dataset.jumpBound = "true";
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const id = button.dataset.scrollReply;
+      if (!id) return;
+      const target = scroller.querySelector(`.adnn-message[data-message-id="${cssAttr(id)}"]`);
+      if (!target) return;
+      target.scrollIntoView({ behavior: "smooth", block: "center" });
+      target.classList.add("is-reply-jump");
+      setTimeout(() => target.classList.remove("is-reply-jump"), 1300);
+    });
+  });
 }
 
 function ensureDateTrack(scroller) {
@@ -2260,18 +2287,26 @@ function watchActiveCall(callId) {
   resilientSnapshot(`activeCall:${callId}`, doc(db, COLLECTIONS.calls, callId), async (snapshot) => {
     if (!snapshot.exists() || !activeCall || activeCall.callId !== callId) return;
     const data = snapshot.data();
-    if (activeCall.role === "caller" && data.status === "accepted" && data.answer && activeCall.pc?.signalingState === "have-local-offer") {
+    const answerFromMe = data.answerFromUid && selfUidSet().has(data.answerFromUid);
+    if (data.status === "accepted" && data.answer && !answerFromMe && activeCall.pc?.signalingState === "have-local-offer") {
       await activeCall.pc.setRemoteDescription(new RTCSessionDescription(data.answer)).catch(() => {});
       await flushRemoteCandidates(activeCall);
     }
-    if (activeCall.role === "receiver" && data.offer && data.kind === "video" && activeCall.pc?.signalingState === "stable" && data.offer.sdp !== activeCall.lastRemoteOfferSdp) {
+    const offerFromMe = data.offerFromUid && selfUidSet().has(data.offerFromUid);
+    const shouldAnswerRemoteOffer = data.offer && data.kind === "video" && !offerFromMe && activeCall.pc?.signalingState === "stable" && data.offer.sdp !== activeCall.lastRemoteOfferSdp;
+    if (shouldAnswerRemoteOffer) {
       activeCall.lastRemoteOfferSdp = data.offer.sdp;
       await activeCall.pc.setRemoteDescription(new RTCSessionDescription(data.offer)).catch(() => {});
       await flushRemoteCandidates(activeCall);
       const answer = await activeCall.pc.createAnswer().catch(() => null);
       if (answer) {
         await activeCall.pc.setLocalDescription(answer).catch(() => {});
-        await updateDoc(doc(db, COLLECTIONS.calls, callId), { answer: { type: answer.type, sdp: answer.sdp }, updatedAt: serverTimestamp(), updatedAtMs: Date.now() }).catch(() => {});
+        await updateDoc(doc(db, COLLECTIONS.calls, callId), {
+          answer: { type: answer.type, sdp: answer.sdp },
+          answerFromUid: ownCallUid(),
+          updatedAt: serverTimestamp(),
+          updatedAtMs: Date.now()
+        }).catch(() => {});
       }
     }
     if (data.kind && data.kind !== activeCall.kind) {
@@ -2411,6 +2446,7 @@ async function upgradeCallToVideo(button) {
     await updateDoc(doc(db, COLLECTIONS.calls, activeCall.callId), {
       kind: "video",
       offer: { type: offer.type, sdp: offer.sdp },
+      offerFromUid: ownCallUid(),
       [`media.${fieldKey(ownCallUid())}.cameraOn`]: true,
       [`media.${fieldKey(ownCallUid())}.updatedAt`]: Date.now(),
       updatedAt: serverTimestamp(),
@@ -2657,6 +2693,129 @@ function ownDisplayName() {
   return activeProfile?.name || activeProfile?.displayName || activeProfile?.designerName || activeProfile?.clientName || activeProfile?.email || activeUser?.displayName || activeUser?.email || "User";
 }
 
+function setupProfileNameConfirmEditor() {
+  const nameNode = document.getElementById("accountName") || document.getElementById("designerName");
+  if (!nameNode || nameNode.dataset.adnnNameConfirmReady === "true") return;
+  nameNode.dataset.adnnNameConfirmReady = "true";
+  const parent = nameNode.parentElement;
+  if (!parent) return;
+  parent.classList.add("adnn-name-confirm-row");
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "adnn-name-confirm-btn";
+  button.innerHTML = ICON.check;
+  button.title = "Save name";
+  button.setAttribute("aria-label", "Save name");
+  button.hidden = true;
+  parent.appendChild(button);
+  const original = () => String(activeProfile?.name || activeProfile?.displayName || nameNode.textContent || "").trim();
+  nameNode.addEventListener("input", () => {
+    button.hidden = String(nameNode.textContent || "").trim() === original();
+  });
+  nameNode.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      saveProfileDisplayName(nameNode, button);
+    }
+  });
+  button.addEventListener("mousedown", (event) => event.preventDefault());
+  button.addEventListener("click", () => saveProfileDisplayName(nameNode, button));
+}
+
+async function saveProfileDisplayName(nameNode, button) {
+  if (!activeUser || !db || !nameNode) return;
+  const previous = ownDisplayName();
+  const nextName = String(nameNode.textContent || "").trim().replace(/\s+/g, " ");
+  if (!nextName) {
+    nameNode.textContent = previous;
+    button.hidden = true;
+    return;
+  }
+  if (normalizeNameKey(nextName).length < 2) {
+    showToast("Use a clearer name.", "warn");
+    return;
+  }
+  button.disabled = true;
+  try {
+    const available = await isDisplayNameAvailable(nextName);
+    if (!available) {
+      nameNode.textContent = previous;
+      showToast("That name is already used. Choose another one.", "warn");
+      return;
+    }
+    const role = activeProfile?.role === "designer" ? "designers" : "clients";
+    await setDoc(doc(db, role, activeUser.uid), {
+      name: nextName,
+      displayName: nextName,
+      nameKey: normalizeNameKey(nextName),
+      updatedAt: serverTimestamp(),
+      updatedAtMs: Date.now()
+    }, { merge: true });
+    await syncChatParticipantName(nextName);
+    activeProfile = { ...(activeProfile || {}), name: nextName, displayName: nextName };
+    updateLocalProfileName(nextName);
+    button.hidden = true;
+    showToast("Name updated.", "ok");
+  } catch (error) {
+    showToast(readableFirebaseError(error), "bad");
+  } finally {
+    button.disabled = false;
+  }
+}
+
+function normalizeNameKey(name) {
+  return String(name || "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+async function isDisplayNameAvailable(name) {
+  const key = normalizeNameKey(name);
+  const collections = ["clients", "designers"];
+  for (const collectionName of collections) {
+    const snap = await getDocs(collection(db, collectionName)).catch(() => null);
+    if (!snap) continue;
+    const duplicate = snap.docs.some((item) => {
+      if (item.id === activeUser?.uid) return false;
+      const data = item.data() || {};
+      const other = normalizeNameKey(data.name || data.displayName || data.designerName || data.clientName);
+      return other && other === key;
+    });
+    if (duplicate) return false;
+  }
+  return true;
+}
+
+async function syncChatParticipantName(name) {
+  const self = activeUser?.uid;
+  if (!self || !db) return;
+  const snap = await getDocs(query(collection(db, COLLECTIONS.chats), where("participantUids", "array-contains", self))).catch(() => null);
+  if (!snap) return;
+  const batch = writeBatch(db);
+  snap.docs.forEach((item) => {
+    const data = item.data() || {};
+    batch.set(item.ref, {
+      participantNames: { ...(data.participantNames || {}), [self]: name },
+      updatedAt: serverTimestamp(),
+      updatedAtMs: Date.now()
+    }, { merge: true });
+  });
+  await batch.commit().catch(() => {});
+}
+
+function updateLocalProfileName(name) {
+  const key = location.pathname.includes("designer-account.html") ? "customDesignerName" : "customClientName";
+  try { localStorage.setItem(key, name); } catch (_) {}
+  const avatar = document.getElementById("accountAvatar") || document.getElementById("designerAvatar");
+  if (avatar && !avatar.style.backgroundImage) avatar.textContent = name.trim().slice(0, 2).toUpperCase();
+  const userKey = location.pathname.includes("designer-account.html") ? "adnnDesignerUser" : "adhnanPortfolioUser";
+  try {
+    const stored = JSON.parse(localStorage.getItem(userKey) || "null");
+    if (stored) {
+      stored.name = name;
+      localStorage.setItem(userKey, JSON.stringify(stored));
+    }
+  } catch (_) {}
+}
+
 
 function ownPhotoUrl() {
   return safeImageUrl(activeProfile?.photoURL || activeProfile?.avatarURL || activeProfile?.avatar || activeProfile?.profilePhotoURL || activeProfile?.profileImage || activeUser?.photoURL || "");
@@ -2894,9 +3053,20 @@ function bindGlobalDismissers() {
     closeFloatingReactionSheet();
     closeMessageMenus();
     document.querySelectorAll("[data-room-menu], [data-outer-menu], [data-room-searchbar], [data-composer-panel], [data-emoji-panel]").forEach((node) => { node.hidden = true; });
-    document.querySelectorAll(".adnn-chat-layout.is-room-open").forEach((layout) => layout.classList.remove("is-room-open"));
-    document.body.classList.remove("adnn-chat-mobile-lock");
+    closeOpenChatThreadPanels();
   });
+}
+
+function closeOpenChatThreadPanels() {
+  document.querySelectorAll(".adnn-chat-layout.is-room-open").forEach((layout) => {
+    layout.classList.remove("is-room-open");
+    layout.querySelectorAll(".adnn-thread.is-active").forEach((row) => row.classList.remove("is-active"));
+  });
+  rooms.forEach((state) => {
+    const target = document.getElementById(state.roomId);
+    target?.closest(".adnn-chat-layout")?.classList.remove("is-room-open");
+  });
+    document.body.classList.remove("adnn-chat-mobile-lock");
 }
 
 function setupSidebarReorder() {
@@ -3476,6 +3646,7 @@ function notifyThreadUnread(chat, title, unread) {
   const previousSig = threadNotifyState.get(key);
   threadNotifyState.set(key, sig);
 
+  if (Date.now() < notificationsReadyAtMs) return;
   if (previousUnread === undefined && previousSig === undefined) return;
   const unreadIncreased = unread && (previousUnread === undefined || unread > previousUnread);
   const messageChanged = previousSig && sig !== previousSig;
@@ -3499,6 +3670,10 @@ function notifyIncomingMessages(state, messages) {
   if (!state.messagesHydrated) {
     visible.forEach((msg) => state.notifiedMessageIds.add(msg.id));
     state.messagesHydrated = true;
+    return;
+  }
+  if (Date.now() < notificationsReadyAtMs || Date.now() < (state.suppressNotifyUntilMs || 0)) {
+    visible.forEach((msg) => state.notifiedMessageIds.add(msg.id));
     return;
   }
   visible.forEach((msg) => {
@@ -3683,6 +3858,8 @@ function injectChatStyles() {
     .adnn-message-row.is-mine { justify-content:flex-end; }
     .adnn-message-row.is-peer { justify-content:flex-start; }
     .adnn-message { max-width:min(70%, 600px); position:relative; padding:10px 12px 8px; border-radius:18px; color:#fff; background:rgba(255,255,255,.075); border:1px solid rgba(255,255,255,.06); box-shadow:0 12px 28px rgba(0,0,0,.16); outline:0; }
+    .adnn-message.is-reply-jump { animation:adnnReplyJump 1.25s ease; }
+    @keyframes adnnReplyJump { 0%,100%{ box-shadow:0 12px 28px rgba(0,0,0,.16); } 35%{ box-shadow:0 0 0 3px rgba(141,150,255,.42), 0 16px 45px rgba(39,45,207,.28); } }
     .adnn-message.is-search-hit { box-shadow:0 0 0 2px rgba(255,255,255,.28), 0 12px 28px rgba(0,0,0,.2); }
     .is-mine .adnn-message { background:linear-gradient(145deg,var(--adnn-primary),var(--adnn-primary2)); border-color:rgba(255,255,255,.12); border-bottom-right-radius:5px; }
     .is-peer .adnn-message { border-bottom-left-radius:5px; }
@@ -3878,6 +4055,12 @@ function injectChatStyles() {
     :root.adnn-chat-light .is-mine .adnn-message { color:#fff; background:linear-gradient(145deg,var(--adnn-primary),var(--adnn-primary2)); }
     :root.adnn-chat-light .adnn-date-separator, :root.adnn-chat-light .adnn-reply-preview, :root.adnn-chat-light .adnn-doc-bubble, :root.adnn-chat-light .adnn-voice-bubble { background:rgba(7,10,25,.06); color:#11131b; }
     :root.adnn-chat-light .adnn-message-meta, :root.adnn-chat-light .adnn-voice-bubble small, :root.adnn-chat-light .adnn-doc-bubble small { color:rgba(18,19,26,.5); }
+    :root.adnn-chat-light .adnn-chat-layout, :root.adnn-chat-light .adnn-room-head, :root.adnn-chat-light .adnn-composer-wrap, :root.adnn-chat-light .adnn-message, :root.adnn-chat-light .adnn-thread, :root.adnn-chat-light .adnn-message-actions, :root.adnn-chat-light .adnn-composer-panel, :root.adnn-chat-light .adnn-emoji-panel, :root.adnn-chat-light .adnn-floating-reaction-sheet { box-shadow:none !important; }
+    :root.adnn-chat-light .adnn-message-actions, :root.adnn-chat-light .adnn-composer-panel, :root.adnn-chat-light .adnn-emoji-panel, :root.adnn-chat-light .adnn-floating-reaction-sheet { background:#fff; border-color:rgba(7,10,25,.1); }
+    :root.adnn-chat-light .adnn-message-actions button, :root.adnn-chat-light .adnn-floating-reaction-sheet button, :root.adnn-chat-light .adnn-emoji-panel button { background:rgba(7,10,25,.055); color:#11131b; }
+    :root.adnn-chat-light .adnn-room-shell { box-shadow:none !important; }
+    :root.adnn-chat-light .adnn-thread.is-pinned { background:rgba(39,45,207,.09); }
+    :root.adnn-chat-light .adnn-thread.is-pinned .adnn-pin-chat { box-shadow:none; }
     :root.adnn-chat-light .adnn-inapp-card { background:linear-gradient(145deg, rgba(255,255,255,.98), rgba(238,240,250,.98)); color:#11131b; border-color:rgba(7,10,25,.1); box-shadow:0 24px 80px rgba(14,18,48,.16); }
     :root.adnn-chat-light .adnn-inapp-card small { color:rgba(18,19,26,.56); }
     :root.adnn-reduce-motion .adnn-chat-app *, :root.adnn-reduce-motion .adnn-call-popout, :root.adnn-reduce-motion .adnn-inapp-card { transition:none !important; animation:none !important; scroll-behavior:auto !important; }
@@ -3900,6 +4083,12 @@ function injectChatStyles() {
     .adnn-client-status-btn { min-height:32px; border:1px solid rgba(255,255,255,.12); border-radius:999px; padding:0 12px; background:rgba(255,255,255,.07); color:#fff; font-size:11px; cursor:pointer; transition:.18s ease; }
     .adnn-client-status-btn:hover { background:rgba(39,45,207,.22); border-color:rgba(39,45,207,.38); }
     .adnn-client-status-btn:disabled { opacity:.5; cursor:wait; }
+    .adnn-name-confirm-row { display:grid !important; grid-template-columns:minmax(0,1fr) 32px !important; gap:8px !important; align-items:center !important; }
+    .adnn-name-confirm-btn { width:30px; height:30px; border:0; border-radius:12px; display:grid; place-items:center; color:#fff; background:linear-gradient(145deg,var(--adnn-primary),var(--adnn-primary2)); box-shadow:0 10px 25px rgba(39,45,207,.22); cursor:pointer; transition:.18s ease; }
+    .adnn-name-confirm-btn svg { width:16px; height:16px; }
+    .adnn-name-confirm-btn[hidden] { display:none !important; }
+    .adnn-name-confirm-btn:hover { transform:translateY(-1px) scale(1.04); }
+    .adnn-name-confirm-btn:disabled { opacity:.55; cursor:wait; transform:none; }
     .adnn-os-card { grid-template-columns:36px minmax(0,1fr) 36px !important; cursor:pointer !important; }
     .adnn-os-card::after { display:block !important; content:""; position:absolute; inset:-30%; z-index:-1; opacity:0; transform:scale(.8); background:radial-gradient(circle at var(--tap-x,50%) var(--tap-y,50%), rgba(255,255,255,.34), rgba(39,45,207,.24) 18%, transparent 42%); pointer-events:none; }
     .adnn-os-card.is-playing::after { animation:adnnOsWave .75s cubic-bezier(.16,1,.3,1); }

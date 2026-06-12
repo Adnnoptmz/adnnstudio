@@ -1264,21 +1264,21 @@
 <div id="settings_view" class="admin-view-panel-container" style="display:none;">
   <div class="panel glass">
     <p class="kicker">System</p>
-    <h2>Global Environment Settings</h2>
-    <p class="help">Control workspace comfort, chat theme, alerts, motion and version tools.</p>
+    <h2>Settings</h2>
+    <p class="help">Control workspace, chat, alerts, and motion.</p>
     <div class="settings-grid">
       <div class="settings-card adnn-setting-card">
-        <div><strong>Workspace Theme Aesthetics</strong><span>Switch between clean light mode or dark workspace layouts seamlessly.</span></div>
+        <div><strong>Workspace theme</strong><span>Switch between light and dark workspace layouts.</span></div>
         <button type="button" class="settings-inline-btn" id="settingsInlineThemeToggleBtn" title="Toggle Workspace Aesthetics" aria-label="Toggle Workspace Aesthetics">
           <svg class="moon-icon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
           <svg class="sun-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
         </button>
       </div>
-      <label class="settings-card adnn-setting-card"><div><strong>Chat white mode</strong><span>Switch admin chat panels between dark glass and bright white messenger.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_chat_light_mode"><i></i></span></label>
-      <label class="settings-card adnn-setting-card"><div><strong>In-app chat alerts</strong><span>Show realtime message and missed call cards inside the admin portal.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_inapp_notifications"><i></i></span></label>
-      <label class="settings-card adnn-setting-card"><div><strong>Browser notifications</strong><span>Allow operating-system notifications when the tab is hidden.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_browser_notifications"><i></i></span></label>
-      <label class="settings-card adnn-setting-card"><div><strong>Message sound</strong><span>Play a soft messenger tone for new chat and missed calls.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_message_sounds"><i></i></span></label>
-      <label class="settings-card adnn-setting-card"><div><strong>Reduce motion</strong><span>Disable extra motion for calm admin sessions.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_reduce_motion"><i></i></span></label>
+      <label class="settings-card adnn-setting-card"><div><strong>Chat white mode</strong><span>Toggle only the messenger between dark and bright white.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_chat_light_mode"><i></i></span></label>
+      <label class="settings-card adnn-setting-card"><div><strong>In-app message alerts</strong><span>Show messenger cards and unread numbers inside the portal.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_inapp_notifications"><i></i></span></label>
+      <label class="settings-card adnn-setting-card"><div><strong>Browser notifications</strong><span>Allow system notifications for messages and missed calls.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_browser_notifications"><i></i></span></label>
+      <label class="settings-card adnn-setting-card"><div><strong>Message sound</strong><span>Play a soft tone for new chat and missed call alerts.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_message_sounds"><i></i></span></label>
+      <label class="settings-card adnn-setting-card"><div><strong>Reduce motion</strong><span>Calm animations for a lighter dashboard.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_reduce_motion"><i></i></span></label>
       <div class="settings-card adnn-os-card" role="button" tabindex="0" aria-label="OS 1.07"><span class="adnn-os-dots left" aria-hidden="true"></span><div class="adnn-os-meta"><strong>OS 1.07</strong><span>system version</span></div><span class="adnn-os-dots right" aria-hidden="true"></span></div>
     </div>
   </div>
@@ -1393,7 +1393,7 @@
           "payments_view": { sub: "Finances & Ledger Records", main: "Invoices Ledger System" },
           "notifications_view": { sub: "Direct Chat Creator", main: "Message Card Maker" },
           "calendar_view": { sub: "Milestone Workspace Engine", main: "Reminder Studio Calendar" },
-          "settings_view": { sub: "System Control Parameters", main: "Global Environment Settings" }
+          "settings_view": { sub: "System", main: "Settings" }
         };
         
         // Safety Fallback override to strip unwanted static text strings from any global window containers
@@ -1657,6 +1657,8 @@
     
     let currentUser = null;
     let isAdmin = false;
+    const portalSuggestionUsers = new Map();
+    let portalSuggestionReady = false;
 
     function setStatus(text) {
       if (status) status.textContent = text;
@@ -1780,6 +1782,7 @@
           startDirectoryLists();
           wireMessageCardMaker();
           wireGroupCardMaker();
+          wireUserSuggestionPickers();
           startEnquirySheetLiveTable();
         } else {
           lockPortal("Database warning: Add this Google UID inside the admins collection.");
@@ -1938,6 +1941,124 @@
         }
       }
       return null;
+    }
+
+    function wireUserSuggestionPickers() {
+      const targets = [
+        { input: document.getElementById("messageCardUserA"), mode: "single" },
+        { input: document.getElementById("messageCardUserB"), mode: "single" },
+        { input: document.getElementById("groupCardEmails"), mode: "multi" }
+      ].filter((item) => item.input);
+      if (!targets.length) return;
+      ensureUserSuggestionStyle();
+      if (!portalSuggestionReady) {
+        portalSuggestionReady = true;
+        watchPortalSuggestionCollection("clients");
+        watchPortalSuggestionCollection("designers");
+      }
+      let picker = document.getElementById("adnnUserSuggestionPicker");
+      if (!picker) {
+        picker = document.createElement("div");
+        picker.id = "adnnUserSuggestionPicker";
+        picker.className = "adnn-user-suggestion-picker";
+        picker.hidden = true;
+        picker.innerHTML = `<input type="search" placeholder="Search users"><div data-user-suggestion-list></div>`;
+        document.body.appendChild(picker);
+      }
+      const search = picker.querySelector("input");
+      const list = picker.querySelector("[data-user-suggestion-list]");
+      let activeInput = null;
+      let activeMode = "single";
+
+      const close = () => { picker.hidden = true; activeInput = null; };
+      const open = (input, mode) => {
+        activeInput = input;
+        activeMode = mode;
+        const rect = input.getBoundingClientRect();
+        picker.style.left = `${Math.min(rect.left, window.innerWidth - 342)}px`;
+        picker.style.top = `${rect.bottom + 8 + window.scrollY}px`;
+        picker.hidden = false;
+        search.value = "";
+        renderUserSuggestions("");
+        setTimeout(() => search.focus(), 0);
+      };
+      const renderUserSuggestions = (term) => {
+        const needle = emailKey(term);
+        const users = Array.from(portalSuggestionUsers.values())
+          .filter((user) => !needle || `${user.name} ${user.email} ${user.role}`.toLowerCase().includes(needle))
+          .sort((a, b) => a.name.localeCompare(b.name))
+          .slice(0, 80);
+        list.innerHTML = users.length ? users.map((user) => `
+          <button type="button" data-user-email="${escapeHtml(user.email)}">
+            <span>${escapeHtml((user.name || user.email).slice(0, 2).toUpperCase())}</span>
+            <strong>${escapeHtml(user.name || "User")}</strong>
+            <small>${escapeHtml(user.email)} · ${escapeHtml(user.role || "account")}</small>
+          </button>
+        `).join("") : `<p>No users found.</p>`;
+      };
+
+      targets.forEach(({ input, mode }) => {
+        if (input.dataset.suggestionsReady === "true") return;
+        input.dataset.suggestionsReady = "true";
+        input.setAttribute("autocomplete", "off");
+        input.addEventListener("focus", () => open(input, mode));
+        input.addEventListener("click", () => open(input, mode));
+      });
+      search.addEventListener("input", () => renderUserSuggestions(search.value));
+      picker.addEventListener("mousedown", (event) => event.preventDefault());
+      picker.addEventListener("click", (event) => {
+        const button = event.target.closest("[data-user-email]");
+        if (!button || !activeInput) return;
+        const email = button.dataset.userEmail;
+        if (activeMode === "multi") {
+          const current = parseEmailList(activeInput.value);
+          if (!current.includes(email)) current.push(email);
+          activeInput.value = current.join("\n");
+        } else {
+          activeInput.value = email;
+        }
+        activeInput.dispatchEvent(new Event("input", { bubbles: true }));
+        close();
+      });
+      document.addEventListener("click", (event) => {
+        if (picker.hidden) return;
+        if (event.target.closest("#adnnUserSuggestionPicker") || targets.some(({ input }) => input === event.target)) return;
+        close();
+      });
+    }
+
+    function watchPortalSuggestionCollection(collectionName) {
+      onSnapshot(collection(db, collectionName), (snapshot) => {
+        snapshot.docs.forEach((item) => {
+          const data = item.data() || {};
+          const email = emailKey(data.email || data.authEmail || data.displayEmail);
+          if (!email) return;
+          portalSuggestionUsers.set(`${collectionName}:${item.id}`, {
+            id: item.id,
+            email,
+            name: data.name || data.displayName || data.designerName || data.clientName || email,
+            role: data.role || (collectionName === "designers" ? "designer" : "client")
+          });
+        });
+      }, () => {});
+    }
+
+    function ensureUserSuggestionStyle() {
+      if (document.getElementById("adnnUserSuggestionStyle")) return;
+      const style = document.createElement("style");
+      style.id = "adnnUserSuggestionStyle";
+      style.textContent = `
+        .adnn-user-suggestion-picker { position:absolute; z-index:2147483200; width:min(330px, calc(100vw - 24px)); border:1px solid var(--line); border-radius:22px; padding:10px; background:rgba(14,14,18,.96); box-shadow:0 22px 80px rgba(0,0,0,.34); backdrop-filter:blur(22px); }
+        .adnn-user-suggestion-picker input { width:100%; border:1px solid var(--line); border-radius:14px; padding:10px 12px; background:rgba(255,255,255,.08); color:var(--text); outline:0; margin-bottom:8px; }
+        .adnn-user-suggestion-picker [data-user-suggestion-list] { display:grid; gap:6px; max-height:300px; overflow:auto; }
+        .adnn-user-suggestion-picker button { width:100%; border:0; border-radius:16px; padding:9px; display:grid; grid-template-columns:38px minmax(0,1fr); column-gap:10px; text-align:left; background:rgba(255,255,255,.055); color:var(--text); cursor:pointer; }
+        .adnn-user-suggestion-picker button:hover { background:rgba(39,45,207,.2); }
+        .adnn-user-suggestion-picker button span { grid-row:1 / span 2; width:38px; height:38px; border-radius:14px; display:grid; place-items:center; background:#272dcf; color:#fff; font-size:12px; }
+        .adnn-user-suggestion-picker strong, .adnn-user-suggestion-picker small { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .adnn-user-suggestion-picker strong { font-size:13px; font-weight:500; }
+        .adnn-user-suggestion-picker small, .adnn-user-suggestion-picker p { color:var(--muted); font-size:11px; margin:0; }
+      `;
+      document.head.appendChild(style);
     }
 
     function safeChatIdPart(value) {
@@ -2211,7 +2332,7 @@
       }
     });
   </script>
-  <script type="module" src="firebase-chat.js?v=20260612-sidebar-settings-pin-fix"></script>
+  <script type="module" src="firebase-chat.js?v=20260612-chat-fixes-2"></script>
 
 <script id="adnn-settings-upgrade-js">
 (function setupAdnnSettingsUpgrade(){

@@ -944,21 +944,13 @@
   .side-notification-badge { min-width:18px; height:18px; padding:0 5px; border-radius:999px; display:grid; place-items:center; background:#ff2602; color:#fff; font-size:10px; line-height:1; box-shadow:0 0 0 2px rgba(0,0,0,.18), 0 8px 22px rgba(255,38,2,.38); }
   .side-notification-badge[hidden] { display:none !important; }
 </style>
-<style id="adnn-fullscreen-dashboard-fix">
-  .admin-main-viewport { height:100vh !important; min-height:0 !important; overflow:hidden !important; padding:clamp(14px,2.2vw,28px) !important; }
-  .admin-main-viewport > .shell { width:100% !important; max-width:none !important; height:100% !important; min-height:0 !important; margin:0 !important; display:flex !important; flex-direction:column !important; overflow:hidden !important; }
-  .admin-view-panel-container { flex:1 1 auto !important; width:100% !important; max-width:none !important; height:100% !important; min-height:0 !important; overflow:auto !important; margin:0 !important; }
-  .admin-view-panel-container > .panel.glass, .admin-view-panel-container > .admin-preview-shell { min-height:100% !important; box-sizing:border-box !important; }
-  #chats_view { overflow:hidden !important; }
-  #adminChatMount { height:100% !important; }
-  .adnn-os-card { min-height:112px !important; grid-template-columns:64px minmax(0,1fr) auto !important; border-radius:28px !important; padding:18px !important; overflow:hidden !important; background:linear-gradient(135deg, rgba(255,255,255,.14), rgba(255,255,255,.045) 36%, rgba(39,45,207,.20)) !important; box-shadow:0 28px 90px rgba(0,0,0,.18), inset 0 1px 0 rgba(255,255,255,.18) !important; cursor:pointer !important; pointer-events:auto !important; }
-  .adnn-os-card::after { content:"" !important; display:block !important; position:absolute !important; inset:-45% !important; background:radial-gradient(circle at 22% 18%, rgba(255,255,255,.45), transparent 20%), radial-gradient(circle at 84% 76%, rgba(39,45,207,.42), transparent 24%) !important; opacity:.62 !important; z-index:-1 !important; transform:none !important; animation:none !important; }
-  .adnn-os-orb { width:64px; height:64px; border-radius:22px; display:grid; place-items:center; background:linear-gradient(145deg,#ffffff,#dfe3ff 44%,#272dcf); box-shadow:0 18px 40px rgba(39,45,207,.36), inset 0 1px 0 rgba(255,255,255,.9); }
-  .adnn-os-orb i { width:24px; height:24px; border-radius:9px; background:#fff; box-shadow:0 0 24px rgba(255,255,255,.95), 0 0 42px rgba(39,45,207,.75); clip-path:polygon(50% 0,63% 37%,100% 50%,63% 63%,50% 100%,37% 63%,0 50%,37% 37%); }
-  .adnn-os-meta strong { font-size:16px !important; letter-spacing:-.01em !important; }
-  .adnn-os-meta span { font-size:12px !important; opacity:.72 !important; }
-  .adnn-os-status { padding:8px 11px; border-radius:999px; background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.14); font:11px var(--font-mono); color:var(--text); }
-  @media (max-width:760px) { .admin-main-viewport { height:calc(100svh - 65px) !important; padding:12px !important; } }
+<style id="adnn-static-os-card-fix">
+  .adnn-os-card { min-height:82px !important; grid-template-columns:46px minmax(0,1fr) auto !important; border-radius:22px !important; padding:14px 16px !important; background:linear-gradient(135deg, rgba(255,255,255,.10), rgba(255,255,255,.035)) !important; border:1px solid rgba(255,255,255,.12) !important; box-shadow:inset 0 1px 0 rgba(255,255,255,.10), 0 16px 42px rgba(0,0,0,.12) !important; cursor:default !important; pointer-events:none !important; transform:none !important; }
+  .adnn-os-card:hover { transform:none !important; background:linear-gradient(135deg, rgba(255,255,255,.10), rgba(255,255,255,.035)) !important; border-color:rgba(255,255,255,.12) !important; }
+  .adnn-os-card::after, .adnn-os-card::before { display:none !important; animation:none !important; }
+  .adnn-os-mark { width:46px; height:46px; border-radius:16px; display:grid; place-items:center; background:linear-gradient(145deg,#272dcf,#5360ff); box-shadow:inset 0 1px 0 rgba(255,255,255,.32); }
+  .adnn-os-mark i { width:15px; height:15px; border-radius:5px; background:#fff; box-shadow:0 0 18px rgba(255,255,255,.8); clip-path:polygon(50% 0,64% 36%,100% 50%,64% 64%,50% 100%,36% 64%,0 50%,36% 36%); }
+  .adnn-os-chip { padding:7px 10px; border-radius:999px; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.10); color:var(--muted); font:10px var(--font-mono); }
 </style>
 </head>
 <body>
@@ -1295,7 +1287,7 @@
       <label class="settings-card adnn-setting-card"><div><strong>Browser notifications</strong><span>Allow system notifications for messages and missed calls.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_browser_notifications"><i></i></span></label>
       <label class="settings-card adnn-setting-card"><div><strong>Message sound</strong><span>Play a soft tone for new chat and missed call alerts.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_message_sounds"><i></i></span></label>
       <label class="settings-card adnn-setting-card"><div><strong>Reduce motion</strong><span>Calm animations for a lighter dashboard.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_reduce_motion"><i></i></span></label>
-      <div class="settings-card adnn-os-card" role="button" tabindex="0" aria-label="ADNN OS 1.07"><span class="adnn-os-orb" aria-hidden="true"><i></i></span><div class="adnn-os-meta"><strong>ADNN OS</strong><span>1.07 secure workspace core</span></div><span class="adnn-os-status">Live</span></div>
+      <div class="settings-card adnn-os-card" aria-label="System version"><span class="adnn-os-mark" aria-hidden="true"><i></i></span><div class="adnn-os-meta"><strong>ADNN OS 1.07</strong><span>Secure workspace system</span></div><span class="adnn-os-chip">Stable</span></div>
     </div>
   </div>
 </div>
@@ -2348,7 +2340,7 @@
       }
     });
   </script>
-  <script type="module" src="firebase-chat.js?v=20260612-fullscreen-os-esc"></script>
+  <script type="module" src="firebase-chat.js?v=20260612-scroll-esc-static-os"></script>
 
 <script id="adnn-settings-upgrade-js">
 (function setupAdnnSettingsUpgrade(){
@@ -2379,20 +2371,6 @@
       Notification.requestPermission().catch(() => {});
     }
     apply();
-  });
-  document.addEventListener("pointerdown", (event) => {
-    const card = event.target.closest(".adnn-os-card");
-    if (!card) return;
-    const rect = card.getBoundingClientRect();
-    const x = ((event.clientX - rect.left) / Math.max(1, rect.width)) * 100;
-    const y = ((event.clientY - rect.top) / Math.max(1, rect.height)) * 100;
-    card.style.setProperty("--tap-x", `${Math.max(0, Math.min(100, x))}%`);
-    card.style.setProperty("--tap-y", `${Math.max(0, Math.min(100, y))}%`);
-    card.classList.remove("is-playing");
-    void card.offsetWidth;
-    card.classList.add("is-playing");
-    if (navigator.vibrate) navigator.vibrate(12);
-    setTimeout(() => card.classList.remove("is-playing"), 840);
   });
   apply();
 })();

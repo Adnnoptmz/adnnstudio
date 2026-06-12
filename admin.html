@@ -895,6 +895,39 @@
     }
 
 </style>
+
+<style id="adnn-settings-upgrade-css">
+  .settings-grid { display:grid; gap:14px; margin-top:28px; }
+  .settings-card.adnn-setting-card, .adnn-setting-card { position:relative; overflow:hidden; }
+  .adnn-switch { width:52px; height:30px; border-radius:999px; display:inline-grid; align-items:center; padding:3px; background:rgba(255,255,255,.12); border:1px solid var(--line); cursor:pointer; flex:0 0 auto; transition:.2s ease; }
+  .adnn-switch input { position:absolute; opacity:0; pointer-events:none; }
+  .adnn-switch i { width:22px; height:22px; border-radius:50%; background:#fff; box-shadow:0 8px 20px rgba(0,0,0,.22); transform:translateX(0); transition:transform .22s cubic-bezier(.16,1,.3,1), background .2s ease; }
+  .adnn-switch input:checked + i { transform:translateX(22px); background:#fff; }
+  .adnn-switch:has(input:checked) { background:#272dcf; border-color:#272dcf; }
+  .adnn-os-card { min-height:144px; align-items:stretch !important; background:radial-gradient(circle at 88% 8%, rgba(39,45,207,.28), transparent 32%), linear-gradient(145deg, rgba(255,255,255,.08), rgba(255,255,255,.025)) !important; cursor:pointer; isolation:isolate; }
+  .adnn-os-orb { width:68px; height:68px; border-radius:24px; display:grid; place-items:center; background:linear-gradient(145deg,#3036e8,#1419a8); color:#fff; font-size:36px; font-weight:800; box-shadow:inset 0 1px 0 rgba(255,255,255,.24), 0 24px 70px rgba(39,45,207,.32); transform:translateZ(0); transition:transform .28s cubic-bezier(.16,1,.3,1); }
+  .adnn-os-card.is-playing .adnn-os-orb { transform:rotate(-8deg) scale(1.08); }
+  .adnn-os-meta { display:grid; gap:6px; min-width:0; }
+  .adnn-os-version { font-family:var(--font-mono); color:#5360ff !important; letter-spacing:.18em; text-transform:uppercase; }
+  .adnn-os-play { min-width:44px; min-height:44px; border:1px solid var(--line); border-radius:999px; display:grid; place-items:center; background:rgba(255,255,255,.06); color:var(--text); font-size:18px; }
+  .adnn-os-spark { position:absolute; width:8px; height:8px; border-radius:50%; background:#5360ff; pointer-events:none; z-index:2; animation:adnnSpark .72s ease forwards; }
+  @keyframes adnnSpark { to { transform:translate(var(--x), var(--y)) scale(.1); opacity:0; } }
+  :root.adnn-reduce-motion *, :root.adnn-reduce-motion *::before, :root.adnn-reduce-motion *::after { animation:none !important; transition:none !important; scroll-behavior:auto !important; }
+  .adnn-card-maker-form { display:grid; gap:14px; margin-top:22px; }
+  .adnn-card-maker-form .grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+  .adnn-card-maker-result { margin-top:14px; min-height:20px; color:var(--muted); font-family:var(--font-mono); font-size:12px; }
+  .adnn-live-sheet-shell { margin-top:22px; display:grid; gap:12px; }
+  .adnn-live-sheet-toolbar { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+  .adnn-live-sheet-toolbar button, .adnn-card-maker-form button { border:0; border-radius:999px; min-height:42px; padding:0 18px; background:#272dcf; color:#fff; cursor:pointer; }
+  .adnn-live-sheet-table-wrap { max-height:min(68svh, 720px); overflow:auto; border:1px solid var(--line); border-radius:22px; background:rgba(255,255,255,.035); }
+  .adnn-live-sheet-table { width:100%; border-collapse:separate; border-spacing:0; min-width:760px; }
+  .adnn-live-sheet-table th, .adnn-live-sheet-table td { padding:12px 14px; border-bottom:1px solid var(--line); text-align:left; vertical-align:top; font-size:12px; }
+  .adnn-live-sheet-table th { position:sticky; top:0; z-index:2; background:rgba(12,12,16,.96); color:var(--text); font-weight:600; }
+  .adnn-live-sheet-table td { color:var(--muted); line-height:1.45; }
+  :root.light-theme .adnn-live-sheet-table th { background:rgba(255,255,255,.96); }
+  @media (max-width:720px) { .adnn-card-maker-form .grid { grid-template-columns:1fr; } .settings-card { gap:14px; } .adnn-os-card { display:grid !important; grid-template-columns:68px minmax(0,1fr) auto; align-items:center !important; } }
+</style>
+
 </head>
 <body>
 
@@ -980,8 +1013,8 @@
           <span class="link-label">Invoices & Payments</span>
         </button>
         <button type="button" class="sidebar-link-item" data-target-view="notifications_view">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
-          <span class="link-label">Notifications</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7.5A2.5 2.5 0 0 1 6.5 5h11A2.5 2.5 0 0 1 20 7.5v9A2.5 2.5 0 0 1 17.5 19h-11A2.5 2.5 0 0 1 4 16.5v-9Z"></path><path d="M8 10h8M8 14h5"></path><path d="M17 3v4M7 3v4"></path></svg>
+          <span class="link-label">Message Card Maker</span>
         </button>
         <button type="button" class="sidebar-link-item" data-target-view="calendar_view">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="11" y2="10"></line></svg>
@@ -1095,7 +1128,20 @@
       <div class="panel glass"><p class="kicker">Overview</p><h2>Studio Analytics Dashboard</h2><p class="help">Live workspace stream overview interface.</p></div>
     </div>
     <div id="enquiries_view" class="admin-view-panel-container" style="display:none;">
-      <div class="panel glass"><p class="kicker">Enquiries</p><h2>Active Client Forms</h2><p class="help">Inbound pipeline logs.</p></div>
+      <div class="panel glass">
+        <p class="kicker">Enquiries</p>
+        <h2>Live Client Forms Sheet</h2>
+        <p class="help">Realtime structured view from the linked Google Sheet. It refreshes automatically without an iframe preview.</p>
+        <div class="adnn-live-sheet-shell">
+          <div class="adnn-live-sheet-toolbar">
+            <span class="help" id="enquirySheetStatus">Connecting to live sheet...</span>
+            <button type="button" id="refreshEnquirySheetBtn">Refresh sheet</button>
+          </div>
+          <div class="adnn-live-sheet-table-wrap" id="enquirySheetTableWrap">
+            <table class="adnn-live-sheet-table" id="enquirySheetTable"><tbody><tr><td>Loading live enquiry data...</td></tr></tbody></table>
+          </div>
+        </div>
+      </div>
     </div>
     <div id="clients_view" class="admin-view-panel-container" style="display:none;">
       <div class="panel glass"><p class="kicker">Clients</p><h2>Client Records Directory</h2><p class="help"></p><div id="clientDirectoryList" style="display:grid;gap:10px;margin-top:22px;"></div></div>
@@ -1142,13 +1188,17 @@
     
     <div id="notifications_view" class="admin-view-panel-container" style="display:none;">
       <div class="panel glass">
-        <p class="kicker">Broadcasts</p>
-        <h2>Global System Push Dispatch</h2>
-        <p class="help">Account global notice layout tracking sync controls.</p>
-        
-        <div class="apple-alert-stack" id="appleNotificationsFeedTarget">
-          <p class="help" style="margin-top: 10px; opacity: 0.6;">No active environment alerts triggered.</p>
-        </div>
+        <p class="kicker">Message Card Maker</p>
+        <h2>Connect Two Users</h2>
+        <p class="help">Type the two account emails. This creates a private direct chat card in both users' User Chats feed. Both users must have logged in at least once so their Firebase UID exists.</p>
+        <form id="messageCardMakerForm" class="adnn-card-maker-form">
+          <div class="grid">
+            <label>User A email <input id="messageCardUserA" type="email" placeholder="user.a@gmail.com" required></label>
+            <label>User B email <input id="messageCardUserB" type="email" placeholder="user.b@gmail.com" required></label>
+          </div>
+          <div class="actions"><button type="submit">Create user-to-user chat</button><button type="reset" class="secondary">Clear</button></div>
+          <p class="adnn-card-maker-result" id="messageCardMakerStatus" aria-live="polite"></p>
+        </form>
       </div>
     </div>
 
@@ -1187,24 +1237,29 @@
       </div>
     </div>
 
-    <div id="settings_view" class="admin-view-panel-container" style="display:none;">
-      <div class="panel glass">
-        <p class="kicker">System</p>
-        <h2>Global Environment Settings</h2>
-        <p class="help">API Endpoint configurations and system variable fallback targets.</p>
-        
-        <div class="settings-theme-card-action">
-          <div>
-            <strong style="display: block; font-size: 14px; font-weight: 500; margin-bottom: 4px;">Workspace Theme Aesthetics</strong>
-            <span style="font-size: 12px; color: var(--muted);">Switch between clean light mode or dark workspace layouts seamlessly.</span>
-          </div>
-          <button type="button" class="settings-inline-btn" id="settingsInlineThemeToggleBtn" title="Toggle Workspace Aesthetics" aria-label="Toggle Workspace Aesthetics">
-            <svg class="moon-icon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-            <svg class="sun-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-          </button>
-        </div>
+    
+<div id="settings_view" class="admin-view-panel-container" style="display:none;">
+  <div class="panel glass">
+    <p class="kicker">System</p>
+    <h2>Global Environment Settings</h2>
+    <p class="help">Control workspace comfort, chat theme, alerts, motion and version tools.</p>
+    <div class="settings-grid">
+      <div class="settings-card adnn-setting-card">
+        <div><strong>Workspace Theme Aesthetics</strong><span>Switch between clean light mode or dark workspace layouts seamlessly.</span></div>
+        <button type="button" class="settings-inline-btn" id="settingsInlineThemeToggleBtn" title="Toggle Workspace Aesthetics" aria-label="Toggle Workspace Aesthetics">
+          <svg class="moon-icon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          <svg class="sun-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+        </button>
       </div>
+      <label class="settings-card adnn-setting-card"><div><strong>Chat white mode</strong><span>Switch admin chat panels between dark glass and bright white messenger.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_chat_light_mode"><i></i></span></label>
+      <label class="settings-card adnn-setting-card"><div><strong>In-app chat alerts</strong><span>Show realtime message and missed call cards inside the admin portal.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_inapp_notifications"><i></i></span></label>
+      <label class="settings-card adnn-setting-card"><div><strong>Browser notifications</strong><span>Allow operating-system notifications when the tab is hidden.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_browser_notifications"><i></i></span></label>
+      <label class="settings-card adnn-setting-card"><div><strong>Message sound</strong><span>Play a soft messenger tone for new chat and missed calls.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_message_sounds"><i></i></span></label>
+      <label class="settings-card adnn-setting-card"><div><strong>Reduce motion</strong><span>Disable extra motion for calm admin sessions.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_reduce_motion"><i></i></span></label>
+      <div class="settings-card adnn-os-card" role="button" tabindex="0"><span class="adnn-os-orb">a</span><div class="adnn-os-meta"><strong>ADNN OS</strong><span class="adnn-os-version">Version 2.3 Fire</span><span>Touch this card for a small playful system reaction.</span></div><span class="adnn-os-play" data-os-play-label>tap</span></div>
     </div>
+  </div>
+</div>
 
     </div> </main> </div>
 
@@ -1313,7 +1368,7 @@
           "composer_view": { sub: "Admin Portal", main: "Message Composer" },
           "chats_view": { sub: "", main: "" },
           "payments_view": { sub: "Finances & Ledger Records", main: "Invoices Ledger System" },
-          "notifications_view": { sub: "Broadcast Matrix System", main: "Global Push Transmission" },
+          "notifications_view": { sub: "Direct Chat Creator", main: "Message Card Maker" },
           "calendar_view": { sub: "Milestone Workspace Engine", main: "Reminder Studio Calendar" },
           "settings_view": { sub: "System Control Parameters", main: "Global Environment Settings" }
         };
@@ -1345,11 +1400,15 @@
         buttonItem.addEventListener("click", function(event) {
           event.preventDefault();
           const selectedView = this.dataset.targetView;
-          if (selectedView) activateTabPanel(selectedView);
+          if (selectedView) {
+            history.replaceState(null, "", `#${selectedView}`);
+            activateTabPanel(selectedView);
+          }
         });
       });
+      window.addEventListener("hashchange", () => activateTabPanel(location.hash.replace("#", "") || defaultActiveTab));
 
-      activateTabPanel(defaultActiveTab);
+      activateTabPanel(location.hash.replace("#", "") || defaultActiveTab);
 
       passwordToggle?.addEventListener("click", function() {
         const isVisible = gatePass.type === "text";
@@ -1564,7 +1623,7 @@
   <script type="module">
     import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-    import { addDoc, collection, doc, getDoc, getFirestore, onSnapshot, serverTimestamp, Timestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { addDoc, collection, doc, getDoc, getDocs, getFirestore, onSnapshot, query, serverTimestamp, setDoc, Timestamp, where } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     const config = window.ADNN_FIREBASE_CONFIG;
     const app = config ? (getApps()[0] || initializeApp(config)) : null;
@@ -1696,6 +1755,8 @@
           setStatus("Ready to sync.");
           startDashboardStats();
           startDirectoryLists();
+          wireMessageCardMaker();
+          startEnquirySheetLiveTable();
         } else {
           lockPortal("Database warning: Add this Google UID inside the admins collection.");
         }
@@ -1803,6 +1864,167 @@
       });
     }
 
+
+    async function findPortalUserByEmail(rawEmail) {
+      const email = emailKey(rawEmail);
+      if (!email) return null;
+      const lookups = [
+        ["clients", "email"],
+        ["clients", "displayEmail"],
+        ["designers", "email"],
+        ["designers", "authEmail"]
+      ];
+      const seen = new Set();
+      for (const [collectionName, field] of lookups) {
+        const key = `${collectionName}:${field}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        const snap = await getDocs(query(collection(db, collectionName), where(field, "==", email))).catch(() => null);
+        if (snap && !snap.empty) {
+          const docSnap = snap.docs[0];
+          const data = docSnap.data() || {};
+          return {
+            uid: docSnap.id,
+            collectionName,
+            role: data.role || (collectionName === "designers" ? "designer" : "client"),
+            email: emailKey(data.email || data.authEmail || data.displayEmail || email),
+            name: data.name || data.displayName || data.designerName || data.displayEmail || data.email || email,
+            photoURL: data.photoURL || data.avatarURL || data.picture || data.profilePhotoURL || ""
+          };
+        }
+      }
+      return null;
+    }
+
+    function safeChatIdPart(value) {
+      return String(value || "").replace(/[^a-zA-Z0-9_.-]/g, "_");
+    }
+
+    function wireMessageCardMaker() {
+      const form = document.getElementById("messageCardMakerForm");
+      const result = document.getElementById("messageCardMakerStatus");
+      if (!form || form.dataset.ready === "true") return;
+      form.dataset.ready = "true";
+      const say = (text) => { if (result) result.textContent = text; };
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        if (!currentUser || !isAdmin) return say("Admin verification is required first.");
+        const emailA = emailKey(document.getElementById("messageCardUserA")?.value);
+        const emailB = emailKey(document.getElementById("messageCardUserB")?.value);
+        if (!emailA || !emailB) return say("Both user emails are required.");
+        if (emailA === emailB) return say("Choose two different users.");
+        say("Finding users...");
+        try {
+          const [userA, userB] = await Promise.all([findPortalUserByEmail(emailA), findPortalUserByEmail(emailB)]);
+          if (!userA || !userB) {
+            const missing = [!userA ? emailA : "", !userB ? emailB : ""].filter(Boolean).join(" and ");
+            return say(`Could not find ${missing}. Ask them to log in once, then create the card again.`);
+          }
+          const sorted = [userA, userB].sort((a, b) => a.uid.localeCompare(b.uid));
+          const chatId = `direct_${safeChatIdPart(sorted[0].uid)}_${safeChatIdPart(sorted[1].uid)}`;
+          const chatRef = doc(db, "chats", chatId);
+          const existed = await getDoc(chatRef).then((snap) => snap.exists()).catch(() => false);
+          const now = Date.now();
+          const payload = {
+            type: "direct",
+            title: `${userA.name} / ${userB.name}`,
+            createdByAdmin: true,
+            createdBy: currentUser.uid,
+            createdByEmail: currentUser.email,
+            participantUids: [userA.uid, userB.uid],
+            participantEmailKeys: [userA.email, userB.email],
+            participantNames: { [userA.uid]: userA.name, [userB.uid]: userB.name },
+            participantPhotos: { [userA.uid]: userA.photoURL || "", [userB.uid]: userB.photoURL || "" },
+            participantEmailMap: { [userA.uid]: userA.email, [userB.uid]: userB.email },
+            lastMessage: existed ? "Chat card refreshed" : "Chat card created",
+            lastMessageKind: "system",
+            unreadForAdmin: 0,
+            unreadForClient: 0,
+            unreadBy: { [userA.uid]: 0, [userB.uid]: 0 },
+            updatedAt: serverTimestamp(),
+            updatedAtMs: now
+          };
+          if (!existed) {
+            payload.createdAt = serverTimestamp();
+            payload.createdAtMs = now;
+          }
+          await setDoc(chatRef, payload, { merge: true });
+          form.reset();
+          say(existed ? `Existing chat refreshed for ${userA.email} and ${userB.email}.` : `Chat created. It is now visible in both users' User Chats feed.`);
+        } catch (error) {
+          console.error(error);
+          say("Could not create the chat card. Check Firestore admin rules.");
+        }
+      });
+    }
+
+    const ENQUIRY_SHEET_ID = "1IMnMZlUbmske3MsaCiL1SDurgDVORf9kGabshDF1rKk";
+    const ENQUIRY_SHEET_GID = "1009680888";
+    let enquirySheetTimer = null;
+
+    function startEnquirySheetLiveTable() {
+      const table = document.getElementById("enquirySheetTable");
+      const statusNode = document.getElementById("enquirySheetStatus");
+      const refreshBtn = document.getElementById("refreshEnquirySheetBtn");
+      if (!table || table.dataset.ready === "true") return;
+      table.dataset.ready = "true";
+      const load = async () => {
+        if (statusNode) statusNode.textContent = "Refreshing live sheet...";
+        try {
+          const data = await fetchGoogleSheetViaJsonp(ENQUIRY_SHEET_ID, ENQUIRY_SHEET_GID);
+          renderLiveSheetTable(data);
+          if (statusNode) statusNode.textContent = `Live sheet updated ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`;
+        } catch (error) {
+          if (statusNode) statusNode.textContent = "Live sheet could not load. Share it as Anyone with link: Viewer, then refresh.";
+        }
+      };
+      refreshBtn?.addEventListener("click", load);
+      load();
+      if (!enquirySheetTimer) enquirySheetTimer = setInterval(load, 20000);
+    }
+
+    function fetchGoogleSheetViaJsonp(sheetId, gid) {
+      return new Promise((resolve, reject) => {
+        const cb = `adnnSheet_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+        const script = document.createElement("script");
+        const timeout = setTimeout(() => {
+          cleanup();
+          reject(new Error("Sheet timeout"));
+        }, 12000);
+        function cleanup() {
+          clearTimeout(timeout);
+          delete window[cb];
+          script.remove();
+        }
+        window[cb] = (data) => {
+          cleanup();
+          resolve(data);
+        };
+        script.onerror = () => {
+          cleanup();
+          reject(new Error("Sheet load failed"));
+        };
+        script.src = `https://docs.google.com/spreadsheets/d/${encodeURIComponent(sheetId)}/gviz/tq?gid=${encodeURIComponent(gid)}&tqx=responseHandler:${cb};out:json&_=${Date.now()}`;
+        document.body.appendChild(script);
+      });
+    }
+
+    function renderLiveSheetTable(data) {
+      const table = document.getElementById("enquirySheetTable");
+      if (!table) return;
+      const cols = (data?.table?.cols || []).map((col, index) => col.label || col.id || `Column ${index + 1}`);
+      const rows = (data?.table?.rows || []).map((row) => (row.c || []).map((cell) => cell?.f ?? cell?.v ?? ""));
+      const usefulRows = rows.filter((row) => row.some((cell) => String(cell || "").trim()));
+      if (!cols.length || !usefulRows.length) {
+        table.innerHTML = `<tbody><tr><td>No enquiry rows found yet.</td></tr></tbody>`;
+        return;
+      }
+      table.innerHTML = `
+        <thead><tr>${cols.map((label) => `<th>${escapeHtml(label)}</th>`).join("")}</tr></thead>
+        <tbody>${usefulRows.map((row) => `<tr>${cols.map((_, index) => `<td>${escapeHtml(row[index] ?? "")}</td>`).join("")}</tr>`).join("")}</tbody>
+      `;
+    }
+
     document.getElementById("adminSendForm").addEventListener("submit", async (event) => {
       event.preventDefault();
       if (!currentUser || !isAdmin) {
@@ -1872,6 +2094,62 @@
       }
     });
   </script>
-  <script type="module" src="firebase-chat.js?v=20260612-calls-reactions-notifications"></script>
+  <script type="module" src="firebase-chat.js?v=20260612-message-card-settings-sheet"></script>
+
+<script id="adnn-settings-upgrade-js">
+(function setupAdnnSettingsUpgrade(){
+  const defaults = {
+    adnn_chat_light_mode: "false",
+    adnn_inapp_notifications: "true",
+    adnn_browser_notifications: "true",
+    adnn_message_sounds: "true",
+    adnn_reduce_motion: "false"
+  };
+  function bool(key){
+    const value = localStorage.getItem(key);
+    return (value === null ? defaults[key] : value) === "true";
+  }
+  function apply(){
+    document.documentElement.classList.toggle("adnn-chat-light", bool("adnn_chat_light_mode"));
+    document.documentElement.classList.toggle("adnn-reduce-motion", bool("adnn_reduce_motion"));
+    document.querySelectorAll("[data-adnn-setting]").forEach((input) => {
+      input.checked = bool(input.dataset.adnnSetting);
+    });
+    window.dispatchEvent(new CustomEvent("adnn-settings-changed"));
+  }
+  document.addEventListener("change", (event) => {
+    const input = event.target.closest("[data-adnn-setting]");
+    if (!input) return;
+    localStorage.setItem(input.dataset.adnnSetting, String(input.checked));
+    if (input.dataset.adnnSetting === "adnn_browser_notifications" && input.checked && "Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission().catch(() => {});
+    }
+    apply();
+  });
+  document.addEventListener("pointerdown", (event) => {
+    const card = event.target.closest(".adnn-os-card");
+    if (!card) return;
+    const count = Number(card.dataset.taps || 0) + 1;
+    card.dataset.taps = String(count);
+    card.classList.add("is-playing");
+    const label = card.querySelector("[data-os-play-label]");
+    if (label) label.textContent = count % 5 === 0 ? "mini fireworks" : count % 2 ? "boop" : "smooth";
+    const rect = card.getBoundingClientRect();
+    for (let i = 0; i < 9; i++) {
+      const dot = document.createElement("span");
+      dot.className = "adnn-os-spark";
+      dot.style.left = `${event.clientX - rect.left}px`;
+      dot.style.top = `${event.clientY - rect.top}px`;
+      dot.style.setProperty("--x", `${Math.cos(i / 9 * Math.PI * 2) * (34 + i * 3)}px`);
+      dot.style.setProperty("--y", `${Math.sin(i / 9 * Math.PI * 2) * (34 + i * 3)}px`);
+      card.appendChild(dot);
+      setTimeout(() => dot.remove(), 760);
+    }
+    setTimeout(() => card.classList.remove("is-playing"), 300);
+  });
+  apply();
+})();
+</script>
+
 </body>
 </html>

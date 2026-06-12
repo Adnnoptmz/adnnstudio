@@ -154,6 +154,8 @@ const objectUrls = new Set();
 const globalUnsubs = [];
 const liveSnapshotKeys = new Map();
 const pendingToastKeys = new Map();
+const threadUnreadCache = new Map();
+let notificationPermissionAsked = false;
 
 const ICON = {
   back: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>`,
@@ -167,6 +169,8 @@ const ICON = {
   mic: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z"/><path d="M19 11a7 7 0 0 1-14 0"/><path d="M12 18v3"/></svg>`,
   micOff: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="m3 3 18 18"/><path d="M9 9v3a3 3 0 0 0 5.1 2.1M15 9.35V6a3 3 0 0 0-5.68-1.33"/><path d="M19 11a7 7 0 0 1-1.3 4.06M5 11a7 7 0 0 0 9.76 6.43"/><path d="M12 18v3"/></svg>`,
   hang: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5.7 15.6c4.2-3.5 8.4-3.5 12.6 0l1.7-1.7c.7-.7.7-1.8 0-2.5-4.9-4.4-11.1-4.4-16 0-.7.7-.7 1.8 0 2.5l1.7 1.7Z"/></svg>`,
+  hold: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M8 5v14M16 5v14"/></svg>`,
+  play: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7L8 5Z"/></svg>`,
   clip: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="m21.4 11.1-9.2 9.2a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5"/></svg>`,
   plus: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>`,
   send: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 20.5 22 12 3 3.5v6.6L15.7 12 3 13.9v6.6Z"/></svg>`,
@@ -190,6 +194,7 @@ async function bootChatRuntime() {
   injectChatStyles();
   bindGlobalDismissers();
   bindConnectivitySignals();
+  bindNotificationPermissionPrimer();
 
   if (!FIREBASE_CONFIG) {
     renderSignedOutShell("Firebase config is missing. Define window.ADNN_FIREBASE_CONFIG before loading firebase-chat.js.");
@@ -240,7 +245,8 @@ async function handleAuthState(user) {
     uid: activeUser.uid,
     email: activeUser.email,
     role: isAdminEmail(activeUser.email) ? "admin" : "client",
-    name: activeUser.displayName || emailKey(activeUser.email).split("@")[0] || "User"
+    name: activeUser.displayName || emailKey(activeUser.email).split("@")[0] || "User",
+    photoURL: activeUser.photoURL || ""
   }));
 
   sessionStarted = true;
@@ -403,8 +409,10 @@ async function ensureSupportChat() {
     clientUid: activeUser.uid,
     clientName: displayName,
     clientEmail: emailKey(activeUser.email),
+    clientPhotoURL: ownPhotoUrl(),
     participantUids: uniqueClean([activeUser.uid, ADMIN_ALIAS_UID]),
     participantNames: { [activeUser.uid]: displayName, [ADMIN_ALIAS_UID]: `${CHAT_CONFIG.brandName} Admin` },
+    participantPhotos: { [activeUser.uid]: ownPhotoUrl(), [ADMIN_ALIAS_UID]: CHAT_CONFIG.adminPhotoURL || "" },
     participantEmailMap: { [activeUser.uid]: emailKey(activeUser.email), [ADMIN_ALIAS_UID]: ADMIN_EMAIL },
     updatedAt: serverTimestamp(),
     updatedAtMs: Date.now()
@@ -441,6 +449,7 @@ function watchChatThreads(scope, listId, roomId, options = {}) {
     const unique = new Map();
     chats.forEach((chat) => unique.set(chat.id, { ...(unique.get(chat.id) || {}), ...chat }));
     chats = Array.from(unique.values());
+    if (scope === "admin") chats = chats.filter(isVisibleToAdminInbox);
     if (options.directOnly || options.excludeSupport) chats = chats.filter((chat) => chat.type !== "support");
     chats.sort((a, b) => toMillis(b.updatedAt || b.createdAt || b.updatedAtMs) - toMillis(a.updatedAt || a.createdAt || a.updatedAtMs));
     renderThreadList(chats, list, roomId, scope);
@@ -459,7 +468,8 @@ function watchChatThreads(scope, listId, roomId, options = {}) {
   }, owner);
 
   if (scope === "admin") {
-    listen("admin-all", collection(db, COLLECTIONS.chats));
+    listen("support", query(collection(db, COLLECTIONS.chats), where("type", "==", "support")));
+    listen("admin-participant", query(collection(db, COLLECTIONS.chats), where("participantUids", "array-contains", ADMIN_ALIAS_UID)));
   } else {
     listen("participant", query(collection(db, COLLECTIONS.chats), where("participantUids", "array-contains", activeUser.uid)));
     if (activeProfile?.role === "designer") {
@@ -482,6 +492,14 @@ function stopListWatcher(listId) {
   listWatchers.delete(listId);
 }
 
+
+function isVisibleToAdminInbox(chat) {
+  if (!chat) return false;
+  if (chat.type === "support") return true;
+  const participants = Array.isArray(chat.participantUids) ? chat.participantUids : [];
+  return participants.includes(ADMIN_ALIAS_UID) || participants.includes(activeUser?.uid);
+}
+
 function renderThreadList(chats, list, roomId, scope) {
   list.innerHTML = "";
   if (!chats.length) {
@@ -496,6 +514,7 @@ function renderThreadList(chats, list, roomId, scope) {
   chats.forEach((chat) => {
     const title = getChatTitle(chat, scope);
     const unread = getUnreadCount(chat, scope);
+    notifyThreadUnread(chat, title, unread);
     const row = document.createElement("button");
     row.type = "button";
     row.className = "adnn-thread";
@@ -506,7 +525,7 @@ function renderThreadList(chats, list, roomId, scope) {
     const preview = normalizeLastMessage(chat);
     const stamp = formatCompactDate(chat.updatedAt || chat.createdAt || chat.updatedAtMs);
     row.innerHTML = `
-      <span class="adnn-avatar ${presenceDot}">${initials(title)}</span>
+      ${avatarMarkup(title, getChatPhoto(chat, scope), presenceDot)}
       <span class="adnn-thread-copy">
         <strong>${escapeHtml(title)}</strong>
         <small>${escapeHtml(preview)}</small>
@@ -516,6 +535,7 @@ function renderThreadList(chats, list, roomId, scope) {
         ${unread > 0 ? `<b>${unread > 99 ? "99+" : unread}</b>` : ""}
       </span>
     `;
+    hydrateThreadAvatar(row, chat, scope, title);
     row.addEventListener("click", () => {
       list.querySelectorAll(".adnn-thread").forEach((item) => item.classList.remove("is-active"));
       row.classList.add("is-active");
@@ -548,6 +568,15 @@ function filterThreadList(listId, rawValue) {
   });
 }
 
+async function hydrateThreadAvatar(row, chat, scope, title) {
+  if (!row || getChatPhoto(chat, scope)) return;
+  const uid = getRemoteUid(chat);
+  if (!uid) return;
+  const info = await getPresenceInfo(uid).catch(() => null);
+  const photo = info?.data?.photoURL;
+  if (photo && row.isConnected) setAvatarNode(row.querySelector(".adnn-avatar"), title, photo);
+}
+
 function renderPassiveRoom(roomId, title, message, placeholder) {
   const target = document.getElementById(roomId);
   if (!target) return;
@@ -567,7 +596,7 @@ function passiveRoomMarkup(roomId, title, message, placeholder) {
     <div class="adnn-room-shell is-passive" data-room="${escapeAttr(roomId)}">
       <header class="adnn-room-head" role="toolbar" aria-label="Chat status">
         <button type="button" class="adnn-back-btn" data-chat-back>${ICON.back}</button>
-        <span class="adnn-avatar">${initials(title)}</span>
+        ${avatarMarkup(title)}
         <div class="adnn-room-title">
           <strong>${escapeHtml(title)}</strong>
           <small>${escapeHtml(message)}</small>
@@ -628,7 +657,9 @@ function createRoomState(roomId, chatId, chatData) {
     unsubs: [],
     localPendingIds: new Set(),
     menuMessageId: "",
-    presenceUnsub: null
+    presenceUnsub: null,
+    notifiedMessageIds: new Set(),
+    messagesHydrated: false
   };
 }
 
@@ -846,7 +877,7 @@ function watchRoomMeta(state) {
     const title = getChatTitle(state.chatData, scope);
     const avatar = shell.querySelector("[data-chat-avatar]");
     const titleNode = shell.querySelector("[data-chat-title]");
-    if (avatar) avatar.textContent = initials(title);
+    if (avatar) setAvatarNode(avatar, title, getChatPhoto(state.chatData, scope));
     if (titleNode) titleNode.textContent = title;
     watchPresence(state);
   }, (error) => showRoomConnection(state, readableFirebaseError(error), "bad"), state.unsubs);
@@ -872,6 +903,9 @@ function watchPresence(state) {
     const online = data.online !== false && seen && Date.now() - seen < CHAT_CONFIG.presenceOnlineMs;
     status.textContent = active ? "Online now" : online ? "Online" : seen ? `Last seen ${relativeTime(seen)}` : "Offline";
     status.classList.toggle("is-online", !!online);
+    const title = getChatTitle(state.chatData, isAdminEmail(activeUser?.email) ? "admin" : "user");
+    const avatar = shell.querySelector("[data-chat-avatar]");
+    if (avatar && data.photoURL) setAvatarNode(avatar, title, data.photoURL);
   }, () => {
     if (status) status.textContent = "Status unavailable";
   }, state.unsubs);
@@ -913,6 +947,7 @@ function watchMessages(state) {
     }));
     renderMessages(state, state.messages);
     markMessagesRead(state, state.messages);
+    notifyIncomingMessages(state, state.messages);
   }, (error) => {
     const shell = roomShell(state);
     if (shell) shell.querySelector("[data-message-scroll]").innerHTML = `<div class="adnn-chat-empty">${escapeHtml(readableFirebaseError(error))}</div>`;
@@ -949,8 +984,9 @@ function renderMessages(state, messages) {
     }
 
     const row = document.createElement("div");
-    const mine = isMineMessage(message);
-    row.className = `adnn-message-row ${mine ? "is-mine" : "is-peer"}`;
+    const callEvent = isCallEventMessage(message);
+    const mine = callEvent ? isOutgoingCallEvent(message) : isMineMessage(message);
+    row.className = `adnn-message-row ${callEvent ? "is-call" : mine ? "is-mine" : "is-peer"}`;
     row.dataset.messageId = message.id;
 
     const bubble = document.createElement("article");
@@ -969,6 +1005,7 @@ function renderMessages(state, messages) {
 }
 
 function renderMessageBubble(message, mine) {
+  if (isCallEventMessage(message)) return renderCallMessageBubble(message);
   if (message.deletedForAll) {
     return `
       ${!mine ? `<strong class="adnn-message-name">${escapeHtml(message.senderName || "User")}</strong>` : ""}
@@ -1046,7 +1083,7 @@ function handleMessageAction(event, state, message) {
   event.stopPropagation();
   const action = actionBtn.dataset.action;
   if (action === "reply") startReply(state, message);
-  if (action === "open-react") toggleReactionPalette(actionBtn.closest("[data-message-menu]"));
+  if (action === "open-react") openReactionSheet(actionBtn, state, message);
   if (action === "react") toggleReaction(state.chatId, message, actionBtn.dataset.emoji);
   if (action === "copy") copyMessageText(message);
   if (action === "delete-me") deleteMessageForMe(state, message);
@@ -1057,6 +1094,36 @@ function toggleReactionPalette(menu) {
   if (!menu) return;
   const palette = menu.querySelector("[data-reaction-palette]");
   if (palette) palette.hidden = !palette.hidden;
+}
+
+
+function openReactionSheet(anchor, state, message) {
+  if (!anchor || !state || !message) return;
+  closeFloatingReactionSheet();
+  const sheet = document.createElement("div");
+  sheet.className = "adnn-floating-reaction-sheet";
+  sheet.dataset.floatingReaction = "1";
+  sheet.innerHTML = REACTION_SET.map((emoji) => `<button type="button" data-emoji="${escapeAttr(emoji)}">${escapeHtml(emoji)}</button>`).join("");
+  document.body.appendChild(sheet);
+  const rect = anchor.getBoundingClientRect();
+  const sheetRect = sheet.getBoundingClientRect();
+  const gap = 8;
+  const preferredLeft = rect.left + rect.width / 2 - sheetRect.width / 2;
+  const left = clamp(preferredLeft, gap, window.innerWidth - sheetRect.width - gap);
+  const above = rect.top - sheetRect.height - gap;
+  const top = above > gap ? above : clamp(rect.bottom + gap, gap, window.innerHeight - sheetRect.height - gap);
+  sheet.style.left = `${left}px`;
+  sheet.style.top = `${top}px`;
+  sheet.querySelectorAll("button").forEach((btn) => {
+    btn.addEventListener("click", (event) => {
+      event.stopPropagation();
+      toggleReaction(state.chatId, message, btn.dataset.emoji);
+    });
+  });
+}
+
+function closeFloatingReactionSheet() {
+  document.querySelectorAll("[data-floating-reaction]").forEach((node) => node.remove());
 }
 
 function startReply(state, message) {
@@ -1095,6 +1162,8 @@ async function deleteMessageForMe(state, message) {
 
 async function deleteMessageForEveryone(state, message) {
   if (!isMineMessage(message)) return showToast("You can delete only your own sent messages for everyone.", "warn");
+  const ok = await confirmDanger("Delete for everyone?", "This will remove the message for everyone in this chat. This action cannot be undone.", "Delete for everyone");
+  if (!ok) return closeMessageMenus();
   const messageRef = doc(db, COLLECTIONS.chats, state.chatId, COLLECTIONS.messages, message.id);
   const update = {
     text: "",
@@ -1144,6 +1213,7 @@ async function toggleReaction(chatId, message, emoji) {
     ? { [`reactions.${uidKey}`]: deleteField(), updatedAt: serverTimestamp(), updatedAtMs: Date.now() }
     : { [`reactions.${uidKey}`]: emoji, updatedAt: serverTimestamp(), updatedAtMs: Date.now() };
   await withRetry(() => updateDoc(messageRef, payload), { label: "react" }).catch((error) => showToast(readableFirebaseError(error), "bad"));
+  closeFloatingReactionSheet();
   closeMessageMenus();
 }
 
@@ -1195,6 +1265,36 @@ function renderReactions(message) {
   return `<button type="button" class="adnn-reactions" data-action="open-react">${Object.entries(counts).map(([emoji, count]) => `${escapeHtml(emoji)}${count > 1 ? `<small>${count}</small>` : ""}`).join(" ")}</button>`;
 }
 
+
+function isCallEventMessage(message) {
+  return !!(message?.callEvent || message?.system === "call" || message?.type === "call");
+}
+
+function isOutgoingCallEvent(message) {
+  const keys = selfUidSet();
+  return keys.has(message.callerUid) || keys.has(message.senderUid) || keys.has(message.senderAliasUid);
+}
+
+function renderCallMessageBubble(message) {
+  const outgoing = isOutgoingCallEvent(message);
+  const kind = message.kind === "video" ? "video" : "audio";
+  const missed = message.callStatus === "missed" || message.endedReason === "timeout";
+  const declined = message.endedReason === "rejected";
+  const duration = Math.round((Number(message.durationMs) || 0) / 1000);
+  const title = missed
+    ? (outgoing ? `No answer ${kind} call` : `Missed ${kind} call`)
+    : declined
+      ? (outgoing ? `Declined ${kind} call` : `Call declined`)
+      : `${outgoing ? "Outgoing" : "Incoming"} ${kind} call`;
+  const detail = `${duration ? formatDuration(duration) + " · " : ""}${formatTime(message.createdAt || message.createdAtMs)}`;
+  return `
+    <div class="adnn-call-message ${missed ? "is-missed" : ""}">
+      <span>${kind === "video" ? ICON.video : ICON.phone}</span>
+      <div><strong>${escapeHtml(title)}</strong><small>${escapeHtml(detail)}</small></div>
+    </div>
+  `;
+}
+
 function renderTicks(message) {
   if (message.__pending) return `<span class="adnn-ticks is-pending" title="Sending">${ICON.clock}</span>`;
   const readBy = Array.isArray(message.readBy) ? message.readBy : [];
@@ -1206,7 +1306,7 @@ function shouldShowMessage(message) {
   if (!message) return false;
   const deletedFor = Array.isArray(message.deletedFor) ? message.deletedFor : [];
   if (Array.from(selfUidSet()).some((uid) => deletedFor.includes(uid))) return false;
-  if (message.callEvent || message.system === "call" || message.type === "call") return false;
+  if (message.callEvent || message.system === "call" || message.type === "call") return true;
   if (isCallSummaryText(message.text || message.body || message.content || message.message || message.lastMessage || "")) return false;
   return true;
 }
@@ -1589,6 +1689,7 @@ function startPresence(user) {
       uid: user.uid,
       email: emailKey(user.email),
       name: ownDisplayName(),
+      photoURL: ownPhotoUrl(),
       online: navigator.onLine !== false && online,
       active,
       page: location.pathname,
@@ -1603,7 +1704,8 @@ function startPresence(user) {
         ...base,
         uid: ADMIN_ALIAS_UID,
         realUid: user.uid,
-        name: `${CHAT_CONFIG.brandName} Admin`
+        name: `${CHAT_CONFIG.brandName} Admin`,
+        photoURL: CHAT_CONFIG.adminPhotoURL || ownPhotoUrl()
       }, { merge: true }).catch(() => {});
     }
   };
@@ -1674,6 +1776,11 @@ async function startCall(kind, chatId, chatData) {
     return showToast("This browser does not support secure audio/video calls.", "bad");
   }
 
+  const remoteStatus = await getPresenceInfo(receiverUid);
+  if (!remoteStatus.online) {
+    return showToast(`${getChatTitle(chatData, "user")} is offline. Call not connected.`, "warn");
+  }
+
   try {
     const wantsVideo = kind === "video";
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: wantsVideo });
@@ -1681,8 +1788,8 @@ async function startCall(kind, chatId, chatData) {
     activeCall = createCallState(callId, "caller", kind, stream, chatId, chatData, receiverUid);
     const expiresAtMs = Date.now() + CHAT_CONFIG.callRingTimeoutMs;
     const media = {
-      [fieldKey(ownCallUid())]: { cameraOn: wantsVideo, micOn: true, updatedAt: Date.now() },
-      [fieldKey(receiverUid)]: { cameraOn: false, micOn: true, updatedAt: Date.now() }
+      [fieldKey(ownCallUid())]: { cameraOn: wantsVideo, micOn: true, hold: false, updatedAt: Date.now() },
+      [fieldKey(receiverUid)]: { cameraOn: false, micOn: true, hold: false, updatedAt: Date.now() }
     };
     const callRef = doc(db, COLLECTIONS.calls, callId);
     await setDoc(callRef, {
@@ -1692,8 +1799,10 @@ async function startCall(kind, chatId, chatData) {
       callerUid: ownCallUid(),
       callerRealUid: activeUser.uid,
       callerName: ownDisplayName(),
+      callerPhotoURL: ownPhotoUrl(),
       receiverUid,
       receiverName: getChatTitle(chatData, "user"),
+      receiverPhotoURL: getChatPhoto(chatData, "user"),
       participants: uniqueClean([ownCallUid(), receiverUid]),
       media,
       expiresAtMs,
@@ -1705,7 +1814,7 @@ async function startCall(kind, chatId, chatData) {
 
     renderCallOverlay();
     await setupPeerConnection(activeCall, true);
-    const offer = await activeCall.pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: wantsVideo });
+    const offer = await activeCall.pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
     await activeCall.pc.setLocalDescription(offer);
     await updateDoc(callRef, {
       status: "ringing",
@@ -1719,6 +1828,7 @@ async function startCall(kind, chatId, chatData) {
       callerUid: ownCallUid(),
       callerRealUid: activeUser.uid,
       callerName: ownDisplayName(),
+      callerPhotoURL: ownPhotoUrl(),
       chatId,
       kind,
       status: "ringing",
@@ -1739,10 +1849,11 @@ function showIncomingCall(callId, call) {
   document.getElementById("adnnIncomingCallOverlay")?.remove();
   const overlay = document.createElement("div");
   overlay.id = "adnnIncomingCallOverlay";
-  overlay.className = "adnn-call-overlay";
+  overlay.className = "adnn-call-popout is-incoming";
   overlay.innerHTML = `
     <div class="adnn-incoming-call">
-      <span class="adnn-avatar">${initials(call.callerName || "AD")}</span>
+      <div class="adnn-call-drag-handle" data-call-drag><span>Incoming call</span><span>Drag</span></div>
+      ${avatarMarkup(call.callerName || "AD", call.callerPhotoURL)}
       <h3>${escapeHtml(call.callerName || "Incoming call")}</h3>
       <p>${call.kind === "video" ? "Video" : "Audio"} call</p>
       <div>
@@ -1752,22 +1863,39 @@ function showIncomingCall(callId, call) {
     </div>
   `;
   document.body.appendChild(overlay);
+  placeCallPopout(overlay);
+  makeDraggable(overlay, overlay.querySelector("[data-call-drag]"));
+  notifyBrowser(`${call.callerName || "Incoming call"}`, `${call.kind === "video" ? "Video" : "Audio"} call`, call.callerPhotoURL);
   if (navigator.vibrate) navigator.vibrate([80, 40, 80]);
 
   const timeout = setTimeout(() => {
+    callWatch?.();
     overlay.remove();
     markCallMissed(callId);
   }, Math.max(1000, Number(call.expiresAtMs || 0) - Date.now()));
+  const callWatch = onSnapshot(doc(db, COLLECTIONS.calls, callId), (snapshot) => {
+    if (!snapshot.exists()) return;
+    const data = snapshot.data();
+    if (data.status && data.status !== "ringing") {
+      clearTimeout(timeout);
+      callWatch?.();
+      overlay.remove();
+    }
+  }, () => {});
 
   overlay.querySelector("[data-reject]")?.addEventListener("click", () => {
     clearTimeout(timeout);
+    callWatch?.();
     overlay.remove();
-    updateDoc(doc(db, COLLECTIONS.calls, callId), { status: "ended", endedReason: "rejected", updatedAt: serverTimestamp(), updatedAtMs: Date.now() }).catch(() => {});
+    const endedAtMs = Date.now();
+    updateDoc(doc(db, COLLECTIONS.calls, callId), { status: "ended", endedReason: "rejected", endedAtMs, durationMs: 0, summaryWriterUid: ownCallUid(), updatedAt: serverTimestamp(), updatedAtMs: endedAtMs }).catch(() => {});
+    writeCallSummaryMessage({ ...call, callId }, "ended", "rejected", { endedAtMs, durationMs: 0 }).catch(() => {});
     cleanupCallInbox(callId, ownCallUid());
   });
 
   overlay.querySelector("[data-accept]")?.addEventListener("click", async () => {
     clearTimeout(timeout);
+    callWatch?.();
     overlay.remove();
     await acceptCall(callId, call);
   });
@@ -1794,8 +1922,9 @@ async function acceptCall(callId, call) {
     await updateDoc(doc(db, COLLECTIONS.calls, callId), {
       status: "accepted",
       answer: { type: answer.type, sdp: answer.sdp },
-      [`media.${fieldKey(ownCallUid())}`]: { cameraOn: wantsVideo, micOn: true, updatedAt: Date.now() },
+      [`media.${fieldKey(ownCallUid())}`]: { cameraOn: wantsVideo, micOn: true, hold: false, updatedAt: Date.now() },
       acceptedAt: serverTimestamp(),
+      acceptedAtMs: Date.now(),
       updatedAt: serverTimestamp(),
       updatedAtMs: Date.now()
     });
@@ -1821,10 +1950,15 @@ function createCallState(callId, role, kind, stream, chatId, chatData, remoteUid
     cameraOn: kind === "video",
     remoteCameraOn: false,
     micOn: true,
+    onHold: false,
+    remoteOnHold: false,
     startedAt: Date.now(),
+    acceptedAtMs: 0,
     ringTimer: null,
+    videoSender: null,
     unsubs: [],
-    remoteCandidateQueue: []
+    remoteCandidateQueue: [],
+    summaryWritten: false
   };
 }
 
@@ -1850,7 +1984,15 @@ async function setupPeerConnection(call, caller) {
   const pc = new RTCPeerConnection({ iceServers: CHAT_CONFIG.iceServers });
   call.pc = pc;
 
-  call.localStream.getTracks().forEach((track) => pc.addTrack(track, call.localStream));
+  call.localStream.getTracks().forEach((track) => {
+    const sender = pc.addTrack(track, call.localStream);
+    if (track.kind === "video") call.videoSender = sender;
+  });
+  if (!call.videoSender) {
+    try {
+      call.videoSender = pc.addTransceiver("video", { direction: "sendrecv" }).sender;
+    } catch (_) {}
+  }
 
   pc.onicecandidate = (event) => {
     if (!event.candidate) return;
@@ -1891,11 +2033,25 @@ function watchActiveCall(callId) {
       await activeCall.pc.setRemoteDescription(new RTCSessionDescription(data.answer)).catch(() => {});
       await flushRemoteCandidates(activeCall);
     }
+    if (data.kind && data.kind !== activeCall.kind) {
+      activeCall.kind = data.kind;
+      refreshCallControls();
+    }
     const remoteMedia = data.media?.[fieldKey(activeCall.remoteUid)] || data.media?.[activeCall.remoteUid];
     activeCall.remoteCameraOn = !!remoteMedia?.cameraOn;
+    activeCall.remoteOnHold = !!remoteMedia?.hold;
     attachCallMedia();
-    if (data.status === "accepted") startCallTimer();
-    if (["ended", "missed"].includes(data.status)) endCall(false);
+    updateHoldUi();
+    if (data.status === "accepted") {
+      activeCall.acceptedAtMs = data.acceptedAtMs || activeCall.acceptedAtMs || Date.now();
+      startCallTimer();
+    }
+    if (["ended", "missed"].includes(data.status)) {
+      if (!data.summaryWriterUid || data.summaryWriterUid === ownCallUid()) {
+        await writeCallSummaryMessage(activeCall, data.status, data.endedReason, data).catch(() => {});
+      }
+      endCall(false);
+    }
   }, () => {}, activeCall?.unsubs || []);
 }
 
@@ -1904,28 +2060,35 @@ function renderCallOverlay() {
   if (!activeCall) return;
   const overlay = document.createElement("div");
   overlay.id = "adnnCallOverlay";
-  overlay.className = "adnn-call-overlay";
+  overlay.className = "adnn-call-popout";
   const peerName = getChatTitle(activeCall.chatData, "user");
   overlay.innerHTML = `
     <div class="adnn-call-card ${activeCall.kind === "audio" ? "is-audio" : ""}">
+      <div class="adnn-call-drag-handle" data-call-drag><span>${escapeHtml(activeCall.kind === "video" ? "Video call" : "Audio call")}</span><span>Drag</span></div>
       <div class="adnn-call-stage" data-call-stage>
         <div class="adnn-video-tile is-remote" data-remote-tile><video autoplay playsinline data-remote-video></video><span>${escapeHtml(peerName)}</span></div>
         <div class="adnn-video-tile is-local" data-local-tile><video autoplay muted playsinline data-local-video></video><span>You</span></div>
-        <div class="adnn-audio-call-face" data-audio-face><span class="adnn-avatar">${initials(peerName)}</span></div>
+        <div class="adnn-audio-call-face" data-audio-face>${avatarMarkup(peerName, getChatPhoto(activeCall.chatData, "user"))}</div>
+        <div class="adnn-call-hold-badge" data-call-hold-badge hidden>Call on hold</div>
       </div>
       <div class="adnn-call-meta"><strong>${escapeHtml(peerName)}</strong><small data-call-time>Connecting...</small></div>
       <div class="adnn-call-controls">
-        <button type="button" data-call-mic>${ICON.mic}</button>
-        ${activeCall.kind === "video" ? `<button type="button" data-call-camera>${activeCall.cameraOn ? ICON.videoOff : ICON.video}</button>` : ""}
-        <button type="button" class="is-end" data-call-end>${ICON.hang}</button>
+        <button type="button" data-call-mic title="Mute">${ICON.mic}</button>
+        <button type="button" data-call-hold title="Hold call">${activeCall.onHold ? ICON.play : ICON.hold}</button>
+        <button type="button" data-call-camera title="${activeCall.kind === "audio" ? "Switch to video" : "Camera"}">${activeCall.kind === "video" && activeCall.cameraOn ? ICON.videoOff : ICON.video}</button>
+        <button type="button" class="is-end" data-call-end title="End call">${ICON.hang}</button>
       </div>
     </div>
   `;
   document.body.appendChild(overlay);
+  placeCallPopout(overlay);
+  makeDraggable(overlay, overlay.querySelector("[data-call-drag]"));
   overlay.querySelector("[data-call-mic]")?.addEventListener("click", toggleCallMic);
+  overlay.querySelector("[data-call-hold]")?.addEventListener("click", toggleCallHold);
   overlay.querySelector("[data-call-camera]")?.addEventListener("click", toggleCallCamera);
   overlay.querySelector("[data-call-end]")?.addEventListener("click", () => endCall(true));
   attachCallMedia();
+  updateHoldUi();
 }
 
 function attachCallMedia() {
@@ -1937,23 +2100,28 @@ function attachCallMedia() {
   const localTile = overlay.querySelector("[data-local-tile]");
   const remoteTile = overlay.querySelector("[data-remote-tile]");
   const audioFace = overlay.querySelector("[data-audio-face]");
+  const holdBadge = overlay.querySelector("[data-call-hold-badge]");
 
   if (localVideo && localVideo.srcObject !== activeCall.localStream) localVideo.srcObject = activeCall.localStream;
   if (remoteVideo && remoteVideo.srcObject !== activeCall.remoteStream) remoteVideo.srcObject = activeCall.remoteStream;
   localVideo?.play?.().catch(() => {});
   remoteVideo?.play?.().catch(() => {});
 
-  const localOn = activeCall.kind === "video" && activeCall.cameraOn && activeCall.localStream.getVideoTracks().some((track) => track.readyState !== "ended" && track.enabled !== false);
-  const remoteOn = activeCall.kind === "video" && activeCall.remoteCameraOn && activeCall.remoteStream.getVideoTracks().some((track) => track.readyState !== "ended");
+  const localOn = activeCall.kind === "video" && !activeCall.onHold && activeCall.cameraOn && activeCall.localStream.getVideoTracks().some((track) => track.readyState !== "ended" && track.enabled !== false);
+  const remoteOn = activeCall.kind === "video" && !activeCall.remoteOnHold && activeCall.remoteCameraOn && activeCall.remoteStream.getVideoTracks().some((track) => track.readyState !== "ended");
   if (localTile) localTile.hidden = !localOn;
   if (remoteTile) remoteTile.hidden = !remoteOn;
   if (audioFace) audioFace.hidden = localOn || remoteOn;
+  if (holdBadge) {
+    holdBadge.hidden = !(activeCall.onHold || activeCall.remoteOnHold);
+    holdBadge.textContent = activeCall.onHold ? "You put the call on hold" : "User is on hold";
+  }
 }
 
 async function toggleCallMic(event) {
   if (!activeCall) return;
   activeCall.micOn = !activeCall.micOn;
-  activeCall.localStream.getAudioTracks().forEach((track) => { track.enabled = activeCall.micOn; });
+  activeCall.localStream.getAudioTracks().forEach((track) => { track.enabled = activeCall.micOn && !activeCall.onHold; });
   event.currentTarget.innerHTML = activeCall.micOn ? ICON.mic : ICON.micOff;
   event.currentTarget.classList.toggle("is-off", !activeCall.micOn);
   await updateDoc(doc(db, COLLECTIONS.calls, activeCall.callId), {
@@ -1965,11 +2133,19 @@ async function toggleCallMic(event) {
 }
 
 async function toggleCallCamera(event) {
-  if (!activeCall || activeCall.kind !== "video") return;
+  if (!activeCall) return;
+  const button = event?.currentTarget;
+  if (activeCall.kind !== "video") {
+    await upgradeCallToVideo(button);
+    return;
+  }
   activeCall.cameraOn = !activeCall.cameraOn;
-  activeCall.localStream.getVideoTracks().forEach((track) => { track.enabled = activeCall.cameraOn; });
-  event.currentTarget.innerHTML = activeCall.cameraOn ? ICON.videoOff : ICON.video;
-  event.currentTarget.classList.toggle("is-off", !activeCall.cameraOn);
+  if (activeCall.cameraOn) await ensureLocalVideoTrack(activeCall);
+  activeCall.localStream.getVideoTracks().forEach((track) => { track.enabled = activeCall.cameraOn && !activeCall.onHold; });
+  if (button) {
+    button.innerHTML = activeCall.cameraOn ? ICON.videoOff : ICON.video;
+    button.classList.toggle("is-off", !activeCall.cameraOn);
+  }
   await updateDoc(doc(db, COLLECTIONS.calls, activeCall.callId), {
     [`media.${fieldKey(ownCallUid())}.cameraOn`]: activeCall.cameraOn,
     [`media.${fieldKey(ownCallUid())}.updatedAt`]: Date.now(),
@@ -1979,15 +2155,105 @@ async function toggleCallCamera(event) {
   attachCallMedia();
 }
 
+async function upgradeCallToVideo(button) {
+  if (!activeCall) return;
+  try {
+    await ensureLocalVideoTrack(activeCall);
+    activeCall.kind = "video";
+    activeCall.cameraOn = true;
+    activeCall.localStream.getVideoTracks().forEach((track) => { track.enabled = !activeCall.onHold; });
+    await updateDoc(doc(db, COLLECTIONS.calls, activeCall.callId), {
+      kind: "video",
+      [`media.${fieldKey(ownCallUid())}.cameraOn`]: true,
+      [`media.${fieldKey(ownCallUid())}.updatedAt`]: Date.now(),
+      updatedAt: serverTimestamp(),
+      updatedAtMs: Date.now()
+    }).catch(() => {});
+    refreshCallControls();
+    attachCallMedia();
+    showToast("Video enabled for this call.", "ok");
+  } catch (_) {
+    showToast("Camera permission is needed to switch to video.", "bad");
+    if (button) button.classList.remove("is-off");
+  }
+}
+
+async function ensureLocalVideoTrack(call) {
+  let track = call.localStream.getVideoTracks().find((item) => item.readyState !== "ended");
+  if (!track) {
+    const videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
+    track = videoStream.getVideoTracks()[0];
+    call.localStream.addTrack(track);
+  }
+  const sender = call.videoSender || call.pc?.getSenders?.().find((item) => item.track?.kind === "video") || call.pc?.getSenders?.().find((item) => !item.track);
+  if (sender?.replaceTrack) {
+    await sender.replaceTrack(track);
+    call.videoSender = sender;
+  } else if (call.pc) {
+    call.videoSender = call.pc.addTrack(track, call.localStream);
+  }
+  return track;
+}
+
+async function toggleCallHold(event) {
+  if (!activeCall) return;
+  activeCall.onHold = !activeCall.onHold;
+  activeCall.localStream.getAudioTracks().forEach((track) => { track.enabled = activeCall.micOn && !activeCall.onHold; });
+  activeCall.localStream.getVideoTracks().forEach((track) => { track.enabled = activeCall.cameraOn && !activeCall.onHold; });
+  await updateDoc(doc(db, COLLECTIONS.calls, activeCall.callId), {
+    [`media.${fieldKey(ownCallUid())}.hold`]: activeCall.onHold,
+    [`media.${fieldKey(ownCallUid())}.updatedAt`]: Date.now(),
+    updatedAt: serverTimestamp(),
+    updatedAtMs: Date.now()
+  }).catch(() => {});
+  updateHoldUi(event?.currentTarget);
+  attachCallMedia();
+}
+
+function refreshCallControls() {
+  if (!activeCall) return;
+  const overlay = document.getElementById("adnnCallOverlay");
+  if (!overlay) return;
+  const card = overlay.querySelector(".adnn-call-card");
+  card?.classList.toggle("is-audio", activeCall.kind === "audio");
+  const dragTitle = overlay.querySelector("[data-call-drag] span:first-child");
+  if (dragTitle) dragTitle.textContent = activeCall.kind === "video" ? "Video call" : "Audio call";
+  const camera = overlay.querySelector("[data-call-camera]");
+  if (camera) {
+    camera.title = activeCall.kind === "audio" ? "Switch to video" : "Camera";
+    camera.innerHTML = activeCall.kind === "video" && activeCall.cameraOn ? ICON.videoOff : ICON.video;
+    camera.classList.toggle("is-off", activeCall.kind === "video" && !activeCall.cameraOn);
+  }
+}
+
+function updateHoldUi(button = null) {
+  if (!activeCall) return;
+  const holdBtn = button || document.querySelector("#adnnCallOverlay [data-call-hold]");
+  if (holdBtn) {
+    holdBtn.innerHTML = activeCall.onHold ? ICON.play : ICON.hold;
+    holdBtn.title = activeCall.onHold ? "Resume call" : "Hold call";
+    holdBtn.classList.toggle("is-off", !!activeCall.onHold);
+  }
+  if (activeCall.onHold) updateCallStatusText("You are on hold");
+  else if (activeCall.remoteOnHold) updateCallStatusText("User is on hold");
+}
+
 function startCallTimer() {
-  if (callTimer || !activeCall) return;
-  const startedAt = Date.now();
+  if (!activeCall) return;
+  if (callTimer) return;
+  const startedAt = activeCall.acceptedAtMs || Date.now();
+  activeCall.acceptedAtMs = startedAt;
   if (activeCall.ringTimer) clearTimeout(activeCall.ringTimer);
   activeCall.ringTimer = null;
-  callTimer = setInterval(() => {
+  const tick = () => {
+    if (!activeCall) return;
+    if (activeCall.onHold) return updateCallStatusText("You are on hold");
+    if (activeCall.remoteOnHold) return updateCallStatusText("User is on hold");
     const seconds = Math.floor((Date.now() - startedAt) / 1000);
     updateCallStatusText(`${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`);
-  }, 1000);
+  };
+  tick();
+  callTimer = setInterval(tick, 1000);
 }
 
 function updateCallStatusText(text) {
@@ -1997,14 +2263,23 @@ function updateCallStatusText(text) {
 
 async function markCallMissed(callId) {
   const ref = doc(db, COLLECTIONS.calls, callId);
-  await updateDoc(ref, { status: "missed", endedReason: "timeout", updatedAt: serverTimestamp(), updatedAtMs: Date.now() }).catch(() => {});
+  const snap = await getDoc(ref).catch(() => null);
+  const data = snap?.exists() ? { callId, ...snap.data() } : { callId };
+  const endedAtMs = Date.now();
+  await updateDoc(ref, { status: "missed", endedReason: "timeout", endedAtMs, durationMs: 0, summaryWriterUid: ownCallUid(), updatedAt: serverTimestamp(), updatedAtMs: endedAtMs }).catch(() => {});
+  await writeCallSummaryMessage(activeCall?.callId === callId ? activeCall : data, "missed", "timeout", { ...data, endedAtMs, durationMs: 0 }).catch(() => {});
   if (activeCall?.callId === callId) endCall(false);
 }
 
 function endCall(updateRemote = true) {
   const call = activeCall;
   if (!call) return;
-  if (updateRemote) updateDoc(doc(db, COLLECTIONS.calls, call.callId), { status: "ended", endedReason: "hangup", updatedAt: serverTimestamp(), updatedAtMs: Date.now() }).catch(() => {});
+  const endedAtMs = Date.now();
+  const durationMs = call.acceptedAtMs ? Math.max(0, endedAtMs - call.acceptedAtMs) : 0;
+  if (updateRemote) {
+    updateDoc(doc(db, COLLECTIONS.calls, call.callId), { status: "ended", endedReason: "hangup", endedAtMs, durationMs, summaryWriterUid: ownCallUid(), updatedAt: serverTimestamp(), updatedAtMs: endedAtMs }).catch(() => {});
+    writeCallSummaryMessage(call, "ended", "hangup", { endedAtMs, durationMs }).catch(() => {});
+  }
   call.unsubs.forEach((unsub) => unsub?.());
   call.localStream?.getTracks?.().forEach((track) => track.stop());
   call.pc?.close?.();
@@ -2025,18 +2300,82 @@ function cleanupCallInbox(callId, uid) {
   }, CHAT_CONFIG.callSignalCleanupDelayMs);
 }
 
+
+async function writeCallSummaryMessage(call, status = "ended", endedReason = "hangup", data = {}) {
+  if (!call?.chatId || !call?.callId || !db) return;
+  if (call.summaryWritten && status !== "missed") return;
+  call.summaryWritten = true;
+  const endedAtMs = Number(data.endedAtMs || Date.now());
+  const acceptedAtMs = Number(data.acceptedAtMs || call.acceptedAtMs || 0);
+  const durationMs = Number(data.durationMs ?? (acceptedAtMs ? Math.max(0, endedAtMs - acceptedAtMs) : 0));
+  const callerUid = data.callerUid || call.callerUid || (call.role === "caller" ? ownCallUid() : call.remoteUid) || "";
+  const receiverUid = data.receiverUid || call.receiverUid || (call.role === "caller" ? call.remoteUid : ownCallUid()) || "";
+  const kind = data.kind || call.kind || "audio";
+  const messageRef = doc(db, COLLECTIONS.chats, call.chatId, COLLECTIONS.messages, `call_${call.callId}`);
+  const payload = {
+    type: "call",
+    system: "call",
+    callEvent: true,
+    callId: call.callId,
+    callStatus: status,
+    endedReason: endedReason || "hangup",
+    kind,
+    callerUid,
+    callerName: data.callerName || call.callerName || (callerUid === ownCallUid() ? ownDisplayName() : getChatTitle(call.chatData, "user")),
+    callerPhotoURL: data.callerPhotoURL || call.callerPhotoURL || (callerUid === ownCallUid() ? ownPhotoUrl() : getChatPhoto(call.chatData, "user")),
+    receiverUid,
+    receiverName: data.receiverName || call.receiverName || (receiverUid === ownCallUid() ? ownDisplayName() : getChatTitle(call.chatData, "user")),
+    receiverPhotoURL: data.receiverPhotoURL || call.receiverPhotoURL || (receiverUid === ownCallUid() ? ownPhotoUrl() : getChatPhoto(call.chatData, "user")),
+    durationMs,
+    createdAt: serverTimestamp(),
+    createdAtMs: endedAtMs,
+    updatedAt: serverTimestamp(),
+    updatedAtMs: endedAtMs,
+    senderUid: callerUid,
+    senderAliasUid: callerUid,
+    senderRealUid: data.callerRealUid || call.callerRealUid || (callerUid === ownCallUid() ? activeUser?.uid : callerUid),
+    senderName: data.callerName || call.callerName || "Caller",
+    readBy: uniqueClean([ownCallUid()])
+  };
+  await setDoc(messageRef, payload, { merge: true });
+
+  const remoteUnreadUid = callerUid === ownCallUid() ? receiverUid : callerUid;
+  const lastMessage = callSummaryLastMessage(payload);
+  const chatUpdate = {
+    lastMessage,
+    lastMessageKind: "call",
+    lastSenderUid: callerUid,
+    lastSenderAliasUid: callerUid,
+    updatedAt: serverTimestamp(),
+    updatedAtMs: endedAtMs
+  };
+  if (remoteUnreadUid) chatUpdate.unreadBy = { [fieldKey(remoteUnreadUid)]: increment(1) };
+  await setDoc(doc(db, COLLECTIONS.chats, call.chatId), chatUpdate, { merge: true }).catch(() => {});
+}
+
+function callSummaryLastMessage(message) {
+  const kind = message.kind === "video" ? "video" : "audio";
+  if (message.callStatus === "missed" || message.endedReason === "timeout") return `Missed ${kind} call`;
+  if (message.endedReason === "rejected") return `Declined ${kind} call`;
+  return `${kind[0].toUpperCase()}${kind.slice(1)} call · ${formatDuration(Math.round((message.durationMs || 0) / 1000))}`;
+}
+
 async function getProfile(uid, email) {
-  const client = await getDoc(doc(db, "clients", uid)).catch(() => null);
-  if (client?.exists()) return { uid, email, role: "client", ...client.data() };
-  const designer = await getDoc(doc(db, "designers", uid)).catch(() => null);
-  if (designer?.exists()) return { uid, email, role: "designer", ...designer.data() };
-  const admin = isAdminEmail(email);
-  return {
+  const enrich = (role, data = {}) => ({
     uid,
     email,
-    role: admin ? "admin" : "client",
+    role,
+    ...data,
+    photoURL: data.photoURL || data.avatarURL || data.avatar || data.profilePhotoURL || data.profileImage || activeUser?.photoURL || ""
+  });
+  const client = await getDoc(doc(db, "clients", uid)).catch(() => null);
+  if (client?.exists()) return enrich("client", client.data());
+  const designer = await getDoc(doc(db, "designers", uid)).catch(() => null);
+  if (designer?.exists()) return enrich("designer", designer.data());
+  const admin = isAdminEmail(email);
+  return enrich(admin ? "admin" : "client", {
     name: activeUser?.displayName || emailKey(email).split("@")[0] || (admin ? `${CHAT_CONFIG.brandName} Admin` : "User")
-  };
+  });
 }
 
 function getChatTitle(chat, scope = "user") {
@@ -2066,6 +2405,42 @@ function ownDisplayName() {
   return activeProfile?.name || activeProfile?.displayName || activeProfile?.designerName || activeProfile?.clientName || activeProfile?.email || activeUser?.displayName || activeUser?.email || "User";
 }
 
+
+function ownPhotoUrl() {
+  return safeImageUrl(activeProfile?.photoURL || activeProfile?.avatarURL || activeProfile?.avatar || activeProfile?.profilePhotoURL || activeProfile?.profileImage || activeUser?.photoURL || "");
+}
+
+function getChatPhoto(chat, scope = "user") {
+  if (!chat) return "";
+  const uid = getRemoteUid(chat);
+  const photos = chat.participantPhotos || chat.participantPhotoMap || chat.participantPhotoURLs || {};
+  if (uid && photos[uid]) return safeImageUrl(photos[uid]);
+  if (chat.type === "support" && (scope === "admin" || isAdminEmail(activeUser?.email))) return safeImageUrl(chat.clientPhotoURL || chat.clientPhoto || "");
+  if (chat.type === "support" && !isAdminEmail(activeUser?.email)) return safeImageUrl(chat.adminPhotoURL || CHAT_CONFIG.adminPhotoURL || "");
+  return safeImageUrl(chat.photoURL || chat.avatarURL || chat.clientPhotoURL || "");
+}
+
+function avatarMarkup(label, photoUrl = "", extraClass = "") {
+  const photo = safeImageUrl(photoUrl);
+  const cls = ["adnn-avatar", extraClass || "", photo ? "has-photo" : ""].filter(Boolean).join(" ");
+  return `<span class="${escapeAttr(cls)}" title="${escapeAttr(label || "User")}">${photo ? `<img src="${escapeAttr(photo)}" alt="${escapeAttr(label || "User")}">` : escapeHtml(initials(label))}</span>`;
+}
+
+function setAvatarNode(node, label, photoUrl = "") {
+  if (!node) return;
+  const photo = safeImageUrl(photoUrl);
+  node.classList.toggle("has-photo", !!photo);
+  node.title = label || "User";
+  node.innerHTML = photo ? `<img src="${escapeAttr(photo)}" alt="${escapeAttr(label || "User")}">` : escapeHtml(initials(label));
+}
+
+function safeImageUrl(value) {
+  const url = String(value || "").trim();
+  if (!url) return "";
+  if (/^(https?:|data:image\/)/i.test(url)) return url;
+  return "";
+}
+
 function selfUidSet() {
   return new Set(uniqueClean([activeUser?.uid, ownCallUid()]));
 }
@@ -2081,6 +2456,7 @@ function getUnreadCount(chat, scope) {
 function normalizeLastMessage(chat) {
   if (!chat) return "No messages yet.";
   if (chat.lastMessageKind === "deleted") return "Message deleted";
+  if (chat.lastMessageKind === "call") return chat.lastMessage || "Call";
   if (isCallSummaryText(chat.lastMessage)) return "Call update";
   return chat.lastMessage || "No messages yet.";
 }
@@ -2256,6 +2632,7 @@ function bindGlobalDismissers() {
 function closeMessageMenus() {
   document.querySelectorAll(".adnn-message.is-menu-open").forEach((item) => item.classList.remove("is-menu-open"));
   document.querySelectorAll("[data-reaction-palette]").forEach((item) => { item.hidden = true; });
+  closeFloatingReactionSheet();
 }
 
 function cleanupSession({ keepFirebase = false } = {}) {
@@ -2282,6 +2659,30 @@ function cleanupSession({ keepFirebase = false } = {}) {
   activeProfile = null;
   activeUser = null;
   sessionStarted = false;
+}
+
+
+function confirmDanger(title, message, confirmText = "Confirm") {
+  return new Promise((resolve) => {
+    const overlay = document.createElement("div");
+    overlay.className = "adnn-confirm-backdrop";
+    overlay.innerHTML = `
+      <div class="adnn-confirm-card" role="dialog" aria-modal="true">
+        <h3>${escapeHtml(title)}</h3>
+        <p>${escapeHtml(message)}</p>
+        <div>
+          <button type="button" data-cancel>Cancel</button>
+          <button type="button" class="is-danger" data-confirm>${escapeHtml(confirmText)}</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    const done = (value) => { overlay.remove(); resolve(value); };
+    overlay.querySelector("[data-cancel]")?.addEventListener("click", () => done(false));
+    overlay.querySelector("[data-confirm]")?.addEventListener("click", () => done(true));
+    overlay.addEventListener("click", (event) => { if (event.target === overlay) done(false); });
+    overlay.querySelector("[data-cancel]")?.focus();
+  });
 }
 
 function showToast(text, tone = "ok") {
@@ -2485,6 +2886,58 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+
+function bindNotificationPermissionPrimer() {
+  if (!("Notification" in window)) return;
+  const ask = () => {
+    if (notificationPermissionAsked || Notification.permission !== "default") return;
+    notificationPermissionAsked = true;
+    Notification.requestPermission().catch(() => {});
+    window.removeEventListener("click", ask);
+    window.removeEventListener("keydown", ask);
+  };
+  window.addEventListener("click", ask, { passive: true });
+  window.addEventListener("keydown", ask, { passive: true });
+}
+
+function notifyBrowser(title, body, icon = "") {
+  if (!("Notification" in window) || Notification.permission !== "granted") return;
+  try {
+    const note = new Notification(title, { body, icon: safeImageUrl(icon) || undefined, tag: `adnn-${title}-${body}`.slice(0, 64) });
+    setTimeout(() => note.close?.(), 6500);
+  } catch (_) {}
+}
+
+function notifyThreadUnread(chat, title, unread) {
+  const key = `thread:${chat.id}`;
+  const previous = threadUnreadCache.get(key);
+  threadUnreadCache.set(key, unread || 0);
+  if (previous === undefined || !unread || unread <= previous) return;
+  if (selfUidSet().has(chat.lastSenderUid) || selfUidSet().has(chat.lastSenderAliasUid)) return;
+  const body = normalizeLastMessage(chat);
+  showToast(`${title}: ${body}`, "ok");
+  notifyBrowser(title, body, getChatPhoto(chat, isAdminEmail(activeUser?.email) ? "admin" : "user"));
+}
+
+function notifyIncomingMessages(state, messages) {
+  if (!state || !Array.isArray(messages)) return;
+  const visible = messages.filter((msg) => shouldShowMessage(msg));
+  if (!state.messagesHydrated) {
+    visible.forEach((msg) => state.notifiedMessageIds.add(msg.id));
+    state.messagesHydrated = true;
+    return;
+  }
+  visible.forEach((msg) => {
+    if (state.notifiedMessageIds.has(msg.id)) return;
+    state.notifiedMessageIds.add(msg.id);
+    if (isMineMessage(msg)) return;
+    const title = msg.senderName || getChatTitle(state.chatData, isAdminEmail(activeUser?.email) ? "admin" : "user");
+    const body = isCallEventMessage(msg) ? callSummaryLastMessage(msg) : (msg.text || attachmentSummary(msg.attachments || []) || "New message");
+    if (document.visibilityState === "hidden") notifyBrowser(title, body, getChatPhoto(state.chatData, isAdminEmail(activeUser?.email) ? "admin" : "user"));
+    else showToast(`${title}: ${body}`, "ok");
+  });
+}
+
 function revokeObjectUrl(url) {
   if (!url) return;
   URL.revokeObjectURL(url);
@@ -2498,6 +2951,64 @@ function connectionStateText(state) {
   if (state === "failed") return "Connection failed";
   if (state === "closed") return "Call ended";
   return "Connecting...";
+}
+
+
+async function getPresenceInfo(uid) {
+  if (!uid || !db) return { online: false, seen: 0, data: {} };
+  const snap = await getDoc(doc(db, COLLECTIONS.presence, uid)).catch(() => null);
+  const data = snap?.exists() ? snap.data() : {};
+  const seen = toMillis(data.lastSeen || data.updatedAt || data.lastActiveAt);
+  const online = data.online !== false && !!seen && Date.now() - seen < CHAT_CONFIG.presenceOnlineMs;
+  return { online, seen, data };
+}
+
+function placeCallPopout(node) {
+  if (!node) return;
+  const rect = node.getBoundingClientRect();
+  const width = rect.width || Math.min(420, window.innerWidth - 20);
+  const height = rect.height || 420;
+  const left = clamp(window.innerWidth - width - 24, 10, Math.max(10, window.innerWidth - width - 10));
+  const top = clamp(76, 10, Math.max(10, window.innerHeight - height - 10));
+  node.style.left = `${left}px`;
+  node.style.top = `${top}px`;
+}
+
+function makeDraggable(node, handle) {
+  if (!node || !handle) return;
+  let startX = 0;
+  let startY = 0;
+  let baseX = 0;
+  let baseY = 0;
+  let dragging = false;
+  const move = (event) => {
+    if (!dragging) return;
+    const rect = node.getBoundingClientRect();
+    const x = clamp(baseX + event.clientX - startX, 8, window.innerWidth - rect.width - 8);
+    const y = clamp(baseY + event.clientY - startY, 8, window.innerHeight - rect.height - 8);
+    node.style.left = `${x}px`;
+    node.style.top = `${y}px`;
+  };
+  const up = () => {
+    dragging = false;
+    document.removeEventListener("pointermove", move);
+    document.removeEventListener("pointerup", up);
+  };
+  handle.addEventListener("pointerdown", (event) => {
+    if (event.button && event.button !== 0) return;
+    dragging = true;
+    const rect = node.getBoundingClientRect();
+    startX = event.clientX;
+    startY = event.clientY;
+    baseX = rect.left;
+    baseY = rect.top;
+    document.addEventListener("pointermove", move);
+    document.addEventListener("pointerup", up, { once: true });
+  });
+}
+
+function clamp(value, min, max) {
+  return Math.min(Math.max(value, min), Math.max(min, max));
 }
 
 function deepMerge(base, overrides) {
@@ -2518,8 +3029,9 @@ function injectChatStyles() {
   const style = document.createElement("style");
   style.id = "adnnChatRuntimeStylesV2";
   style.textContent = `
+    :root { --adnn-primary:${t.primary}; --adnn-primary2:${t.primary2}; --adnn-danger:${t.danger}; --adnn-success:${t.success}; }
     .adnn-chat-app, .adnn-chat-app * { box-sizing:border-box; }
-    .adnn-chat-app [hidden], .adnn-call-overlay [hidden] { display:none !important; }
+    .adnn-chat-app [hidden], .adnn-call-popout [hidden], .adnn-confirm-backdrop [hidden] { display:none !important; }
     .adnn-chat-app { --adnn-primary:${t.primary}; --adnn-primary2:${t.primary2}; --adnn-danger:${t.danger}; --adnn-success:${t.success}; --adnn-bg:${t.bg}; --adnn-panel:${t.panel}; --adnn-soft:${t.soft}; --adnn-line:${t.line}; --adnn-text:${t.text}; --adnn-muted:${t.muted}; width:100%; height:100%; min-height:0; color:var(--adnn-text); font:inherit; }
     .adnn-chat-shell { width:100%; height:100%; min-width:0; min-height:0; display:grid; gap:0; }
     body.chat-view-active .adnn-chat-app, body.chat-view-active .adnn-chat-shell, body.chat-view-active .adnn-chat-layout { height:100% !important; min-height:0 !important; }
@@ -2559,7 +3071,8 @@ function injectChatStyles() {
     .adnn-thread-side { display:grid; gap:6px; justify-items:end; align-items:center; }
     .adnn-thread-side time { color:rgba(255,255,255,.38); font-size:10px; }
     .adnn-thread-side b { min-width:19px; height:19px; padding:0 5px; border-radius:999px; display:grid; place-items:center; background:var(--adnn-danger); color:#fff; font-size:10px; }
-    .adnn-avatar { width:44px; height:44px; border-radius:16px; display:grid; place-items:center; background:linear-gradient(145deg,var(--adnn-primary),var(--adnn-primary2)); color:#fff; font-size:12px; font-weight:700; flex:0 0 auto; box-shadow:inset 0 1px 0 rgba(255,255,255,.18); position:relative; }
+    .adnn-avatar { width:44px; height:44px; border-radius:16px; display:grid; place-items:center; background:linear-gradient(145deg,var(--adnn-primary),var(--adnn-primary2)); color:#fff; font-size:12px; font-weight:700; flex:0 0 auto; box-shadow:inset 0 1px 0 rgba(255,255,255,.18); position:relative; overflow:hidden; }
+    .adnn-avatar img { width:100%; height:100%; object-fit:cover; display:block; border-radius:inherit; }
     .adnn-avatar.is-pending:after { content:""; position:absolute; right:-1px; bottom:-1px; width:12px; height:12px; border:2px solid #0b0b10; border-radius:50%; background:#f1c40f; }
     .adnn-chat-room { min-width:0; min-height:0; width:100%; height:100%; position:relative; overflow:hidden; isolation:isolate; }
     .adnn-chat-welcome, .adnn-chat-empty { height:100%; min-height:180px; display:grid; place-items:center; align-content:center; gap:8px; text-align:center; color:rgba(255,255,255,.48); padding:28px; }
@@ -2607,8 +3120,9 @@ function injectChatStyles() {
     .adnn-message-actions button span { font-size:9px; line-height:1; }
     .adnn-message-actions .is-danger { color:#ff6b5c; }
     .adnn-message-actions .is-warn { color:#ffc66d; }
-    .adnn-reaction-palette { position:absolute; left:0; bottom:calc(100% + 8px); display:flex; gap:3px; padding:6px; border-radius:999px; background:rgba(8,8,12,.98); border:1px solid rgba(255,255,255,.12); box-shadow:0 18px 50px rgba(0,0,0,.38); }
-    .adnn-reaction-palette button { min-width:32px; min-height:32px; border-radius:50%; font-size:17px; }
+    .adnn-reaction-palette { display:none !important; }
+    .adnn-floating-reaction-sheet { position:fixed; z-index:2147483620; display:flex; gap:5px; max-width:calc(100vw - 16px); overflow-x:auto; padding:7px; border-radius:999px; background:rgba(8,8,12,.98); border:1px solid rgba(255,255,255,.14); box-shadow:0 18px 50px rgba(0,0,0,.42); backdrop-filter:blur(18px); }
+    .adnn-floating-reaction-sheet button { width:36px; height:36px; border:0; border-radius:50%; background:rgba(255,255,255,.08); font-size:19px; cursor:pointer; flex:0 0 auto; }
     .adnn-reactions { position:absolute; right:10px; bottom:-15px; border:1px solid rgba(255,255,255,.1); border-radius:999px; background:#09090c; color:#fff; padding:2px 7px; font-size:12px; cursor:pointer; display:flex; gap:4px; align-items:center; }
     .adnn-reactions small { font-size:9px; opacity:.7; }
     .adnn-reply-preview, .adnn-reply-bar { display:grid; grid-template-columns:3px minmax(0,1fr) auto; gap:8px; align-items:center; margin-bottom:7px; border-radius:12px; background:rgba(0,0,0,.24); padding:8px; border:0; color:#fff; text-align:left; width:100%; }
@@ -2669,12 +3183,14 @@ function injectChatStyles() {
     .adnn-room-shell.is-dragging .adnn-drop-layer { display:grid; }
     .adnn-scroll-bottom { position:absolute; right:18px; bottom:calc(var(--composer) + 18px); width:42px; height:42px; border:0; border-radius:50%; display:grid; place-items:center; background:rgba(255,255,255,.12); color:#fff; z-index:10; transform:rotate(-90deg); cursor:pointer; }
     .adnn-scroll-bottom svg { width:18px; height:18px; }
-    .adnn-call-overlay { position:fixed; inset:0; z-index:2147483600; display:grid; place-items:center; background:rgba(0,0,0,.76); backdrop-filter:blur(20px); padding:14px; }
-    .adnn-incoming-call, .adnn-call-card { width:min(540px, calc(100vw - 28px)); border:1px solid rgba(255,255,255,.12); border-radius:28px; background:linear-gradient(145deg, rgba(20,20,26,.96), rgba(5,5,8,.98)); color:#fff; padding:22px; text-align:center; box-shadow:0 30px 100px rgba(0,0,0,.5); }
+    .adnn-call-popout { position:fixed; z-index:2147483600; width:min(430px, calc(100vw - 20px)); max-height:calc(100svh - 20px); overflow:auto; touch-action:none; }
+    .adnn-incoming-call, .adnn-call-card { width:100%; border:1px solid rgba(255,255,255,.12); border-radius:28px; background:linear-gradient(145deg, rgba(20,20,26,.97), rgba(5,5,8,.99)); color:#fff; padding:14px; text-align:center; box-shadow:0 30px 100px rgba(0,0,0,.5); backdrop-filter:blur(20px); }
+    .adnn-call-drag-handle { height:34px; margin:-4px -2px 10px; padding:0 10px; border-radius:16px; display:flex; align-items:center; justify-content:space-between; color:rgba(255,255,255,.58); background:rgba(255,255,255,.055); cursor:grab; user-select:none; font-size:11px; }
+    .adnn-call-drag-handle:active { cursor:grabbing; }
     .adnn-incoming-call .adnn-avatar { margin:0 auto; width:64px; height:64px; border-radius:22px; }
     .adnn-incoming-call h3 { margin:14px 0 4px; }
     .adnn-incoming-call p { color:rgba(255,255,255,.58); margin:0 0 20px; }
-    .adnn-incoming-call div, .adnn-call-controls { display:flex; justify-content:center; gap:12px; }
+    .adnn-incoming-call > div:last-child, .adnn-call-controls { display:flex; justify-content:center; gap:12px; }
     .adnn-incoming-call button, .adnn-call-controls button { width:52px; height:52px; border:0; border-radius:50%; display:grid; place-items:center; color:#fff; background:rgba(255,255,255,.08); cursor:pointer; }
     .adnn-incoming-call button svg, .adnn-call-controls button svg { width:21px; height:21px; }
     .adnn-incoming-call .is-accept { background:var(--adnn-success); }
@@ -2691,6 +3207,22 @@ function injectChatStyles() {
     .adnn-call-meta { text-align:left; margin:0 0 14px; }
     .adnn-call-meta strong, .adnn-call-meta small { display:block; }
     .adnn-call-meta small { color:rgba(255,255,255,.55); margin-top:3px; }
+    .adnn-call-hold-badge { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); padding:8px 12px; border-radius:999px; background:rgba(0,0,0,.62); color:#fff; font-size:12px; backdrop-filter:blur(10px); z-index:3; }
+    .adnn-message-row.is-call { justify-content:center; }
+    .adnn-message-row.is-call .adnn-message { max-width:min(92%, 360px); background:rgba(255,255,255,.06); border-radius:18px; }
+    .adnn-call-message { display:flex; align-items:center; gap:10px; text-align:left; }
+    .adnn-call-message > span { width:36px; height:36px; border-radius:50%; display:grid; place-items:center; background:rgba(39,45,207,.25); color:#fff; flex:0 0 auto; }
+    .adnn-call-message svg { width:18px; height:18px; }
+    .adnn-call-message strong { display:block; font-size:13px; }
+    .adnn-call-message small { display:block; color:rgba(255,255,255,.55); margin-top:2px; font-size:11px; }
+    .adnn-call-message.is-missed > span { background:rgba(255,38,2,.18); color:#ff9588; }
+    .adnn-confirm-backdrop { position:fixed; inset:0; z-index:2147483630; display:grid; place-items:center; padding:18px; background:rgba(0,0,0,.56); backdrop-filter:blur(14px); }
+    .adnn-confirm-card { width:min(390px, 100%); border:1px solid rgba(255,255,255,.12); border-radius:24px; background:linear-gradient(145deg, rgba(22,22,28,.98), rgba(5,5,8,.99)); color:#fff; padding:20px; box-shadow:0 30px 100px rgba(0,0,0,.5); }
+    .adnn-confirm-card h3 { margin:0 0 8px; font-size:18px; }
+    .adnn-confirm-card p { margin:0 0 18px; color:rgba(255,255,255,.62); line-height:1.45; }
+    .adnn-confirm-card div { display:flex; justify-content:flex-end; gap:10px; }
+    .adnn-confirm-card button { border:0; border-radius:14px; padding:11px 14px; background:rgba(255,255,255,.08); color:#fff; cursor:pointer; }
+    .adnn-confirm-card button.is-danger { background:var(--adnn-danger); }
     .adnn-chat-toast { position:fixed; left:50%; bottom:28px; transform:translateX(-50%); z-index:2147483640; padding:10px 14px; border-radius:999px; background:#111; color:#fff; border:1px solid rgba(255,255,255,.1); box-shadow:0 16px 50px rgba(0,0,0,.3); max-width:min(92vw, 560px); text-align:center; }
     .adnn-chat-toast.is-bad { border-color:rgba(255,80,70,.35); background:#25100f; }
     .adnn-chat-toast.is-warn { border-color:rgba(255,198,109,.35); background:#211909; }
@@ -2761,6 +3293,8 @@ function injectChatStyles() {
       .adnn-composer-panel { grid-template-columns:repeat(2, minmax(0, 1fr)); }
       .adnn-call-stage { grid-template-columns:1fr; aspect-ratio:9/12; }
       .adnn-call-card.is-audio .adnn-call-stage { aspect-ratio:1/1; }
+      .adnn-call-popout { width:calc(100vw - 16px); max-height:calc(100svh - 16px); }
+      .adnn-floating-reaction-sheet { left:8px !important; right:8px !important; width:auto; justify-content:flex-start; border-radius:22px; }
       .adnn-chat-app .adnn-room-shell { grid-template-rows:64px minmax(0,1fr) auto !important; --head:64px; --composer:74px; }
       .adnn-chat-app .adnn-room-shell > .adnn-room-head { padding:9px 8px !important; gap:7px !important; min-width:0 !important; overflow:visible !important; }
       .adnn-chat-app .adnn-room-shell > .adnn-room-head .adnn-room-title { min-width:0 !important; }
@@ -2784,7 +3318,7 @@ function injectChatStyles() {
 
 // Expose a tiny debug surface without coupling the site to internals.
 window.ADNN_CHAT_RUNTIME = Object.freeze({
-  version: "2.1.1-room-fit",
+  version: "2.2.0-calls-reactions-notifications",
   refresh: refreshAllConnections,
   get activeUser() { return activeUser ? { uid: activeUser.uid, email: activeUser.email } : null; },
   get activeCall() { return activeCall ? { callId: activeCall.callId, kind: activeCall.kind, role: activeCall.role } : null; },

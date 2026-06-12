@@ -348,26 +348,10 @@ function appFrameMarkup({ title, subtitle, listId, roomId, searchable = false, s
   `;
   return `
     <div class="adnn-chat-shell" data-chat-shell>
-      <div class="adnn-chat-outerbar">
-        <button type="button" class="adnn-outer-btn" data-chat-home title="Home" aria-label="Home">${ICON.home}</button>
-        <div class="adnn-outer-title">
-          <strong>${escapeHtml(title)}</strong>
-          <span data-connection-label>Starting...</span>
-        </div>
-        <button type="button" class="adnn-outer-btn" data-chat-refresh title="Reconnect" aria-label="Reconnect">${ICON.check}</button>
-        <button type="button" class="adnn-outer-btn" data-chat-menu title="Menu" aria-label="Menu">${ICON.menu}</button>
-        <div class="adnn-outer-menu" data-outer-menu hidden>
-          <button type="button" data-menu-action="refresh">Refresh connection</button>
-          <button type="button" data-menu-action="close-room">Close current thread</button>
-          <button type="button" data-menu-action="home">Home</button>
-          <small>Firestore cache: ${escapeHtml(offlinePersistenceState)}</small>
-        </div>
-      </div>
       <div class="adnn-chat-layout ${single ? "is-single" : ""} ${admin ? "is-admin" : ""}" data-chat-layout>
         ${listMarkup}
         <section class="adnn-chat-room" id="${escapeAttr(roomId)}">
           <div class="adnn-chat-welcome">
-            <div class="adnn-chat-logo">a</div>
             <h3>${single ? "Opening chat" : "Select a chat"}</h3>
             <p>${single ? "Messages will appear here." : "Messages, calls, files, replies, reactions, and read receipts will appear here."}</p>
           </div>
@@ -378,23 +362,6 @@ function appFrameMarkup({ title, subtitle, listId, roomId, searchable = false, s
 }
 
 function bindFrameChrome(root, listId, roomId) {
-  root.querySelector("[data-chat-home]")?.addEventListener("click", goHome);
-  root.querySelector("[data-chat-refresh]")?.addEventListener("click", refreshAllConnections);
-  root.querySelector("[data-chat-menu]")?.addEventListener("click", (event) => {
-    event.stopPropagation();
-    const menu = root.querySelector("[data-outer-menu]");
-    if (menu) menu.hidden = !menu.hidden;
-  });
-  root.querySelector("[data-outer-menu]")?.addEventListener("click", (event) => {
-    const btn = event.target.closest("[data-menu-action]");
-    if (!btn) return;
-    const action = btn.dataset.menuAction;
-    if (action === "refresh") refreshAllConnections();
-    if (action === "home") goHome();
-    if (action === "close-room") closeRoomOnMobile(roomId);
-    root.querySelector("[data-outer-menu]").hidden = true;
-  });
-
   const search = document.getElementById(`${listId}Search`);
   search?.addEventListener("input", () => filterThreadList(listId, search.value));
 }
@@ -639,7 +606,6 @@ function roomMarkup(roomId) {
     <div class="adnn-room-shell" data-room="${escapeAttr(roomId)}">
       <header class="adnn-room-head" role="toolbar" aria-label="Chat tools">
         <button type="button" class="adnn-back-btn" data-chat-back aria-label="Back">${ICON.back}</button>
-        <button type="button" class="adnn-home-inline" data-chat-home aria-label="Home">${ICON.home}</button>
         <span class="adnn-avatar" data-chat-avatar>AD</span>
         <div class="adnn-room-title">
           <strong data-chat-title>Opening chat...</strong>
@@ -655,7 +621,6 @@ function roomMarkup(roomId) {
           <button type="button" data-room-menu-action="refresh">Reconnect</button>
           <button type="button" data-room-menu-action="scroll-bottom">Go to latest</button>
           <button type="button" data-room-menu-action="clear-reply">Clear reply</button>
-          <button type="button" data-room-menu-action="home">Home</button>
         </div>
       </header>
       <div class="adnn-room-searchbar" data-room-searchbar hidden>
@@ -710,8 +675,6 @@ function bindRoomControls(state) {
   const scroller = shell.querySelector("[data-message-scroll]");
 
   shell.querySelector("[data-chat-back]")?.addEventListener("click", () => closeRoomOnMobile(state.roomId));
-  shell.querySelector("[data-chat-home]")?.addEventListener("click", goHome);
-
   shell.querySelectorAll("[data-call]").forEach((btn) => {
     btn.addEventListener("click", () => {
       if (state.chatId.startsWith("passive_")) return showToast("Please select an active conversation first.", "warn");
@@ -732,7 +695,6 @@ function bindRoomControls(state) {
     if (action === "refresh") refreshAllConnections();
     if (action === "scroll-bottom") scrollToBottom(state, true);
     if (action === "clear-reply") { state.replyTo = null; renderReplyBar(state); }
-    if (action === "home") goHome();
     shell.querySelector("[data-room-menu]").hidden = true;
   });
 
@@ -1725,7 +1687,7 @@ async function startCall(kind, chatId, chatData) {
     watchActiveCall(callId);
   } catch (error) {
     endCall(false);
-    showToast("Camera or microphone permission is needed.", "bad");
+    showToast(readableFirebaseError(error) || "Camera or microphone permission is needed.", "bad");
   }
 }
 
@@ -1782,6 +1744,7 @@ async function acceptCall(callId, call) {
     renderCallOverlay();
     await setupPeerConnection(activeCall, false);
     await activeCall.pc.setRemoteDescription(new RTCSessionDescription(call.offer));
+    await flushRemoteIceCandidates(activeCall);
     const answer = await activeCall.pc.createAnswer();
     await activeCall.pc.setLocalDescription(answer);
     await updateDoc(doc(db, COLLECTIONS.calls, callId), {
@@ -1795,7 +1758,7 @@ async function acceptCall(callId, call) {
     await setDoc(doc(db, COLLECTIONS.callInbox, ownCallUid()), { status: "accepted", callId, updatedAt: serverTimestamp() }, { merge: true });
     watchActiveCall(callId);
   } catch (error) {
-    showToast("Could not answer the call.", "bad");
+    showToast(readableFirebaseError(error) || "Could not answer the call.", "bad");
     updateDoc(doc(db, COLLECTIONS.calls, callId), { status: "ended", endedReason: "answer_failed", updatedAt: serverTimestamp(), updatedAtMs: Date.now() }).catch(() => {});
   }
 }
@@ -1814,6 +1777,7 @@ function createCallState(callId, role, kind, stream, chatId, chatData, remoteUid
     cameraOn: kind === "video",
     remoteCameraOn: false,
     micOn: true,
+    pendingCandidates: [],
     startedAt: Date.now(),
     ringTimer: null,
     unsubs: []
@@ -1852,9 +1816,30 @@ async function setupPeerConnection(call, caller) {
   const remotePath = caller ? COLLECTIONS.answerCandidates : COLLECTIONS.offerCandidates;
   resilientSnapshot(`callCandidates:${call.callId}:${remotePath}`, collection(db, COLLECTIONS.calls, call.callId, remotePath), (snapshot) => {
     snapshot.docChanges().forEach((change) => {
-      if (change.type === "added") pc.addIceCandidate(new RTCIceCandidate(change.doc.data())).catch(() => {});
+      if (change.type === "added") addRemoteIceCandidate(call, change.doc.data());
     });
   }, () => {}, call.unsubs);
+}
+
+async function addRemoteIceCandidate(call, candidateData) {
+  if (!call?.pc || !candidateData) return;
+  try {
+    const candidate = new RTCIceCandidate(candidateData);
+    if (!call.pc.remoteDescription || !call.pc.remoteDescription.type) {
+      call.pendingCandidates = call.pendingCandidates || [];
+      call.pendingCandidates.push(candidate);
+      return;
+    }
+    await call.pc.addIceCandidate(candidate);
+  } catch (_) {}
+}
+
+async function flushRemoteIceCandidates(call) {
+  if (!call?.pc || !call.pendingCandidates?.length || !call.pc.remoteDescription?.type) return;
+  const queued = call.pendingCandidates.splice(0);
+  for (const candidate of queued) {
+    try { await call.pc.addIceCandidate(candidate); } catch (_) {}
+  }
 }
 
 function watchActiveCall(callId) {
@@ -1863,6 +1848,7 @@ function watchActiveCall(callId) {
     const data = snapshot.data();
     if (activeCall.role === "caller" && data.status === "accepted" && data.answer && activeCall.pc?.signalingState === "have-local-offer") {
       await activeCall.pc.setRemoteDescription(new RTCSessionDescription(data.answer)).catch(() => {});
+      await flushRemoteIceCandidates(activeCall);
     }
     const remoteMedia = data.media?.[fieldKey(activeCall.remoteUid)] || data.media?.[activeCall.remoteUid];
     activeCall.remoteCameraOn = !!remoteMedia?.cameraOn;
@@ -2499,8 +2485,8 @@ function injectChatStyles() {
     .adnn-chat-app, .adnn-chat-app * { box-sizing:border-box; }
     .adnn-chat-app [hidden], .adnn-call-overlay [hidden] { display:none !important; }
     .adnn-chat-app { --adnn-primary:${t.primary}; --adnn-primary2:${t.primary2}; --adnn-danger:${t.danger}; --adnn-success:${t.success}; --adnn-bg:${t.bg}; --adnn-panel:${t.panel}; --adnn-soft:${t.soft}; --adnn-line:${t.line}; --adnn-text:${t.text}; --adnn-muted:${t.muted}; width:100%; min-height:0; color:var(--adnn-text); font:inherit; }
-    .adnn-chat-shell { width:100%; min-width:0; display:grid; gap:10px; }
-    .adnn-chat-outerbar { min-height:52px; display:flex; align-items:center; gap:10px; padding:8px 10px; border:1px solid var(--adnn-line); border-radius:20px; background:linear-gradient(145deg, rgba(22,22,28,.88), rgba(4,4,7,.92)); position:relative; box-shadow:0 16px 50px rgba(0,0,0,.22); }
+    .adnn-chat-shell { width:100%; min-width:0; min-height:0; display:grid; gap:0; }
+    .adnn-chat-outerbar { display:none !important; }
     .adnn-outer-title { flex:1; min-width:0; display:grid; gap:2px; }
     .adnn-outer-title strong, .adnn-outer-title span { overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
     .adnn-outer-title strong { font-size:14px; font-weight:650; letter-spacing:-.02em; }
@@ -2514,7 +2500,7 @@ function injectChatStyles() {
     .adnn-outer-menu button, .adnn-room-menu button { width:100%; border:0; border-radius:12px; padding:10px 11px; display:flex; color:#fff; background:transparent; cursor:pointer; text-align:left; }
     .adnn-outer-menu button:hover, .adnn-room-menu button:hover { background:rgba(255,255,255,.08); }
     .adnn-outer-menu small { display:block; padding:8px 10px 4px; color:var(--adnn-muted); }
-    .adnn-chat-layout { height:clamp(620px, calc(100svh - 185px), 880px); min-height:0; display:grid; grid-template-columns:minmax(260px, 360px) minmax(0,1fr); overflow:hidden; border:1px solid var(--adnn-line); border-radius:26px; background:linear-gradient(145deg, rgba(22,22,28,.94), rgba(4,4,7,.98)); box-shadow:0 24px 90px rgba(0,0,0,.34); }
+    .adnn-chat-layout { height:clamp(640px, calc(100svh - 112px), 900px); min-height:0; display:grid; grid-template-columns:minmax(270px, 380px) minmax(0,1fr); overflow:hidden; border:1px solid var(--adnn-line); border-radius:26px; background:linear-gradient(145deg, rgba(22,22,28,.94), rgba(4,4,7,.98)); box-shadow:0 24px 90px rgba(0,0,0,.34); }
     .adnn-chat-layout.is-single { grid-template-columns:1fr; }
     .adnn-chat-thread-panel { min-width:0; display:grid; grid-template-rows:auto 1fr; border-right:1px solid rgba(255,255,255,.08); background:rgba(255,255,255,.025); }
     .adnn-chat-thread-head { min-height:82px; padding:14px; display:grid; gap:10px; align-content:center; border-bottom:1px solid rgba(255,255,255,.07); }
@@ -2550,7 +2536,7 @@ function injectChatStyles() {
     .adnn-room-title strong { font-size:15px; font-weight:650; }
     .adnn-room-title small { font-size:12px; color:rgba(255,255,255,.5); }
     .adnn-room-title small.is-online { color:var(--adnn-success); }
-    .adnn-room-actions { display:flex; align-items:center; gap:7px; flex:0 0 auto; }
+    .adnn-room-actions { margin-left:auto; display:flex; align-items:center; gap:7px; flex:0 0 auto; }
     .adnn-room-searchbar { position:absolute; top:var(--head); left:0; right:0; height:52px; padding:8px 14px; display:flex; gap:8px; background:rgba(6,6,9,.96); border-bottom:1px solid rgba(255,255,255,.08); z-index:90; }
     .adnn-room-searchbar input { flex:1; border:1px solid rgba(255,255,255,.1); border-radius:14px; background:#020203; color:#fff; padding:0 12px; outline:0; }
     .adnn-room-searchbar button { width:36px; border:0; border-radius:12px; background:rgba(255,255,255,.08); color:#fff; display:grid; place-items:center; }
@@ -2674,6 +2660,55 @@ function injectChatStyles() {
     .adnn-chat-toast.is-warn { border-color:rgba(255,198,109,.35); background:#211909; }
     .adnn-chat-toast.is-ok { border-color:rgba(83,215,105,.25); }
 
+    @media (min-width:761px) {
+      body.chat-view-active .portal-top,
+      body.chat-view-active .top,
+      body.chat-view-active .dashboard-header,
+      body.chat-view-active #dynamicPortalSub,
+      body.chat-view-active #dynamicPortalHeading { display:none !important; }
+      body.chat-view-active > .shell > main,
+      body.chat-view-active main.admin-main-viewport,
+      body.chat-view-active .admin-main-viewport,
+      body.chat-view-active .dashboard-main { height:100vh !important; min-height:100vh !important; overflow:hidden !important; padding:0 !important; border-radius:0 !important; background:transparent !important; border:0 !important; box-shadow:none !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important; }
+      body.chat-view-active > .shell > main > .view.active,
+      body.chat-view-active #chats_view.admin-view-panel-container { width:100% !important; max-width:none !important; height:100vh !important; min-height:100vh !important; margin:0 !important; padding:0 !important; overflow:hidden !important; border:0 !important; border-radius:0 !important; background:transparent !important; box-shadow:none !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important; }
+      body.chat-view-active > .shell > main > .view.active > .lead { display:none !important; }
+      body.chat-view-active #directChatMount,
+      body.chat-view-active #clientChatMount,
+      body.chat-view-active #adminChatMount,
+      body.chat-view-active #chats_view.adnn-chat-app { width:100% !important; height:100% !important; min-height:0 !important; margin:0 !important; }
+      body.chat-view-active .adnn-chat-shell { height:100% !important; min-height:0 !important; padding:16px 10px 14px 10px !important; grid-template-rows:minmax(0,1fr); }
+      body.chat-view-active .adnn-chat-layout { height:100% !important; max-height:none !important; min-height:0 !important; border-radius:24px !important; grid-template-columns:minmax(340px, 38%) minmax(0,1fr); }
+      body.chat-view-active .adnn-chat-layout.is-single { grid-template-columns:1fr; }
+      body.chat-view-active .adnn-chat-thread-head { min-height:174px; padding:38px 42px 20px; }
+      body.chat-view-active .adnn-chat-thread-head strong { font-size:24px; line-height:1.1; }
+      body.chat-view-active .adnn-chat-search { height:52px; border-radius:20px; padding:0 18px; }
+      body.chat-view-active .adnn-chat-search input { font-size:16px; }
+      body.chat-view-active .adnn-chat-thread-list { padding:14px 36px 24px; }
+      body.chat-view-active .adnn-thread { min-height:86px; border-radius:22px; grid-template-columns:60px minmax(0,1fr) auto; padding:14px 16px; }
+      body.chat-view-active .adnn-thread .adnn-avatar { width:60px; height:60px; border-radius:20px; }
+      body.chat-view-active .adnn-thread-copy strong { font-size:18px; }
+      body.chat-view-active .adnn-thread-copy small { font-size:16px; }
+      body.chat-view-active .adnn-room-shell { --head:96px; --composer:116px; }
+      body.chat-view-active .adnn-room-head { padding:18px 24px; gap:14px; }
+      body.chat-view-active .adnn-room-head .adnn-avatar { width:54px; height:54px; border-radius:18px; }
+      body.chat-view-active .adnn-room-title { display:grid !important; visibility:visible !important; opacity:1 !important; }
+      body.chat-view-active .adnn-room-title strong { font-size:18px; }
+      body.chat-view-active .adnn-room-title small { font-size:13px; }
+      body.chat-view-active .adnn-room-actions { gap:10px; }
+      body.chat-view-active .adnn-room-actions .adnn-call-btn { width:58px; height:58px; background:rgba(255,255,255,.075); }
+      body.chat-view-active .adnn-room-actions .adnn-call-btn svg { width:23px; height:23px; }
+      body.chat-view-active .adnn-message-scroll { padding:22px 26px !important; }
+      body.chat-view-active .adnn-composer-wrap { padding:12px 18px 18px; }
+      body.chat-view-active .adnn-composer { gap:12px; }
+      body.chat-view-active .adnn-plus-btn,
+      body.chat-view-active .adnn-attach-btn,
+      body.chat-view-active .adnn-emoji-btn,
+      body.chat-view-active .adnn-voice-btn,
+      body.chat-view-active .adnn-send-btn { width:58px; height:58px; }
+      body.chat-view-active .adnn-composer textarea { min-height:58px; border-radius:30px; padding:17px 20px; font-size:16px; }
+    }
+
     @media (max-width:900px) {
       .adnn-room-actions { gap:5px; }
       .adnn-call-btn { width:39px; height:39px; }
@@ -2683,7 +2718,7 @@ function injectChatStyles() {
     @media (max-width:760px) {
       .adnn-chat-app { display:block !important; min-height:0 !important; }
       .adnn-chat-outerbar { border-radius:0; border-left:0; border-right:0; margin:0; }
-      .adnn-chat-layout { grid-template-columns:1fr; height:calc(100svh - 54px) !important; min-height:0 !important; overflow:hidden !important; border-radius:0; border-left:0; border-right:0; }
+      .adnn-chat-layout { grid-template-columns:1fr; height:100svh !important; min-height:0 !important; overflow:hidden !important; border-radius:0; border-left:0; border-right:0; }
       .adnn-chat-thread-panel { border-right:0; }
       .adnn-chat-layout .adnn-chat-room { display:none; }
       .adnn-chat-layout.is-single .adnn-chat-room { display:block; height:100%; }
@@ -2691,7 +2726,7 @@ function injectChatStyles() {
       .adnn-chat-layout.is-room-open .adnn-chat-thread-panel { display:none; }
       .adnn-chat-layout.is-room-open .adnn-chat-room, body.adnn-chat-mobile-lock .adnn-chat-room { display:block; height:100svh !important; min-height:0 !important; overflow:hidden !important; }
       .adnn-room-shell { height:100svh !important; --head:64px; --composer:82px; }
-      .adnn-back-btn, .adnn-home-inline { display:grid; }
+      .adnn-back-btn { display:grid; }
       .adnn-room-head { padding:10px 8px; gap:7px; }
       .adnn-room-head .adnn-avatar { width:38px; height:38px; border-radius:14px; }
       .adnn-room-title strong { font-size:14px; }
@@ -2726,7 +2761,7 @@ function injectChatStyles() {
 
 // Expose a tiny debug surface without coupling the site to internals.
 window.ADNN_CHAT_RUNTIME = Object.freeze({
-  version: "2.0.0",
+  version: "2.1.0",
   refresh: refreshAllConnections,
   get activeUser() { return activeUser ? { uid: activeUser.uid, email: activeUser.email } : null; },
   get activeCall() { return activeCall ? { callId: activeCall.callId, kind: activeCall.kind, role: activeCall.role } : null; },

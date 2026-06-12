@@ -1203,7 +1203,7 @@
       }
     @media (max-width:900px) {
 	      .mobile-header-bar { display:flex; }
-	      body.chat-view-active .mobile-header-bar { display:none !important; }
+	      body.adnn-chat-mobile-lock .mobile-header-bar { display:none !important; }
 	      body > .shell { grid-template-columns:1fr !important; }
 	      body.sidebar-collapsed > .shell { grid-template-columns:1fr !important; }
 	      body > .shell > aside {
@@ -1627,6 +1627,7 @@
 	      document.querySelectorAll(".view").forEach((section) => section.classList.toggle("active", section.id === selected));
 	      document.querySelectorAll("[data-view-link]").forEach((link) => link.classList.toggle("active", link.dataset.viewLink === selected));
 	      document.body.classList.toggle("chat-view-active", selected === "chat" || selected === "admin-support");
+	      if (selected !== "chat" && selected !== "admin-support") document.body.classList.remove("adnn-chat-mobile-lock");
 	      if (location.hash.replace("#", "") !== selected) history.replaceState(null, "", `#${selected}`);
 	      const headingMap = {
 	        notifications: ["Private Account", "Notifications"],
@@ -2385,6 +2386,6 @@
 	    }
 	  </script>
   <script type="module" src="firebase-account.js" onerror="window.adnnAccountModuleFallback && window.adnnAccountModuleFallback()"></script>
-  <script type="module" src="firebase-chat.js?v=20260612-mobile-chat-admin"></script>
+  <script type="module" src="firebase-chat.js?v=20260612-thread-lock-admin-rewrite"></script>
 </body>
 </html>

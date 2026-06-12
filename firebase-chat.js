@@ -1206,6 +1206,8 @@ function shouldShowMessage(message) {
   if (!message) return false;
   const deletedFor = Array.isArray(message.deletedFor) ? message.deletedFor : [];
   if (Array.from(selfUidSet()).some((uid) => deletedFor.includes(uid))) return false;
+  if (message.callEvent || message.system === "call" || message.type === "call") return false;
+  if (isCallSummaryText(message.text || message.body || message.content || message.message || message.lastMessage || "")) return false;
   return true;
 }
 
@@ -2694,6 +2696,35 @@ function injectChatStyles() {
     .adnn-chat-toast.is-warn { border-color:rgba(255,198,109,.35); background:#211909; }
     .adnn-chat-toast.is-ok { border-color:rgba(83,215,105,.25); }
 
+
+    /* ADNN hard layout guard: keep the room header, messages, and composer inside the chat room on every screen. */
+    .adnn-chat-app .adnn-chat-layout { width:100% !important; max-width:100% !important; align-self:stretch !important; justify-self:stretch !important; }
+    .adnn-chat-app .adnn-chat-room { contain:layout paint !important; transform:none !important; }
+    .adnn-chat-app .adnn-room-shell {
+      position:absolute !important; inset:0 !important; width:100% !important; max-width:100% !important; height:100% !important;
+      display:grid !important; grid-template-rows:var(--head) minmax(0,1fr) auto !important; grid-template-columns:minmax(0,1fr) !important;
+      overflow:hidden !important; transform:none !important; isolation:isolate !important;
+    }
+    .adnn-chat-app .adnn-room-shell > .adnn-room-head {
+      position:relative !important; inset:auto !important; grid-row:1 !important; grid-column:1 / -1 !important; width:100% !important; max-width:none !important;
+      min-width:0 !important; height:var(--head) !important; min-height:var(--head) !important; flex:0 0 auto !important;
+      display:flex !important; align-items:center !important; justify-content:flex-start !important; overflow:visible !important; transform:none !important;
+      padding:12px 14px !important; z-index:95 !important;
+    }
+    .adnn-chat-app .adnn-room-shell > .adnn-room-head .adnn-room-title { flex:1 1 auto !important; min-width:0 !important; max-width:100% !important; }
+    .adnn-chat-app .adnn-room-shell > .adnn-room-head .adnn-room-actions { margin-left:auto !important; flex:0 0 auto !important; position:relative !important; right:auto !important; top:auto !important; transform:none !important; }
+    .adnn-chat-app .adnn-room-shell > .adnn-room-searchbar { top:var(--head) !important; left:0 !important; right:0 !important; width:auto !important; }
+    .adnn-chat-app .adnn-room-shell > .adnn-message-scroll {
+      position:relative !important; top:auto !important; left:auto !important; right:auto !important; bottom:auto !important; grid-row:2 !important; grid-column:1 / -1 !important;
+      width:100% !important; min-width:0 !important; height:100% !important; min-height:0 !important; max-height:none !important; overflow-y:auto !important; padding:18px !important;
+    }
+    .adnn-chat-app .adnn-room-shell > .adnn-room-searchbar:not([hidden]) ~ .adnn-message-scroll { padding-top:70px !important; }
+    .adnn-chat-app .adnn-room-shell > .adnn-composer-wrap {
+      position:relative !important; left:auto !important; right:auto !important; bottom:auto !important; grid-row:3 !important; grid-column:1 / -1 !important;
+      width:100% !important; min-width:0 !important; min-height:var(--composer) !important; flex:0 0 auto !important; transform:none !important;
+    }
+    .adnn-chat-app .adnn-room-shell > .adnn-scroll-bottom { bottom:calc(var(--composer) + 18px) !important; }
+
     @media (max-width:900px) {
       .adnn-room-actions { gap:5px; }
       .adnn-call-btn { width:39px; height:39px; }
@@ -2730,11 +2761,19 @@ function injectChatStyles() {
       .adnn-composer-panel { grid-template-columns:repeat(2, minmax(0, 1fr)); }
       .adnn-call-stage { grid-template-columns:1fr; aspect-ratio:9/12; }
       .adnn-call-card.is-audio .adnn-call-stage { aspect-ratio:1/1; }
+      .adnn-chat-app .adnn-room-shell { grid-template-rows:64px minmax(0,1fr) auto !important; --head:64px; --composer:74px; }
+      .adnn-chat-app .adnn-room-shell > .adnn-room-head { padding:9px 8px !important; gap:7px !important; min-width:0 !important; overflow:visible !important; }
+      .adnn-chat-app .adnn-room-shell > .adnn-room-head .adnn-room-title { min-width:0 !important; }
+      .adnn-chat-app .adnn-room-shell > .adnn-room-head .adnn-room-actions { gap:5px !important; margin-left:auto !important; }
+      .adnn-chat-app .adnn-room-shell > .adnn-message-scroll { padding:12px 10px !important; }
+      .adnn-chat-app .adnn-room-shell > .adnn-composer-wrap { padding:7px 8px max(8px, env(safe-area-inset-bottom)) !important; }
     }
 
     @media (max-width:420px) {
-      .adnn-room-actions .adnn-call-btn { width:34px; height:34px; }
-      .adnn-room-actions .adnn-call-btn svg { width:16px; height:16px; }
+      .adnn-room-head .adnn-avatar { width:34px !important; height:34px !important; border-radius:12px !important; }
+      .adnn-room-actions .adnn-call-btn { width:32px !important; height:32px !important; }
+      .adnn-room-actions .adnn-call-btn svg { width:15px !important; height:15px !important; }
+      .adnn-room-title small { display:none !important; }
       .adnn-message { max-width:91%; }
       .adnn-attach-btn { display:none; }
       .adnn-doc-bubble { min-width:min(240px, 74vw); }
@@ -2745,7 +2784,7 @@ function injectChatStyles() {
 
 // Expose a tiny debug surface without coupling the site to internals.
 window.ADNN_CHAT_RUNTIME = Object.freeze({
-  version: "2.1.0",
+  version: "2.1.1-room-fit",
   refresh: refreshAllConnections,
   get activeUser() { return activeUser ? { uid: activeUser.uid, email: activeUser.email } : null; },
   get activeCall() { return activeCall ? { callId: activeCall.callId, kind: activeCall.kind, role: activeCall.role } : null; },

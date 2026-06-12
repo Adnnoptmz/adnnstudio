@@ -1,3 +1,9 @@
+/*
+  firebase-chat-new.js
+  Full replacement chat runtime for ADNN/SIHAMCO site.
+  Requires window.ADNN_FIREBASE_CONFIG, Firebase Auth, Firestore, Storage, and HTTPS for media/calls.
+  Collections used: chats, chats/{chatId}/messages, chats/{chatId}/typing, presence, calls, callInbox, clients, designers.
+*/
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import {
@@ -18,6 +24,8 @@ import {
   serverTimestamp,
   increment,
   arrayUnion,
+  enableNetwork,
+  disableNetwork,
   deleteField
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
@@ -29,12 +37,20 @@ const CALL_RING_TIMEOUT_MS = 60000;
 const CALL_SIGNAL_CLEANUP_DELAY_MS = 4000;
 const TYPING_IDLE_MS = 1400;
 const PRESENCE_MS = 25000;
+const SNAPSHOT_RETRY_MS = 2500;
+const LONG_PRESS_MS = 520;
+const MESSAGE_EMOJIS = ["👍","❤️","😂","🔥","✅","🙏","👏","😍","😮","😢"];
 
 const firebaseConfig = window.ADNN_FIREBASE_CONFIG;
 const app = firebaseConfig ? (getApps()[0] || initializeApp(firebaseConfig)) : null;
 const auth = app ? getAuth(app) : null;
 const db = app ? getFirestore(app) : null;
 const storage = app ? getStorage(app) : null;
+
+if (db) {
+  window.addEventListener("online", () => enableNetwork(db).catch(() => {}));
+  window.addEventListener("offline", () => disableNetwork(db).catch(() => {}));
+}
 
 let activeUser = null;
 let activeProfile = null;
@@ -160,7 +176,7 @@ function watchChatThreads(scope, listId, roomId, options = {}) {
   const ref = scope === "admin"
     ? collection(db, "chats")
     : query(collection(db, "chats"), where("participantUids", "array-contains", activeUser.uid));
-  chatListUnsub = onSnapshot(ref, (snapshot) => {
+  chatListUnsub = resilientSnapshot(ref, (snapshot) => {
     if (!list) return;
     let chats = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
     if (options.directOnly) chats = chats.filter((chat) => chat.type === "direct");
@@ -183,7 +199,7 @@ function watchAdminChatThreads(listId, roomId) {
   if (chatListUnsub) chatListUnsub();
   const list = document.getElementById(listId);
   const room = document.getElementById(roomId);
-  chatListUnsub = onSnapshot(collection(db, "chats"), (snapshot) => {
+  chatListUnsub = resilientSnapshot(collection(db, "chats"), (snapshot) => {
     if (!list) return;
     const chats = snapshot.docs
       .map((item) => ({ id: item.id, ...item.data() }))
@@ -297,10 +313,12 @@ function renderPassiveRoom(roomId, title, message, placeholder) {
             ${ICON.clip}
             <input type="file" data-file-input multiple>
           </label>
+          <button type="button" class="adnn-emoji-btn" data-emoji-toggle>😊</button>
           <textarea data-text rows="1" maxlength="1800" placeholder="${escapeAttr(placeholder)}"></textarea>
           <button type="button" class="adnn-voice-btn" data-voice>${ICON.mic}</button>
           <button type="submit" class="adnn-send-btn" data-send hidden>${ICON.send}</button>
         </form>
+          <div class="adnn-emoji-panel" data-emoji-panel hidden>${MESSAGE_EMOJIS.map((e) => `<button type="button" data-emoji-insert="${e}">${e}</button>`).join("")}</div>
       </footer>
     </div>
   `;
@@ -357,11 +375,17 @@ function roomMarkup(roomId) {
     <div class="adnn-room-shell" data-room="${roomId}">
       <div class="adnn-room-head" role="toolbar" aria-label="Chat tools">
         <button type="button" class="adnn-back-btn" data-chat-back>${ICON.back}</button>
+        <button type="button" class="adnn-home-btn" data-chat-home title="Home">⌂</button>
         <span class="adnn-avatar" data-chat-avatar>AD</span>
         <div class="adnn-room-title">
           <strong data-chat-title>Opening chat...</strong>
           <small data-chat-presence>Checking status...</small>
         </div>
+        <button type="button" class="adnn-menu-btn" data-chat-menu title="Menu">⋮</button>
+      </div>
+      <div class="adnn-chat-menu" data-room-menu hidden>
+        <button type="button" data-room-action="search">Search in chat</button>
+        <button type="button" data-room-action="clearLocal">Clear chat for me</button>
       </div>
       <div class="adnn-call-dock" data-call-dock>
         <button type="button" class="adnn-call-btn" data-call="audio" title="Audio call" aria-label="Audio call">${ICON.phone}</button>
@@ -384,10 +408,12 @@ function roomMarkup(roomId) {
             ${ICON.clip}
             <input type="file" data-file-input multiple>
           </label>
+          <button type="button" class="adnn-emoji-btn" data-emoji-toggle>😊</button>
           <textarea data-text rows="1" maxlength="1800" placeholder="Message"></textarea>
           <button type="button" class="adnn-voice-btn" data-voice>${ICON.mic}</button>
           <button type="submit" class="adnn-send-btn" data-send hidden>${ICON.send}</button>
         </form>
+          <div class="adnn-emoji-panel" data-emoji-panel hidden>${MESSAGE_EMOJIS.map((e) => `<button type="button" data-emoji-insert="${e}">${e}</button>`).join("")}</div>
       </footer>
     </div>
   `;
@@ -436,6 +462,11 @@ function bindRoomControls(state) {
     renderReplyBar(state);
   });
   voiceBtn?.addEventListener("click", () => toggleVoiceRecording(state));
+  shell.querySelector("[data-chat-home]")?.addEventListener("click", () => { location.href = "/"; });
+  shell.querySelector("[data-chat-menu]")?.addEventListener("click", () => { const m=shell.querySelector("[data-room-menu]"); if (m) m.hidden=!m.hidden; });
+  shell.querySelectorAll("[data-room-action]").forEach((btn) => btn.addEventListener("click", () => handleRoomAction(state, btn.dataset.roomAction)));
+  shell.querySelector("[data-emoji-toggle]")?.addEventListener("click", () => { const p=shell.querySelector("[data-emoji-panel]"); if (p) p.hidden=!p.hidden; });
+  shell.querySelectorAll("[data-emoji-insert]").forEach((btn) => btn.addEventListener("click", () => { text.value += btn.dataset.emojiInsert; text.dispatchEvent(new Event("input")); text.focus(); }));
   ["dragenter", "dragover"].forEach((type) => {
     shell.addEventListener(type, (event) => {
       event.preventDefault();
@@ -452,7 +483,7 @@ function bindRoomControls(state) {
 }
 
 function watchRoomMeta(state) {
-  const unsub = onSnapshot(doc(db, "chats", state.chatId), (snapshot) => {
+  const unsub = resilientSnapshot(doc(db, "chats", state.chatId), (snapshot) => {
     if (!snapshot.exists()) return;
     state.chatData = { id: state.chatId, ...snapshot.data() };
     const title = getChatTitle(state.chatData, isAdminEmail(activeUser.email) ? "admin" : "user");
@@ -477,7 +508,7 @@ function watchPresence(state) {
     if (status) status.textContent = "Available";
     return;
   }
-  state.presenceUnsub = onSnapshot(doc(db, "presence", uid), (snapshot) => {
+  state.presenceUnsub = resilientSnapshot(doc(db, "presence", uid), (snapshot) => {
     const data = snapshot.exists() ? snapshot.data() : {};
     const seen = toMillis(data.lastSeen || data.updatedAt);
     const online = data.online !== false && seen && Date.now() - seen < 75000;
@@ -488,7 +519,7 @@ function watchPresence(state) {
 }
 
 function watchTyping(state) {
-  const unsub = onSnapshot(collection(db, "chats", state.chatId, "typing"), (snapshot) => {
+  const unsub = resilientSnapshot(collection(db, "chats", state.chatId, "typing"), (snapshot) => {
     const typing = snapshot.docs
       .map((item) => ({ id: item.id, ...item.data() }))
       .filter((item) => item.id !== activeUser.uid && item.isTyping && Date.now() - Number(item.updatedAt || 0) < 5000);
@@ -507,7 +538,7 @@ function watchTyping(state) {
 
 function watchMessages(state) {
   const q = query(collection(db, "chats", state.chatId, "messages"), orderBy("createdAt", "asc"), limit(MSG_LIMIT));
-  const unsub = onSnapshot(q, (snapshot) => {
+  const unsub = resilientSnapshot(q, (snapshot) => {
     const messages = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
     renderMessages(state, messages);
     markMessagesRead(state, messages);
@@ -524,7 +555,7 @@ function renderMessages(state, messages) {
   const scroller = shell.querySelector("[data-message-scroll]");
   if (!scroller) return;
   scroller.innerHTML = "";
-  const visibleMessages = messages.filter((message) => !isHiddenSystemMessage(message));
+  const visibleMessages = messages.filter((message) => !isHiddenSystemMessage(message) && !(message.hiddenFor || []).includes(activeUser.uid));
   if (!visibleMessages.length) {
     scroller.innerHTML = `<div class="adnn-chat-empty">No messages yet.</div>`;
     return;
@@ -538,8 +569,7 @@ function renderMessages(state, messages) {
     bubble.innerHTML = `
       ${!mine ? `<strong class="adnn-message-name">${escapeHtml(message.senderName || "User")}</strong>` : ""}
       ${renderReplyPreview(message)}
-      ${renderAttachments(message)}
-      ${message.text ? `<p>${escapeHtml(message.text)}</p>` : ""}
+      ${message.deletedForAll ? `<p class="adnn-deleted-message">This message was deleted</p>` : `${renderAttachments(message)}${message.text ? `<p>${escapeHtml(message.text)}</p>` : ""}`}
       <div class="adnn-message-meta">
         <time>${formatTime(message.createdAt)}</time>
         ${mine ? `<span class="adnn-ticks ${Array.isArray(message.readBy) && message.readBy.length > 1 ? "is-read" : ""}">✓✓</span>` : ""}
@@ -552,10 +582,13 @@ function renderMessages(state, messages) {
         <button type="button" data-action="react" data-emoji="😂">😂</button>
         <button type="button" data-action="react" data-emoji="🔥">🔥</button>
         <button type="button" data-action="react" data-emoji="✅">✅</button>
-        ${mine ? `<button type="button" data-action="delete" class="is-danger">Delete</button>` : ""}
+        <button type="button" data-action="copy">Copy</button>
+        <button type="button" data-action="deleteMe" class="is-danger">Delete for me</button>
+        ${mine && !message.deletedForAll ? `<button type="button" data-action="deleteAll" class="is-danger">Delete for all</button>` : ""}
       </div>
     `;
     bubble.addEventListener("click", (event) => handleMessageAction(event, state, message));
+    bindLongPressMenu(bubble);
     row.appendChild(bubble);
     scroller.appendChild(row);
   });
@@ -583,7 +616,67 @@ function handleMessageAction(event, state, message) {
     roomShell(state)?.querySelector("[data-text]")?.focus();
   }
   if (action === "react") toggleReaction(state.chatId, message, btn.dataset.emoji);
-  if (action === "delete") deleteDoc(doc(db, "chats", state.chatId, "messages", message.id)).catch(() => {});
+  if (action === "copy") navigator.clipboard?.writeText(message.text || "").then(() => showToast("Copied"));
+  if (action === "deleteMe") deleteMessageForMe(state.chatId, message.id);
+  if (action === "deleteAll") deleteMessageForAll(state.chatId, message.id);
+}
+
+function bindLongPressMenu(bubble) {
+  let timer = null;
+  const open = () => bubble.classList.add("is-menu-open");
+  const clear = () => { if (timer) clearTimeout(timer); timer = null; };
+  bubble.addEventListener("pointerdown", () => { clear(); timer = setTimeout(open, LONG_PRESS_MS); });
+  ["pointerup","pointerleave","pointercancel"].forEach((type) => bubble.addEventListener(type, clear));
+}
+
+async function deleteMessageForMe(chatId, messageId) {
+  await updateDoc(doc(db, "chats", chatId, "messages", messageId), { hiddenFor: arrayUnion(activeUser.uid) }).catch(() => showToast("Could not delete for you."));
+}
+
+async function deleteMessageForAll(chatId, messageId) {
+  await updateDoc(doc(db, "chats", chatId, "messages", messageId), {
+    deletedForAll: true,
+    text: "",
+    attachments: [],
+    mediaUrl: deleteField(),
+    mediaName: deleteField(),
+    mediaType: deleteField(),
+    updatedAt: serverTimestamp()
+  }).catch(() => showToast("Could not delete for everyone."));
+}
+
+function handleRoomAction(state, action) {
+  const shell = roomShell(state);
+  shell?.querySelector("[data-room-menu]")?.setAttribute("hidden", "");
+  if (action === "search") {
+    const term = prompt("Search this chat");
+    if (!term) return;
+    const lower = term.toLowerCase();
+    shell.querySelectorAll(".adnn-message").forEach((node) => node.classList.toggle("is-search-hit", node.innerText.toLowerCase().includes(lower)));
+  }
+  if (action === "clearLocal" && confirm("Clear visible messages only for you?")) {
+    shell.querySelectorAll(".adnn-message").forEach((node) => node.classList.add("is-menu-open"));
+    showToast("Use Delete for me on messages you want hidden.");
+  }
+}
+
+function resilientSnapshot(ref, next, error, options = {}) {
+  let stopped = false;
+  let unsub = null;
+  const listen = () => {
+    if (stopped) return;
+    try {
+      unsub = onSnapshot(ref, next, (err) => {
+        error?.(err);
+        if (!stopped) setTimeout(listen, options.retryMs || SNAPSHOT_RETRY_MS);
+      });
+    } catch (err) {
+      error?.(err);
+      if (!stopped) setTimeout(listen, options.retryMs || SNAPSHOT_RETRY_MS);
+    }
+  };
+  listen();
+  return () => { stopped = true; unsub?.(); };
 }
 
 async function sendCurrentMessage(state) {
@@ -845,7 +938,7 @@ function markOffline() {
 
 function watchIncomingCalls() {
   incomingCallUnsub?.();
-  incomingCallUnsub = onSnapshot(doc(db, "callInbox", ownCallUid()), async (snapshot) => {
+  incomingCallUnsub = resilientSnapshot(doc(db, "callInbox", ownCallUid()), async (snapshot) => {
     if (!snapshot.exists() || activeCall) return;
     const inbox = snapshot.data();
     if (inbox.status !== "ringing" || !inbox.callId) return;
@@ -1005,7 +1098,7 @@ async function setupPeerConnection(call, caller) {
   };
 
   const remotePath = caller ? "answerCandidates" : "offerCandidates";
-  call.unsubs.push(onSnapshot(collection(db, "calls", call.callId, remotePath), (snapshot) => {
+  call.unsubs.push(resilientSnapshot(collection(db, "calls", call.callId, remotePath), (snapshot) => {
     snapshot.docChanges().forEach((change) => {
       if (change.type === "added") pc.addIceCandidate(new RTCIceCandidate(change.doc.data())).catch(() => {});
     });
@@ -1013,7 +1106,7 @@ async function setupPeerConnection(call, caller) {
 }
 
 function watchActiveCall(callId) {
-  const unsub = onSnapshot(doc(db, "calls", callId), async (snapshot) => {
+  const unsub = resilientSnapshot(doc(db, "calls", callId), async (snapshot) => {
     if (!snapshot.exists() || !activeCall || activeCall.callId !== callId) return;
     const data = snapshot.data();
     if (activeCall.role === "caller" && data.status === "accepted" && data.answer && activeCall.pc.signalingState === "have-local-offer") {
@@ -1364,14 +1457,18 @@ function injectChatStyles() {
     .adnn-chat-logo { width:58px; height:58px; border-radius:18px; display:grid; place-items:center; background:#272dcf; color:#fff; font-size:36px; font-weight:700; }
     .adnn-chat-app .adnn-room-shell { position:absolute !important; inset:0 !important; height:100% !important; min-height:0 !important; max-height:100% !important; overflow:hidden !important; background:radial-gradient(circle at 92% 6%, rgba(39,45,207,.16), transparent 32%), #050506; --adnn-head-h:70px; --adnn-composer-h:78px; }
     .adnn-chat-app .adnn-room-shell > .adnn-room-head { position:absolute !important; top:0 !important; left:0 !important; right:0 !important; height:70px !important; min-height:70px !important; display:flex !important; align-items:center !important; gap:12px; padding:12px 120px 12px 16px; border-bottom:1px solid rgba(255,255,255,.08); background:rgba(10,10,14,.94); backdrop-filter:blur(18px); z-index:90 !important; visibility:visible !important; opacity:1 !important; transform:none !important; }
-    .adnn-chat-app .adnn-room-shell > .adnn-call-dock { position:absolute !important; top:14px !important; right:16px !important; z-index:160 !important; display:flex !important; align-items:center !important; gap:8px !important; visibility:visible !important; opacity:1 !important; pointer-events:auto !important; }
+    .adnn-chat-app .adnn-room-shell > .adnn-call-dock { position:absolute !important; top:14px !important; right:64px !important; z-index:160 !important; display:flex !important; align-items:center !important; gap:8px !important; visibility:visible !important; opacity:1 !important; pointer-events:auto !important; }
     .adnn-back-btn { display:none; }
+    .adnn-home-btn, .adnn-menu-btn { width:38px; height:38px; border:0; border-radius:50%; display:grid; place-items:center; color:#fff; background:rgba(255,255,255,.06); cursor:pointer; font-size:20px; flex:0 0 auto; }
+    .adnn-chat-menu { position:absolute; top:62px; right:14px; z-index:220; min-width:180px; padding:8px; border-radius:16px; background:#09090c; border:1px solid rgba(255,255,255,.12); box-shadow:0 18px 70px rgba(0,0,0,.45); }
+    .adnn-chat-menu button { width:100%; border:0; background:transparent; color:#fff; text-align:left; padding:10px; border-radius:10px; cursor:pointer; }
+    .adnn-chat-menu button:hover { background:rgba(255,255,255,.08); }
     .adnn-chat-app .adnn-room-shell > .adnn-room-head .adnn-room-title { flex:1; min-width:0; display:grid !important; gap:2px; }
     .adnn-room-title strong, .adnn-room-title small { overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
     .adnn-room-title strong { font-size:15px; font-weight:500; }
     .adnn-room-title small { font-size:12px; color:rgba(255,255,255,.5); }
     .adnn-room-title small.is-online { color:#53d769; }
-    .adnn-call-btn, .adnn-back-btn, .adnn-attach-btn, .adnn-voice-btn, .adnn-send-btn, .adnn-composer button { width:42px; height:42px; border:0; border-radius:50%; display:grid; place-items:center; color:#fff; background:rgba(255,255,255,.06); cursor:pointer; transition:.2s ease; flex:0 0 auto; }
+    .adnn-call-btn, .adnn-back-btn, .adnn-home-btn, .adnn-menu-btn, .adnn-attach-btn, .adnn-emoji-btn, .adnn-voice-btn, .adnn-send-btn, .adnn-composer button { width:42px; height:42px; border:0; border-radius:50%; display:grid; place-items:center; color:#fff; background:rgba(255,255,255,.06); cursor:pointer; transition:.2s ease; flex:0 0 auto; }
     .adnn-chat-app .adnn-room-shell .adnn-call-btn { display:grid !important; visibility:visible !important; opacity:1 !important; pointer-events:auto !important; background:rgba(255,255,255,.08); box-shadow:inset 0 1px 0 rgba(255,255,255,.08); }
     .adnn-chat-app .adnn-room-shell > .adnn-room-head .adnn-back-btn { display:none !important; }
     .adnn-call-btn:hover, .adnn-attach-btn:hover, .adnn-voice-btn:hover { background:rgba(255,255,255,.1); transform:translateY(-1px); }
@@ -1427,6 +1524,10 @@ function injectChatStyles() {
     .adnn-file-chip small { color:rgba(255,255,255,.5); font-size:11px; }
     .adnn-file-chip button, .adnn-reply-bar button, .adnn-voice-preview button { width:28px; height:28px; border-radius:50%; border:0; background:rgba(255,255,255,.08); color:#fff; display:grid; place-items:center; cursor:pointer; }
     .adnn-file-chip button svg, .adnn-reply-bar button svg, .adnn-voice-preview button svg { width:14px; height:14px; }
+    .adnn-emoji-panel { position:absolute; left:58px; bottom:70px; display:grid; grid-template-columns:repeat(5, 38px); gap:6px; padding:10px; border-radius:18px; background:#09090c; border:1px solid rgba(255,255,255,.1); box-shadow:0 18px 60px rgba(0,0,0,.35); z-index:130; }
+    .adnn-emoji-panel button { width:38px; height:38px; border:0; border-radius:12px; background:rgba(255,255,255,.07); cursor:pointer; font-size:18px; }
+    .adnn-deleted-message { color:rgba(255,255,255,.48); font-style:italic; }
+    .adnn-message.is-search-hit { outline:2px solid #8d96ff; }
     .adnn-voice-preview { display:flex; align-items:center; gap:10px; padding:0 0 9px; color:#fff; }
     .adnn-voice-preview-icon { width:34px; height:34px; border-radius:50%; display:grid; place-items:center; background:#272dcf; flex:0 0 auto; }
     .adnn-voice-preview-icon svg { width:16px; height:16px; }
@@ -1479,8 +1580,8 @@ function injectChatStyles() {
       .adnn-message { max-width:86%; }
       .adnn-chat-app .adnn-room-shell > .adnn-message-scroll { top:62px !important; bottom:76px !important; padding:12px 10px; }
       .adnn-chat-app .adnn-room-shell > .adnn-room-head { height:62px !important; min-height:62px !important; padding:10px 100px 10px 10px; gap:8px; }
-      .adnn-chat-app .adnn-room-shell > .adnn-call-dock { top:11px !important; right:10px !important; gap:6px !important; }
-      .adnn-call-btn, .adnn-back-btn, .adnn-attach-btn, .adnn-voice-btn, .adnn-send-btn { width:39px; height:39px; }
+      .adnn-chat-app .adnn-room-shell > .adnn-call-dock { top:11px !important; right:54px !important; gap:6px !important; }
+      .adnn-call-btn, .adnn-back-btn, .adnn-home-btn, .adnn-menu-btn, .adnn-attach-btn, .adnn-emoji-btn, .adnn-voice-btn, .adnn-send-btn { width:39px; height:39px; }
       .adnn-chat-app .adnn-room-shell > .adnn-composer-wrap { min-height:76px !important; padding:8px 8px max(8px, env(safe-area-inset-bottom)); }
       .adnn-composer textarea { font-size:16px; }
       .is-mine .adnn-message-actions, .is-peer .adnn-message-actions { top:auto; bottom:calc(100% + 8px); left:0; right:auto; transform:translateY(4px) scale(.96); max-width:calc(100vw - 28px); overflow:auto; }

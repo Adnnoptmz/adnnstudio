@@ -789,7 +789,7 @@
       .mobile-header-bar {
         display: flex;
       }
-      body.chat-view-active .mobile-header-bar {
+      body.adnn-chat-mobile-lock .mobile-header-bar {
         display: none !important;
       }
 
@@ -1299,6 +1299,7 @@
         }
 
         document.body.classList.toggle("chat-view-active", targetViewId === "chats_view");
+        if (targetViewId !== "chats_view") document.body.classList.remove("adnn-chat-mobile-lock");
         const targetHeaderData = headingMap[targetViewId] || headingMap["composer_view"];
         const headerSub = document.getElementById("dynamicPortalSub");
         const headerMain = document.getElementById("dynamicPortalHeading");
@@ -1846,6 +1847,6 @@
       }
     });
   </script>
-  <script type="module" src="firebase-chat.js?v=20260612-mobile-chat-admin"></script>
+  <script type="module" src="firebase-chat.js?v=20260612-thread-lock-admin-rewrite"></script>
 </body>
 </html>

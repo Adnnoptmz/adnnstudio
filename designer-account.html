@@ -578,6 +578,39 @@
     }
 
   </style>
+
+<style id="adnn-settings-upgrade-css">
+  .settings-grid { display:grid; gap:14px; margin-top:28px; }
+  .settings-card.adnn-setting-card, .adnn-setting-card { position:relative; overflow:hidden; }
+  .adnn-switch { width:52px; height:30px; border-radius:999px; display:inline-grid; align-items:center; padding:3px; background:rgba(255,255,255,.12); border:1px solid var(--line); cursor:pointer; flex:0 0 auto; transition:.2s ease; }
+  .adnn-switch input { position:absolute; opacity:0; pointer-events:none; }
+  .adnn-switch i { width:22px; height:22px; border-radius:50%; background:#fff; box-shadow:0 8px 20px rgba(0,0,0,.22); transform:translateX(0); transition:transform .22s cubic-bezier(.16,1,.3,1), background .2s ease; }
+  .adnn-switch input:checked + i { transform:translateX(22px); background:#fff; }
+  .adnn-switch:has(input:checked) { background:#272dcf; border-color:#272dcf; }
+  .adnn-os-card { min-height:144px; align-items:stretch !important; background:radial-gradient(circle at 88% 8%, rgba(39,45,207,.28), transparent 32%), linear-gradient(145deg, rgba(255,255,255,.08), rgba(255,255,255,.025)) !important; cursor:pointer; isolation:isolate; }
+  .adnn-os-orb { width:68px; height:68px; border-radius:24px; display:grid; place-items:center; background:linear-gradient(145deg,#3036e8,#1419a8); color:#fff; font-size:36px; font-weight:800; box-shadow:inset 0 1px 0 rgba(255,255,255,.24), 0 24px 70px rgba(39,45,207,.32); transform:translateZ(0); transition:transform .28s cubic-bezier(.16,1,.3,1); }
+  .adnn-os-card.is-playing .adnn-os-orb { transform:rotate(-8deg) scale(1.08); }
+  .adnn-os-meta { display:grid; gap:6px; min-width:0; }
+  .adnn-os-version { font-family:var(--font-mono); color:#5360ff !important; letter-spacing:.18em; text-transform:uppercase; }
+  .adnn-os-play { min-width:44px; min-height:44px; border:1px solid var(--line); border-radius:999px; display:grid; place-items:center; background:rgba(255,255,255,.06); color:var(--text); font-size:18px; }
+  .adnn-os-spark { position:absolute; width:8px; height:8px; border-radius:50%; background:#5360ff; pointer-events:none; z-index:2; animation:adnnSpark .72s ease forwards; }
+  @keyframes adnnSpark { to { transform:translate(var(--x), var(--y)) scale(.1); opacity:0; } }
+  :root.adnn-reduce-motion *, :root.adnn-reduce-motion *::before, :root.adnn-reduce-motion *::after { animation:none !important; transition:none !important; scroll-behavior:auto !important; }
+  .adnn-card-maker-form { display:grid; gap:14px; margin-top:22px; }
+  .adnn-card-maker-form .grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+  .adnn-card-maker-result { margin-top:14px; min-height:20px; color:var(--muted); font-family:var(--font-mono); font-size:12px; }
+  .adnn-live-sheet-shell { margin-top:22px; display:grid; gap:12px; }
+  .adnn-live-sheet-toolbar { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+  .adnn-live-sheet-toolbar button, .adnn-card-maker-form button { border:0; border-radius:999px; min-height:42px; padding:0 18px; background:#272dcf; color:#fff; cursor:pointer; }
+  .adnn-live-sheet-table-wrap { max-height:min(68svh, 720px); overflow:auto; border:1px solid var(--line); border-radius:22px; background:rgba(255,255,255,.035); }
+  .adnn-live-sheet-table { width:100%; border-collapse:separate; border-spacing:0; min-width:760px; }
+  .adnn-live-sheet-table th, .adnn-live-sheet-table td { padding:12px 14px; border-bottom:1px solid var(--line); text-align:left; vertical-align:top; font-size:12px; }
+  .adnn-live-sheet-table th { position:sticky; top:0; z-index:2; background:rgba(12,12,16,.96); color:var(--text); font-weight:600; }
+  .adnn-live-sheet-table td { color:var(--muted); line-height:1.45; }
+  :root.light-theme .adnn-live-sheet-table th { background:rgba(255,255,255,.96); }
+  @media (max-width:720px) { .adnn-card-maker-form .grid { grid-template-columns:1fr; } .settings-card { gap:14px; } .adnn-os-card { display:grid !important; grid-template-columns:68px minmax(0,1fr) auto; align-items:center !important; } }
+</style>
+
 </head>
 <body class="auth-pending locked">
   <div class="auth-gate">
@@ -748,48 +781,34 @@
       <section id="admin-support" class="view">
         <div id="clientChatMount" class="adnn-designer-chat-panel" style="margin-top:0;"></div>
       </section>
-      <section id="settings" class="view">
-        <p class="kicker">Settings</p>
-        <h1>Settings</h1>
-        <p class="lead">Tune the workspace view and quick access tools.</p>
-        <div class="settings-grid">
-          <div class="settings-card">
-            <div>
-              <strong>Theme</strong>
-              <span>Switch between the dark studio view and a brighter workspace.</span>
-            </div>
-            <button type="button" class="settings-inline-btn" id="settingsInlineThemeToggleBtn" aria-label="Toggle theme">
-              <svg class="moon-icon" viewBox="0 0 24 24"><path d="M21 14.5A7.5 7.5 0 0 1 9.5 3 9 9 0 1 0 21 14.5Z"/></svg>
-              <svg class="sun-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
-            </button>
-          </div>
-          <div class="settings-card">
-            <div>
-              <strong>Chat style</strong>
-              <span>Private chat uses the same workspace glass style as the studio portal.</span>
-            </div>
-            <a href="#chat" class="apple-home-btn" data-view-link="chat" aria-label="Open chat">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
-            </a>
-          </div>
-          <div class="settings-card">
-            <div>
-              <strong>Reminder calendar</strong>
-              <span>Open your personal reminder calendar.</span>
-            </div>
-            <a href="#calendar" class="apple-home-btn" data-view-link="calendar" aria-label="Open calendar">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4" width="17" height="17" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M8 2.5v4M16 2.5v4M3.5 10h9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-            </a>
-          </div>
-        </div>
-      </section>
+      
+<section id="settings" class="view">
+  <p class="kicker">Settings</p>
+  <h1>Settings</h1>
+  <p class="lead">Control your designer workspace comfort, chat look, alerts, and motion.</p>
+  <div class="settings-grid">
+    <div class="settings-card adnn-setting-card">
+      <div><strong>Workspace theme</strong><span>Switch between dark workspace and clean light mode.</span></div>
+      <button type="button" class="settings-inline-btn" id="settingsInlineThemeToggleBtn" aria-label="Toggle theme" title="Toggle theme">
+        <svg class="moon-icon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        <svg class="sun-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      </button>
+    </div>
+    <label class="settings-card adnn-setting-card"><div><strong>Chat white mode</strong><span>Toggle only the messenger between dark and bright white.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_chat_light_mode"><i></i></span></label>
+    <label class="settings-card adnn-setting-card"><div><strong>In-app message alerts</strong><span>Show messenger-style cards and live unread numbers inside the portal.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_inapp_notifications"><i></i></span></label>
+    <label class="settings-card adnn-setting-card"><div><strong>Browser notifications</strong><span>Allow system notifications for new messages and missed calls.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_browser_notifications"><i></i></span></label>
+    <label class="settings-card adnn-setting-card"><div><strong>Message sound</strong><span>Play a soft tone for new chat and missed call alerts.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_message_sounds"><i></i></span></label>
+    <label class="settings-card adnn-setting-card"><div><strong>Reduce motion</strong><span>Calm animations for a lighter, accessibility-friendly dashboard.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_reduce_motion"><i></i></span></label>
+    <div class="settings-card adnn-os-card" role="button" tabindex="0"><span class="adnn-os-orb">a</span><div class="adnn-os-meta"><strong>ADNN OS</strong><span class="adnn-os-version">Version 2.3 Fire</span><span>Touch this card for a small playful system reaction.</span></div><span class="adnn-os-play" data-os-play-label>tap</span></div>
+  </div>
+</section>
     </main>
   </div>
 
   <script src="firebase-config.js"></script>
   <script src="designer-users.js"></script>
   <script type="module" src="firebase-designer-auth.js"></script>
-  <script type="module" src="firebase-chat.js?v=20260612-calls-reactions-notifications"></script>
+  <script type="module" src="firebase-chat.js?v=20260612-message-card-settings-sheet"></script>
   <script type="module" src="firebase-designer-items.js"></script>
   <script>
     const userKey = "adnnDesignerUser";
@@ -1182,5 +1201,61 @@
     hydrateUser();
     setView(location.hash.replace("#", ""));
   </script>
+
+<script id="adnn-settings-upgrade-js">
+(function setupAdnnSettingsUpgrade(){
+  const defaults = {
+    adnn_chat_light_mode: "false",
+    adnn_inapp_notifications: "true",
+    adnn_browser_notifications: "true",
+    adnn_message_sounds: "true",
+    adnn_reduce_motion: "false"
+  };
+  function bool(key){
+    const value = localStorage.getItem(key);
+    return (value === null ? defaults[key] : value) === "true";
+  }
+  function apply(){
+    document.documentElement.classList.toggle("adnn-chat-light", bool("adnn_chat_light_mode"));
+    document.documentElement.classList.toggle("adnn-reduce-motion", bool("adnn_reduce_motion"));
+    document.querySelectorAll("[data-adnn-setting]").forEach((input) => {
+      input.checked = bool(input.dataset.adnnSetting);
+    });
+    window.dispatchEvent(new CustomEvent("adnn-settings-changed"));
+  }
+  document.addEventListener("change", (event) => {
+    const input = event.target.closest("[data-adnn-setting]");
+    if (!input) return;
+    localStorage.setItem(input.dataset.adnnSetting, String(input.checked));
+    if (input.dataset.adnnSetting === "adnn_browser_notifications" && input.checked && "Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission().catch(() => {});
+    }
+    apply();
+  });
+  document.addEventListener("pointerdown", (event) => {
+    const card = event.target.closest(".adnn-os-card");
+    if (!card) return;
+    const count = Number(card.dataset.taps || 0) + 1;
+    card.dataset.taps = String(count);
+    card.classList.add("is-playing");
+    const label = card.querySelector("[data-os-play-label]");
+    if (label) label.textContent = count % 5 === 0 ? "mini fireworks" : count % 2 ? "boop" : "smooth";
+    const rect = card.getBoundingClientRect();
+    for (let i = 0; i < 9; i++) {
+      const dot = document.createElement("span");
+      dot.className = "adnn-os-spark";
+      dot.style.left = `${event.clientX - rect.left}px`;
+      dot.style.top = `${event.clientY - rect.top}px`;
+      dot.style.setProperty("--x", `${Math.cos(i / 9 * Math.PI * 2) * (34 + i * 3)}px`);
+      dot.style.setProperty("--y", `${Math.sin(i / 9 * Math.PI * 2) * (34 + i * 3)}px`);
+      card.appendChild(dot);
+      setTimeout(() => dot.remove(), 760);
+    }
+    setTimeout(() => card.classList.remove("is-playing"), 300);
+  });
+  apply();
+})();
+</script>
+
 </body>
 </html>

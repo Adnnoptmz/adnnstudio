@@ -2559,6 +2559,15 @@
 	    }
 	  }
 	</style>
+
+<style id="adnnFinalRoundOverrides">
+  .adnn-os-card { cursor: default !important; pointer-events: auto !important; }
+  .adnn-os-card::after { display:none !important; animation:none !important; }
+  .adnn-os-card.is-playing .adnn-os-dots, .adnn-os-card .adnn-os-dots { transform:none !important; filter:none !important; }
+  .mobile-home-button img, .header-home-button img, .adnn-sidebar-home img, .sidebar-brand img, .brand img { object-fit:contain; }
+  .side-notification-badge { min-width:18px; height:18px; padding:0 5px; border-radius:999px; display:grid; place-items:center; background:#ff2602; color:#fff; font-size:10px; line-height:1; box-shadow:0 0 0 2px rgba(0,0,0,.18), 0 8px 22px rgba(255,38,2,.38); }
+  .side-notification-badge[hidden] { display:none !important; }
+</style>
 </head>
 	<body class="auth-state-pending">
 	  <img src="bg1-hero.jpg" fetchpriority="high" loading="eager" width="2048" height="1365" alt="" style="position:absolute; width:1px; height:1px; opacity:0.01; pointer-events:none; z-index:-9999; top:0; left:0;" aria-hidden="true" decoding="sync">
@@ -2621,11 +2630,16 @@
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1v-9.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
               <span>Dashboard</span>
             </a>
-            <button class="adnn-chat-trigger account-popover-chat" id="adnnChatTrigger" type="button" hidden aria-label="Open chat">
+            <button class="adnn-chat-trigger account-popover-chat" id="adnnChatTrigger" type="button" aria-label="Open chat">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
               <span>Chat</span>
               <span class="adnn-chat-count" hidden>0</span>
             </button>
+
+            <a href="account.html#settings" id="universalSettingsLink">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33A1.65 1.65 0 0 0 14 21a2 2 0 0 1-4 0 1.65 1.65 0 0 0-1.08-1.56 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15 1.65 1.65 0 0 0 3 14a2 2 0 0 1 0-4 1.65 1.65 0 0 0 1.6-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6 1.65 1.65 0 0 0 10 3a2 2 0 0 1 4 0 1.65 1.65 0 0 0 1 1.6 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.14.31.22.65.22 1A2 2 0 0 1 21 14a1.65 1.65 0 0 0-1.6 1Z" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linejoin="round"/></svg>
+              <span>Settings</span>
+            </a>
             <button class="account-logout" type="button" onclick="logoutGoogleAccount(event)">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.5 5.5h-4v13h4M14 8l4 4-4 4M8.5 12H18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
               <span>Log out</span>
@@ -3685,11 +3699,23 @@
     // Auto-rewrite destination navigation routing parameters for matching active workspace files.
     const dashboardLink = document.getElementById("universalDashboardLink");
     const chatLink = document.getElementById("adnnChatTrigger");
-    if (dashboardLink) {
-      dashboardLink.setAttribute("href", isDesigner ? "designer-account.html" : "account.html");
-    }
+    const settingsLink = document.getElementById("universalSettingsLink");
+    const isAdmin = !isDesigner && String(activeUser?.email || "").trim().toLowerCase() === "getavcollab@gmail.com";
+    const dashboardHref = isAdmin ? "admin.html#dashboard_view" : isDesigner ? "designer-account.html" : "account.html";
+    const chatHref = isAdmin ? "admin.html#chats_view" : isDesigner ? "designer-account.html#chat" : "account.html#chat";
+    const settingsHref = isAdmin ? "admin.html#settings_view" : isDesigner ? "designer-account.html#settings" : "account.html#settings";
+    if (dashboardLink) dashboardLink.setAttribute("href", dashboardHref);
+    if (settingsLink) settingsLink.setAttribute("href", settingsHref);
     if (chatLink) {
-      chatLink.dataset.chatHref = isDesigner ? "designer-account.html#chat" : "account.html#chat";
+      chatLink.hidden = false;
+      chatLink.dataset.chatHref = chatHref;
+      chatLink.onclick = () => { location.href = chatLink.dataset.chatHref || chatHref; };
+      const countNode = chatLink.querySelector(".adnn-chat-count");
+      const count = Number(localStorage.getItem("adnn_chat_unread_total") || 0);
+      if (countNode) {
+        countNode.textContent = String(count > 99 ? "99+" : count);
+        countNode.hidden = count <= 0;
+      }
     }
 
 	    // Set up the dynamic typography parameters to populate the hover popover element
@@ -3712,6 +3738,15 @@
 	      }
 	    }
   }
+
+  window.addEventListener("storage", (event) => {
+    if (event.key !== "adnn_chat_unread_total") return;
+    const count = Number(event.newValue || 0);
+    document.querySelectorAll(".adnn-chat-count").forEach((node) => {
+      node.textContent = String(count > 99 ? "99+" : count);
+      node.hidden = count <= 0;
+    });
+  });
 
   window.startGoogleLogin = function startGoogleLogin() {
     if (getSavedGoogleUser() && getGoogleAccessToken()) {
@@ -4879,6 +4914,24 @@
 	</style>
 <script src="firebase-config.js"></script>
 <script type="module" src="firebase-account.js"></script>
-<script type="module" src="firebase-chat.js?v=20260611-call-composer-fix"></script>
+<script type="module" src="firebase-chat.js?v=20260612-sidebar-settings-pin-fix"></script>
+
+<script id="adnnFinalRoundGuards">
+(function(){
+  document.addEventListener('pointerdown', function(event){
+    if (event.target.closest('.adnn-os-card')) {
+      event.stopPropagation();
+    }
+  }, true);
+  document.addEventListener('click', function(event){
+    const logout = event.target.closest('.logout, .sidebar-logout-item, .account-logout, #headerLogoutButton, #sidebarLogoutButton, #sidebarLogoutActionBtn');
+    if (!logout) return;
+    if (!window.confirm('Log out of this ADNN account?')) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    }
+  }, true);
+})();
+</script>
 </body>
 </html>

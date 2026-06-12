@@ -1187,9 +1187,7 @@
         }
         body.chat-view-active > .shell > main {
           height:100svh !important;
-          height:100dvh !important;
           min-height:100svh !important;
-          min-height:100dvh !important;
           padding:0 !important;
           border-radius:0 !important;
           overflow:hidden !important;
@@ -1197,9 +1195,7 @@
         body.chat-view-active > .shell > main > .view.active {
           width:100% !important;
           height:100svh !important;
-          height:100dvh !important;
           min-height:100svh !important;
-          min-height:100dvh !important;
           padding:0 !important;
           border-radius:0 !important;
           overflow:hidden !important;
@@ -1207,6 +1203,7 @@
       }
     @media (max-width:900px) {
 	      .mobile-header-bar { display:flex; }
+	      body.chat-view-active .mobile-header-bar { display:none !important; }
 	      body > .shell { grid-template-columns:1fr !important; }
 	      body.sidebar-collapsed > .shell { grid-template-columns:1fr !important; }
 	      body > .shell > aside {
@@ -2388,6 +2385,6 @@
 	    }
 	  </script>
   <script type="module" src="firebase-account.js" onerror="window.adnnAccountModuleFallback && window.adnnAccountModuleFallback()"></script>
-  <script type="module" src="firebase-chat.js?v=20260611-mobile-fit"></script>
+  <script type="module" src="firebase-chat.js?v=20260612-mobile-chat-admin"></script>
 </body>
 </html>

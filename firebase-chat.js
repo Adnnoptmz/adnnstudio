@@ -97,8 +97,7 @@ function buildAdminChatPortal() {
   if (!target) return;
   target.className = "adnn-chat-app";
   target.innerHTML = appFrameMarkup("Studio Chats", "adminThreads", "adminRoom", true);
-  renderPassiveRoom("adminRoom", "Studio chats", "Loading conversations...", "Select a client chat to send a message");
-  watchChatThreads("admin", "adminThreads", "adminRoom", {});
+  watchAdminChatThreads("adminThreads", "adminRoom");
 }
 
 function buildAdminChatShellOnly(message) {
@@ -108,7 +107,8 @@ function buildAdminChatShellOnly(message) {
   target.innerHTML = appFrameMarkup("Studio Chats", "adminThreads", "adminRoom", true);
   const list = document.getElementById("adminThreads");
   if (list) list.innerHTML = `<div class="adnn-chat-empty">${escapeHtml(message)}</div>`;
-  renderPassiveRoom("adminRoom", "Studio chats", message, "Admin verification required");
+  const room = document.getElementById("adminRoom");
+  if (room) room.innerHTML = `<div class="adnn-chat-welcome"><div class="adnn-chat-logo">a</div><h3>Admin chat</h3><p>${escapeHtml(message)}</p></div>`;
 }
 
 function appFrameMarkup(title, listId, roomId, searchable = false) {
@@ -179,6 +179,34 @@ function watchChatThreads(scope, listId, roomId, options = {}) {
   });
 }
 
+function watchAdminChatThreads(listId, roomId) {
+  if (chatListUnsub) chatListUnsub();
+  const list = document.getElementById(listId);
+  const room = document.getElementById(roomId);
+  chatListUnsub = onSnapshot(collection(db, "chats"), (snapshot) => {
+    if (!list) return;
+    const chats = snapshot.docs
+      .map((item) => ({ id: item.id, ...item.data() }))
+      .sort((a, b) => toMillis(b.updatedAt || b.createdAt) - toMillis(a.updatedAt || a.createdAt));
+    if (!chats.length) {
+      list.innerHTML = `<div class="adnn-chat-empty">No conversations yet.</div>`;
+      if (room) room.innerHTML = `<div class="adnn-chat-welcome"><div class="adnn-chat-logo">a</div><h3>No chats yet</h3><p>User conversations will appear here.</p></div>`;
+      return;
+    }
+    renderThreadList(chats, list, roomId, "admin");
+  }, () => {
+    if (list) list.innerHTML = `<div class="adnn-chat-empty">Unable to load chats.</div>`;
+    if (room) room.innerHTML = `<div class="adnn-chat-welcome"><div class="adnn-chat-logo">a</div><h3>Unable to load chats</h3><p>Check admin Firebase permission.</p></div>`;
+  });
+  const search = document.getElementById(`${listId}Search`);
+  search?.addEventListener("input", () => {
+    const needle = search.value.toLowerCase().trim();
+    list?.querySelectorAll(".adnn-thread").forEach((row) => {
+      row.hidden = needle && !row.innerText.toLowerCase().includes(needle);
+    });
+  });
+}
+
 function renderThreadList(chats, list, roomId, scope) {
   list.innerHTML = "";
   if (!chats.length) {
@@ -216,7 +244,7 @@ function renderThreadList(chats, list, roomId, scope) {
     }
     list.appendChild(row);
   });
-  if (scope === "admin" && !currentRow && chats[0]) {
+  if (scope === "admin" && !currentRow && chats[0] && !window.matchMedia("(max-width: 760px)").matches) {
     const firstRow = list.querySelector(".adnn-thread");
     firstRow?.classList.add("is-active");
     openRoom(chats[0].id, chats[0], roomId);

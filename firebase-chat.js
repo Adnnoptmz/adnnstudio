@@ -860,6 +860,7 @@ function bindRoomControls(state) {
   const fileInput = shell.querySelector("[data-file-input]");
   const voiceBtn = shell.querySelector("[data-voice]");
   const scroller = shell.querySelector("[data-message-scroll]");
+  bindMessageScrollEscape(scroller, state);
 
   shell.querySelector("[data-chat-back]")?.addEventListener("click", () => closeRoomOnMobile(state.roomId));
   shell.querySelectorAll("[data-call]").forEach((btn) => {
@@ -3053,10 +3054,44 @@ function bindGlobalDismissers() {
     closeFloatingReactionSheet();
     closeMessageMenus();
     document.querySelectorAll("[data-room-menu], [data-outer-menu], [data-room-searchbar], [data-composer-panel], [data-emoji-panel]").forEach((node) => { node.hidden = true; });
+    const openScroller = document.querySelector(".adnn-chat-layout.is-room-open .adnn-message-scroll");
+    if (openScroller && closeMessageScrollChat(openScroller)) {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
     closeOpenChatThreadPanels();
   };
   document.addEventListener("keydown", escapeCloser, true);
+  document.addEventListener("keyup", escapeCloser, true);
   window.addEventListener("keydown", escapeCloser, true);
+  window.addEventListener("keyup", escapeCloser, true);
+}
+
+function bindMessageScrollEscape(scroller, state) {
+  if (!scroller || scroller.dataset.escapeReady === "true") return;
+  scroller.dataset.escapeReady = "true";
+  scroller.tabIndex = 0;
+  scroller.addEventListener("pointerdown", () => scroller.focus({ preventScroll: true }));
+  const close = (event) => {
+    if (event.key !== "Escape") return;
+    if (closeMessageScrollChat(scroller, state?.roomId)) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  };
+  scroller.addEventListener("keydown", close, true);
+  scroller.addEventListener("keyup", close, true);
+}
+
+function closeMessageScrollChat(scroller, roomId = "") {
+  const layout = scroller?.closest?.(".adnn-chat-layout");
+  if (!layout?.classList.contains("is-room-open")) return false;
+  layout.classList.remove("is-room-open");
+  layout.querySelectorAll(".adnn-thread.is-active").forEach((row) => row.classList.remove("is-active"));
+  if (roomId) closeRoomOnMobile(roomId);
+  else document.body.classList.remove("adnn-chat-mobile-lock");
+  return true;
 }
 
 function closeOpenChatThreadPanels() {

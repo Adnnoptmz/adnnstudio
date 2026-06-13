@@ -151,6 +151,8 @@ let globalThreadBadgeUnsub = null;
 let outgoingDialAudio = null;
 let incomingRingAudio = null;
 let lastSoundAtMs = 0;
+let chatAudioUnlockedThisSession = false;
+let chatAudioReadyAtMs = Date.now() + 12000;
 let sessionStarted = false;
 let notificationsReadyAtMs = Date.now() + 2600;
 let offlinePersistenceState = "unknown";
@@ -272,7 +274,8 @@ async function handleAuthState(user) {
   }));
 
   sessionStarted = true;
-  notificationsReadyAtMs = Date.now() + 2600;
+  notificationsReadyAtMs = Date.now() + 12000;
+  chatAudioReadyAtMs = Date.now() + 12000;
   threadUnreadCache.clear();
   threadNotifyState.clear();
   startPresence(activeUser);
@@ -3551,7 +3554,33 @@ function assetUrl(fileName) {
   try { return new URL(clean, location.href).href; } catch (_) { return clean; }
 }
 
+function canPlayChatSound() {
+  if (!chatSettingBool(CHAT_SOUND_KEY, false)) return false;
+  if (Date.now() < chatAudioReadyAtMs || Date.now() < notificationsReadyAtMs) return false;
+  if (!chatAudioUnlockedThisSession && !hasFreshUserActivation()) return false;
+  return true;
+}
+
+function hasFreshUserActivation() {
+  try {
+    const activation = navigator.userActivation;
+    return !!(activation && (activation.isActive || activation.hasBeenActive));
+  } catch (_) {
+    return false;
+  }
+}
+
+function unlockChatAudioForSession() {
+  chatAudioUnlockedThisSession = true;
+  chatAudioReadyAtMs = Math.min(chatAudioReadyAtMs, Date.now() + 250);
+}
+
+['pointerdown', 'keydown', 'touchstart'].forEach((eventName) => {
+  window.addEventListener(eventName, unlockChatAudioForSession, { once: true, passive: true });
+});
+
 function createLoopingAudio(fileName, volume = 0.62) {
+  if (!canPlayChatSound()) return null;
   const url = assetUrl(fileName);
   if (!url) return null;
   const audio = new Audio(url);
@@ -3562,7 +3591,7 @@ function createLoopingAudio(fileName, volume = 0.62) {
 }
 
 function playOneShotAudio(fileName, fallbackTone = 'message') {
-  if (!chatSettingBool(CHAT_SOUND_KEY, true)) return;
+  if (!canPlayChatSound()) return;
   const now = Date.now();
   if (now - lastSoundAtMs < 220) return;
   lastSoundAtMs = now;
@@ -3579,7 +3608,7 @@ function playOneShotAudio(fileName, fallbackTone = 'message') {
 }
 
 function startOutgoingDialTone() {
-  if (!chatSettingBool(CHAT_SOUND_KEY, true)) return;
+  if (!canPlayChatSound()) return;
   stopOutgoingDialTone();
   outgoingDialAudio = createLoopingAudio(CHAT_CONFIG.outgoingCallToneFile, 0.58);
   outgoingDialAudio?.play?.().catch(() => {});
@@ -3591,7 +3620,7 @@ function stopOutgoingDialTone() {
 }
 
 function startIncomingRingtone() {
-  if (!chatSettingBool(CHAT_SOUND_KEY, true)) return;
+  if (!canPlayChatSound()) return;
   stopIncomingRingtone();
   incomingRingAudio = createLoopingAudio(CHAT_CONFIG.incomingCallToneFile, 0.72);
   incomingRingAudio?.play?.().catch(() => {});
@@ -3603,6 +3632,7 @@ function stopIncomingRingtone() {
 }
 
 function playSynthTone(tone = 'message') {
+  if (!canPlayChatSound()) return;
   try {
     const AudioCtx = window.AudioContext || window.webkitAudioContext;
     if (!AudioCtx) return;
@@ -3634,6 +3664,10 @@ function bindNotificationPermissionPrimer() {
   window.addEventListener("keydown", ask, { passive: true });
 }
 
+function chatReduceMotionEnabled() {
+  return chatSettingBool(CHAT_REDUCE_MOTION_KEY, false) || document.documentElement.classList.contains('adnn-reduce-motion');
+}
+
 function chatSettingBool(key, fallback = false) {
   try {
     const raw = localStorage.getItem(key);
@@ -3648,12 +3682,17 @@ function syncChatSettingsFromStorage() {
   const root = document.documentElement;
   root.classList.toggle("adnn-chat-light", chatSettingBool(CHAT_THEME_STORAGE_KEY, false));
   root.classList.toggle("adnn-reduce-motion", chatSettingBool(CHAT_REDUCE_MOTION_KEY, false));
+  root.classList.toggle("adnn-silent-mode", !chatSettingBool(CHAT_SOUND_KEY, false));
+  if (!chatSettingBool(CHAT_SOUND_KEY, false)) {
+    stopIncomingRingtone();
+    stopOutgoingDialTone();
+  }
 }
 
 function bindChatSettingsEvents() {
   if (chatSettingsEventsBound) return;
   chatSettingsEventsBound = true;
-  const sync = () => syncChatSettingsFromStorage();
+  const sync = () => { syncChatSettingsFromStorage(); if (!chatSettingBool(CHAT_SOUND_KEY, false)) { stopIncomingRingtone(); stopOutgoingDialTone(); } };
   window.addEventListener("storage", sync);
   window.addEventListener("adnn-settings-changed", sync);
 }
@@ -4165,7 +4204,7 @@ function injectChatStyles() {
     :root.adnn-chat-light .adnn-thread.is-pinned .adnn-pin-chat { box-shadow:none; }
     :root.adnn-chat-light .adnn-inapp-card { background:linear-gradient(145deg, rgba(255,255,255,.98), rgba(238,240,250,.98)); color:#11131b; border-color:rgba(7,10,25,.1); box-shadow:0 24px 80px rgba(14,18,48,.16); }
     :root.adnn-chat-light .adnn-inapp-card small { color:rgba(18,19,26,.56); }
-    :root.adnn-reduce-motion .adnn-chat-app *, :root.adnn-reduce-motion .adnn-call-popout, :root.adnn-reduce-motion .adnn-inapp-card { transition:none !important; animation:none !important; scroll-behavior:auto !important; }
+    :root.adnn-reduce-motion .adnn-chat-app *, :root.adnn-reduce-motion .adnn-call-popout, :root.adnn-reduce-motion .adnn-inapp-card { transition:none !important; animation:none !important; scroll-behavior:auto !important; transform:none !important; filter:none !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important; }
 
     .side-notification-badge { min-width:18px; height:18px; padding:0 5px; border-radius:999px; display:grid; place-items:center; background:#ff2602; color:#fff; font-size:10px; line-height:1; box-shadow:0 0 0 2px rgba(0,0,0,.18), 0 8px 22px rgba(255,38,2,.38); }
     .side-notification-badge[hidden] { display:none !important; }

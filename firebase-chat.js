@@ -93,7 +93,6 @@ const DEFAULT_CONFIG = {
   snapshotMaxRetryMs: 30000,
   uploadChunkLabelEveryPct: 5,
   deleteStorageOnDeleteForAll: false,
-  messageToneFile: "",
   outgoingCallToneFile: "call ringer_01.mp3",
   incomingCallToneFile: "ring-app.mp3",
   iceServers: [
@@ -1491,7 +1490,7 @@ function renderCallMessageBubble(message) {
     : declined
       ? (outgoing ? `Declined ${kind} call` : `Call declined`)
       : `${outgoing ? "Outgoing" : "Incoming"} ${kind} call`;
-  const detail = `${duration ? formatDuration(duration) + " · " : ""}${formatTime(message.createdAt || message.createdAtMs)}`;
+  const detail = `${duration ? formatDuration(duration) + " � " : ""}${formatTime(message.createdAt || message.createdAtMs)}`;
   return `
     <div class="adnn-call-message ${missed ? "is-missed" : ""}">
       <span>${kind === "video" ? ICON.video : ICON.phone}</span>
@@ -1740,7 +1739,7 @@ function renderFilePreview(state) {
     return `
       <div class="adnn-file-chip" data-file-id="${escapeAttr(item.id)}">
         ${media}
-        <div><strong>${escapeHtml(item.file.name)}</strong><small>${escapeHtml(item.kind)} • ${formatBytes(item.file.size)}</small>${progress ? `<i style="--p:${Math.max(0, Math.min(100, progress.pct))}%"></i>` : ""}</div>
+        <div><strong>${escapeHtml(item.file.name)}</strong><small>${escapeHtml(item.kind)} � ${formatBytes(item.file.size)}</small>${progress ? `<i style="--p:${Math.max(0, Math.min(100, progress.pct))}%"></i>` : ""}</div>
         <button type="button" data-remove-file="${escapeAttr(item.id)}">${ICON.x}</button>
       </div>
     `;
@@ -2041,7 +2040,7 @@ async function startCall(kind, chatId, chatData) {
   const remoteStatus = await getPresenceInfo(receiverUid);
   if (!remoteStatus.online) {
     await writeOfflineMissedCallMessage(chatId, chatData, kind, receiverUid).catch(() => {});
-    showInAppNotification(getChatTitle(chatData, "user"), `Missed ${kind === "video" ? "video" : "audio"} call · user offline`, { tone: "missed", icon: getChatPhoto(chatData, "user") });
+    showInAppNotification(getChatTitle(chatData, "user"), `Missed ${kind === "video" ? "video" : "audio"} call � user offline`, { tone: "missed", icon: getChatPhoto(chatData, "user") });
     return showToast(`${getChatTitle(chatData, "user")} is offline. Missed call saved.`, "warn");
   }
 
@@ -2662,7 +2661,7 @@ function callSummaryLastMessage(message) {
   const kind = message.kind === "video" ? "video" : "audio";
   if (message.callStatus === "missed" || message.endedReason === "timeout" || message.endedReason === "offline") return `Missed ${kind} call`;
   if (message.endedReason === "rejected") return `Declined ${kind} call`;
-  return `${kind[0].toUpperCase()}${kind.slice(1)} call · ${formatDuration(Math.round((message.durationMs || 0) / 1000))}`;
+  return `${kind[0].toUpperCase()}${kind.slice(1)} call � ${formatDuration(Math.round((message.durationMs || 0) / 1000))}`;
 }
 
 async function getProfile(uid, email) {
@@ -3560,6 +3559,12 @@ function assetUrl(fileName) {
 }
 
 
+
+// ADNN silent fix: block the old message notification wav everywhere in this runtime.
+function isRemovedMessageNotificationFile(value) {
+  return String(value || "").toLowerCase().includes("removed-message-notification-file");
+}
+
 function enforceSilentSoundMigration() {
   try {
         if (localStorage.getItem(CHAT_SOUND_CONFIRMED_KEY) !== "true") {
@@ -3584,7 +3589,7 @@ function installSilentAudioGuard() {
       proto.__adnnOriginalPlay = proto.play;
       proto.play = function guardedPlay() {
         const src = String(this.currentSrc || this.src || "").toLowerCase();
-        const looksLikeNotificationTone = /message|notification|ring|ringer|tone|call/.test(src);
+        const looksLikeNotificationTone = isRemovedMessageNotificationFile(src) || /message|notification|ring|ringer|tone|call/.test(src);
         if (looksLikeNotificationTone && shouldBlock()) {
           try { this.pause?.(); this.currentTime = 0; } catch (_) {}
           return Promise.resolve();
@@ -3639,6 +3644,7 @@ function createLoopingAudio(fileName, volume = 0.62) {
 
 
 function playOneShotAudio(fileName, fallbackTone = 'message') {
+  // Message notification playback removed.
   return;
 }
 

@@ -75,6 +75,93 @@ import {
   deleteObject
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
+
+
+/* ADNN HARD SILENT GUARD - blocks cached  and automatic notification audio. */
+(function installAdnnNoMessageNotificationSound(){
+  if (window.__adnnNoMessageNotificationSoundInstalled) return;
+  window.__adnnNoMessageNotificationSoundInstalled = true;
+  const BLOCKED_SOUND_RE = /message\s*notification|message%20notification|notification\.wav|message-notification|message_notification/i;
+  const AUTO_SOUND_RE = /message|notification|notify|tone|ring|ringer/i;
+  const silentDataAudio = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA=';
+  const isBlockedSrc = (value) => BLOCKED_SOUND_RE.test(String(value || ''));
+  const shouldBlockAutoAudio = (el) => {
+    const src = String(el?.currentSrc || el?.src || el?.getAttribute?.('src') || '');
+    if (isBlockedSrc(src)) return true;
+    if (el?.dataset?.adnnBlockedNotificationSound === '1') return true;
+    // Prevent hidden notification/ringer/tone sounds that are started without a user action.
+    const userActive = !!(navigator.userActivation && (navigator.userActivation.isActive || navigator.userActivation.hasBeenActive));
+    return !userActive && AUTO_SOUND_RE.test(src) && (el?.tagName || '').toLowerCase() === 'audio';
+  };
+  try {
+    localStorage.setItem('adnn_message_sounds', 'false');
+    localStorage.setItem('adnn_browser_notifications', 'false');
+    localStorage.removeItem('adnn_sound_user_confirmed');
+    localStorage.setItem('adnn_force_silent_mode', 'true');
+  } catch (_) {}
+  try {
+    const OriginalAudio = window.Audio;
+    if (OriginalAudio && !OriginalAudio.__adnnNoMessageNotificationPatched) {
+      const PatchedAudio = function(src) {
+        const audio = new OriginalAudio();
+        if (isBlockedSrc(src)) {
+          audio.dataset.adnnBlockedNotificationSound = '1';
+          audio.src = silentDataAudio;
+          audio.muted = true;
+          audio.volume = 0;
+        } else if (src !== undefined) {
+          audio.src = src;
+        }
+        return audio;
+      };
+      PatchedAudio.prototype = OriginalAudio.prototype;
+      Object.setPrototypeOf(PatchedAudio, OriginalAudio);
+      PatchedAudio.__adnnNoMessageNotificationPatched = true;
+      window.Audio = PatchedAudio;
+    }
+  } catch (_) {}
+  try {
+    const proto = window.HTMLMediaElement && window.HTMLMediaElement.prototype;
+    if (proto && proto.play && !proto.__adnnNoMessageNotificationOriginalPlay) {
+      proto.__adnnNoMessageNotificationOriginalPlay = proto.play;
+      proto.play = function adnnBlockedPlay() {
+        if (shouldBlockAutoAudio(this)) {
+          try { this.pause?.(); this.currentTime = 0; this.muted = true; this.volume = 0; } catch (_) {}
+          return Promise.resolve();
+        }
+        return proto.__adnnNoMessageNotificationOriginalPlay.apply(this, arguments);
+      };
+    }
+  } catch (_) {}
+  try {
+    const desc = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'src');
+    if (desc && desc.set && !desc.set.__adnnNoMessageNotificationPatched) {
+      const originalSet = desc.set;
+      const originalGet = desc.get;
+      const patchedSet = function(value) {
+        if (isBlockedSrc(value)) {
+          try { this.dataset.adnnBlockedNotificationSound = '1'; this.muted = true; this.volume = 0; } catch (_) {}
+          return originalSet.call(this, silentDataAudio);
+        }
+        return originalSet.call(this, value);
+      };
+      patchedSet.__adnnNoMessageNotificationPatched = true;
+      Object.defineProperty(HTMLMediaElement.prototype, 'src', { configurable: true, enumerable: desc.enumerable, get: originalGet, set: patchedSet });
+    }
+  } catch (_) {}
+  try {
+    // If an old cached service worker is serving old JS/audio, remove it from this page context.
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations?.().then((regs) => regs.forEach((reg) => reg.unregister().catch(() => {}))).catch(() => {});
+    }
+  } catch (_) {}
+  try {
+    if (window.caches?.keys) {
+      caches.keys().then((keys) => keys.forEach((key) => caches.delete(key).catch(() => {}))).catch(() => {});
+    }
+  } catch (_) {}
+})();
+
 const DEFAULT_CONFIG = {
   adminEmail: "getavcollab@gmail.com",
   adminAliasUid: "adnn-admin",
@@ -93,6 +180,7 @@ const DEFAULT_CONFIG = {
   snapshotMaxRetryMs: 30000,
   uploadChunkLabelEveryPct: 5,
   deleteStorageOnDeleteForAll: false,
+  messageToneFile: "",
   outgoingCallToneFile: "call ringer_01.mp3",
   incomingCallToneFile: "ring-app.mp3",
   iceServers: [
@@ -1490,7 +1578,7 @@ function renderCallMessageBubble(message) {
     : declined
       ? (outgoing ? `Declined ${kind} call` : `Call declined`)
       : `${outgoing ? "Outgoing" : "Incoming"} ${kind} call`;
-  const detail = `${duration ? formatDuration(duration) + " � " : ""}${formatTime(message.createdAt || message.createdAtMs)}`;
+  const detail = `${duration ? formatDuration(duration) + "  " : ""}${formatTime(message.createdAt || message.createdAtMs)}`;
   return `
     <div class="adnn-call-message ${missed ? "is-missed" : ""}">
       <span>${kind === "video" ? ICON.video : ICON.phone}</span>
@@ -1739,7 +1827,7 @@ function renderFilePreview(state) {
     return `
       <div class="adnn-file-chip" data-file-id="${escapeAttr(item.id)}">
         ${media}
-        <div><strong>${escapeHtml(item.file.name)}</strong><small>${escapeHtml(item.kind)} � ${formatBytes(item.file.size)}</small>${progress ? `<i style="--p:${Math.max(0, Math.min(100, progress.pct))}%"></i>` : ""}</div>
+        <div><strong>${escapeHtml(item.file.name)}</strong><small>${escapeHtml(item.kind)}  ${formatBytes(item.file.size)}</small>${progress ? `<i style="--p:${Math.max(0, Math.min(100, progress.pct))}%"></i>` : ""}</div>
         <button type="button" data-remove-file="${escapeAttr(item.id)}">${ICON.x}</button>
       </div>
     `;
@@ -2040,7 +2128,7 @@ async function startCall(kind, chatId, chatData) {
   const remoteStatus = await getPresenceInfo(receiverUid);
   if (!remoteStatus.online) {
     await writeOfflineMissedCallMessage(chatId, chatData, kind, receiverUid).catch(() => {});
-    showInAppNotification(getChatTitle(chatData, "user"), `Missed ${kind === "video" ? "video" : "audio"} call � user offline`, { tone: "missed", icon: getChatPhoto(chatData, "user") });
+    showInAppNotification(getChatTitle(chatData, "user"), `Missed ${kind === "video" ? "video" : "audio"} call  user offline`, { tone: "missed", icon: getChatPhoto(chatData, "user") });
     return showToast(`${getChatTitle(chatData, "user")} is offline. Missed call saved.`, "warn");
   }
 
@@ -2661,7 +2749,7 @@ function callSummaryLastMessage(message) {
   const kind = message.kind === "video" ? "video" : "audio";
   if (message.callStatus === "missed" || message.endedReason === "timeout" || message.endedReason === "offline") return `Missed ${kind} call`;
   if (message.endedReason === "rejected") return `Declined ${kind} call`;
-  return `${kind[0].toUpperCase()}${kind.slice(1)} call � ${formatDuration(Math.round((message.durationMs || 0) / 1000))}`;
+  return `${kind[0].toUpperCase()}${kind.slice(1)} call  ${formatDuration(Math.round((message.durationMs || 0) / 1000))}`;
 }
 
 async function getProfile(uid, email) {
@@ -3559,12 +3647,6 @@ function assetUrl(fileName) {
 }
 
 
-
-// ADNN silent fix: block the old message notification wav everywhere in this runtime.
-function isRemovedMessageNotificationFile(value) {
-  return String(value || "").toLowerCase().includes("removed-message-notification-file");
-}
-
 function enforceSilentSoundMigration() {
   try {
         if (localStorage.getItem(CHAT_SOUND_CONFIRMED_KEY) !== "true") {
@@ -3589,7 +3671,7 @@ function installSilentAudioGuard() {
       proto.__adnnOriginalPlay = proto.play;
       proto.play = function guardedPlay() {
         const src = String(this.currentSrc || this.src || "").toLowerCase();
-        const looksLikeNotificationTone = isRemovedMessageNotificationFile(src) || /message|notification|ring|ringer|tone|call/.test(src);
+        const looksLikeNotificationTone = /message|notification|ring|ringer|tone|call/.test(src);
         if (looksLikeNotificationTone && shouldBlock()) {
           try { this.pause?.(); this.currentTime = 0; } catch (_) {}
           return Promise.resolve();
@@ -3643,10 +3725,7 @@ function createLoopingAudio(fileName, volume = 0.62) {
 }
 
 
-function playOneShotAudio(fileName, fallbackTone = 'message') {
-  // Message notification playback removed.
-  return;
-}
+function playOneShotAudio(fileName, fallbackTone = 'message') { return; }
 
 
 function startOutgoingDialTone() {
@@ -3671,9 +3750,7 @@ function stopIncomingRingtone() {
   incomingRingAudio = null;
 }
 
-function playSynthTone(tone = 'message') {
-  return;
-}
+function playSynthTone(tone = 'message') { return; }
 
 
 function bindNotificationPermissionPrimer() {
@@ -3714,9 +3791,7 @@ function bindChatSettingsEvents() {
   window.addEventListener("adnn-settings-changed", sync);
 }
 
-function notifyBrowser(title, body, icon = "") {
-  return;
-}
+function notifyBrowser(title, body, icon = '') { return; }
 
 
 function showInAppNotification(title, body, options = {}) {
@@ -3725,9 +3800,7 @@ function showInAppNotification(title, body, options = {}) {
 }
 
 
-function playNotificationTone(tone = "message") {
-  return;
-}
+function playNotificationTone(tone = 'message') { return; }
 
 
 function updateBadgeNode(node, value) {

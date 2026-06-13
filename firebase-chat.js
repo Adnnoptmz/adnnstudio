@@ -172,7 +172,10 @@ const CHAT_THEME_STORAGE_KEY = "adnn_chat_light_mode";
 const CHAT_INAPP_NOTIFICATION_KEY = "adnn_inapp_notifications";
 const CHAT_BROWSER_NOTIFICATION_KEY = "adnn_browser_notifications";
 const CHAT_SOUND_KEY = "adnn_message_sounds";
+const CHAT_SOUND_CONFIRMED_KEY = "adnn_sound_user_confirmed";
 const CHAT_REDUCE_MOTION_KEY = "adnn_reduce_motion";
+const CHAT_PAGE_LOAD_AT_MS = Date.now();
+const CHAT_REFRESH_AUDIO_MUTE_MS = 18000;
 const CHAT_TOTAL_UNREAD_STORAGE_KEY = "adnn_chat_unread_total";
 const PINNED_CHAT_STORAGE_KEY = "adnn_pinned_chat_ids";
 const NAV_ORDER_STORAGE_KEY = "adnn_sidebar_nav_order";
@@ -211,6 +214,8 @@ const ICON = {
 bootChatRuntime();
 
 async function bootChatRuntime() {
+  enforceSilentSoundMigration();
+  installSilentAudioGuard();
   injectChatStyles();
   syncChatSettingsFromStorage();
   bindChatSettingsEvents();
@@ -3554,10 +3559,61 @@ function assetUrl(fileName) {
   try { return new URL(clean, location.href).href; } catch (_) { return clean; }
 }
 
+
+function enforceSilentSoundMigration() {
+  try {
+    // Older builds could leave adnn_message_sounds=true in localStorage.
+    // Do not allow that old value to keep playing refresh/live notification sounds.
+    if (localStorage.getItem(CHAT_SOUND_CONFIRMED_KEY) !== "true") {
+      localStorage.setItem(CHAT_SOUND_KEY, "false");
+    }
+  } catch (_) {}
+}
+
+function installSilentAudioGuard() {
+  if (window.__adnnSilentAudioGuardInstalled) return;
+  window.__adnnSilentAudioGuardInstalled = true;
+  const shouldBlock = () => {
+    try {
+      return localStorage.getItem(CHAT_SOUND_KEY) !== "true" || localStorage.getItem(CHAT_SOUND_CONFIRMED_KEY) !== "true";
+    } catch (_) {
+      return true;
+    }
+  };
+  try {
+    const proto = window.HTMLMediaElement && window.HTMLMediaElement.prototype;
+    if (proto && proto.play && !proto.__adnnOriginalPlay) {
+      proto.__adnnOriginalPlay = proto.play;
+      proto.play = function guardedPlay() {
+        const src = String(this.currentSrc || this.src || "").toLowerCase();
+        const looksLikeNotificationTone = /message|notification|ring|ringer|tone|call/.test(src);
+        if (looksLikeNotificationTone && shouldBlock()) {
+          try { this.pause?.(); this.currentTime = 0; } catch (_) {}
+          return Promise.resolve();
+        }
+        return proto.__adnnOriginalPlay.apply(this, arguments);
+      };
+    }
+  } catch (_) {}
+}
+
+function hasConfirmedSoundOptIn() {
+  try {
+    return localStorage.getItem(CHAT_SOUND_CONFIRMED_KEY) === "true" && localStorage.getItem(CHAT_SOUND_KEY) === "true";
+  } catch (_) {
+    return false;
+  }
+}
+
+function isRefreshAudioMuteWindow() {
+  return Date.now() - CHAT_PAGE_LOAD_AT_MS < CHAT_REFRESH_AUDIO_MUTE_MS;
+}
+
 function canPlayChatSound() {
-  if (!chatSettingBool(CHAT_SOUND_KEY, false)) return false;
+  if (!hasConfirmedSoundOptIn()) return false;
+  if (isRefreshAudioMuteWindow()) return false;
   if (Date.now() < chatAudioReadyAtMs || Date.now() < notificationsReadyAtMs) return false;
-  if (!chatAudioUnlockedThisSession && !hasFreshUserActivation()) return false;
+  if (!chatAudioUnlockedThisSession) return false;
   return true;
 }
 
@@ -3682,8 +3738,8 @@ function syncChatSettingsFromStorage() {
   const root = document.documentElement;
   root.classList.toggle("adnn-chat-light", chatSettingBool(CHAT_THEME_STORAGE_KEY, false));
   root.classList.toggle("adnn-reduce-motion", chatSettingBool(CHAT_REDUCE_MOTION_KEY, false));
-  root.classList.toggle("adnn-silent-mode", !chatSettingBool(CHAT_SOUND_KEY, false));
-  if (!chatSettingBool(CHAT_SOUND_KEY, false)) {
+  root.classList.toggle("adnn-silent-mode", !hasConfirmedSoundOptIn());
+  if (!hasConfirmedSoundOptIn()) {
     stopIncomingRingtone();
     stopOutgoingDialTone();
   }
@@ -3692,16 +3748,19 @@ function syncChatSettingsFromStorage() {
 function bindChatSettingsEvents() {
   if (chatSettingsEventsBound) return;
   chatSettingsEventsBound = true;
-  const sync = () => { syncChatSettingsFromStorage(); if (!chatSettingBool(CHAT_SOUND_KEY, false)) { stopIncomingRingtone(); stopOutgoingDialTone(); } };
+  const sync = () => { syncChatSettingsFromStorage(); if (!hasConfirmedSoundOptIn()) { stopIncomingRingtone(); stopOutgoingDialTone(); } };
   window.addEventListener("storage", sync);
   window.addEventListener("adnn-settings-changed", sync);
 }
 
 function notifyBrowser(title, body, icon = "") {
   if (!chatSettingBool(CHAT_BROWSER_NOTIFICATION_KEY, true)) return;
+  // Browser/system notifications can make OS-level sounds outside our audio controls.
+  // Silent mode therefore blocks browser notifications too.
+  if (!hasConfirmedSoundOptIn() || isRefreshAudioMuteWindow()) return;
   if (!("Notification" in window) || Notification.permission !== "granted") return;
   try {
-    const note = new Notification(title, { body, icon: safeImageUrl(icon) || undefined, tag: `adnn-${title}-${body}`.slice(0, 64) });
+    const note = new Notification(title, { body, silent: true, icon: safeImageUrl(icon) || undefined, tag: `adnn-${title}-${body}`.slice(0, 64) });
     setTimeout(() => note.close?.(), 6500);
   } catch (_) {}
 }

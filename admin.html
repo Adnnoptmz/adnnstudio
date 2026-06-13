@@ -2619,30 +2619,12 @@
         if (snap && !snap.empty) {
           const docSnap = snap.docs[0];
           const data = docSnap.data() || {};
-          const resolvedEmail = emailKey(data.email || data.authEmail || data.displayEmail || email);
-          const resolvedUid = String(data.uid || data.authUid || data.firebaseUid || data.firebaseUID || data.userUid || data.accountUid || data.realUid || data.authUserId || docSnap.id || "").trim();
-          const idAliases = Array.from(new Set([
-            docSnap.id,
-            data.uid,
-            data.authUid,
-            data.firebaseUid,
-            data.firebaseUID,
-            data.userUid,
-            data.accountUid,
-            data.realUid,
-            data.authUserId,
-            data.designerid,
-            data.designerId,
-            data.clientId
-          ].map((value) => String(value || "").trim()).filter(Boolean)));
           return {
-            uid: resolvedUid,
-            id: docSnap.id,
-            idAliases,
+            uid: docSnap.id,
             collectionName,
             role: data.role || (collectionName === "designers" ? "designer" : "client"),
-            email: resolvedEmail,
-            name: data.name || data.displayName || data.designerName || data.clientName || data.displayEmail || data.email || email,
+            email: emailKey(data.email || data.authEmail || data.displayEmail || email),
+            name: data.name || data.displayName || data.designerName || data.displayEmail || data.email || email,
             photoURL: data.photoURL || data.avatarURL || data.picture || data.profilePhotoURL || ""
           };
         }
@@ -2797,36 +2779,22 @@
           const chatRef = doc(db, "chats", chatId);
           const existed = await getDoc(chatRef).then((snap) => snap.exists()).catch(() => false);
           const now = Date.now();
-          const participantUids = Array.from(new Set([...(userA.idAliases || [userA.uid]), ...(userB.idAliases || [userB.uid])].filter(Boolean)));
-          const participantEmailKeys = Array.from(new Set([userA.email, userB.email].map(emailKey).filter(Boolean)));
-          const participantNames = {};
-          const participantPhotos = {};
-          const participantEmailMap = {};
-          (userA.idAliases || [userA.uid]).forEach((uid) => { participantNames[uid] = userA.name; participantPhotos[uid] = userA.photoURL || ""; participantEmailMap[uid] = userA.email; });
-          (userB.idAliases || [userB.uid]).forEach((uid) => { participantNames[uid] = userB.name; participantPhotos[uid] = userB.photoURL || ""; participantEmailMap[uid] = userB.email; });
           const payload = {
             type: "direct",
             title: `${userA.name} / ${userB.name}`,
             createdByAdmin: true,
             createdBy: currentUser.uid,
             createdByEmail: currentUser.email,
-            participantUids,
-            participantEmailKeys,
-            participantEmails: participantEmailKeys,
-            visibleToEmails: participantEmailKeys,
-            visibleToUids: participantUids,
-            memberEmails: participantEmailKeys,
-            memberUids: participantUids,
-            participantNames,
-            participantPhotos,
-            participantEmailMap,
-            userAEmail: userA.email,
-            userBEmail: userB.email,
+            participantUids: [userA.uid, userB.uid],
+            participantEmailKeys: [userA.email, userB.email],
+            participantNames: { [userA.uid]: userA.name, [userB.uid]: userB.name },
+            participantPhotos: { [userA.uid]: userA.photoURL || "", [userB.uid]: userB.photoURL || "" },
+            participantEmailMap: { [userA.uid]: userA.email, [userB.uid]: userB.email },
             lastMessage: existed ? "Chat card refreshed" : "Chat card created",
             lastMessageKind: "system",
             unreadForAdmin: 0,
             unreadForClient: 0,
-            unreadBy: participantUids.reduce((acc, uid) => (acc[uid] = 0, acc), {}),
+            unreadBy: { [userA.uid]: 0, [userB.uid]: 0 },
             updatedAt: serverTimestamp(),
             updatedAtMs: now
           };
@@ -2873,15 +2841,11 @@
           const photos = {};
           const emailMap = {};
           const unreadBy = {};
-          const participantUids = Array.from(new Set(users.flatMap((user) => user.idAliases || [user.uid]).filter(Boolean)));
-          const participantEmailKeys = Array.from(new Set(users.map((user) => user.email).map(emailKey).filter(Boolean)));
           users.forEach((user) => {
-            (user.idAliases || [user.uid]).forEach((uid) => {
-              names[uid] = user.name;
-              photos[uid] = user.photoURL || "";
-              emailMap[uid] = user.email;
-              unreadBy[uid] = 0;
-            });
+            names[user.uid] = user.name;
+            photos[user.uid] = user.photoURL || "";
+            emailMap[user.uid] = user.email;
+            unreadBy[user.uid] = 0;
           });
           const chatRef = doc(db, "chats", chatId);
           const existed = await getDoc(chatRef).then((snap) => snap.exists()).catch(() => false);
@@ -2894,13 +2858,8 @@
             createdByAdmin: true,
             createdBy: currentUser.uid,
             createdByEmail: currentUser.email,
-            participantUids,
-            participantEmailKeys,
-            participantEmails: participantEmailKeys,
-            visibleToEmails: participantEmailKeys,
-            visibleToUids: participantUids,
-            memberEmails: participantEmailKeys,
-            memberUids: participantUids,
+            participantUids: users.map((user) => user.uid),
+            participantEmailKeys: users.map((user) => user.email),
             participantNames: names,
             participantPhotos: photos,
             participantEmailMap: emailMap,

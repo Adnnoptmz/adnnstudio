@@ -76,6 +76,9 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
 
+
+/* ADNN no-sound build: notification tones, browser notification sounds, and call ring tones are disabled. */
+
 const DEFAULT_CONFIG = {
   adminEmail: "getavcollab@gmail.com",
   adminAliasUid: "adnn-admin",
@@ -135,7 +138,7 @@ const COLLECTIONS = Object.freeze({
   offerCandidates: "offerCandidates",
   answerCandidates: "answerCandidates"
 });
-const REACTION_SET = ["👍", "❤️", "😂", "😮", "😢", "🙏", "🔥", "👏", "✨", "👀", "✅", "💯"];
+const REACTION_SET = ["👍", "❤️", "😂", "😮", "😢", "🙏", "🔥", "👏", "✅", "✨", "😍", "🤝", "🎉", "💯", "👀", "💙"];
 
 let app = null;
 let auth = null;
@@ -149,6 +152,11 @@ let incomingCallUnsub = null;
 let callTimer = null;
 let activeCall = null;
 let globalThreadBadgeUnsub = null;
+let outgoingDialAudio = null;
+let incomingRingAudio = null;
+let lastSoundAtMs = 0;
+let chatAudioUnlockedThisSession = false;
+let chatAudioReadyAtMs = Number.POSITIVE_INFINITY;
 let sessionStarted = false;
 let notificationsReadyAtMs = Date.now() + 2600;
 let offlinePersistenceState = "unknown";
@@ -167,7 +175,11 @@ let chatSettingsEventsBound = false;
 const CHAT_THEME_STORAGE_KEY = "adnn_chat_light_mode";
 const CHAT_INAPP_NOTIFICATION_KEY = "adnn_inapp_notifications";
 const CHAT_BROWSER_NOTIFICATION_KEY = "adnn_browser_notifications";
+const CHAT_SOUND_KEY = "adnn_message_sounds";
+const CHAT_SOUND_CONFIRMED_KEY = "adnn_sound_user_confirmed";
 const CHAT_REDUCE_MOTION_KEY = "adnn_reduce_motion";
+const CHAT_PAGE_LOAD_AT_MS = Date.now();
+const CHAT_REFRESH_AUDIO_MUTE_MS = 18000;
 const CHAT_TOTAL_UNREAD_STORAGE_KEY = "adnn_chat_unread_total";
 const PINNED_CHAT_STORAGE_KEY = "adnn_pinned_chat_ids";
 const NAV_ORDER_STORAGE_KEY = "adnn_sidebar_nav_order";
@@ -177,8 +189,6 @@ const ICON = {
   home: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10.5V21h13V10.5"/><path d="M9.5 21v-6h5v6"/></svg>`,
   menu: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>`,
   more: `<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>`,
-  pin: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4.5 19.5 9.5"/><path d="M5 19l5.2-5.2"/><path d="M9.4 4.8 19.2 14.6"/><path d="m8.3 5.9 2.4-2.4 9.8 9.8-2.4 2.4c-.8.8-2 .9-2.9.3l-2.1-1.4-4.4 4.4-3.7-3.7 4.4-4.4L8 8.8c-.6-.9-.5-2.1.3-2.9Z"/></svg>`,
-  pinFilled: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M14.8 3.6a1.4 1.4 0 0 1 2 0l3.6 3.6a1.4 1.4 0 0 1 0 2l-2 2 1.5 1.5a1.2 1.2 0 0 1 0 1.7l-1.5 1.5a1.2 1.2 0 0 1-1.5.16l-3.1-2.04-4.77 4.77a.75.75 0 0 1-1.06 0l-2.26-2.26a.75.75 0 0 1 0-1.06l4.77-4.77-2.04-3.1a1.2 1.2 0 0 1 .16-1.5l1.5-1.5a1.2 1.2 0 0 1 1.7 0l1.5 1.5 2-2Z"/></svg>`,
   search: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>`,
   phone: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v2.4a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.12 3.63 2 2 0 0 1 4.11 1.5h2.4a2 2 0 0 1 2 1.72c.13.96.35 1.9.67 2.8a2 2 0 0 1-.45 2.1L7.7 9.16a16 16 0 0 0 7.14 7.14l1.04-1.03a2 2 0 0 1 2.1-.45c.9.32 1.84.54 2.8.67A2 2 0 0 1 22 16.92Z"/></svg>`,
   video: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="13" height="14" rx="3"/><path d="m16 10 5-3v10l-5-3"/></svg>`,
@@ -208,11 +218,14 @@ const ICON = {
 bootChatRuntime();
 
 async function bootChatRuntime() {
+  enforceSilentSoundMigration();
+  installSilentAudioGuard();
   injectChatStyles();
   syncChatSettingsFromStorage();
   bindChatSettingsEvents();
   bindGlobalDismissers();
   bindConnectivitySignals();
+  bindNotificationPermissionPrimer();
   setupSidebarReorder();
   ensureSidebarBadges();
 
@@ -271,6 +284,7 @@ async function handleAuthState(user) {
 
   sessionStarted = true;
   notificationsReadyAtMs = Date.now() + 12000;
+  chatAudioReadyAtMs = Date.now() + 12000;
   threadUnreadCache.clear();
   threadNotifyState.clear();
   startPresence(activeUser);
@@ -628,7 +642,7 @@ function renderThreadList(chats, list, roomId, scope) {
         <small>${escapeHtml(preview)}</small>
       </span>
       <span class="adnn-thread-side">
-        <button type="button" class="adnn-pin-chat" data-pin-chat="${escapeAttr(chat.id)}" title="${pinned ? "Unpin chat" : "Pin chat"}" aria-label="${pinned ? "Unpin chat" : "Pin chat"}">${pinned ? ICON.pinFilled : ICON.pin}</button>
+        <button type="button" class="adnn-pin-chat" data-pin-chat="${escapeAttr(chat.id)}" title="${pinned ? "Unpin chat" : "Pin chat"}" aria-label="${pinned ? "Unpin chat" : "Pin chat"}">${pinned ? "📌" : "📍"}</button>
         <time>${escapeHtml(stamp)}</time>
         ${unread > 0 ? `<b>${unread > 99 ? "99+" : unread}</b>` : ""}
       </span>
@@ -1246,6 +1260,7 @@ function openMessageMenu(bubble, state, message) {
   closeMessageMenus();
   state.menuMessageId = message.id;
   bubble.classList.add("is-menu-open");
+  /* vibration disabled */
 }
 
 function handleMessageAction(event, state, message) {
@@ -2066,6 +2081,7 @@ async function startCall(kind, chatId, chatData) {
     });
 
     renderCallOverlay();
+    startOutgoingDialTone();
     await setupPeerConnection(activeCall, true);
     const offer = await activeCall.pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
     await activeCall.pc.setLocalDescription(offer);
@@ -2118,6 +2134,9 @@ function showIncomingCall(callId, call) {
   document.body.appendChild(overlay);
   placeCallPopout(overlay);
   makeDraggable(overlay, overlay.querySelector("[data-call-drag]"));
+  startIncomingRingtone();
+  notifyBrowser(`${call.callerName || "Incoming call"}`, `${call.kind === "video" ? "Video" : "Audio"} call`, call.callerPhotoURL);
+  /* vibration disabled */
 
   const timeout = setTimeout(() => {
     callWatch?.();
@@ -3469,6 +3488,7 @@ function sleep(ms) {
 }
 
 
+
 function watchGlobalThreadBadges() {
   globalThreadBadgeUnsub?.();
   globalThreadBadgeUnsub = null;
@@ -3544,20 +3564,86 @@ function assetUrl(fileName) {
 }
 
 
-function stopOutgoingDialTone() {
-  return;
+function enforceSilentSoundMigration() {
+  try {
+    localStorage.setItem(CHAT_SOUND_KEY, "false");
+    localStorage.removeItem(CHAT_SOUND_CONFIRMED_KEY);
+  } catch (_) {}
 }
 
-function stopIncomingRingtone() {
-  return;
+function installSilentAudioGuard() {
+  if (window.__adnnSilentAudioGuardInstalled) return;
+  window.__adnnSilentAudioGuardInstalled = true;
+  try {
+    const proto = window.HTMLMediaElement && window.HTMLMediaElement.prototype;
+    if (proto && proto.play && !proto.__adnnNoSoundOriginalPlay) {
+      proto.__adnnNoSoundOriginalPlay = proto.play;
+      proto.play = function adnnNoAutoSoundPlay() {
+        const tag = String(this.tagName || "").toLowerCase();
+        const src = String(this.currentSrc || this.src || "").toLowerCase();
+        const effectSound = tag === "audio" && /message|notification|notify|tone|ring|ringer|call ringer|ring-app/.test(src);
+        if (effectSound) {
+          try { this.pause?.(); this.currentTime = 0; this.muted = true; this.volume = 0; } catch (_) {}
+          return Promise.resolve();
+        }
+        return proto.__adnnNoSoundOriginalPlay.apply(this, arguments);
+      };
+    }
+  } catch (_) {}
 }
 
 function hasConfirmedSoundOptIn() {
   return false;
 }
 
+function isRefreshAudioMuteWindow() {
+  return true;
+}
+
+function canPlayChatSound() {
+  return false;
+}
+
+function hasFreshUserActivation() {
+  return false;
+}
+
+function unlockChatAudioForSession() {}
+
+function createLoopingAudio(fileName, volume = 0.62) {
+  return null;
+}
+
+function playOneShotAudio(fileName, fallbackTone = "message") {
+  return;
+}
+
+function startOutgoingDialTone() {
+  return;
+}
+
+function stopOutgoingDialTone() {
+  outgoingDialAudio = null;
+}
+
+function startIncomingRingtone() {
+  return;
+}
+
+function stopIncomingRingtone() {
+  incomingRingAudio = null;
+}
+
+function playSynthTone(tone = "message") {
+  return;
+}
+
+function bindNotificationPermissionPrimer() {
+  notificationPermissionAsked = true;
+}
+
 function chatReduceMotionEnabled() {
-  return chatSettingBool(CHAT_REDUCE_MOTION_KEY, false) || document.documentElement.classList.contains('adnn-reduce-motion');
+  return chatSettingBool(CHAT_REDUCE_MOTION_KEY, false) || document.documentElement.classList.contains("adnn-reduce-motion");
 }
 
 function chatSettingBool(key, fallback = false) {
@@ -3575,6 +3661,8 @@ function syncChatSettingsFromStorage() {
   root.classList.toggle("adnn-chat-light", chatSettingBool(CHAT_THEME_STORAGE_KEY, false));
   root.classList.toggle("adnn-reduce-motion", chatSettingBool(CHAT_REDUCE_MOTION_KEY, false));
   root.classList.add("adnn-silent-mode");
+  stopIncomingRingtone();
+  stopOutgoingDialTone();
 }
 
 function bindChatSettingsEvents() {
@@ -3585,12 +3673,16 @@ function bindChatSettingsEvents() {
   window.addEventListener("adnn-settings-changed", sync);
 }
 
-function notifyBrowser(title, body, icon = '') {
+function notifyBrowser(title, body, icon = "") {
   return;
 }
 
 function showInAppNotification(title, body, options = {}) {
   document.getElementById("adnnInAppNotificationStack")?.remove();
+  return;
+}
+
+function playNotificationTone(tone = "message") {
   return;
 }
 
@@ -3658,6 +3750,7 @@ function notifyThreadUnread(chat, title, unread) {
     icon: getChatPhoto(chat, isAdminEmail(activeUser?.email) ? "admin" : "user"),
     href: location.pathname.includes("designer-account.html") ? "designer-account.html#chat" : location.pathname.includes("admin.html") ? "admin.html#chats_view" : "account.html#chat"
   });
+  notifyBrowser(title, body, getChatPhoto(chat, isAdminEmail(activeUser?.email) ? "admin" : "user"));
 }
 
 function notifyIncomingMessages(state, messages) {
@@ -3684,6 +3777,7 @@ function notifyIncomingMessages(state, messages) {
       icon: getChatPhoto(state.chatData, isAdminEmail(activeUser?.email) ? "admin" : "user"),
       href: location.pathname.includes("designer-account.html") ? "designer-account.html#chat" : location.pathname.includes("admin.html") ? "admin.html#chats_view" : "account.html#chat"
     });
+    notifyBrowser(title, body, getChatPhoto(state.chatData, isAdminEmail(activeUser?.email) ? "admin" : "user"));
   });
 }
 

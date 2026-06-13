@@ -840,26 +840,22 @@ function isDesignerChatRuntime() {
 }
 
 function isSupportLikeChat(chat) {
-  const type = String(chat?.type || "").toLowerCase();
-  const title = String(chat?.title || "").toLowerCase();
+  const type = String(chat?.type || "").toLowerCase().trim();
+  const title = String(chat?.title || "").toLowerCase().trim();
+  const id = String(chat?.id || "").toLowerCase().trim();
   const remoteUid = getRemoteUid(chat);
-  const emails = [
-    chat?.adminEmail,
-    chat?.supportEmail,
-    chat?.clientEmail,
-    chat?.receiverEmail,
-    chat?.createdByEmail,
-    ...(Array.isArray(chat?.participantEmailKeys) ? chat.participantEmailKeys : []),
-    ...(Array.isArray(chat?.participantEmails) ? chat.participantEmails : [])
-  ].map(emailKey);
-  const participants = Array.isArray(chat?.participantUids) ? chat.participantUids : [];
-  return type === "support"
-    || type.includes("support")
-    || type.includes("admin")
-    || title.includes("admin support")
+  const participants = Array.isArray(chat?.participantUids) ? chat.participantUids.map(String) : [];
+
+  // Keep Admin Support out of the User Chats tab, but do NOT hide normal
+  // user-to-user chats just because an admin created/assigned them.
+  return id.startsWith("support_")
+    || type === "support"
+    || type === "admin-support"
+    || type === "designer-support"
+    || title === "admin support"
+    || title === String(CHAT_CONFIG.supportTitle || "").toLowerCase().trim()
     || remoteUid === ADMIN_ALIAS_UID
-    || participants.includes(ADMIN_ALIAS_UID)
-    || emails.includes(ADMIN_EMAIL);
+    || participants.includes(ADMIN_ALIAS_UID);
 }
 
 function listenDesignerChatSources(listen) {

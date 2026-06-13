@@ -1024,7 +1024,7 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="13" rx="2"></rect><path d="M8 21h8M12 17v4"></path></svg>
           <span class="link-label">Website Preview</span>
         </button>
-        <button type="button" class="sidebar-link-item is-active" data-target-view="composer_view">
+        <button type="button" class="sidebar-link-item" data-target-view="composer_view">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
           <span class="link-label">Tasks / Dispatcher</span>
         </button>
@@ -1271,453 +1271,453 @@
     
 <div id="settings_view" class="admin-view-panel-container" style="display:none;">
   <div class="panel glass">
-    <p class="kicker">System</p>
-    <h2>Settings</h2>
-    <p class="help">Control workspace layout comfort, chat styling, alerts, and motion parameters globally.</p>
+    <p class="kicker">Settings</p>
+    <h1>Settings</h1>
+    <p class="lead">Control your designer workspace comfort, chat look, alerts, and motion.</p>
     <div class="settings-grid">
       <div class="settings-card adnn-setting-card">
-        <div><strong>Workspace theme</strong><span>Switch between dark workspace layout and clean light mode.</span></div>
-        <button type="button" class="settings-inline-btn" id="settingsInlineThemeToggleBtn" title="Toggle Workspace Aesthetics" aria-label="Toggle Workspace Aesthetics">
+        <div><strong>Workspace theme</strong><span>Switch between dark workspace and clean light mode.</span></div>
+        <button type="button" class="settings-inline-btn" id="settingsInlineThemeToggleBtn" aria-label="Toggle theme" title="Toggle theme">
           <svg class="moon-icon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
           <svg class="sun-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
         </button>
       </div>
-      <label class="settings-card adnn-setting-card"><div><strong>Chat white mode</strong><span>Toggle only the messenger interface between dark and bright white frameworks.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_chat_light_mode"><i></i></span></label>
-      <label class="settings-card adnn-setting-card"><div><strong>In-app message alerts</strong><span>Show messenger-style cards and unread transaction markers inside the portal feed.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_inapp_notifications"><i></i></span></label>
-      <label class="settings-card adnn-setting-card"><div><strong>Browser notifications</strong><span>Allow runtime system notifications for inbound messages and stream updates.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_browser_notifications"><i></i></span></label>
-      <label class="settings-card adnn-setting-card"><div><strong>Message sound</strong><span>Play a soft audio alert note for updated dispatches and incoming messages.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_message_sounds"><i></i></span></label>
-      <label class="settings-card adnn-setting-card"><div><strong>Reduce motion</strong><span>Calm physics components and canvas rendering steps for a lighter dashboard structure.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_reduce_motion"><i></i></span></label>
-      
-      <style>
-        @import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap");
-        @import url("https://fonts.cdnfonts.com/css/aileron");
+      <label class="settings-card adnn-setting-card"><div><strong>Chat white mode</strong><span>Toggle only the messenger between dark and bright white.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_chat_light_mode"><i></i></span></label>
+      <label class="settings-card adnn-setting-card"><div><strong>In-app message alerts</strong><span>Show messenger-style cards and live unread numbers inside the portal.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_inapp_notifications"><i></i></span></label>
+      <label class="settings-card adnn-setting-card"><div><strong>Browser notifications</strong><span>Allow system notifications for new messages and missed calls.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_browser_notifications"><i></i></span></label>
+      <label class="settings-card adnn-setting-card"><div><strong>Message sound</strong><span>Off = silent mode. No refresh sounds, chat tones, or missed call alerts.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_message_sounds"><i></i></span></label>
+      <label class="settings-card adnn-setting-card"><div><strong>Reduce motion</strong><span>Calm animations for a lighter, accessibility-friendly dashboard.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_reduce_motion"><i></i></span></label>
+    </div>
 
-        .adnn-os-interactive-wrap, .adnn-os-interactive-wrap * { box-sizing: border-box; }
-        .adnn-os-interactive-wrap * { margin: 0; padding: 0; }
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap");
+      @import url("https://fonts.cdnfonts.com/css/aileron");
 
-        .os-shell {
-          font-family: "Aileron", ui-sans-serif, system-ui, sans-serif;
-          font-weight: 300;
-          -webkit-font-smoothing: antialiased;
-          width: 100%;
-          max-width: 100%;
-          padding: 0;
-          margin-top: 28px;
-          background: transparent;
-        }
+      .adnn-os-interactive-wrap, .adnn-os-interactive-wrap * { box-sizing: border-box; }
+      .adnn-os-interactive-wrap * { margin: 0; padding: 0; }
 
-        .os-card {
-          position: relative;
-          width: 100%;
-          max-width: 100%;
-          min-width: 0;
-          border-radius: 28px;
-          overflow: hidden;
-          border: 1px solid rgba(255,255,255,0.10);
-          background: #0c0c10;
-          box-shadow: 0 2px 0 rgba(0,0,0,0.6), 0 32px 80px rgba(0,0,0,0.5);
-          cursor: default;
-          user-select: none;
-          -webkit-user-select: none;
-        }
+      .os-shell {
+        font-family: "Aileron", ui-sans-serif, system-ui, sans-serif;
+        font-weight: 300;
+        -webkit-font-smoothing: antialiased;
+        width: 100%;
+        max-width: 100%;
+        padding: 0;
+        margin-top: 28px;
+        background: transparent;
+      }
 
-        .os-bg-layer {
-          position: absolute;
-          inset: 0;
-          z-index: 0;
-          pointer-events: none;
-          overflow: hidden;
-        }
-        .os-bg-layer canvas {
-          position: absolute;
-          inset: 0;
-          width: 100%;
-          height: 100%;
-        }
-        .os-bg-grid {
-          position: absolute;
-          inset: 0;
-          background-image:
-            linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
-          background-size: 32px 32px;
-          mask-image: radial-gradient(ellipse at 50% 50%, black 30%, transparent 75%);
-          -webkit-mask-image: radial-gradient(ellipse at 50% 50%, black 30%, transparent 75%);
-        }
+      .os-card {
+        position: relative;
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        border-radius: 28px;
+        overflow: hidden;
+        border: 1px solid rgba(255,255,255,0.10);
+        background: #0c0c10;
+        box-shadow: 0 2px 0 rgba(0,0,0,0.6), 0 32px 80px rgba(0,0,0,0.5);
+        cursor: default;
+        user-select: none;
+        -webkit-user-select: none;
+      }
 
-        .os-content {
-          position: relative;
-          z-index: 1;
-          display: grid;
-          grid-template-rows: auto 1fr auto;
-          padding: 28px 28px 24px;
-          min-height: 220px;
-          gap: 20px;
-        }
+      .os-bg-layer {
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+        pointer-events: none;
+        overflow: hidden;
+      }
+      .os-bg-layer canvas {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+      }
+      .os-bg-grid {
+        position: absolute;
+        inset: 0;
+        background-image:
+          linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+        background-size: 32px 32px;
+        mask-image: radial-gradient(ellipse at 50% 50%, black 30%, transparent 75%);
+        -webkit-mask-image: radial-gradient(ellipse at 50% 50%, black 30%, transparent 75%);
+      }
 
-        .os-topbar {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 12px;
-        }
+      .os-content {
+        position: relative;
+        z-index: 1;
+        display: grid;
+        grid-template-rows: auto 1fr auto;
+        padding: 28px 28px 24px;
+        min-height: 220px;
+        gap: 20px;
+      }
 
-        .os-brand {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-        }
+      .os-topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
 
-        .os-icon {
-          width: 36px;
-          height: 36px;
-          border-radius: 10px;
-          background: linear-gradient(145deg, #272dcf, #5360ff);
-          display: grid;
-          place-items: center;
-          box-shadow: inset 0 1px 0 rgba(255,255,255,0.20), 0 4px 16px rgba(39,45,207,0.45);
-          flex-shrink: 0;
-        }
+      .os-brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
 
-        .os-icon svg { width: 18px; height: 18px; display: block; }
+      .os-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        background: linear-gradient(145deg, #272dcf, #5360ff);
+        display: grid;
+        place-items: center;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.20), 0 4px 16px rgba(39,45,207,0.45);
+        flex-shrink: 0;
+      }
 
-        .os-name {
-          font-family: "IBM Plex Mono", ui-monospace, monospace;
-          font-size: 11px;
-          font-weight: 500;
-          letter-spacing: 0.18em;
-          text-transform: uppercase;
-          color: rgba(255,255,255,0.42);
-        }
+      .os-icon svg { width: 18px; height: 18px; display: block; }
 
-        .os-pills {
-          display: flex;
-          align-items: center;
-          gap: 7px;
-        }
+      .os-name {
+        font-family: "IBM Plex Mono", ui-monospace, monospace;
+        font-size: 11px;
+        font-weight: 500;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: rgba(255,255,255,0.42);
+      }
 
-        .os-pill {
-          display: inline-flex;
-          align-items: center;
-          gap: 5px;
-          padding: 5px 10px;
-          border-radius: 999px;
-          font-family: "IBM Plex Mono", monospace;
-          font-size: 9px;
-          font-weight: 500;
-          letter-spacing: 0.12em;
-          text-transform: uppercase;
-          border: 1px solid transparent;
-          cursor: pointer;
-          transition: all 0.2s ease;
-        }
+      .os-pills {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+      }
 
-        .os-pill.green {
-          background: rgba(39,207,120,0.08);
-          border-color: rgba(39,207,120,0.22);
-          color: rgba(39,207,120,0.85);
-        }
-        .os-pill.green .dot { width: 5px; height: 5px; border-radius: 50%; background: #27cf78; animation: blink 2.4s ease infinite; }
+      .os-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 5px 10px;
+        border-radius: 999px;
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 9px;
+        font-weight: 500;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        border: 1px solid transparent;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
 
-        .os-pill.blue {
-          background: rgba(83,96,255,0.10);
-          border-color: rgba(83,96,255,0.24);
-          color: rgba(83,96,255,0.90);
-        }
+      .os-pill.green {
+        background: rgba(39,207,120,0.08);
+        border-color: rgba(39,207,120,0.22);
+        color: rgba(39,207,120,0.85);
+      }
+      .os-pill.green .dot { width: 5px; height: 5px; border-radius: 50%; background: #27cf78; animation: blink 2.4s ease infinite; }
 
-        @keyframes blink {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.3; }
-        }
+      .os-pill.blue {
+        background: rgba(83,96,255,0.10);
+        border-color: rgba(83,96,255,0.24);
+        color: rgba(83,96,255,0.90);
+      }
 
-        .os-center {
-          display: flex;
-          flex-direction: column;
-          align-items: flex-start;
-          gap: 6px;
-        }
+      @keyframes blink {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.3; }
+      }
 
-        .os-version-label {
-          font-family: "IBM Plex Mono", monospace;
-          font-size: 10px;
-          letter-spacing: 0.20em;
-          text-transform: uppercase;
-          color: rgba(255,255,255,0.28);
-          margin-bottom: 2px;
-        }
+      .os-center {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+      }
 
-        .os-version-main {
-          font-family: "Aileron", ui-sans-serif, sans-serif;
-          font-size: clamp(36px, 7vw, 56px);
-          font-weight: 700;
-          letter-spacing: -0.04em;
-          line-height: 0.95;
-          color: #fff;
-        }
+      .os-version-label {
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 10px;
+        letter-spacing: 0.20em;
+        text-transform: uppercase;
+        color: rgba(255,255,255,0.28);
+        margin-bottom: 2px;
+      }
 
-        .os-version-main .accent { color: #5360ff; }
+      .os-version-main {
+        font-family: "Aileron", ui-sans-serif, sans-serif;
+        font-size: clamp(36px, 7vw, 56px);
+        font-weight: 700;
+        letter-spacing: -0.04em;
+        line-height: 0.95;
+        color: #fff;
+      }
 
-        .os-version-sub {
-          font-family: "IBM Plex Mono", monospace;
-          font-size: 11px;
-          color: rgba(255,255,255,0.32);
-          letter-spacing: 0.04em;
-          margin-top: 4px;
-        }
+      .os-version-main .accent { color: #5360ff; }
 
-        .os-bottombar {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 12px;
-          border-top: 1px solid rgba(255,255,255,0.07);
-          padding-top: 18px;
-        }
+      .os-version-sub {
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 11px;
+        color: rgba(255,255,255,0.32);
+        letter-spacing: 0.04em;
+        margin-top: 4px;
+      }
 
-        .os-stats {
-          display: flex;
-          align-items: center;
-          gap: 22px;
-        }
+      .os-bottombar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        border-top: 1px solid rgba(255,255,255,0.07);
+        padding-top: 18px;
+      }
 
-        .os-stat {
-          display: flex;
-          flex-direction: column;
-          gap: 2px;
-        }
+      .os-stats {
+        display: flex;
+        align-items: center;
+        gap: 22px;
+      }
 
-        .os-stat-label {
-          font-family: "IBM Plex Mono", monospace;
-          font-size: 9px;
-          letter-spacing: 0.14em;
-          text-transform: uppercase;
-          color: rgba(255,255,255,0.28);
-        }
+      .os-stat {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
 
-        .os-stat-val {
-          font-family: "IBM Plex Mono", monospace;
-          font-size: 13px;
-          font-weight: 500;
-          color: rgba(255,255,255,0.75);
-        }
+      .os-stat-label {
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 9px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: rgba(255,255,255,0.28);
+      }
 
-        .os-stat-val.green { color: #27cf78; }
+      .os-stat-val {
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 13px;
+        font-weight: 500;
+        color: rgba(255,255,255,0.75);
+      }
 
-        .os-actions {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-        }
+      .os-stat-val.green { color: #27cf78; }
 
-        .os-action-btn {
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-          padding: 8px 14px;
-          border-radius: 999px;
-          border: 1px solid rgba(255,255,255,0.10);
-          background: rgba(255,255,255,0.04);
-          color: rgba(255,255,255,0.52);
-          font-family: "IBM Plex Mono", monospace;
-          font-size: 10px;
-          letter-spacing: 0.08em;
-          cursor: pointer;
-          transition: all 0.22s cubic-bezier(.16,1,.3,1);
-          -webkit-user-select: none;
-          pointer-events: all;
-        }
-        .os-action-btn:hover {
-          background: rgba(255,255,255,0.09);
-          border-color: rgba(255,255,255,0.18);
-          color: rgba(255,255,255,0.85);
-          transform: translateY(-1px);
-        }
-        .os-action-btn:active { transform: translateY(0); }
-        .os-action-btn svg { width: 13px; height: 13px; flex-shrink: 0; }
+      .os-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
 
-        .os-action-btn.primary {
-          background: rgba(39,45,207,0.80);
-          border-color: rgba(83,96,255,0.50);
-          color: #fff;
-          box-shadow: 0 4px 18px rgba(39,45,207,0.35);
-        }
-        .os-action-btn.primary:hover {
-          background: #272dcf;
-          box-shadow: 0 8px 28px rgba(39,45,207,0.50);
-          color: #fff;
-        }
+      .os-action-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 14px;
+        border-radius: 999px;
+        border: 1px solid rgba(255,255,255,0.10);
+        background: rgba(255,255,255,0.04);
+        color: rgba(255,255,255,0.52);
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 10px;
+        letter-spacing: 0.08em;
+        cursor: pointer;
+        transition: all 0.22s cubic-bezier(.16,1,.3,1);
+        -webkit-user-select: none;
+        pointer-events: all;
+      }
+      .os-action-btn:hover {
+        background: rgba(255,255,255,0.09);
+        border-color: rgba(255,255,255,0.18);
+        color: rgba(255,255,255,0.85);
+        transform: translateY(-1px);
+      }
+      .os-action-btn:active { transform: translateY(0); }
+      .os-action-btn svg { width: 13px; height: 13px; flex-shrink: 0; }
 
-        .os-progress-bar {
-          position: absolute;
-          bottom: 0;
-          left: 0;
-          height: 2px;
-          background: linear-gradient(90deg, #272dcf, #5360ff, #272dcf);
-          background-size: 200% 100%;
-          width: 0%;
-          transition: width 0.6s cubic-bezier(.16,1,.3,1);
-          border-radius: 0 0 0 0;
-          z-index: 10;
-          opacity: 0;
-        }
-        .os-progress-bar.running {
-          opacity: 1;
-          animation: pgslide 1.6s linear infinite;
-          width: 100%;
-        }
-        @keyframes pgslide {
-          0% { background-position: 0% 0; }
-          100% { background-position: 200% 0; }
-        }
+      .os-action-btn.primary {
+        background: rgba(39,45,207,0.80);
+        border-color: rgba(83,96,255,0.50);
+        color: #fff;
+        box-shadow: 0 4px 18px rgba(39,45,207,0.35);
+      }
+      .os-action-btn.primary:hover {
+        background: #272dcf;
+        box-shadow: 0 8px 28px rgba(39,45,207,0.50);
+        color: #fff;
+      }
 
-        .os-toast {
-          position: absolute;
-          top: 16px;
-          left: 50%;
-          transform: translateX(-50%) translateY(-8px);
-          background: rgba(39,45,207,0.92);
-          border: 1px solid rgba(83,96,255,0.40);
-          backdrop-filter: blur(12px);
-          border-radius: 999px;
-          padding: 8px 16px;
-          font-family: "IBM Plex Mono", monospace;
-          font-size: 11px;
-          color: #fff;
-          white-space: nowrap;
-          z-index: 20;
-          opacity: 0;
-          pointer-events: none;
-          transition: all 0.28s cubic-bezier(.16,1,.3,1);
-          box-shadow: 0 8px 28px rgba(39,45,207,0.40);
-        }
-        .os-toast.show {
-          opacity: 1;
-          transform: translateX(-50%) translateY(0);
-        }
+      .os-progress-bar {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        height: 2px;
+        background: linear-gradient(90deg, #272dcf, #5360ff, #272dcf);
+        background-size: 200% 100%;
+        width: 0%;
+        transition: width 0.6s cubic-bezier(.16,1,.3,1);
+        border-radius: 0 0 0 0;
+        z-index: 10;
+        opacity: 0;
+      }
+      .os-progress-bar.running {
+        opacity: 1;
+        animation: pgslide 1.6s linear infinite;
+        width: 100%;
+      }
+      @keyframes pgslide {
+        0% { background-position: 0% 0; }
+        100% { background-position: 200% 0; }
+      }
 
-        .os-uptime-ring {
-          position: relative;
-          width: 38px;
-          height: 38px;
-          flex-shrink: 0;
-        }
-        .os-uptime-ring svg { width: 38px; height: 38px; transform: rotate(-90deg); }
-        .os-uptime-ring .ring-bg { fill: none; stroke: rgba(255,255,255,0.08); stroke-width: 2.5; }
-        .os-uptime-ring .ring-fill { fill: none; stroke: #5360ff; stroke-width: 2.5; stroke-linecap: round; stroke-dasharray: 100; transition: stroke-dashoffset 1.2s cubic-bezier(.16,1,.3,1); }
-        .os-uptime-label {
-          position: absolute;
-          inset: 0;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-family: "IBM Plex Mono", monospace;
-          font-size: 9px;
-          font-weight: 500;
-          color: rgba(255,255,255,0.65);
-        }
+      .os-toast {
+        position: absolute;
+        top: 16px;
+        left: 50%;
+        transform: translateX(-50%) translateY(-8px);
+        background: rgba(39,45,207,0.92);
+        border: 1px solid rgba(83,96,255,0.40);
+        backdrop-filter: blur(12px);
+        border-radius: 999px;
+        padding: 8px 16px;
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 11px;
+        color: #fff;
+        white-space: nowrap;
+        z-index: 20;
+        opacity: 0;
+        pointer-events: none;
+        transition: all 0.28s cubic-bezier(.16,1,.3,1);
+        box-shadow: 0 8px 28px rgba(39,45,207,0.40);
+      }
+      .os-toast.show {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+      }
 
-        .os-shimmer {
-          position: absolute;
-          inset: 0;
-          background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.03) 50%, transparent 60%);
-          background-size: 200% 100%;
-          pointer-events: none;
-          z-index: 2;
-          animation: shimmerMove 4s ease infinite;
-        }
-        @keyframes shimmerMove {
-          0% { background-position: -100% 0; }
-          100% { background-position: 200% 0; }
-        }
+      .os-uptime-ring {
+        position: relative;
+        width: 38px;
+        height: 38px;
+        flex-shrink: 0;
+      }
+      .os-uptime-ring svg { width: 38px; height: 38px; transform: rotate(-90deg); }
+      .os-uptime-ring .ring-bg { fill: none; stroke: rgba(255,255,255,0.08); stroke-width: 2.5; }
+      .os-uptime-ring .ring-fill { fill: none; stroke: #5360ff; stroke-width: 2.5; stroke-linecap: round; stroke-dasharray: 100; transition: stroke-dashoffset 1.2s cubic-bezier(.16,1,.3,1); }
+      .os-uptime-label {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 9px;
+        font-weight: 500;
+        color: rgba(255,255,255,0.65);
+      }
 
-        @media (max-width: 760px) {
-          .os-bottombar { align-items:flex-start; flex-direction:column; }
-          .os-stats { width:100%; flex-wrap:wrap; justify-content:flex-start; row-gap:14px; }
-          .os-actions { width:100%; justify-content:flex-start; flex-wrap:wrap; }
-        }
-        @media (max-width: 520px) {
-          .os-content { padding: 20px 18px 18px; min-height: 180px; gap: 16px; }
-          .os-topbar { align-items:flex-start; flex-direction:column; }
-          .os-version-main { font-size: 32px; }
-          .os-stats { gap: 14px; }
-          .os-stat-label, .os-action-btn { font-size: 9px; }
-          .os-actions, .os-action-btn { width:100%; justify-content:center; }
-        }
-      </style>
-      <div class="adnn-os-interactive-wrap" aria-label="ADNN OS interactive system status"><div class="os-shell">
-        <div class="os-card" id="osCard">
-          <div class="os-bg-layer">
-            <canvas id="osCanvas"></canvas>
-            <div class="os-bg-grid"></div>
+      .os-shimmer {
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.03) 50%, transparent 60%);
+        background-size: 200% 100%;
+        pointer-events: none;
+        z-index: 2;
+        animation: shimmerMove 4s ease infinite;
+      }
+      @keyframes shimmerMove {
+        0% { background-position: -100% 0; }
+        100% { background-position: 200% 0; }
+      }
+
+      @media (max-width: 760px) {
+        .os-bottombar { align-items:flex-start; flex-direction:column; }
+        .os-stats { width:100%; flex-wrap:wrap; justify-content:flex-start; row-gap:14px; }
+        .os-actions { width:100%; justify-content:flex-start; flex-wrap:wrap; }
+      }
+      @media (max-width: 520px) {
+        .os-content { padding: 20px 18px 18px; min-height: 180px; gap: 16px; }
+        .os-topbar { align-items:flex-start; flex-direction:column; }
+        .os-version-main { font-size: 32px; }
+        .os-stats { gap: 14px; }
+        .os-stat-label, .os-action-btn { font-size: 9px; }
+        .os-actions, .os-action-btn { width:100%; justify-content:center; }
+      }
+    </style>
+    <div class="adnn-os-interactive-wrap" aria-label="ADNN OS interactive system status"><div class="os-shell">
+      <div class="os-card" id="osCard">
+        <div class="os-bg-layer">
+          <canvas id="osCanvas"></canvas>
+          <div class="os-bg-grid"></div>
+        </div>
+        <div class="os-shimmer"></div>
+        <div class="os-progress-bar" id="osProgressBar"></div>
+        <div class="os-toast" id="osToast">Checking for updates…</div>
+
+        <div class="os-content">
+          <div class="os-topbar">
+            <div class="os-brand">
+              <div class="os-icon">
+                <svg viewBox="0 0 18 18" fill="none" aria-hidden="true">
+                  <rect x="2" y="2" width="6" height="6" rx="1.5" fill="white" opacity="0.9"/>
+                  <rect x="10" y="2" width="6" height="6" rx="1.5" fill="white" opacity="0.4"/>
+                  <rect x="2" y="10" width="6" height="6" rx="1.5" fill="white" opacity="0.4"/>
+                  <rect x="10" y="10" width="6" height="6" rx="1.5" fill="white" opacity="0.75"/>
+                </svg>
+              </div>
+              <span class="os-name">ADNN Studio</span>
+            </div>
+            <div class="os-pills">
+              <span class="os-pill green"><span class="dot"></span>Secure</span>
+              <span class="os-pill blue">Stable</span>
+            </div>
           </div>
-          <div class="os-shimmer"></div>
-          <div class="os-progress-bar" id="osProgressBar"></div>
-          <div class="os-toast" id="osToast">Checking for updates…</div>
 
-          <div class="os-content">
-            <div class="os-topbar">
-              <div class="os-brand">
-                <div class="os-icon">
-                  <svg viewBox="0 0 18 18" fill="none" aria-hidden="true">
-                    <rect x="2" y="2" width="6" height="6" rx="1.5" fill="white" opacity="0.9"/>
-                    <rect x="10" y="2" width="6" height="6" rx="1.5" fill="white" opacity="0.4"/>
-                    <rect x="2" y="10" width="6" height="6" rx="1.5" fill="white" opacity="0.4"/>
-                    <rect x="10" y="10" width="6" height="6" rx="1.5" fill="white" opacity="0.75"/>
-                  </svg>
-                </div>
-                <span class="os-name">ADNN Studio</span>
+          <div class="os-center">
+            <div class="os-version-label">Workspace OS</div>
+            <div class="os-version-main">ADNN<span class="accent"> OS</span></div>
+            <div class="os-version-main" style="font-size: clamp(22px, 4vw, 32px); color: rgba(255,255,255,0.38); font-weight:400; margin-top:2px;">Version 1<span style="color:rgba(255,255,255,0.18);">.</span><span style="color:rgba(83,96,255,0.85);">07</span></div>
+            <div class="os-version-sub" id="osUptimeLine">Build 2026.06 · Loaded <span id="osUptime">0s ago</span></div>
+          </div>
+
+          <div class="os-bottombar">
+            <div class="os-stats">
+              <div class="os-uptime-ring" id="osRingWrap">
+                <svg viewBox="0 0 38 38" aria-hidden="true">
+                  <circle class="ring-bg" cx="19" cy="19" r="15.9"/>
+                  <circle class="ring-fill" id="osRing" cx="19" cy="19" r="15.9" stroke-dashoffset="25"/>
+                </svg>
+                <div class="os-uptime-label" id="osRingLabel">99%</div>
               </div>
-              <div class="os-pills">
-                <span class="os-pill green"><span class="dot"></span>Secure</span>
-                <span class="os-pill blue">Stable</span>
+              <div class="os-stat">
+                <span class="os-stat-label">Status</span>
+                <span class="os-stat-val green" id="osStatus">Online</span>
+              </div>
+              <div class="os-stat">
+                <span class="os-stat-label">Session</span>
+                <span class="os-stat-val" id="osSession">--:--</span>
+              </div>
+              <div class="os-stat">
+                <span class="os-stat-label">Build</span>
+                <span class="os-stat-val">2026.06</span>
               </div>
             </div>
-
-            <div class="os-center">
-              <div class="os-version-label">Workspace OS</div>
-              <div class="os-version-main">ADNN<span class="accent"> OS</span></div>
-              <div class="os-version-main" style="font-size: clamp(22px, 4vw, 32px); color: rgba(255,255,255,0.38); font-weight:400; margin-top:2px;">Version 1<span style="color:rgba(255,255,255,0.18);">.</span><span style="color:rgba(83,96,255,0.85);">07</span></div>
-              <div class="os-version-sub" id="osUptimeLine">Build 2026.06 · Loaded <span id="osUptime">0s ago</span></div>
-            </div>
-
-            <div class="os-bottombar">
-              <div class="os-stats">
-                <div class="os-uptime-ring" id="osRingWrap">
-                  <svg viewBox="0 0 38 38" aria-hidden="true">
-                    <circle class="ring-bg" cx="19" cy="19" r="15.9"/>
-                    <circle class="ring-fill" id="osRing" cx="19" cy="19" r="15.9" stroke-dashoffset="25"/>
-                  </svg>
-                  <div class="os-uptime-label" id="osRingLabel">99%</div>
-                </div>
-                <div class="os-stat">
-                  <span class="os-stat-label">Status</span>
-                  <span class="os-stat-val green" id="osStatus">Online</span>
-                </div>
-                <div class="os-stat">
-                  <span class="os-stat-label">Session</span>
-                  <span class="os-stat-val" id="osSession">--:--</span>
-                </div>
-                <div class="os-stat">
-                  <span class="os-stat-label">Build</span>
-                  <span class="os-stat-val">2026.06</span>
-                </div>
-              </div>
-              <div class="os-actions">
-                <button class="os-action-btn check-btn" id="osCheckBtn" type="button">
-                  <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M7 1.5A5.5 5.5 0 1 0 12.5 7"/><path d="M9.5 1.5l2.5.5-.5 2.5"/></svg>
-                  Check Update
-                </button>
-                <button class="os-action-btn primary" id="osInfoBtn" type="button">
-                  <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="7" cy="7" r="5.5"/><path d="M7 6.5v3M7 4.5v.5"/></svg>
-                  About
-                </button>
-              </div>
+            <div class="os-actions">
+              <button class="os-action-btn check-btn" id="osCheckBtn" type="button">
+                <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M7 1.5A5.5 5.5 0 1 0 12.5 7"/><path d="M9.5 1.5l2.5.5-.5 2.5"/></svg>
+                Check Update
+              </button>
+              <button class="os-action-btn primary" id="osInfoBtn" type="button">
+                <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="7" cy="7" r="5.5"/><path d="M7 6.5v3M7 4.5v.5"/></svg>
+                About
+              </button>
             </div>
           </div>
         </div>
       </div>
-      </div>
-      </div>
+    </div>
+    </div>
   </div>
 </div>
 
@@ -2945,9 +2945,14 @@
     adnn_chat_light_mode: "false",
     adnn_inapp_notifications: "true",
     adnn_browser_notifications: "true",
-    adnn_message_sounds: "true",
+    adnn_message_sounds: "false",
     adnn_reduce_motion: "false"
   };
+  try {
+    if (localStorage.getItem("adnn_sound_user_confirmed") !== "true") {
+      localStorage.setItem("adnn_message_sounds", "false");
+    }
+  } catch (_) {}
   function bool(key){
     const value = localStorage.getItem(key);
     return (value === null ? defaults[key] : value) === "true";
@@ -2964,6 +2969,9 @@
     const input = event.target.closest("[data-adnn-setting]");
     if (!input) return;
     localStorage.setItem(input.dataset.adnnSetting, String(input.checked));
+    if (input.dataset.adnnSetting === "adnn_message_sounds") {
+      localStorage.setItem("adnn_sound_user_confirmed", input.checked ? "true" : "false");
+    }
     if (input.dataset.adnnSetting === "adnn_browser_notifications" && input.checked && "Notification" in window && Notification.permission === "default") {
       Notification.requestPermission().catch(() => {});
     }

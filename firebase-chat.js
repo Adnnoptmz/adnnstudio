@@ -75,6 +75,7 @@ import {
   deleteObject
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
+
 const DEFAULT_CONFIG = {
   adminEmail: "getavcollab@gmail.com",
   adminAliasUid: "adnn-admin",
@@ -94,8 +95,8 @@ const DEFAULT_CONFIG = {
   uploadChunkLabelEveryPct: 5,
   deleteStorageOnDeleteForAll: false,
   messageToneFile: "",
-  outgoingCallToneFile: "call ringer_01.mp3",
-  incomingCallToneFile: "ring-app.mp3",
+  outgoingCallToneFile: "",
+  incomingCallToneFile: "",
   iceServers: [
     { urls: "stun:stun.l.google.com:19302" },
     { urls: "stun:stun1.l.google.com:19302" }
@@ -134,7 +135,7 @@ const COLLECTIONS = Object.freeze({
   offerCandidates: "offerCandidates",
   answerCandidates: "answerCandidates"
 });
-const REACTION_SET = ["?", "??", "?", "?", "?", "?", "?", "?", "?", "?"];
+const REACTION_SET = ["👍", "❤️", "😂", "😮", "😢", "🙏", "🔥", "👏", "✨", "👀", "✅", "💯"];
 
 let app = null;
 let auth = null;
@@ -148,11 +149,6 @@ let incomingCallUnsub = null;
 let callTimer = null;
 let activeCall = null;
 let globalThreadBadgeUnsub = null;
-let outgoingDialAudio = null;
-let incomingRingAudio = null;
-let lastSoundAtMs = 0;
-let chatAudioUnlockedThisSession = false;
-let chatAudioReadyAtMs = Date.now() + 12000;
 let sessionStarted = false;
 let notificationsReadyAtMs = Date.now() + 2600;
 let offlinePersistenceState = "unknown";
@@ -171,11 +167,7 @@ let chatSettingsEventsBound = false;
 const CHAT_THEME_STORAGE_KEY = "adnn_chat_light_mode";
 const CHAT_INAPP_NOTIFICATION_KEY = "adnn_inapp_notifications";
 const CHAT_BROWSER_NOTIFICATION_KEY = "adnn_browser_notifications";
-const CHAT_SOUND_KEY = "adnn_message_sounds";
-const CHAT_SOUND_CONFIRMED_KEY = "adnn_sound_user_confirmed";
 const CHAT_REDUCE_MOTION_KEY = "adnn_reduce_motion";
-const CHAT_PAGE_LOAD_AT_MS = Date.now();
-const CHAT_REFRESH_AUDIO_MUTE_MS = 18000;
 const CHAT_TOTAL_UNREAD_STORAGE_KEY = "adnn_chat_unread_total";
 const PINNED_CHAT_STORAGE_KEY = "adnn_pinned_chat_ids";
 const NAV_ORDER_STORAGE_KEY = "adnn_sidebar_nav_order";
@@ -185,6 +177,8 @@ const ICON = {
   home: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10.5V21h13V10.5"/><path d="M9.5 21v-6h5v6"/></svg>`,
   menu: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>`,
   more: `<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>`,
+  pin: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4.5 19.5 9.5"/><path d="M5 19l5.2-5.2"/><path d="M9.4 4.8 19.2 14.6"/><path d="m8.3 5.9 2.4-2.4 9.8 9.8-2.4 2.4c-.8.8-2 .9-2.9.3l-2.1-1.4-4.4 4.4-3.7-3.7 4.4-4.4L8 8.8c-.6-.9-.5-2.1.3-2.9Z"/></svg>`,
+  pinFilled: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M14.8 3.6a1.4 1.4 0 0 1 2 0l3.6 3.6a1.4 1.4 0 0 1 0 2l-2 2 1.5 1.5a1.2 1.2 0 0 1 0 1.7l-1.5 1.5a1.2 1.2 0 0 1-1.5.16l-3.1-2.04-4.77 4.77a.75.75 0 0 1-1.06 0l-2.26-2.26a.75.75 0 0 1 0-1.06l4.77-4.77-2.04-3.1a1.2 1.2 0 0 1 .16-1.5l1.5-1.5a1.2 1.2 0 0 1 1.7 0l1.5 1.5 2-2Z"/></svg>`,
   search: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>`,
   phone: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v2.4a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.12 3.63 2 2 0 0 1 4.11 1.5h2.4a2 2 0 0 1 2 1.72c.13.96.35 1.9.67 2.8a2 2 0 0 1-.45 2.1L7.7 9.16a16 16 0 0 0 7.14 7.14l1.04-1.03a2 2 0 0 1 2.1-.45c.9.32 1.84.54 2.8.67A2 2 0 0 1 22 16.92Z"/></svg>`,
   video: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="13" height="14" rx="3"/><path d="m16 10 5-3v10l-5-3"/></svg>`,
@@ -214,14 +208,11 @@ const ICON = {
 bootChatRuntime();
 
 async function bootChatRuntime() {
-  enforceSilentSoundMigration();
-  installSilentAudioGuard();
   injectChatStyles();
   syncChatSettingsFromStorage();
   bindChatSettingsEvents();
   bindGlobalDismissers();
   bindConnectivitySignals();
-  bindNotificationPermissionPrimer();
   setupSidebarReorder();
   ensureSidebarBadges();
 
@@ -280,7 +271,6 @@ async function handleAuthState(user) {
 
   sessionStarted = true;
   notificationsReadyAtMs = Date.now() + 12000;
-  chatAudioReadyAtMs = Date.now() + 12000;
   threadUnreadCache.clear();
   threadNotifyState.clear();
   startPresence(activeUser);
@@ -638,7 +628,7 @@ function renderThreadList(chats, list, roomId, scope) {
         <small>${escapeHtml(preview)}</small>
       </span>
       <span class="adnn-thread-side">
-        <button type="button" class="adnn-pin-chat" data-pin-chat="${escapeAttr(chat.id)}" title="${pinned ? "Unpin chat" : "Pin chat"}" aria-label="${pinned ? "Unpin chat" : "Pin chat"}">${pinned ? "?" : "?"}</button>
+        <button type="button" class="adnn-pin-chat" data-pin-chat="${escapeAttr(chat.id)}" title="${pinned ? "Unpin chat" : "Pin chat"}" aria-label="${pinned ? "Unpin chat" : "Pin chat"}">${pinned ? ICON.pinFilled : ICON.pin}</button>
         <time>${escapeHtml(stamp)}</time>
         ${unread > 0 ? `<b>${unread > 99 ? "99+" : unread}</b>` : ""}
       </span>
@@ -1256,7 +1246,6 @@ function openMessageMenu(bubble, state, message) {
   closeMessageMenus();
   state.menuMessageId = message.id;
   bubble.classList.add("is-menu-open");
-  if (navigator.vibrate) navigator.vibrate(18);
 }
 
 function handleMessageAction(event, state, message) {
@@ -1491,7 +1480,7 @@ function renderCallMessageBubble(message) {
     : declined
       ? (outgoing ? `Declined ${kind} call` : `Call declined`)
       : `${outgoing ? "Outgoing" : "Incoming"} ${kind} call`;
-  const detail = `${duration ? formatDuration(duration) + " · " : ""}${formatTime(message.createdAt || message.createdAtMs)}`;
+  const detail = `${duration ? formatDuration(duration) + "  " : ""}${formatTime(message.createdAt || message.createdAtMs)}`;
   return `
     <div class="adnn-call-message ${missed ? "is-missed" : ""}">
       <span>${kind === "video" ? ICON.video : ICON.phone}</span>
@@ -1740,7 +1729,7 @@ function renderFilePreview(state) {
     return `
       <div class="adnn-file-chip" data-file-id="${escapeAttr(item.id)}">
         ${media}
-        <div><strong>${escapeHtml(item.file.name)}</strong><small>${escapeHtml(item.kind)} • ${formatBytes(item.file.size)}</small>${progress ? `<i style="--p:${Math.max(0, Math.min(100, progress.pct))}%"></i>` : ""}</div>
+        <div><strong>${escapeHtml(item.file.name)}</strong><small>${escapeHtml(item.kind)}  ${formatBytes(item.file.size)}</small>${progress ? `<i style="--p:${Math.max(0, Math.min(100, progress.pct))}%"></i>` : ""}</div>
         <button type="button" data-remove-file="${escapeAttr(item.id)}">${ICON.x}</button>
       </div>
     `;
@@ -2041,7 +2030,7 @@ async function startCall(kind, chatId, chatData) {
   const remoteStatus = await getPresenceInfo(receiverUid);
   if (!remoteStatus.online) {
     await writeOfflineMissedCallMessage(chatId, chatData, kind, receiverUid).catch(() => {});
-    showInAppNotification(getChatTitle(chatData, "user"), `Missed ${kind === "video" ? "video" : "audio"} call · user offline`, { tone: "missed", icon: getChatPhoto(chatData, "user") });
+    showInAppNotification(getChatTitle(chatData, "user"), `Missed ${kind === "video" ? "video" : "audio"} call  user offline`, { tone: "missed", icon: getChatPhoto(chatData, "user") });
     return showToast(`${getChatTitle(chatData, "user")} is offline. Missed call saved.`, "warn");
   }
 
@@ -2077,7 +2066,6 @@ async function startCall(kind, chatId, chatData) {
     });
 
     renderCallOverlay();
-    startOutgoingDialTone();
     await setupPeerConnection(activeCall, true);
     const offer = await activeCall.pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
     await activeCall.pc.setLocalDescription(offer);
@@ -2130,9 +2118,6 @@ function showIncomingCall(callId, call) {
   document.body.appendChild(overlay);
   placeCallPopout(overlay);
   makeDraggable(overlay, overlay.querySelector("[data-call-drag]"));
-  startIncomingRingtone();
-  notifyBrowser(`${call.callerName || "Incoming call"}`, `${call.kind === "video" ? "Video" : "Audio"} call`, call.callerPhotoURL);
-  if (navigator.vibrate) navigator.vibrate([80, 40, 80]);
 
   const timeout = setTimeout(() => {
     callWatch?.();
@@ -2662,7 +2647,7 @@ function callSummaryLastMessage(message) {
   const kind = message.kind === "video" ? "video" : "audio";
   if (message.callStatus === "missed" || message.endedReason === "timeout" || message.endedReason === "offline") return `Missed ${kind} call`;
   if (message.endedReason === "rejected") return `Declined ${kind} call`;
-  return `${kind[0].toUpperCase()}${kind.slice(1)} call · ${formatDuration(Math.round((message.durationMs || 0) / 1000))}`;
+  return `${kind[0].toUpperCase()}${kind.slice(1)} call  ${formatDuration(Math.round((message.durationMs || 0) / 1000))}`;
 }
 
 async function getProfile(uid, email) {
@@ -3484,7 +3469,6 @@ function sleep(ms) {
 }
 
 
-
 function watchGlobalThreadBadges() {
   globalThreadBadgeUnsub?.();
   globalThreadBadgeUnsub = null;
@@ -3560,120 +3544,17 @@ function assetUrl(fileName) {
 }
 
 
-function enforceSilentSoundMigration() {
-  try {
-        if (localStorage.getItem(CHAT_SOUND_CONFIRMED_KEY) !== "true") {
-      localStorage.setItem(CHAT_SOUND_KEY, "false");
-    }
-  } catch (_) {}
+function stopOutgoingDialTone() {
+  return;
 }
 
-function installSilentAudioGuard() {
-  if (window.__adnnSilentAudioGuardInstalled) return;
-  window.__adnnSilentAudioGuardInstalled = true;
-  const shouldBlock = () => {
-    try {
-      return localStorage.getItem(CHAT_SOUND_KEY) !== "true" || localStorage.getItem(CHAT_SOUND_CONFIRMED_KEY) !== "true";
-    } catch (_) {
-      return true;
-    }
-  };
-  try {
-    const proto = window.HTMLMediaElement && window.HTMLMediaElement.prototype;
-    if (proto && proto.play && !proto.__adnnOriginalPlay) {
-      proto.__adnnOriginalPlay = proto.play;
-      proto.play = function guardedPlay() {
-        const src = String(this.currentSrc || this.src || "").toLowerCase();
-        const looksLikeNotificationTone = /message|notification|ring|ringer|tone|call/.test(src);
-        if (looksLikeNotificationTone && shouldBlock()) {
-          try { this.pause?.(); this.currentTime = 0; } catch (_) {}
-          return Promise.resolve();
-        }
-        return proto.__adnnOriginalPlay.apply(this, arguments);
-      };
-    }
-  } catch (_) {}
+function stopIncomingRingtone() {
+  return;
 }
 
 function hasConfirmedSoundOptIn() {
-  try {
-    return localStorage.getItem(CHAT_SOUND_CONFIRMED_KEY) === "true" && localStorage.getItem(CHAT_SOUND_KEY) === "true";
-  } catch (_) {
-    return false;
-  }
+  return false;
 }
-
-function isRefreshAudioMuteWindow() {
-  return Date.now() - CHAT_PAGE_LOAD_AT_MS < CHAT_REFRESH_AUDIO_MUTE_MS;
-}
-
-function canPlayChatSound() {
-  if (!hasConfirmedSoundOptIn()) return false;
-  if (isRefreshAudioMuteWindow()) return false;
-  if (Date.now() < chatAudioReadyAtMs || Date.now() < notificationsReadyAtMs) return false;
-  if (!chatAudioUnlockedThisSession) return false;
-  return true;
-}
-
-function hasFreshUserActivation() {
-  try {
-    const activation = navigator.userActivation;
-    return !!(activation && (activation.isActive || activation.hasBeenActive));
-  } catch (_) {
-    return false;
-  }
-}
-
-function unlockChatAudioForSession() {
-  chatAudioUnlockedThisSession = true;
-  chatAudioReadyAtMs = Math.min(chatAudioReadyAtMs, Date.now() + 250);
-}
-
-['pointerdown', 'keydown', 'touchstart'].forEach((eventName) => {
-  window.addEventListener(eventName, unlockChatAudioForSession, { once: true, passive: true });
-});
-
-function createLoopingAudio(fileName, volume = 0.62) {
-  return null;
-}
-
-
-function playOneShotAudio(fileName, fallbackTone = 'message') {
-  return;
-}
-
-
-function startOutgoingDialTone() {
-  stopOutgoingDialTone();
-  return;
-}
-
-
-function stopOutgoingDialTone() {
-  try { outgoingDialAudio?.pause?.(); if (outgoingDialAudio) outgoingDialAudio.currentTime = 0; } catch (_) {}
-  outgoingDialAudio = null;
-}
-
-function startIncomingRingtone() {
-  stopIncomingRingtone();
-  return;
-}
-
-
-function stopIncomingRingtone() {
-  try { incomingRingAudio?.pause?.(); if (incomingRingAudio) incomingRingAudio.currentTime = 0; } catch (_) {}
-  incomingRingAudio = null;
-}
-
-function playSynthTone(tone = 'message') {
-  return;
-}
-
-
-function bindNotificationPermissionPrimer() {
-  notificationPermissionAsked = true;
-}
-
 
 function chatReduceMotionEnabled() {
   return chatSettingBool(CHAT_REDUCE_MOTION_KEY, false) || document.documentElement.classList.contains('adnn-reduce-motion');
@@ -3693,36 +3574,25 @@ function syncChatSettingsFromStorage() {
   const root = document.documentElement;
   root.classList.toggle("adnn-chat-light", chatSettingBool(CHAT_THEME_STORAGE_KEY, false));
   root.classList.toggle("adnn-reduce-motion", chatSettingBool(CHAT_REDUCE_MOTION_KEY, false));
-  root.classList.toggle("adnn-silent-mode", !hasConfirmedSoundOptIn());
-  if (!hasConfirmedSoundOptIn()) {
-    stopIncomingRingtone();
-    stopOutgoingDialTone();
-  }
+  root.classList.add("adnn-silent-mode");
 }
 
 function bindChatSettingsEvents() {
   if (chatSettingsEventsBound) return;
   chatSettingsEventsBound = true;
-  const sync = () => { syncChatSettingsFromStorage(); if (!hasConfirmedSoundOptIn()) { stopIncomingRingtone(); stopOutgoingDialTone(); } };
+  const sync = () => syncChatSettingsFromStorage();
   window.addEventListener("storage", sync);
   window.addEventListener("adnn-settings-changed", sync);
 }
 
-function notifyBrowser(title, body, icon = "") {
+function notifyBrowser(title, body, icon = '') {
   return;
 }
-
 
 function showInAppNotification(title, body, options = {}) {
   document.getElementById("adnnInAppNotificationStack")?.remove();
   return;
 }
-
-
-function playNotificationTone(tone = "message") {
-  return;
-}
-
 
 function updateBadgeNode(node, value) {
   if (!node) return;
@@ -3788,7 +3658,6 @@ function notifyThreadUnread(chat, title, unread) {
     icon: getChatPhoto(chat, isAdminEmail(activeUser?.email) ? "admin" : "user"),
     href: location.pathname.includes("designer-account.html") ? "designer-account.html#chat" : location.pathname.includes("admin.html") ? "admin.html#chats_view" : "account.html#chat"
   });
-  notifyBrowser(title, body, getChatPhoto(chat, isAdminEmail(activeUser?.email) ? "admin" : "user"));
 }
 
 function notifyIncomingMessages(state, messages) {
@@ -3815,7 +3684,6 @@ function notifyIncomingMessages(state, messages) {
       icon: getChatPhoto(state.chatData, isAdminEmail(activeUser?.email) ? "admin" : "user"),
       href: location.pathname.includes("designer-account.html") ? "designer-account.html#chat" : location.pathname.includes("admin.html") ? "admin.html#chats_view" : "account.html#chat"
     });
-    notifyBrowser(title, body, getChatPhoto(state.chatData, isAdminEmail(activeUser?.email) ? "admin" : "user"));
   });
 }
 

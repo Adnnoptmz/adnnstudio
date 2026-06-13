@@ -483,9 +483,8 @@ function watchChatThreads(scope, listId, roomId, options = {}) {
     const unique = new Map();
     chats.forEach((chat) => unique.set(chat.id, { ...(unique.get(chat.id) || {}), ...chat }));
     chats = Array.from(unique.values()).filter(isChatVisibleForCurrentUser);
-    if (isDesignerChatRuntime() && scope !== "admin") chats = chats.filter(isDesignerRelevantChat);
     if (scope === "admin") chats = chats.filter(isVisibleToAdminInbox);
-    if (options.directOnly || options.excludeSupport) chats = chats.filter((chat) => !isSupportLikeChat(chat));
+    if (options.directOnly || options.excludeSupport) chats = chats.filter((chat) => chat.type !== "support");
     chats.sort((a, b) => toMillis(b.updatedAt || b.createdAt || b.updatedAtMs) - toMillis(a.updatedAt || a.createdAt || a.updatedAtMs));
     renderThreadList(chats, list, roomId, scope);
   };
@@ -515,8 +514,8 @@ function watchChatThreads(scope, listId, roomId, options = {}) {
     selfEmailKeyList().forEach((mail, index) => {
       listen(`participant-email-${index}`, query(collection(db, COLLECTIONS.chats), where("participantEmailKeys", "array-contains", mail)));
     });
-    if (isDesignerChatRuntime()) {
-      listenDesignerChatSources(listen);
+    if (activeProfile?.role === "designer") {
+      listen("designer-room", query(collection(db, COLLECTIONS.chats), where("type", "==", "designer-room")));
     }
   }
 
@@ -534,120 +533,6 @@ function stopListWatcher(listId) {
   old?.();
   listWatchers.delete(listId);
 }
-
-
-function getStoredDesignerProfile() {
-  try {
-    const raw = localStorage.getItem("adnnDesignerUser");
-    return raw ? (JSON.parse(raw) || {}) : {};
-  } catch (_) {
-    return {};
-  }
-}
-
-function isDesignerChatRuntime() {
-  return !!(location.pathname.includes("designer-account.html") || activeProfile?.role === "designer" || localStorage.getItem("adnnDesignerUser"));
-}
-
-function isSupportLikeChat(chat) {
-  const type = String(chat?.type || "").toLowerCase();
-  const title = String(chat?.title || "").toLowerCase();
-  const remoteUid = getRemoteUid(chat);
-  const emails = [
-    chat?.adminEmail,
-    chat?.supportEmail,
-    chat?.clientEmail,
-    chat?.receiverEmail,
-    chat?.createdByEmail,
-    ...(Array.isArray(chat?.participantEmailKeys) ? chat.participantEmailKeys : []),
-    ...(Array.isArray(chat?.participantEmails) ? chat.participantEmails : [])
-  ].map(emailKey);
-  const participants = Array.isArray(chat?.participantUids) ? chat.participantUids : [];
-  return type === "support"
-    || type.includes("support")
-    || type.includes("admin")
-    || title.includes("admin support")
-    || remoteUid === ADMIN_ALIAS_UID
-    || participants.includes(ADMIN_ALIAS_UID)
-    || emails.includes(ADMIN_EMAIL);
-}
-
-function listenDesignerChatSources(listen) {
-  listen("designer-room", query(collection(db, COLLECTIONS.chats), where("type", "==", "designer-room")));
-  listen("design-room", query(collection(db, COLLECTIONS.chats), where("type", "==", "design-room")));
-  listen("designer-support", query(collection(db, COLLECTIONS.chats), where("type", "==", "designer-support")));
-  listen("designer-inbox", query(collection(db, COLLECTIONS.chats), where("type", "==", "designer")));
-
-  const uidFields = [
-    "designerUid",
-    "assignedDesignerUid",
-    "assignedToUid",
-    "assigneeUid",
-    "designerId",
-    "assignedDesignerId",
-    "assignedTo",
-    "assigneeId"
-  ];
-  const uidArrayFields = [
-    "designerUids",
-    "assignedDesignerUids",
-    "memberUids",
-    "members",
-    "visibleToUids",
-    "allowedUids"
-  ];
-  Array.from(selfUidSet()).forEach((uid, index) => {
-    uidFields.forEach((field) => listen(`designer-${field}-${index}`, query(collection(db, COLLECTIONS.chats), where(field, "==", uid))));
-    uidArrayFields.forEach((field) => listen(`designer-${field}-contains-${index}`, query(collection(db, COLLECTIONS.chats), where(field, "array-contains", uid))));
-  });
-
-  const emailFields = [
-    "designerEmail",
-    "assignedDesignerEmail",
-    "assignedToEmail",
-    "assigneeEmail",
-    "designerMail",
-    "assignedMail"
-  ];
-  const emailArrayFields = [
-    "designerEmails",
-    "assignedDesignerEmails",
-    "memberEmails",
-    "participantEmails",
-    "participantEmailKeys",
-    "visibleToEmails",
-    "allowedEmails"
-  ];
-  selfEmailKeyList().forEach((mail, index) => {
-    emailFields.forEach((field) => listen(`designer-${field}-${index}`, query(collection(db, COLLECTIONS.chats), where(field, "==", mail))));
-    emailArrayFields.forEach((field) => listen(`designer-${field}-contains-${index}`, query(collection(db, COLLECTIONS.chats), where(field, "array-contains", mail))));
-  });
-
-  // Last-resort designer-page inbox: if Firestore rules allow it, this catches older chat
-  // records that were created without designer participant arrays. Client-side filtering
-  // below keeps it relevant to this signed-in designer.
-  listen("designer-recent-updated", query(collection(db, COLLECTIONS.chats), orderBy("updatedAt", "desc"), limit(120)));
-}
-
-function isDesignerRelevantChat(chat) {
-  if (!chat || !isDesignerChatRuntime()) return true;
-  const storedDesigner = getStoredDesignerProfile();
-  const uids = selfUidSet();
-  const emails = selfEmailKeySet();
-  const designerIds = new Set(uniqueClean([storedDesigner.designerid, storedDesigner.designerId, activeProfile?.designerid, activeProfile?.designerId]).map((value) => String(value).toLowerCase()));
-  const uidFields = [chat.designerUid, chat.assignedDesignerUid, chat.assignedToUid, chat.assigneeUid, chat.designerId, chat.assignedDesignerId, chat.assignedTo, chat.assigneeId, chat.clientUid];
-  if (uidFields.some((uid) => uid && (uids.has(String(uid)) || designerIds.has(String(uid).toLowerCase())))) return true;
-  const uidArrays = [chat.participantUids, chat.designerUids, chat.assignedDesignerUids, chat.memberUids, chat.members, chat.visibleToUids, chat.allowedUids];
-  if (uidArrays.some((arr) => Array.isArray(arr) && arr.some((uid) => uids.has(String(uid)) || designerIds.has(String(uid).toLowerCase())))) return true;
-  const emailFields = [chat.designerEmail, chat.assignedDesignerEmail, chat.assignedToEmail, chat.assigneeEmail, chat.designerMail, chat.assignedMail, chat.clientEmail];
-  if (emailFields.some((mail) => mail && emails.has(emailKey(mail)))) return true;
-  const emailArrays = [chat.participantEmailKeys, chat.participantEmails, chat.designerEmails, chat.assignedDesignerEmails, chat.memberEmails, chat.visibleToEmails, chat.allowedEmails];
-  if (emailArrays.some((arr) => Array.isArray(arr) && arr.some((mail) => emails.has(emailKey(mail))))) return true;
-  const type = String(chat.type || "").toLowerCase();
-  return type.includes("designer") || type.includes("design");
-}
-
-
 
 
 function isVisibleToAdminInbox(chat) {

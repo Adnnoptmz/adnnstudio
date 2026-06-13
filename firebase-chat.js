@@ -614,7 +614,6 @@ function renderThreadList(chats, list, roomId, scope) {
     const title = getChatTitle(chat, scope);
     const unread = getUnreadCount(chat, scope);
     const pinned = pinnedChats.has(chat.id);
-    notifyThreadUnread(chat, title, unread);
     const row = document.createElement("button");
     row.type = "button";
     row.className = `adnn-thread ${pinned ? "is-pinned" : ""}`;
@@ -3485,7 +3484,16 @@ function watchGlobalThreadBadges() {
 
   const owner = [];
   const sources = new Map();
-  const render = () => {
+  let initialSourceCount = 0;
+  const hydratedSources = new Set();
+  let initialHydrationDone = false;
+  const markHydrated = (key) => {
+    hydratedSources.add(key);
+    if (!initialHydrationDone && hydratedSources.size >= Math.max(1, initialSourceCount)) {
+      initialHydrationDone = true;
+    }
+  };
+  const render = (allowNotify = initialHydrationDone) => {
     let chats = Array.from(sources.values()).flatMap((items) => Array.from(items.values()));
     const unique = new Map();
     chats.forEach((chat) => unique.set(chat.id, { ...(unique.get(chat.id) || {}), ...chat }));
@@ -3493,25 +3501,44 @@ function watchGlobalThreadBadges() {
     const scope = isAdminEmail(activeUser?.email) ? 'admin' : 'user';
     if (scope === 'admin') chats = chats.filter(isVisibleToAdminInbox);
     updateChatNavigationBadges(chats, scope);
-    chats.forEach((chat) => notifyThreadUnread(chat, getChatTitle(chat, scope), getUnreadCount(chat, scope)));
+    if (allowNotify) {
+      chats.forEach((chat) => notifyThreadUnread(chat, getChatTitle(chat, scope), getUnreadCount(chat, scope)));
+    } else {
+      chats.forEach((chat) => {
+        const key = `thread:${chat.id}`;
+        threadUnreadCache.set(key, getUnreadCount(chat, scope) || 0);
+        const lastMs = toMillis(chat.updatedAt || chat.updatedAtMs || chat.createdAt || chat.createdAtMs);
+        threadNotifyState.set(key, `${lastMs}:${chat.lastMessage || ""}:${chat.lastSenderUid || ""}:${chat.lastMessageKind || ""}`);
+      });
+    }
   };
   const listen = (key, refOrQuery) => resilientSnapshot(`globalThreads:${key}`, refOrQuery, (snapshot) => {
     sources.set(key, new Map(snapshot.docs.map((item) => [item.id, { id: item.id, ...item.data(), __pending: item.metadata.hasPendingWrites }])));
-    render();
-  }, () => render(), owner);
+    const allowNotify = initialHydrationDone;
+    render(allowNotify);
+    markHydrated(key);
+  }, () => {
+    const allowNotify = initialHydrationDone;
+    render(allowNotify);
+    markHydrated(key);
+  }, owner);
 
+  const listenSource = (key, refOrQuery) => {
+    initialSourceCount += 1;
+    listen(key, refOrQuery);
+  };
   if (isAdminEmail(activeUser.email)) {
-    listen('support', query(collection(db, COLLECTIONS.chats), where('type', '==', 'support')));
-    listen('admin-alias', query(collection(db, COLLECTIONS.chats), where('participantUids', 'array-contains', ADMIN_ALIAS_UID)));
+    listenSource('support', query(collection(db, COLLECTIONS.chats), where('type', '==', 'support')));
+    listenSource('admin-alias', query(collection(db, COLLECTIONS.chats), where('participantUids', 'array-contains', ADMIN_ALIAS_UID)));
     selfEmailKeyList().forEach((mail, index) => {
-      listen(`admin-email-${index}`, query(collection(db, COLLECTIONS.chats), where('participantEmailKeys', 'array-contains', mail)));
+      listenSource(`admin-email-${index}`, query(collection(db, COLLECTIONS.chats), where('participantEmailKeys', 'array-contains', mail)));
     });
   } else {
     Array.from(selfUidSet()).forEach((uid, index) => {
-      listen(`participant-${index}`, query(collection(db, COLLECTIONS.chats), where('participantUids', 'array-contains', uid)));
+      listenSource(`participant-${index}`, query(collection(db, COLLECTIONS.chats), where('participantUids', 'array-contains', uid)));
     });
     selfEmailKeyList().forEach((mail, index) => {
-      listen(`participant-email-${index}`, query(collection(db, COLLECTIONS.chats), where('participantEmailKeys', 'array-contains', mail)));
+      listenSource(`participant-email-${index}`, query(collection(db, COLLECTIONS.chats), where('participantEmailKeys', 'array-contains', mail)));
     });
   }
   globalThreadBadgeUnsub = () => owner.forEach((fn) => fn?.());

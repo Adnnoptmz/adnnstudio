@@ -39,9 +39,6 @@
       backdrop-filter:blur(24px) saturate(160%);
       -webkit-backdrop-filter:blur(24px) saturate(160%);
     }
-	  @keyframes adnnOsShimmer { 0% { background-position: -100% 0; } 100% { background-position: 200% 0; } }
-@keyframes adnnOsBlink { 0%, 100% { opacity: 1; } 50% { opacity: 0.28; } }
-@keyframes adnnOsPgSlide { 0% { background-position: 0% 0; } 100% { background-position: 200% 0; } }
     header {
       position:fixed;
       top:20px;
@@ -1596,58 +1593,25 @@
     <label class="settings-card adnn-setting-card"><div><strong>Browser notifications</strong><span>Allow system notifications for new messages and missed calls.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_browser_notifications"><i></i></span></label>
     <label class="settings-card adnn-setting-card"><div><strong>Message sound</strong><span>Play a soft tone for new chat and missed call alerts.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_message_sounds"><i></i></span></label>
     <label class="settings-card adnn-setting-card"><div><strong>Reduce motion</strong><span>Calm animations for a lighter, accessibility-friendly dashboard.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_reduce_motion"><i></i></span></label>
-    <div class="settings-card adnn-os-card" id="adnnOsCardV3" aria-label="System version" style="all:unset;display:block;position:relative;border-radius:24px;overflow:hidden;border:1px solid rgba(255,255,255,0.09);background:#0c0c10;box-shadow:0 2px 0 rgba(0,0,0,0.5),0 28px 70px rgba(0,0,0,0.45);cursor:default;pointer-events:all;">
-  <canvas id="adnnOsCanvas" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;"></canvas>
-  <div style="position:absolute;inset:0;z-index:0;pointer-events:none;background-image:linear-gradient(rgba(255,255,255,0.022) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.022) 1px,transparent 1px);background-size:30px 30px;mask-image:radial-gradient(ellipse at 50% 50%,black 20%,transparent 72%);-webkit-mask-image:radial-gradient(ellipse at 50% 50%,black 20%,transparent 72%);"></div>
-  <div style="position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(105deg,transparent 40%,rgba(255,255,255,0.025) 50%,transparent 60%);background-size:200% 100%;animation:adnnOsShimmer 4s ease infinite;"></div>
-  <div id="adnnOsProgressBar" style="position:absolute;bottom:0;left:0;height:2px;width:0%;background:linear-gradient(90deg,#272dcf,#5360ff,#272dcf);background-size:200% 100%;z-index:10;opacity:0;transition:opacity 0.3s;"></div>
-  <div id="adnnOsToast" style="position:absolute;top:14px;left:50%;transform:translateX(-50%) translateY(-6px);background:rgba(39,45,207,0.92);border:1px solid rgba(83,96,255,0.40);border-radius:999px;padding:7px 15px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:#fff;white-space:nowrap;z-index:20;opacity:0;pointer-events:none;transition:all 0.26s cubic-bezier(.16,1,.3,1);box-shadow:0 8px 28px rgba(39,45,207,0.38);">Checking for updates…</div>
-  <div style="position:relative;z-index:2;display:grid;grid-template-rows:auto 1fr auto;padding:26px 26px 22px;min-height:200px;gap:18px;">
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
-      <div style="display:flex;align-items:center;gap:10px;">
-        <div style="width:34px;height:34px;border-radius:10px;background:linear-gradient(145deg,#272dcf,#5360ff);display:grid;place-items:center;box-shadow:inset 0 1px 0 rgba(255,255,255,0.20),0 4px 14px rgba(39,45,207,0.45);flex-shrink:0;">
-          <svg width="17" height="17" viewBox="0 0 18 18" fill="none" aria-hidden="true"><rect x="2" y="2" width="6" height="6" rx="1.5" fill="white" opacity="0.9"/><rect x="10" y="2" width="6" height="6" rx="1.5" fill="white" opacity="0.4"/><rect x="2" y="10" width="6" height="6" rx="1.5" fill="white" opacity="0.4"/><rect x="10" y="10" width="6" height="6" rx="1.5" fill="white" opacity="0.75"/></svg>
-        </div>
-        <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:500;letter-spacing:0.18em;text-transform:uppercase;color:rgba(255,255,255,0.38);">ADNN Studio</span>
-      </div>
-      <div style="display:flex;align-items:center;gap:6px;">
-        <span style="display:inline-flex;align-items:center;gap:4px;padding:4px 9px;border-radius:999px;background:rgba(39,207,120,0.08);border:1px solid rgba(39,207,120,0.20);font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:500;letter-spacing:0.10em;text-transform:uppercase;color:rgba(39,207,120,0.82);"><span style="width:4px;height:4px;border-radius:50%;background:#27cf78;display:inline-block;animation:adnnOsBlink 2.4s ease infinite;"></span>Secure</span>
-        <span style="padding:4px 9px;border-radius:999px;background:rgba(83,96,255,0.10);border:1px solid rgba(83,96,255,0.22);font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:500;letter-spacing:0.10em;text-transform:uppercase;color:rgba(83,96,255,0.88);">Stable</span>
-      </div>
-    </div>
-    <div style="display:flex;flex-direction:column;gap:4px;">
-      <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:0.20em;text-transform:uppercase;color:rgba(255,255,255,0.26);margin-bottom:2px;">Workspace OS</div>
-      <div style="font-family:'Aileron',ui-sans-serif,sans-serif;font-size:clamp(34px,7vw,52px);font-weight:700;letter-spacing:-0.04em;line-height:0.95;color:#fff;">ADNN<span style="color:#5360ff;"> OS</span></div>
-      <div style="font-family:'Aileron',ui-sans-serif,sans-serif;font-size:clamp(18px,3.5vw,26px);font-weight:400;letter-spacing:-0.02em;color:rgba(255,255,255,0.35);margin-top:2px;">Version 1<span style="color:rgba(255,255,255,0.16);">.</span><span style="color:rgba(83,96,255,0.82);">07</span></div>
-      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:rgba(255,255,255,0.28);letter-spacing:0.04em;margin-top:4px;">Build 2026.06 · Session <span id="adnnOsSession">00:00</span></div>
-    </div>
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;border-top:1px solid rgba(255,255,255,0.07);padding-top:16px;flex-wrap:wrap;gap:10px;">
-      <div style="display:flex;align-items:center;gap:18px;">
-        <div style="position:relative;width:36px;height:36px;flex-shrink:0;">
-          <svg width="36" height="36" viewBox="0 0 36 36" style="transform:rotate(-90deg);" aria-hidden="true"><circle fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="2.4" cx="18" cy="18" r="14.5"/><circle id="adnnOsRing" fill="none" stroke="#5360ff" stroke-width="2.4" stroke-linecap="round" cx="18" cy="18" r="14.5" stroke-dasharray="91.1" stroke-dashoffset="0.91"/></svg>
-          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:8px;font-weight:500;color:rgba(255,255,255,0.60);">99%</div>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:1px;">
-          <span style="font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.26);">Status</span>
-          <span id="adnnOsStatus" style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;color:#27cf78;">Online</span>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:1px;">
-          <span style="font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.26);">Build</span>
-          <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;color:rgba(255,255,255,0.65);">2026.06</span>
-        </div>
-      </div>
-      <div style="display:flex;align-items:center;gap:7px;">
-        <button id="adnnOsCheckBtn" type="button" style="display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:999px;border:1px solid rgba(255,255,255,0.10);background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.50);font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:0.07em;cursor:pointer;transition:all 0.22s cubic-bezier(.16,1,.3,1);">
-          <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M7 1.5A5.5 5.5 0 1 0 12.5 7"/><path d="M9.5 1.5l2.5.5-.5 2.5"/></svg>Check Update
-        </button>
-        <button id="adnnOsInfoBtn" type="button" style="display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:999px;border:1px solid rgba(83,96,255,0.45);background:rgba(39,45,207,0.75);color:#fff;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:0.07em;cursor:pointer;transition:all 0.22s cubic-bezier(.16,1,.3,1);box-shadow:0 4px 16px rgba(39,45,207,0.32);">
-          <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="7" cy="7" r="5.5"/><path d="M7 6.5v3M7 4.5v.5"/></svg>About
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
     <div class="settings-card adnn-setting-card"><div><strong>Terms & Privacy</strong><span>Read the latest studio terms and privacy page.</span></div><a href="#terms" class="apple-home-btn" data-view-link="terms" aria-label="Open terms"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 3.5h8.7L19 7.3v13.2H6.5v-17Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M15 3.8V8h4M9 12h6M9 16h6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></a></div>
+    <div class="settings-card adnn-os-card adnn-os-interactive-card" aria-label="Interactive system version" role="group">
+      <canvas class="adnn-os-mini-canvas" aria-hidden="true"></canvas>
+      <div class="adnn-os-mini-glow" aria-hidden="true"></div>
+      <div class="adnn-os-mini-left">
+        <span class="adnn-os-mark" aria-hidden="true"><i></i></span>
+        <div class="adnn-os-meta">
+          <strong>ADNN OS <b>1.07</b></strong>
+          <span>Secure workspace system · <em class="adnn-os-session">00:00</em></span>
+        </div>
+      </div>
+      <div class="adnn-os-mini-actions">
+        <span class="adnn-os-chip"><i></i> Stable</span>
+        <button class="adnn-os-mini-btn adnn-os-check" type="button" aria-label="Check ADNN OS update">Check</button>
+        <button class="adnn-os-mini-btn adnn-os-about" type="button" aria-label="Show ADNN OS about">About</button>
+      </div>
+      <div class="adnn-os-mini-progress" aria-hidden="true"></div>
+      <div class="adnn-os-mini-toast" role="status" aria-live="polite">ADNN OS 1.07 is up to date ✓</div>
+    </div>
   </div>
 </section>
 
@@ -2571,71 +2535,7 @@
 	  </script>
   <script type="module" src="firebase-account.js" onerror="window.adnnAccountModuleFallback && window.adnnAccountModuleFallback()"></script>
   <script type="module" src="firebase-chat.js?v=20260613-silent-refresh"></script>
-<script><script id="adnnOsCardScript">
-(function(){
-  const card = document.getElementById('adnnOsCardV3');
-  if(!card) return;
-  const canvas = document.getElementById('adnnOsCanvas');
-  const ctx = canvas ? canvas.getContext('2d') : null;
-  let W, H, pts = [], mouse = {x:-999,y:-999};
-  function resize(){
-    const r = card.getBoundingClientRect();
-    W = canvas.width = r.width; H = canvas.height = r.height;
-  }
-  function mkPt(){
-    return { x:Math.random()*W, y:Math.random()*H, r:Math.random()*1.3+0.4, vx:(Math.random()-.5)*.2, vy:(Math.random()-.5)*.2, a:Math.random()*.45+.1, c:Math.random()>.55?[83,96,255]:[255,255,255] };
-  }
-  function init(){ resize(); pts = Array.from({length:32},mkPt); }
-  function draw(){
-    if(!ctx) return;
-    ctx.clearRect(0,0,W,H);
-    for(let i=0;i<pts.length;i++){
-      for(let j=i+1;j<pts.length;j++){
-        const dx=pts[i].x-pts[j].x,dy=pts[i].y-pts[j].y,d=Math.sqrt(dx*dx+dy*dy);
-        if(d<100){ ctx.beginPath(); ctx.moveTo(pts[i].x,pts[i].y); ctx.lineTo(pts[j].x,pts[j].y); ctx.strokeStyle=`rgba(83,96,255,${(1-d/100)*.10})`; ctx.lineWidth=.6; ctx.stroke(); }
-      }
-    }
-    for(const p of pts){
-      const mdx=mouse.x-p.x,mdy=mouse.y-p.y,md=Math.sqrt(mdx*mdx+mdy*mdy);
-      if(md<80){ p.vx-=mdx/md*.07; p.vy-=mdy/md*.07; }
-      p.vx*=.98; p.vy*=.98; p.x+=p.vx; p.y+=p.vy;
-      if(p.x<0||p.x>W) p.vx*=-1; if(p.y<0||p.y>H) p.vy*=-1;
-      ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
-      ctx.fillStyle=`rgba(${p.c[0]},${p.c[1]},${p.c[2]},${p.a})`; ctx.fill();
-    }
-    requestAnimationFrame(draw);
-  }
-  card.addEventListener('mousemove',e=>{ const r=card.getBoundingClientRect(); mouse.x=e.clientX-r.left; mouse.y=e.clientY-r.top; });
-  card.addEventListener('mouseleave',()=>{ mouse.x=-999; mouse.y=-999; });
-  card.addEventListener('touchmove',e=>{ const r=card.getBoundingClientRect(),t=e.touches[0]; mouse.x=t.clientX-r.left; mouse.y=t.clientY-r.top; },{passive:true});
-  window.addEventListener('resize',resize);
-  init(); draw();
-  const sessionEl = document.getElementById('adnnOsSession');
-  const start = Date.now();
-  function tick(){ const s=Math.floor((Date.now()-start)/1000),m=Math.floor(s/60); if(sessionEl) sessionEl.textContent=`${String(m).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`; }
-  tick(); setInterval(tick,1000);
-  const pb = document.getElementById('adnnOsProgressBar');
-  const toast = document.getElementById('adnnOsToast');
-  const checkBtn = document.getElementById('adnnOsCheckBtn');
-  const infoBtn = document.getElementById('adnnOsInfoBtn');
-  const statusEl = document.getElementById('adnnOsStatus');
-  function showToast(msg,dur){ toast.textContent=msg; toast.style.opacity='1'; toast.style.transform='translateX(-50%) translateY(0)'; setTimeout(()=>{ toast.style.opacity='0'; toast.style.transform='translateX(-50%) translateY(-6px)'; },dur||2400); }
-  if(checkBtn) checkBtn.addEventListener('click',function(){
-    this.disabled=true; this.textContent='Checking…';
-    pb.style.opacity='1'; pb.style.width='100%'; pb.style.animation='adnnOsPgSlide 1.6s linear infinite';
-    if(statusEl){ statusEl.textContent='Checking'; statusEl.style.color='rgba(255,207,39,0.85)'; }
-    showToast('Checking for updates…',2200);
-    setTimeout(()=>{
-      pb.style.opacity='0'; pb.style.width='0%'; pb.style.animation='';
-      if(statusEl){ statusEl.textContent='Up to date'; statusEl.style.color='#27cf78'; }
-      showToast('ADNN OS 1.07 is up to date ✓',2800);
-      this.disabled=false; this.textContent='✓ Up to date';
-      setTimeout(()=>{ this.textContent='Check Update'; if(statusEl){ statusEl.textContent='Online'; statusEl.style.color='#27cf78'; } },4000);
-    },2400);
-  });
-  if(infoBtn) infoBtn.addEventListener('click',()=>showToast('ADNN OS 1.07 · Stable · adnnstudio.com',3000));
-})();
-</script></script>
+
 <script id="adnn-settings-upgrade-js">
 (function setupAdnnSettingsUpgrade(){
   const defaults = {
@@ -2688,5 +2588,90 @@
   }, true);
 })();
 </script>
+
+<style id="adnn-os-interactive-compact-css">
+  .settings-grid .adnn-os-interactive-card {
+    position:relative !important;
+    min-height:82px !important;
+    height:auto !important;
+    display:flex !important;
+    align-items:center !important;
+    justify-content:space-between !important;
+    gap:14px !important;
+    padding:14px 16px !important;
+    overflow:hidden !important;
+    border-radius:22px !important;
+    border:1px solid rgba(255,255,255,.12) !important;
+    background:#0c0c10 !important;
+    color:#fff !important;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.10), 0 16px 42px rgba(0,0,0,.12) !important;
+    pointer-events:auto !important;
+    cursor:default !important;
+    isolation:isolate !important;
+  }
+  .settings-grid .adnn-os-interactive-card:hover { transform:none !important; background:#0c0c10 !important; border-color:rgba(255,255,255,.18) !important; }
+  .settings-grid .adnn-os-interactive-card::before,
+  .settings-grid .adnn-os-interactive-card::after { display:none !important; content:none !important; }
+  .adnn-os-mini-canvas, .adnn-os-mini-glow { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:0; }
+  .adnn-os-mini-glow { background-image:linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px), radial-gradient(circle at var(--os-x, 76%) var(--os-y, 50%), rgba(83,96,255,.24), transparent 34%); background-size:24px 24px,24px 24px,100% 100%; opacity:.95; }
+  .adnn-os-mini-left, .adnn-os-mini-actions { position:relative; z-index:2; display:flex; align-items:center; gap:12px; min-width:0; }
+  .adnn-os-interactive-card .adnn-os-mark { flex:0 0 46px; width:46px; height:46px; border-radius:16px; display:grid; place-items:center; background:linear-gradient(145deg,#272dcf,#5360ff); box-shadow:inset 0 1px 0 rgba(255,255,255,.32), 0 8px 24px rgba(39,45,207,.30); }
+  .adnn-os-interactive-card .adnn-os-mark i { width:15px; height:15px; border-radius:5px; background:#fff; box-shadow:0 0 18px rgba(255,255,255,.8); clip-path:polygon(50% 0,64% 36%,100% 50%,64% 64%,50% 100%,36% 64%,0 50%,36% 36%); }
+  .adnn-os-interactive-card .adnn-os-meta { display:grid; justify-items:start; gap:2px; min-width:0; text-align:left; }
+  .adnn-os-interactive-card .adnn-os-meta strong { margin:0 !important; color:#fff !important; font-size:clamp(15px, 2.2vw, 20px) !important; line-height:1.05 !important; font-weight:760 !important; letter-spacing:-.035em; text-shadow:0 2px 18px rgba(255,255,255,.14); white-space:nowrap; }
+  .adnn-os-interactive-card .adnn-os-meta strong b { color:#5360ff; font-weight:760; }
+  .adnn-os-interactive-card .adnn-os-meta span { color:rgba(255,255,255,.58) !important; font-family:var(--font-mono); font-size:10px !important; letter-spacing:.08em; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+  .adnn-os-session { color:rgba(39,207,120,.95); font-style:normal; }
+  .adnn-os-interactive-card .adnn-os-chip { display:inline-flex; align-items:center; gap:6px; padding:7px 10px; border-radius:999px; background:rgba(39,207,120,.08); border:1px solid rgba(39,207,120,.22); color:rgba(39,207,120,.92) !important; font:10px var(--font-mono); letter-spacing:.08em; text-transform:uppercase; white-space:nowrap; }
+  .adnn-os-interactive-card .adnn-os-chip i { width:6px; height:6px; border-radius:50%; background:#27cf78; box-shadow:0 0 12px rgba(39,207,120,.85); animation:adnnOsPulse 2.2s ease infinite; }
+  .adnn-os-mini-btn { border:1px solid rgba(255,255,255,.10); border-radius:999px; min-height:32px; padding:0 12px; background:rgba(255,255,255,.055); color:rgba(255,255,255,.78); font:10px var(--font-mono); letter-spacing:.08em; text-transform:uppercase; cursor:pointer; transition:transform .2s cubic-bezier(.16,1,.3,1), background .2s ease, color .2s ease, border-color .2s ease; }
+  .adnn-os-mini-btn:hover { transform:translateY(-1px); background:rgba(255,255,255,.10); color:#fff; border-color:rgba(255,255,255,.18); }
+  .adnn-os-mini-progress { position:absolute; left:0; right:0; bottom:0; z-index:4; height:2px; transform:scaleX(0); transform-origin:left; background:linear-gradient(90deg,#272dcf,#5360ff,#272dcf); background-size:200% 100%; opacity:0; }
+  .adnn-os-interactive-card.is-checking .adnn-os-mini-progress { opacity:1; animation:adnnOsLoad 1.5s linear infinite; transform:scaleX(1); transition:transform 1.6s cubic-bezier(.16,1,.3,1); }
+  .adnn-os-mini-toast { position:absolute; z-index:5; left:50%; top:9px; transform:translate(-50%,-8px); opacity:0; pointer-events:none; white-space:nowrap; padding:7px 12px; border-radius:999px; background:rgba(39,45,207,.94); border:1px solid rgba(83,96,255,.42); color:#fff; box-shadow:0 8px 28px rgba(39,45,207,.36); font:10px var(--font-mono); transition:opacity .24s ease, transform .24s cubic-bezier(.16,1,.3,1); }
+  .adnn-os-mini-toast.show { opacity:1; transform:translate(-50%,0); }
+  @keyframes adnnOsPulse { 0%,100%{opacity:1} 50%{opacity:.34} }
+  @keyframes adnnOsLoad { to { background-position:200% 0; } }
+  @media (max-width:720px) {
+    .settings-grid .adnn-os-interactive-card { min-height:82px !important; padding:12px 14px !important; gap:10px !important; }
+    .adnn-os-mini-actions { gap:7px; }
+    .adnn-os-mini-btn { min-height:30px; padding:0 10px; }
+    .adnn-os-interactive-card .adnn-os-chip { padding:6px 8px; }
+  }
+  @media (max-width:520px) {
+    .settings-grid .adnn-os-interactive-card { align-items:flex-start !important; flex-direction:column !important; min-height:118px !important; }
+    .adnn-os-mini-left, .adnn-os-mini-actions { width:100%; }
+    .adnn-os-mini-actions { justify-content:space-between; }
+    .adnn-os-interactive-card .adnn-os-meta strong { white-space:normal; }
+    .adnn-os-interactive-card .adnn-os-meta span { white-space:normal; }
+  }
+  @media (max-width:370px) { .adnn-os-mini-btn.adnn-os-about { display:none; } }
+</style>
+<script id="adnn-os-interactive-compact-js">
+(function(){
+  function initOsCard(card){
+    if (!card || card.dataset.osReady) return;
+    card.dataset.osReady = '1';
+    const canvas = card.querySelector('.adnn-os-mini-canvas');
+    const ctx = canvas && canvas.getContext ? canvas.getContext('2d') : null;
+    const session = card.querySelector('.adnn-os-session');
+    const check = card.querySelector('.adnn-os-check');
+    const about = card.querySelector('.adnn-os-about');
+    const toast = card.querySelector('.adnn-os-mini-toast');
+    let w=0,h=0,parts=[],mouse={x:-999,y:-999},start=Date.now();
+    function resize(){ const r=card.getBoundingClientRect(); w=Math.max(1,Math.floor(r.width)); h=Math.max(1,Math.floor(r.height)); if(canvas){ canvas.width=w; canvas.height=h; } parts=Array.from({length:Math.min(34, Math.max(16, Math.floor(w/18)))},()=>({x:Math.random()*w,y:Math.random()*h,r:Math.random()*1.25+.35,vx:(Math.random()-.5)*.18,vy:(Math.random()-.5)*.18,a:Math.random()*.42+.12,c:Math.random()>.55?'83,96,255':'255,255,255'})); }
+    function draw(){ if(!ctx) return; ctx.clearRect(0,0,w,h); for(const p of parts){ const dx=mouse.x-p.x, dy=mouse.y-p.y, d=Math.hypot(dx,dy)||1; if(d<78){ p.vx-=dx/d*.035; p.vy-=dy/d*.035; } p.vx*=.985; p.vy*=.985; p.x+=p.vx; p.y+=p.vy; if(p.x<0||p.x>w)p.vx*=-1; if(p.y<0||p.y>h)p.vy*=-1; ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fillStyle='rgba('+p.c+','+p.a+')'; ctx.fill(); } for(let i=0;i<parts.length;i++)for(let j=i+1;j<parts.length;j++){ const d=Math.hypot(parts[i].x-parts[j].x,parts[i].y-parts[j].y); if(d<86){ ctx.beginPath(); ctx.moveTo(parts[i].x,parts[i].y); ctx.lineTo(parts[j].x,parts[j].y); ctx.strokeStyle='rgba(83,96,255,'+((1-d/86)*.10)+')'; ctx.lineWidth=.65; ctx.stroke(); } } requestAnimationFrame(draw); }
+    function show(msg){ if(!toast)return; toast.textContent=msg; toast.classList.add('show'); clearTimeout(toast._t); toast._t=setTimeout(()=>toast.classList.remove('show'),2400); }
+    function tick(){ const s=Math.floor((Date.now()-start)/1000), m=Math.floor(s/60); if(session) session.textContent=String(m).padStart(2,'0')+':'+String(s%60).padStart(2,'0'); }
+    card.addEventListener('pointermove',e=>{ const r=card.getBoundingClientRect(); mouse.x=e.clientX-r.left; mouse.y=e.clientY-r.top; card.style.setProperty('--os-x', mouse.x+'px'); card.style.setProperty('--os-y', mouse.y+'px'); });
+    card.addEventListener('pointerleave',()=>{ mouse.x=-999; mouse.y=-999; });
+    check && check.addEventListener('click',e=>{ e.stopPropagation(); card.classList.add('is-checking'); check.disabled=true; check.textContent='Checking'; show('Checking for updates…'); setTimeout(()=>{ card.classList.remove('is-checking'); check.disabled=false; check.textContent='Check'; show('ADNN OS 1.07 is up to date ✓'); },1700); });
+    about && about.addEventListener('click',e=>{ e.stopPropagation(); show('ADNN OS 1.07 · Stable workspace build'); });
+    resize(); draw(); tick(); setInterval(tick,1000); window.addEventListener('resize', resize);
+  }
+  document.querySelectorAll('.adnn-os-interactive-card').forEach(initOsCard);
+})();
+</script>
+
 </body>
 </html>

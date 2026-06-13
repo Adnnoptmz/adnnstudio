@@ -492,8 +492,16 @@ function watchChatThreads(scope, listId, roomId, options = {}) {
   if (scope === "admin") {
     listen("support", query(collection(db, COLLECTIONS.chats), where("type", "==", "support")));
     listen("admin-participant", query(collection(db, COLLECTIONS.chats), where("participantUids", "array-contains", ADMIN_ALIAS_UID)));
+    selfEmailKeyList().forEach((mail, index) => {
+      listen(`admin-email-${index}`, query(collection(db, COLLECTIONS.chats), where("participantEmailKeys", "array-contains", mail)));
+    });
   } else {
-    listen("participant", query(collection(db, COLLECTIONS.chats), where("participantUids", "array-contains", activeUser.uid)));
+    Array.from(selfUidSet()).forEach((uid, index) => {
+      listen(`participant-${index}`, query(collection(db, COLLECTIONS.chats), where("participantUids", "array-contains", uid)));
+    });
+    selfEmailKeyList().forEach((mail, index) => {
+      listen(`participant-email-${index}`, query(collection(db, COLLECTIONS.chats), where("participantEmailKeys", "array-contains", mail)));
+    });
     if (activeProfile?.role === "designer") {
       listen("designer-room", query(collection(db, COLLECTIONS.chats), where("type", "==", "designer-room")));
     }
@@ -519,7 +527,9 @@ function isVisibleToAdminInbox(chat) {
   if (!chat) return false;
   if (chat.type === "support") return true;
   const participants = Array.isArray(chat.participantUids) ? chat.participantUids : [];
-  return participants.includes(ADMIN_ALIAS_UID) || participants.includes(activeUser?.uid);
+  const emails = Array.isArray(chat.participantEmailKeys) ? chat.participantEmailKeys.map(emailKey) : [];
+  const mine = selfEmailKeySet();
+  return participants.includes(ADMIN_ALIAS_UID) || participants.includes(activeUser?.uid) || emails.some((mail) => mine.has(mail));
 }
 
 function isChatVisibleForCurrentUser(chat) {
@@ -2857,6 +2867,20 @@ function selfUidSet() {
   return new Set(uniqueClean([activeUser?.uid, ownCallUid()]));
 }
 
+function selfEmailKeyList() {
+  return uniqueClean([
+    activeUser?.email,
+    activeProfile?.email,
+    activeProfile?.designerEmail,
+    activeProfile?.clientEmail,
+    activeProfile?.authEmail
+  ].map(emailKey));
+}
+
+function selfEmailKeySet() {
+  return new Set(selfEmailKeyList());
+}
+
 function getUnreadCount(chat, scope) {
   if (!chat) return 0;
   if (chat.unreadBy && ownCallUid()) return Number(chat.unreadBy[fieldKey(ownCallUid())] || 0) || 0;
@@ -3479,8 +3503,16 @@ function watchGlobalThreadBadges() {
   if (isAdminEmail(activeUser.email)) {
     listen('support', query(collection(db, COLLECTIONS.chats), where('type', '==', 'support')));
     listen('admin-alias', query(collection(db, COLLECTIONS.chats), where('participantUids', 'array-contains', ADMIN_ALIAS_UID)));
+    selfEmailKeyList().forEach((mail, index) => {
+      listen(`admin-email-${index}`, query(collection(db, COLLECTIONS.chats), where('participantEmailKeys', 'array-contains', mail)));
+    });
   } else {
-    listen('participant', query(collection(db, COLLECTIONS.chats), where('participantUids', 'array-contains', activeUser.uid)));
+    Array.from(selfUidSet()).forEach((uid, index) => {
+      listen(`participant-${index}`, query(collection(db, COLLECTIONS.chats), where('participantUids', 'array-contains', uid)));
+    });
+    selfEmailKeyList().forEach((mail, index) => {
+      listen(`participant-email-${index}`, query(collection(db, COLLECTIONS.chats), where('participantEmailKeys', 'array-contains', mail)));
+    });
   }
   globalThreadBadgeUnsub = () => owner.forEach((fn) => fn?.());
   globalUnsubs.push(() => globalThreadBadgeUnsub?.());

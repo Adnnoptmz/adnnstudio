@@ -41,8 +41,6 @@ let lastDeletedIds = new Set();
 let activeAccountUser = null;
 let knownLiveItemIds = new Set();
 let hasSeenFirstItemsSnapshot = false;
-let notificationAudio = null;
-let notificationAudioPrimed = false;
 
 function emailKey(email) {
   return String(email || "").trim().toLowerCase();
@@ -197,10 +195,6 @@ function stopFirebaseListeners() {
   knownLiveItemIds = new Set();
   hasSeenFirstItemsSnapshot = false;
 }
-
-["pointerdown", "keydown", "touchstart"].forEach((eventName) => {
-  document.addEventListener(eventName, primeNotificationAudio, { once: true, passive: true });
-});
 
 function startAccountReadsListener(user) {
   if (!db || !user?.uid) return;
@@ -653,10 +647,7 @@ async function runRefreshAnimation(callback) {
   }
 }
 
-function primeNotificationAudio() {
-  notificationAudioPrimed = true;
-}
-
+// ADNN silent fix: notification audio playback removed.
 function getNotificationAudio() {
   return null;
 }

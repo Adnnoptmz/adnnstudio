@@ -1301,6 +1301,89 @@
   .adnn-os-mark i { width:15px; height:15px; border-radius:5px; background:#fff; box-shadow:0 0 18px rgba(255,255,255,.8); clip-path:polygon(50% 0,64% 36%,100% 50%,64% 64%,50% 100%,36% 64%,0 50%,36% 36%); }
   .adnn-os-chip { padding:7px 10px; border-radius:999px; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.10); color:var(--muted); font:10px var(--font-mono); }
 </style>
+<style id="adnn-unified-panel-layout-fix">
+  :root {
+    --adnn-panel-radius: 28px;
+    --adnn-panel-padding: clamp(18px, 3vw, 34px);
+    --adnn-main-padding: clamp(16px, 2.4vw, 30px);
+  }
+  body > .shell {
+    height: 100svh !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+  body > .shell > main {
+    height: 100svh !important;
+    min-height: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    padding: var(--adnn-main-padding) !important;
+  }
+  body > .shell > main > .view {
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+  }
+  body > .shell > main > .view.active {
+    flex: 1 1 auto !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    overscroll-behavior: contain !important;
+    -webkit-overflow-scrolling: touch !important;
+    border-radius: var(--adnn-panel-radius) !important;
+    padding: var(--adnn-panel-padding) !important;
+  }
+  body.chat-view-active > .shell > main,
+  body.chat-view-active > .shell > main > .view.active {
+    overflow: hidden !important;
+  }
+  body.chat-view-active > .shell > main > .view.active {
+    padding: 0 !important;
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  @media (max-width: 900px) {
+    body.adnn-chat-mobile-lock .mobile-header-bar {
+      display: none !important;
+    }
+    body > .shell {
+      height: calc(100svh - 65px) !important;
+    }
+    body.adnn-chat-mobile-lock > .shell {
+      height: 100svh !important;
+    }
+    body > .shell > main {
+      height: calc(100svh - 65px) !important;
+      min-height: 0 !important;
+      padding: 12px !important;
+    }
+    body.adnn-chat-mobile-lock > .shell > main {
+      height: 100svh !important;
+    }
+    body > .shell > main > .view.active {
+      border-radius: 22px !important;
+      padding: 18px !important;
+    }
+    body.chat-view-active > .shell,
+    body.chat-view-active > .shell > main,
+    body.chat-view-active > .shell > main > .view.active {
+      height: 100svh !important;
+    }
+    body.chat-view-active > .shell > main {
+      padding: 0 !important;
+    }
+    body.chat-view-active > .shell > main > .view.active {
+      border-radius: 0 !important;
+      padding: 0 !important;
+    }
+  }
+</style>
 </head>
 <body class="auth-pending locked">
 	<script>
@@ -2434,7 +2517,7 @@
 	    }
 	  </script>
   <script type="module" src="firebase-account.js" onerror="window.adnnAccountModuleFallback && window.adnnAccountModuleFallback()"></script>
-  <script type="module" src="firebase-chat.js?v=20260612-scroll-esc-static-os"></script>
+  <script type="module" src="firebase-chat.js?v=20260613-unified-panels-chat-fallback"></script>
 
 <script id="adnn-settings-upgrade-js">
 (function setupAdnnSettingsUpgrade(){

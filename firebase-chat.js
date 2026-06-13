@@ -773,6 +773,7 @@ function watchChatThreads(scope, listId, roomId, options = {}) {
     const unique = new Map();
     chats.forEach((chat) => unique.set(chat.id, { ...(unique.get(chat.id) || {}), ...chat }));
     chats = Array.from(unique.values()).filter(isChatVisibleForCurrentUser);
+    if (isDesignerChatRuntime() && scope !== "admin") chats = chats.filter(isDesignerRelevantChat);
     if (scope === "admin") chats = chats.filter(isVisibleToAdminInbox);
     if (options.directOnly || options.excludeSupport) chats = chats.filter((chat) => chat.type !== "support");
     chats.sort((a, b) => toMillis(b.updatedAt || b.createdAt || b.updatedAtMs) - toMillis(a.updatedAt || a.createdAt || a.updatedAtMs));
@@ -804,16 +805,8 @@ function watchChatThreads(scope, listId, roomId, options = {}) {
     selfEmailKeyList().forEach((mail, index) => {
       listen(`participant-email-${index}`, query(collection(db, COLLECTIONS.chats), where("participantEmailKeys", "array-contains", mail)));
     });
-    if (activeProfile?.role === "designer" || location.pathname.includes("designer-account.html")) {
-      listen("designer-room", query(collection(db, COLLECTIONS.chats), where("type", "==", "designer-room")));
-      Array.from(selfUidSet()).forEach((uid, index) => {
-        listen(`designer-uid-${index}`, query(collection(db, COLLECTIONS.chats), where("designerUid", "==", uid)));
-        listen(`assigned-designer-uid-${index}`, query(collection(db, COLLECTIONS.chats), where("assignedDesignerUid", "==", uid)));
-      });
-      selfEmailKeyList().forEach((mail, index) => {
-        listen(`designer-email-${index}`, query(collection(db, COLLECTIONS.chats), where("designerEmail", "==", mail)));
-        listen(`assigned-designer-email-${index}`, query(collection(db, COLLECTIONS.chats), where("assignedDesignerEmail", "==", mail)));
-      });
+    if (isDesignerChatRuntime()) {
+      listenDesignerChatSources(listen);
     }
   }
 
@@ -830,6 +823,84 @@ function stopListWatcher(listId) {
   const old = listWatchers.get(listId);
   old?.();
   listWatchers.delete(listId);
+}
+
+
+function isDesignerChatRuntime() {
+  return !!(location.pathname.includes("designer-account.html") || activeProfile?.role === "designer" || localStorage.getItem("adnnDesignerUser"));
+}
+
+function listenDesignerChatSources(listen) {
+  listen("designer-room", query(collection(db, COLLECTIONS.chats), where("type", "==", "designer-room")));
+  listen("design-room", query(collection(db, COLLECTIONS.chats), where("type", "==", "design-room")));
+  listen("designer-support", query(collection(db, COLLECTIONS.chats), where("type", "==", "designer-support")));
+  listen("designer-inbox", query(collection(db, COLLECTIONS.chats), where("type", "==", "designer")));
+
+  const uidFields = [
+    "designerUid",
+    "assignedDesignerUid",
+    "assignedToUid",
+    "assigneeUid",
+    "designerId",
+    "assignedDesignerId",
+    "assignedTo",
+    "assigneeId"
+  ];
+  const uidArrayFields = [
+    "designerUids",
+    "assignedDesignerUids",
+    "memberUids",
+    "members",
+    "visibleToUids",
+    "allowedUids"
+  ];
+  Array.from(selfUidSet()).forEach((uid, index) => {
+    uidFields.forEach((field) => listen(`designer-${field}-${index}`, query(collection(db, COLLECTIONS.chats), where(field, "==", uid))));
+    uidArrayFields.forEach((field) => listen(`designer-${field}-contains-${index}`, query(collection(db, COLLECTIONS.chats), where(field, "array-contains", uid))));
+  });
+
+  const emailFields = [
+    "designerEmail",
+    "assignedDesignerEmail",
+    "assignedToEmail",
+    "assigneeEmail",
+    "designerMail",
+    "assignedMail"
+  ];
+  const emailArrayFields = [
+    "designerEmails",
+    "assignedDesignerEmails",
+    "memberEmails",
+    "participantEmails",
+    "participantEmailKeys",
+    "visibleToEmails",
+    "allowedEmails"
+  ];
+  selfEmailKeyList().forEach((mail, index) => {
+    emailFields.forEach((field) => listen(`designer-${field}-${index}`, query(collection(db, COLLECTIONS.chats), where(field, "==", mail))));
+    emailArrayFields.forEach((field) => listen(`designer-${field}-contains-${index}`, query(collection(db, COLLECTIONS.chats), where(field, "array-contains", mail))));
+  });
+
+  // Last-resort designer-page inbox: if Firestore rules allow it, this catches older chat
+  // records that were created without designer participant arrays. Client-side filtering
+  // below keeps it relevant to this signed-in designer.
+  listen("designer-recent-updated", query(collection(db, COLLECTIONS.chats), orderBy("updatedAt", "desc"), limit(120)));
+}
+
+function isDesignerRelevantChat(chat) {
+  if (!chat || !isDesignerChatRuntime()) return true;
+  const uids = selfUidSet();
+  const emails = selfEmailKeySet();
+  const uidFields = [chat.designerUid, chat.assignedDesignerUid, chat.assignedToUid, chat.assigneeUid, chat.designerId, chat.assignedDesignerId, chat.assignedTo, chat.assigneeId, chat.clientUid];
+  if (uidFields.some((uid) => uid && uids.has(String(uid)))) return true;
+  const uidArrays = [chat.participantUids, chat.designerUids, chat.assignedDesignerUids, chat.memberUids, chat.members, chat.visibleToUids, chat.allowedUids];
+  if (uidArrays.some((arr) => Array.isArray(arr) && arr.some((uid) => uids.has(String(uid))))) return true;
+  const emailFields = [chat.designerEmail, chat.assignedDesignerEmail, chat.assignedToEmail, chat.assigneeEmail, chat.designerMail, chat.assignedMail, chat.clientEmail];
+  if (emailFields.some((mail) => mail && emails.has(emailKey(mail)))) return true;
+  const emailArrays = [chat.participantEmailKeys, chat.participantEmails, chat.designerEmails, chat.assignedDesignerEmails, chat.memberEmails, chat.visibleToEmails, chat.allowedEmails];
+  if (emailArrays.some((arr) => Array.isArray(arr) && arr.some((mail) => emails.has(emailKey(mail))))) return true;
+  const type = String(chat.type || "").toLowerCase();
+  return type.includes("designer") || type.includes("design");
 }
 
 
@@ -3048,6 +3119,9 @@ function getChatTitle(chat, scope = "user") {
   if (chat.type === "group" || chat.isGroup) return chat.groupName || chat.title || "Group chat";
   const names = chat.participantNames || {};
   const uid = getRemoteUid(chat);
+  if (isDesignerChatRuntime()) {
+    return names[uid] || chat.clientName || chat.customerName || chat.userName || chat.ownerName || chat.title || chat.clientEmail || chat.customerEmail || "Designer Chat";
+  }
   return names[uid] || chat.title || chat.clientName || chat.clientEmail || "Workspace Chat";
 }
 
@@ -3056,7 +3130,12 @@ function getRemoteUid(chat) {
   if (chat.type === "support") return isAdminEmail(activeUser.email) ? chat.clientUid : ADMIN_ALIAS_UID;
   const mine = selfUidSet();
   const participants = Array.isArray(chat.participantUids) ? chat.participantUids : [];
-  return participants.find((uid) => !mine.has(uid)) || "";
+  const participantRemote = participants.find((uid) => !mine.has(uid));
+  if (participantRemote) return participantRemote;
+  if (isDesignerChatRuntime()) {
+    return chat.clientUid || chat.ownerUid || chat.userUid || chat.customerUid || chat.createdByUid || chat.adminUid || ADMIN_ALIAS_UID;
+  }
+  return "";
 }
 
 function ownCallUid() {

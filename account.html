@@ -1593,7 +1593,30 @@
     <label class="settings-card adnn-setting-card"><div><strong>Browser notifications</strong><span>Allow system notifications for new messages and missed calls.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_browser_notifications"><i></i></span></label>
     <label class="settings-card adnn-setting-card"><div><strong>Message sound</strong><span>Play a soft tone for new chat and missed call alerts.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_message_sounds"><i></i></span></label>
     <label class="settings-card adnn-setting-card"><div><strong>Reduce motion</strong><span>Calm animations for a lighter, accessibility-friendly dashboard.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_reduce_motion"><i></i></span></label>
-    <div class="settings-card adnn-os-card" aria-label="System version"><span class="adnn-os-mark" aria-hidden="true"><i></i></span><div class="adnn-os-meta"><strong>ADNN OS 1.07</strong><span>Secure workspace system</span></div><span class="adnn-os-chip">Stable</span></div>
+    <div class="settings-card adnn-os-card" aria-label="System version" id="adnnOsCardV2" style="min-height:110px !important; border-radius:20px !important; display:grid !important; grid-template-columns:64px 1fr auto !important; align-items:center !important; gap:18px !important; padding:18px 22px !important; background:linear-gradient(135deg,rgba(255,255,255,0.07) 0%,rgba(255,255,255,0.02) 100%) !important; border:1px solid rgba(255,255,255,0.10) !important; box-shadow:inset 0 1px 0 rgba(255,255,255,0.10),0 2px 1px rgba(0,0,0,0.18) !important; cursor:default !important; pointer-events:none !important; position:relative; overflow:hidden;">
+  <div style="position:absolute;inset:0;pointer-events:none;z-index:0;background:radial-gradient(ellipse at 20% 50%,rgba(39,45,207,0.10) 0%,transparent 60%),radial-gradient(ellipse at 80% 50%,rgba(83,96,255,0.07) 0%,transparent 55%);"></div>
+  <div style="position:relative;z-index:1;width:64px;height:64px;border-radius:18px;background:linear-gradient(145deg,#111116,#1a1a22);border:1px solid rgba(255,255,255,0.10);display:grid;place-items:center;box-shadow:inset 0 1px 0 rgba(255,255,255,0.08),0 8px 28px rgba(0,0,0,0.38);">
+    <svg width="30" height="30" viewBox="0 0 30 30" fill="none" aria-hidden="true">
+      <rect x="4" y="4" width="10" height="10" rx="3" fill="rgba(83,96,255,0.90)"/>
+      <rect x="16" y="4" width="10" height="10" rx="3" fill="rgba(255,255,255,0.18)"/>
+      <rect x="4" y="16" width="10" height="10" rx="3" fill="rgba(255,255,255,0.10)"/>
+      <rect x="16" y="16" width="10" height="10" rx="3" fill="rgba(83,96,255,0.55)"/>
+    </svg>
+  </div>
+  <div style="position:relative;z-index:1;min-width:0;">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">
+      <span style="font-family:var(--font-mono);font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:rgba(255,255,255,0.36);">System</span>
+    </div>
+    <div style="font-size:17px;font-weight:600;letter-spacing:-0.025em;color:#fff;line-height:1.1;margin-bottom:3px;">ADNN OS <span style="color:rgba(83,96,255,1);">1.07</span></div>
+    <div style="font-family:var(--font-mono);font-size:11px;color:rgba(255,255,255,0.38);letter-spacing:0.04em;">Secure workspace · adnnstudio.com</div>
+  </div>
+  <div style="position:relative;z-index:1;display:flex;flex-direction:column;align-items:flex-end;gap:8px;flex-shrink:0;">
+    <span style="display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:999px;background:rgba(39,207,120,0.10);border:1px solid rgba(39,207,120,0.20);font-family:var(--font-mono);font-size:10px;letter-spacing:0.10em;color:rgba(39,207,120,0.88);text-transform:uppercase;">
+      <span style="width:5px;height:5px;border-radius:50%;background:rgba(39,207,120,0.90);display:inline-block;"></span>Stable
+    </span>
+    <span style="font-family:var(--font-mono);font-size:10px;color:rgba(255,255,255,0.22);letter-spacing:0.06em;">Build 2026.06</span>
+  </div>
+</div>
     <div class="settings-card adnn-setting-card"><div><strong>Terms & Privacy</strong><span>Read the latest studio terms and privacy page.</span></div><a href="#terms" class="apple-home-btn" data-view-link="terms" aria-label="Open terms"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 3.5h8.7L19 7.3v13.2H6.5v-17Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M15 3.8V8h4M9 12h6M9 16h6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></a></div>
   </div>
 </section>

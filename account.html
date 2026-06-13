@@ -39,6 +39,9 @@
       backdrop-filter:blur(24px) saturate(160%);
       -webkit-backdrop-filter:blur(24px) saturate(160%);
     }
+	  @keyframes adnnOsShimmer { 0% { background-position: -100% 0; } 100% { background-position: 200% 0; } }
+@keyframes adnnOsBlink { 0%, 100% { opacity: 1; } 50% { opacity: 0.28; } }
+@keyframes adnnOsPgSlide { 0% { background-position: 0% 0; } 100% { background-position: 200% 0; } }
     header {
       position:fixed;
       top:20px;
@@ -1593,28 +1596,55 @@
     <label class="settings-card adnn-setting-card"><div><strong>Browser notifications</strong><span>Allow system notifications for new messages and missed calls.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_browser_notifications"><i></i></span></label>
     <label class="settings-card adnn-setting-card"><div><strong>Message sound</strong><span>Play a soft tone for new chat and missed call alerts.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_message_sounds"><i></i></span></label>
     <label class="settings-card adnn-setting-card"><div><strong>Reduce motion</strong><span>Calm animations for a lighter, accessibility-friendly dashboard.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_reduce_motion"><i></i></span></label>
-    <div class="settings-card adnn-os-card" aria-label="System version" id="adnnOsCardV2" style="min-height:110px !important; border-radius:20px !important; display:grid !important; grid-template-columns:64px 1fr auto !important; align-items:center !important; gap:18px !important; padding:18px 22px !important; background:linear-gradient(135deg,rgba(255,255,255,0.07) 0%,rgba(255,255,255,0.02) 100%) !important; border:1px solid rgba(255,255,255,0.10) !important; box-shadow:inset 0 1px 0 rgba(255,255,255,0.10),0 2px 1px rgba(0,0,0,0.18) !important; cursor:default !important; pointer-events:none !important; position:relative; overflow:hidden;">
-  <div style="position:absolute;inset:0;pointer-events:none;z-index:0;background:radial-gradient(ellipse at 20% 50%,rgba(39,45,207,0.10) 0%,transparent 60%),radial-gradient(ellipse at 80% 50%,rgba(83,96,255,0.07) 0%,transparent 55%);"></div>
-  <div style="position:relative;z-index:1;width:64px;height:64px;border-radius:18px;background:linear-gradient(145deg,#111116,#1a1a22);border:1px solid rgba(255,255,255,0.10);display:grid;place-items:center;box-shadow:inset 0 1px 0 rgba(255,255,255,0.08),0 8px 28px rgba(0,0,0,0.38);">
-    <svg width="30" height="30" viewBox="0 0 30 30" fill="none" aria-hidden="true">
-      <rect x="4" y="4" width="10" height="10" rx="3" fill="rgba(83,96,255,0.90)"/>
-      <rect x="16" y="4" width="10" height="10" rx="3" fill="rgba(255,255,255,0.18)"/>
-      <rect x="4" y="16" width="10" height="10" rx="3" fill="rgba(255,255,255,0.10)"/>
-      <rect x="16" y="16" width="10" height="10" rx="3" fill="rgba(83,96,255,0.55)"/>
-    </svg>
-  </div>
-  <div style="position:relative;z-index:1;min-width:0;">
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">
-      <span style="font-family:var(--font-mono);font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:rgba(255,255,255,0.36);">System</span>
+    <div class="settings-card adnn-os-card" id="adnnOsCardV3" aria-label="System version" style="all:unset;display:block;position:relative;border-radius:24px;overflow:hidden;border:1px solid rgba(255,255,255,0.09);background:#0c0c10;box-shadow:0 2px 0 rgba(0,0,0,0.5),0 28px 70px rgba(0,0,0,0.45);cursor:default;pointer-events:all;">
+  <canvas id="adnnOsCanvas" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;"></canvas>
+  <div style="position:absolute;inset:0;z-index:0;pointer-events:none;background-image:linear-gradient(rgba(255,255,255,0.022) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.022) 1px,transparent 1px);background-size:30px 30px;mask-image:radial-gradient(ellipse at 50% 50%,black 20%,transparent 72%);-webkit-mask-image:radial-gradient(ellipse at 50% 50%,black 20%,transparent 72%);"></div>
+  <div style="position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(105deg,transparent 40%,rgba(255,255,255,0.025) 50%,transparent 60%);background-size:200% 100%;animation:adnnOsShimmer 4s ease infinite;"></div>
+  <div id="adnnOsProgressBar" style="position:absolute;bottom:0;left:0;height:2px;width:0%;background:linear-gradient(90deg,#272dcf,#5360ff,#272dcf);background-size:200% 100%;z-index:10;opacity:0;transition:opacity 0.3s;"></div>
+  <div id="adnnOsToast" style="position:absolute;top:14px;left:50%;transform:translateX(-50%) translateY(-6px);background:rgba(39,45,207,0.92);border:1px solid rgba(83,96,255,0.40);border-radius:999px;padding:7px 15px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:#fff;white-space:nowrap;z-index:20;opacity:0;pointer-events:none;transition:all 0.26s cubic-bezier(.16,1,.3,1);box-shadow:0 8px 28px rgba(39,45,207,0.38);">Checking for updates…</div>
+  <div style="position:relative;z-index:2;display:grid;grid-template-rows:auto 1fr auto;padding:26px 26px 22px;min-height:200px;gap:18px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div style="width:34px;height:34px;border-radius:10px;background:linear-gradient(145deg,#272dcf,#5360ff);display:grid;place-items:center;box-shadow:inset 0 1px 0 rgba(255,255,255,0.20),0 4px 14px rgba(39,45,207,0.45);flex-shrink:0;">
+          <svg width="17" height="17" viewBox="0 0 18 18" fill="none" aria-hidden="true"><rect x="2" y="2" width="6" height="6" rx="1.5" fill="white" opacity="0.9"/><rect x="10" y="2" width="6" height="6" rx="1.5" fill="white" opacity="0.4"/><rect x="2" y="10" width="6" height="6" rx="1.5" fill="white" opacity="0.4"/><rect x="10" y="10" width="6" height="6" rx="1.5" fill="white" opacity="0.75"/></svg>
+        </div>
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:500;letter-spacing:0.18em;text-transform:uppercase;color:rgba(255,255,255,0.38);">ADNN Studio</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <span style="display:inline-flex;align-items:center;gap:4px;padding:4px 9px;border-radius:999px;background:rgba(39,207,120,0.08);border:1px solid rgba(39,207,120,0.20);font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:500;letter-spacing:0.10em;text-transform:uppercase;color:rgba(39,207,120,0.82);"><span style="width:4px;height:4px;border-radius:50%;background:#27cf78;display:inline-block;animation:adnnOsBlink 2.4s ease infinite;"></span>Secure</span>
+        <span style="padding:4px 9px;border-radius:999px;background:rgba(83,96,255,0.10);border:1px solid rgba(83,96,255,0.22);font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:500;letter-spacing:0.10em;text-transform:uppercase;color:rgba(83,96,255,0.88);">Stable</span>
+      </div>
     </div>
-    <div style="font-size:17px;font-weight:600;letter-spacing:-0.025em;color:#fff;line-height:1.1;margin-bottom:3px;">ADNN OS <span style="color:rgba(83,96,255,1);">1.07</span></div>
-    <div style="font-family:var(--font-mono);font-size:11px;color:rgba(255,255,255,0.38);letter-spacing:0.04em;">Secure workspace · adnnstudio.com</div>
-  </div>
-  <div style="position:relative;z-index:1;display:flex;flex-direction:column;align-items:flex-end;gap:8px;flex-shrink:0;">
-    <span style="display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:999px;background:rgba(39,207,120,0.10);border:1px solid rgba(39,207,120,0.20);font-family:var(--font-mono);font-size:10px;letter-spacing:0.10em;color:rgba(39,207,120,0.88);text-transform:uppercase;">
-      <span style="width:5px;height:5px;border-radius:50%;background:rgba(39,207,120,0.90);display:inline-block;"></span>Stable
-    </span>
-    <span style="font-family:var(--font-mono);font-size:10px;color:rgba(255,255,255,0.22);letter-spacing:0.06em;">Build 2026.06</span>
+    <div style="display:flex;flex-direction:column;gap:4px;">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:0.20em;text-transform:uppercase;color:rgba(255,255,255,0.26);margin-bottom:2px;">Workspace OS</div>
+      <div style="font-family:'Aileron',ui-sans-serif,sans-serif;font-size:clamp(34px,7vw,52px);font-weight:700;letter-spacing:-0.04em;line-height:0.95;color:#fff;">ADNN<span style="color:#5360ff;"> OS</span></div>
+      <div style="font-family:'Aileron',ui-sans-serif,sans-serif;font-size:clamp(18px,3.5vw,26px);font-weight:400;letter-spacing:-0.02em;color:rgba(255,255,255,0.35);margin-top:2px;">Version 1<span style="color:rgba(255,255,255,0.16);">.</span><span style="color:rgba(83,96,255,0.82);">07</span></div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:rgba(255,255,255,0.28);letter-spacing:0.04em;margin-top:4px;">Build 2026.06 · Session <span id="adnnOsSession">00:00</span></div>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;border-top:1px solid rgba(255,255,255,0.07);padding-top:16px;flex-wrap:wrap;gap:10px;">
+      <div style="display:flex;align-items:center;gap:18px;">
+        <div style="position:relative;width:36px;height:36px;flex-shrink:0;">
+          <svg width="36" height="36" viewBox="0 0 36 36" style="transform:rotate(-90deg);" aria-hidden="true"><circle fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="2.4" cx="18" cy="18" r="14.5"/><circle id="adnnOsRing" fill="none" stroke="#5360ff" stroke-width="2.4" stroke-linecap="round" cx="18" cy="18" r="14.5" stroke-dasharray="91.1" stroke-dashoffset="0.91"/></svg>
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:8px;font-weight:500;color:rgba(255,255,255,0.60);">99%</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:1px;">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.26);">Status</span>
+          <span id="adnnOsStatus" style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;color:#27cf78;">Online</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:1px;">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.26);">Build</span>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;color:rgba(255,255,255,0.65);">2026.06</span>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:7px;">
+        <button id="adnnOsCheckBtn" type="button" style="display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:999px;border:1px solid rgba(255,255,255,0.10);background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.50);font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:0.07em;cursor:pointer;transition:all 0.22s cubic-bezier(.16,1,.3,1);">
+          <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M7 1.5A5.5 5.5 0 1 0 12.5 7"/><path d="M9.5 1.5l2.5.5-.5 2.5"/></svg>Check Update
+        </button>
+        <button id="adnnOsInfoBtn" type="button" style="display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:999px;border:1px solid rgba(83,96,255,0.45);background:rgba(39,45,207,0.75);color:#fff;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:0.07em;cursor:pointer;transition:all 0.22s cubic-bezier(.16,1,.3,1);box-shadow:0 4px 16px rgba(39,45,207,0.32);">
+          <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="7" cy="7" r="5.5"/><path d="M7 6.5v3M7 4.5v.5"/></svg>About
+        </button>
+      </div>
+    </div>
   </div>
 </div>
     <div class="settings-card adnn-setting-card"><div><strong>Terms & Privacy</strong><span>Read the latest studio terms and privacy page.</span></div><a href="#terms" class="apple-home-btn" data-view-link="terms" aria-label="Open terms"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 3.5h8.7L19 7.3v13.2H6.5v-17Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M15 3.8V8h4M9 12h6M9 16h6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></a></div>
@@ -2541,7 +2571,71 @@
 	  </script>
   <script type="module" src="firebase-account.js" onerror="window.adnnAccountModuleFallback && window.adnnAccountModuleFallback()"></script>
   <script type="module" src="firebase-chat.js?v=20260613-silent-refresh"></script>
-
+<script><script id="adnnOsCardScript">
+(function(){
+  const card = document.getElementById('adnnOsCardV3');
+  if(!card) return;
+  const canvas = document.getElementById('adnnOsCanvas');
+  const ctx = canvas ? canvas.getContext('2d') : null;
+  let W, H, pts = [], mouse = {x:-999,y:-999};
+  function resize(){
+    const r = card.getBoundingClientRect();
+    W = canvas.width = r.width; H = canvas.height = r.height;
+  }
+  function mkPt(){
+    return { x:Math.random()*W, y:Math.random()*H, r:Math.random()*1.3+0.4, vx:(Math.random()-.5)*.2, vy:(Math.random()-.5)*.2, a:Math.random()*.45+.1, c:Math.random()>.55?[83,96,255]:[255,255,255] };
+  }
+  function init(){ resize(); pts = Array.from({length:32},mkPt); }
+  function draw(){
+    if(!ctx) return;
+    ctx.clearRect(0,0,W,H);
+    for(let i=0;i<pts.length;i++){
+      for(let j=i+1;j<pts.length;j++){
+        const dx=pts[i].x-pts[j].x,dy=pts[i].y-pts[j].y,d=Math.sqrt(dx*dx+dy*dy);
+        if(d<100){ ctx.beginPath(); ctx.moveTo(pts[i].x,pts[i].y); ctx.lineTo(pts[j].x,pts[j].y); ctx.strokeStyle=`rgba(83,96,255,${(1-d/100)*.10})`; ctx.lineWidth=.6; ctx.stroke(); }
+      }
+    }
+    for(const p of pts){
+      const mdx=mouse.x-p.x,mdy=mouse.y-p.y,md=Math.sqrt(mdx*mdx+mdy*mdy);
+      if(md<80){ p.vx-=mdx/md*.07; p.vy-=mdy/md*.07; }
+      p.vx*=.98; p.vy*=.98; p.x+=p.vx; p.y+=p.vy;
+      if(p.x<0||p.x>W) p.vx*=-1; if(p.y<0||p.y>H) p.vy*=-1;
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.fillStyle=`rgba(${p.c[0]},${p.c[1]},${p.c[2]},${p.a})`; ctx.fill();
+    }
+    requestAnimationFrame(draw);
+  }
+  card.addEventListener('mousemove',e=>{ const r=card.getBoundingClientRect(); mouse.x=e.clientX-r.left; mouse.y=e.clientY-r.top; });
+  card.addEventListener('mouseleave',()=>{ mouse.x=-999; mouse.y=-999; });
+  card.addEventListener('touchmove',e=>{ const r=card.getBoundingClientRect(),t=e.touches[0]; mouse.x=t.clientX-r.left; mouse.y=t.clientY-r.top; },{passive:true});
+  window.addEventListener('resize',resize);
+  init(); draw();
+  const sessionEl = document.getElementById('adnnOsSession');
+  const start = Date.now();
+  function tick(){ const s=Math.floor((Date.now()-start)/1000),m=Math.floor(s/60); if(sessionEl) sessionEl.textContent=`${String(m).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`; }
+  tick(); setInterval(tick,1000);
+  const pb = document.getElementById('adnnOsProgressBar');
+  const toast = document.getElementById('adnnOsToast');
+  const checkBtn = document.getElementById('adnnOsCheckBtn');
+  const infoBtn = document.getElementById('adnnOsInfoBtn');
+  const statusEl = document.getElementById('adnnOsStatus');
+  function showToast(msg,dur){ toast.textContent=msg; toast.style.opacity='1'; toast.style.transform='translateX(-50%) translateY(0)'; setTimeout(()=>{ toast.style.opacity='0'; toast.style.transform='translateX(-50%) translateY(-6px)'; },dur||2400); }
+  if(checkBtn) checkBtn.addEventListener('click',function(){
+    this.disabled=true; this.textContent='Checking…';
+    pb.style.opacity='1'; pb.style.width='100%'; pb.style.animation='adnnOsPgSlide 1.6s linear infinite';
+    if(statusEl){ statusEl.textContent='Checking'; statusEl.style.color='rgba(255,207,39,0.85)'; }
+    showToast('Checking for updates…',2200);
+    setTimeout(()=>{
+      pb.style.opacity='0'; pb.style.width='0%'; pb.style.animation='';
+      if(statusEl){ statusEl.textContent='Up to date'; statusEl.style.color='#27cf78'; }
+      showToast('ADNN OS 1.07 is up to date ✓',2800);
+      this.disabled=false; this.textContent='✓ Up to date';
+      setTimeout(()=>{ this.textContent='Check Update'; if(statusEl){ statusEl.textContent='Online'; statusEl.style.color='#27cf78'; } },4000);
+    },2400);
+  });
+  if(infoBtn) infoBtn.addEventListener('click',()=>showToast('ADNN OS 1.07 · Stable · adnnstudio.com',3000));
+})();
+</script></script>
 <script id="adnn-settings-upgrade-js">
 (function setupAdnnSettingsUpgrade(){
   const defaults = {

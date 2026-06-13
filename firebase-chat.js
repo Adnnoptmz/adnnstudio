@@ -254,7 +254,15 @@ const COLLECTIONS = Object.freeze({
   offerCandidates: "offerCandidates",
   answerCandidates: "answerCandidates"
 });
-const REACTION_SET = ["\u{1F44D}", "\u{2764}\u{FE0F}", "\u{1F602}", "\u{1F389}", "\u{1F525}", "\u{1F60D}", "\u{1F64C}", "\u{1F44F}", "\u{1F62E}", "\u{1F622}", "\u{1F914}", "\u{2705}", "\u{2728}", "\u{1F680}", "\u{1F4AF}", "\u{1F44C}", "\u{1F64F}", "\u{1FAE1}", "\u{1F60E}", "\u{1F4A1}"];
+const DEFAULT_REACTION_SET = ["\u{1F44D}", "\u{2764}\u{FE0F}", "\u{1F602}", "\u{1F62E}", "\u{1F622}", "\u{1F64F}"];
+const REACTION_SET = [
+  ...DEFAULT_REACTION_SET,
+  "\u{1F389}", "\u{1F525}", "\u{1F60D}", "\u{1F64C}", "\u{1F44F}", "\u{1F914}",
+  "\u{2705}", "\u{2728}", "\u{1F680}", "\u{1F4AF}", "\u{1F44C}", "\u{1FAE1}",
+  "\u{1F60E}", "\u{1F4A1}", "\u{1F44E}", "\u{1F604}", "\u{1F609}", "\u{1F970}",
+  "\u{1F92F}", "\u{1F621}", "\u{1F614}", "\u{1F62D}", "\u{1F4AA}", "\u{1F64B}",
+  "\u{1F91D}", "\u{1F440}", "\u{1F4CC}", "\u{1F4A5}", "\u{1F31F}", "\u{1F381}"
+];
 
 let app = null;
 let auth = null;
@@ -384,6 +392,114 @@ function injectAppleInspiredReactionStyles() {
       width: 14px;
       height: 14px;
       display: block;
+    }
+    .adnn-floating-reaction-sheet {
+      gap: 8px;
+      padding: 8px;
+      border-radius: 999px;
+      background: rgba(28,28,30,.78);
+      border: 1px solid rgba(255,255,255,.14);
+      backdrop-filter: blur(24px) saturate(180%);
+      -webkit-backdrop-filter: blur(24px) saturate(180%);
+      box-shadow: 0 18px 55px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.18);
+    }
+    .adnn-floating-reaction-sheet.is-expanded {
+      border-radius: 24px;
+      flex-wrap: wrap;
+      max-height: min(380px, calc(100vh - 32px));
+      overflow: auto;
+    }
+    .adnn-reaction-more {
+      font-size: 0 !important;
+      color: rgba(255,255,255,.82);
+      background: rgba(255,255,255,.12) !important;
+    }
+    .adnn-reaction-more::before {
+      content: "+";
+      font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+      font-size: 24px;
+      font-weight: 500;
+      line-height: 1;
+    }
+    .adnn-inapp-stack {
+      position: fixed;
+      right: max(16px, env(safe-area-inset-right));
+      top: max(16px, env(safe-area-inset-top));
+      z-index: 2147483000;
+      display: grid;
+      gap: 10px;
+      width: min(360px, calc(100vw - 32px));
+      pointer-events: none;
+    }
+    .adnn-inapp-card {
+      pointer-events: auto;
+      width: 100%;
+      display: grid;
+      grid-template-columns: 42px 1fr auto;
+      grid-template-rows: auto auto;
+      align-items: center;
+      gap: 2px 12px;
+      padding: 12px 14px;
+      border: 1px solid rgba(255,255,255,.16);
+      border-radius: 22px;
+      color: #fff;
+      text-align: left;
+      background: rgba(28,28,30,.74);
+      box-shadow: 0 18px 55px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.18);
+      backdrop-filter: blur(26px) saturate(180%);
+      -webkit-backdrop-filter: blur(26px) saturate(180%);
+      opacity: 0;
+      transform: translateY(-10px) scale(.98);
+      transition: opacity .32s ease, transform .38s cubic-bezier(.16,1,.3,1);
+      cursor: pointer;
+    }
+    .adnn-inapp-card.is-visible { opacity: 1; transform: translateY(0) scale(1); }
+    .adnn-inapp-card img,
+    .adnn-inapp-card > span {
+      grid-row: 1 / span 2;
+      width: 42px;
+      height: 42px;
+      border-radius: 14px;
+      display: grid;
+      place-items: center;
+      object-fit: cover;
+      background: rgba(255,255,255,.10);
+      font-size: 21px;
+    }
+    .adnn-inapp-card strong {
+      grid-column: 2;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font: 600 14px/1.25 -apple-system, BlinkMacSystemFont, "Inter", system-ui, sans-serif;
+    }
+    .adnn-inapp-card small {
+      grid-column: 2;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: rgba(255,255,255,.66);
+      font: 400 12px/1.25 -apple-system, BlinkMacSystemFont, "Inter", system-ui, sans-serif;
+    }
+    .adnn-inapp-card b {
+      grid-column: 3;
+      grid-row: 1 / span 2;
+      min-width: 24px;
+      height: 24px;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      background: var(--adnn-primary, #272dcf);
+      color: #fff;
+      font-size: 11px;
+    }
+    @media (max-width: 560px) {
+      .adnn-inapp-stack {
+        left: 12px;
+        right: 12px;
+        top: max(12px, env(safe-area-inset-top));
+        width: auto;
+      }
     }
   `;
   document.head.appendChild(style);
@@ -688,8 +804,16 @@ function watchChatThreads(scope, listId, roomId, options = {}) {
     selfEmailKeyList().forEach((mail, index) => {
       listen(`participant-email-${index}`, query(collection(db, COLLECTIONS.chats), where("participantEmailKeys", "array-contains", mail)));
     });
-    if (activeProfile?.role === "designer") {
+    if (activeProfile?.role === "designer" || location.pathname.includes("designer-account.html")) {
       listen("designer-room", query(collection(db, COLLECTIONS.chats), where("type", "==", "designer-room")));
+      Array.from(selfUidSet()).forEach((uid, index) => {
+        listen(`designer-uid-${index}`, query(collection(db, COLLECTIONS.chats), where("designerUid", "==", uid)));
+        listen(`assigned-designer-uid-${index}`, query(collection(db, COLLECTIONS.chats), where("assignedDesignerUid", "==", uid)));
+      });
+      selfEmailKeyList().forEach((mail, index) => {
+        listen(`designer-email-${index}`, query(collection(db, COLLECTIONS.chats), where("designerEmail", "==", mail)));
+        listen(`assigned-designer-email-${index}`, query(collection(db, COLLECTIONS.chats), where("assignedDesignerEmail", "==", mail)));
+      });
     }
   }
 
@@ -1396,6 +1520,12 @@ function renderMessageBubble(message, mine) {
 
 function renderMessageMenu(message, mine, deleted) {
   const canDeleteForAll = mine && !deleted;
+  const defaultReactionButtons = DEFAULT_REACTION_SET
+    .map((emoji) => `<button type="button" data-action="react" data-emoji="${escapeAttr(emoji)}">${escapeHtml(emoji)}</button>`)
+    .join("");
+  const allReactionButtons = REACTION_SET
+    .map((emoji) => `<button type="button" data-action="react" data-emoji="${escapeAttr(emoji)}">${escapeHtml(emoji)}</button>`)
+    .join("");
   return `
     <div class="adnn-message-actions" data-message-menu>
       <button type="button" data-action="reply" title="Reply">${ICON.reply}<span>Reply</span></button>
@@ -1404,7 +1534,8 @@ function renderMessageMenu(message, mine, deleted) {
       <button type="button" data-action="delete-me" class="is-warn" title="Delete for me">${ICON.trash}<span>Me</span></button>
       ${canDeleteForAll ? `<button type="button" data-action="delete-all" class="is-danger" title="Delete for everyone">${ICON.trash}<span>All</span></button>` : ""}
       <div class="adnn-reaction-palette" data-reaction-palette hidden>
-        ${REACTION_SET.map((emoji) => `<button type="button" data-action="react" data-emoji="${escapeAttr(emoji)}">${escapeHtml(emoji)}</button>`).join("")}
+        <span data-default-reactions>${defaultReactionButtons}<button type="button" class="adnn-reaction-more" data-action="show-all-reactions" title="More reactions">+</button></span>
+        <span data-all-reactions hidden>${allReactionButtons}</span>
       </div>
     </div>
   `;
@@ -1449,6 +1580,16 @@ function handleMessageAction(event, state, message) {
   const action = actionBtn.dataset.action;
   if (action === "reply") startReply(state, message);
   if (action === "open-react") openReactionSheet(actionBtn, state, message);
+  if (action === "show-all-reactions") {
+    const palette = actionBtn.closest("[data-reaction-palette]");
+    if (palette) {
+      const defaults = palette.querySelector("[data-default-reactions]");
+      const all = palette.querySelector("[data-all-reactions]");
+      if (defaults) defaults.hidden = true;
+      if (all) all.hidden = false;
+    }
+    return;
+  }
   if (action === "react") toggleReaction(state.chatId, message, actionBtn.dataset.emoji);
   if (action === "copy") copyMessageText(message);
   if (action === "delete-me") deleteMessageForMe(state, message);
@@ -1465,24 +1606,37 @@ function toggleReactionPalette(menu) {
 function openReactionSheet(anchor, state, message) {
   if (!anchor || !state || !message) return;
   closeFloatingReactionSheet();
+
+  const defaultButtons = DEFAULT_REACTION_SET
+    .map((emoji) => `<button type="button" data-emoji="${escapeAttr(emoji)}" title="${escapeAttr(emoji)}">${escapeHtml(emoji)}</button>`)
+    .join("");
+  const allButtons = REACTION_SET
+    .map((emoji) => `<button type="button" data-emoji="${escapeAttr(emoji)}" title="${escapeAttr(emoji)}">${escapeHtml(emoji)}</button>`)
+    .join("");
+
   const sheet = document.createElement("div");
   sheet.className = "adnn-floating-reaction-sheet";
   sheet.dataset.floatingReaction = "1";
-  sheet.innerHTML = REACTION_SET.map((emoji) => `<button type="button" data-emoji="${escapeAttr(emoji)}">${escapeHtml(emoji)}</button>`).join("");
+  sheet.innerHTML = `
+    <span data-default-reactions>${defaultButtons}<button type="button" class="adnn-reaction-more" data-show-all-reactions title="More reactions">+</button></span>
+    <span data-all-reactions hidden>${allButtons}</span>
+  `;
   document.body.appendChild(sheet);
 
   const gap = 8;
   const viewportW = Math.max(280, window.innerWidth || document.documentElement.clientWidth || 320);
   const viewportH = Math.max(360, window.innerHeight || document.documentElement.clientHeight || 480);
-  sheet.style.maxWidth = `${Math.max(220, viewportW - gap * 2)}px`;
 
-  if (viewportW <= 760) {
-    sheet.style.left = `${gap}px`;
-    sheet.style.right = `${gap}px`;
-    sheet.style.bottom = `calc(${gap}px + env(safe-area-inset-bottom))`;
-    sheet.style.top = "auto";
-    sheet.style.justifyContent = "center";
-  } else {
+  const placeSheet = () => {
+    sheet.style.maxWidth = `${Math.max(220, viewportW - gap * 2)}px`;
+    if (viewportW <= 760) {
+      sheet.style.left = `${gap}px`;
+      sheet.style.right = `${gap}px`;
+      sheet.style.bottom = `calc(${gap}px + env(safe-area-inset-bottom))`;
+      sheet.style.top = "auto";
+      sheet.style.justifyContent = "center";
+      return;
+    }
     const rect = anchor.getBoundingClientRect();
     const sheetRect = sheet.getBoundingClientRect();
     const width = Math.min(sheetRect.width || 360, viewportW - gap * 2);
@@ -1495,9 +1649,21 @@ function openReactionSheet(anchor, state, message) {
     sheet.style.right = "auto";
     sheet.style.top = `${top}px`;
     sheet.style.bottom = "auto";
-  }
+  };
+  placeSheet();
 
-  sheet.querySelectorAll("button").forEach((btn) => {
+  sheet.querySelector("[data-show-all-reactions]")?.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    sheet.classList.add("is-expanded");
+    const defaults = sheet.querySelector("[data-default-reactions]");
+    const all = sheet.querySelector("[data-all-reactions]");
+    if (defaults) defaults.hidden = true;
+    if (all) all.hidden = false;
+    requestAnimationFrame(placeSheet);
+  });
+
+  sheet.querySelectorAll("button[data-emoji]").forEach((btn) => {
     btn.addEventListener("click", (event) => {
       event.stopPropagation();
       toggleReaction(state.chatId, message, btn.dataset.emoji);
@@ -2309,6 +2475,11 @@ function showIncomingCall(callId, call) {
   placeCallPopout(overlay);
   makeDraggable(overlay, overlay.querySelector("[data-call-drag]"));
   startIncomingRingtone();
+  showInAppNotification(`${call.callerName || "Incoming call"}`, `${call.kind === "video" ? "Video" : "Audio"} call`, {
+    tone: "call",
+    icon: call.callerPhotoURL,
+    href: location.pathname.includes("designer-account.html") ? "designer-account.html#chat" : location.pathname.includes("admin.html") ? "admin.html#chats_view" : "account.html#chat"
+  });
   notifyBrowser(`${call.callerName || "Incoming call"}`, `${call.kind === "video" ? "Video" : "Audio"} call`, call.callerPhotoURL);
   
 
@@ -2857,6 +3028,11 @@ async function getProfile(uid, email) {
   if (client?.exists()) return enrich("client", client.data());
   const designer = await getDoc(doc(db, "designers", uid)).catch(() => null);
   if (designer?.exists()) return enrich("designer", designer.data());
+  const mail = emailKey(email);
+  const designerByEmail = await getDocs(query(collection(db, "designers"), where("email", "==", mail))).catch(() => null);
+  if (designerByEmail?.docs?.length) return enrich("designer", { id: designerByEmail.docs[0].id, ...designerByEmail.docs[0].data() });
+  const designerByDesignerEmail = await getDocs(query(collection(db, "designers"), where("designerEmail", "==", mail))).catch(() => null);
+  if (designerByDesignerEmail?.docs?.length) return enrich("designer", { id: designerByDesignerEmail.docs[0].id, ...designerByDesignerEmail.docs[0].data() });
   const admin = isAdminEmail(email);
   return enrich(admin ? "admin" : "client", {
     name: activeUser?.displayName || emailKey(email).split("@")[0] || (admin ? `${CHAT_CONFIG.brandName} Admin` : "User")
@@ -3848,7 +4024,18 @@ function playSynthTone(tone = "message") {
 
 
 function bindNotificationPermissionPrimer() {
+  if (notificationPermissionAsked) return;
   notificationPermissionAsked = true;
+  const ask = () => {
+    try {
+      if ("Notification" in window && Notification.permission === "default") {
+        Notification.requestPermission?.().catch?.(() => {});
+      }
+    } catch (_) {}
+  };
+  ["pointerdown", "keydown", "touchstart"].forEach((eventName) => {
+    window.addEventListener(eventName, ask, { once: true, passive: true });
+  });
 }
 
 
@@ -3887,14 +4074,51 @@ function bindChatSettingsEvents() {
 }
 
 function notifyBrowser(title, body, icon = "") {
-  return;
+  if (!("Notification" in window) || Notification.permission !== "granted") return;
+  try {
+    new Notification(String(title || CHAT_CONFIG.brandName || "Notification"), {
+      body: String(body || "New update"),
+      icon: icon || undefined,
+      badge: icon || undefined,
+      tag: `adnn-${String(title || "chat").slice(0, 42)}`,
+      renotify: false,
+      silent: true
+    });
+  } catch (_) {}
 }
 
 
 
 function showInAppNotification(title, body, options = {}) {
-  document.getElementById("adnnInAppNotificationStack")?.remove();
-  return;
+  let stack = document.getElementById("adnnInAppNotificationStack");
+  if (!stack) {
+    stack = document.createElement("div");
+    stack.id = "adnnInAppNotificationStack";
+    stack.className = "adnn-inapp-stack";
+    document.body.appendChild(stack);
+  }
+
+  const card = document.createElement("button");
+  card.type = "button";
+  card.className = `adnn-inapp-card ${options.tone === "missed" || options.tone === "call" ? "is-call" : "is-message"}`;
+  card.innerHTML = `
+    ${options.icon ? `<img src="${escapeAttr(options.icon)}" alt="">` : `<span>${options.tone === "call" || options.tone === "missed" ? "📞" : "💬"}</span>`}
+    <strong>${escapeHtml(title || "New notification")}</strong>
+    <small>${escapeHtml(body || "")}</small>
+    ${options.count ? `<b>${escapeHtml(String(options.count > 99 ? "99+" : options.count))}</b>` : ""}
+  `;
+  card.addEventListener("click", () => {
+    if (options.href) location.href = options.href;
+    card.remove();
+  });
+  stack.prepend(card);
+  setTimeout(() => card.classList.add("is-visible"), 20);
+  setTimeout(() => {
+    card.classList.remove("is-visible");
+    setTimeout(() => card.remove(), 420);
+  }, 5200);
+
+  while (stack.children.length > 4) stack.lastElementChild?.remove();
 }
 
 

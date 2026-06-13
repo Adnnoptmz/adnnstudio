@@ -1384,6 +1384,25 @@
     }
   }
 </style>
+
+<style id="adnn-low-ram-motion-css">
+  :root.adnn-reduce-motion, :root.adnn-reduce-motion * { scroll-behavior:auto !important; }
+  :root.adnn-reduce-motion *, :root.adnn-reduce-motion *::before, :root.adnn-reduce-motion *::after { animation:none !important; transition:none !important; }
+  :root.adnn-reduce-motion .os-bg-layer canvas, :root.adnn-reduce-motion #osCanvas { display:none !important; }
+  :root.adnn-reduce-motion .os-shimmer, :root.adnn-reduce-motion .os-bg-grid, :root.adnn-reduce-motion .os-progress-bar { display:none !important; }
+  :root.adnn-reduce-motion .os-card, :root.adnn-reduce-motion .adnn-os-card, :root.adnn-reduce-motion [class*="card"], :root.adnn-reduce-motion button, :root.adnn-reduce-motion a { transform:none !important; filter:none !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important; }
+  :root.adnn-reduce-motion video { animation:none !important; transition:none !important; }
+  :root.adnn-reduce-motion .adnn-inapp-card { animation:none !important; transition:none !important; }
+</style>
+<script id="adnn-low-ram-motion-boot">
+(function(){
+  function isReduced(){ try { return localStorage.getItem('adnn_reduce_motion') === 'true'; } catch(_) { return false; } }
+  function apply(){ document.documentElement.classList.toggle('adnn-reduce-motion', isReduced()); }
+  apply();
+  window.addEventListener('storage', apply);
+  window.addEventListener('adnn-settings-changed', apply);
+})();
+</script>
 </head>
 <body class="auth-pending locked">
 	<script>
@@ -1591,7 +1610,7 @@
     <label class="settings-card adnn-setting-card"><div><strong>Chat white mode</strong><span>Toggle only the messenger between dark and bright white.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_chat_light_mode"><i></i></span></label>
     <label class="settings-card adnn-setting-card"><div><strong>In-app message alerts</strong><span>Show messenger-style cards and live unread numbers inside the portal.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_inapp_notifications"><i></i></span></label>
     <label class="settings-card adnn-setting-card"><div><strong>Browser notifications</strong><span>Allow system notifications for new messages and missed calls.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_browser_notifications"><i></i></span></label>
-    <label class="settings-card adnn-setting-card"><div><strong>Message sound</strong><span>Play a soft tone for new chat and missed call alerts.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_message_sounds"><i></i></span></label>
+    <label class="settings-card adnn-setting-card"><div><strong>Message sound</strong><span>Turn off to enable silent mode for chat and missed call alerts.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_message_sounds"><i></i></span></label>
     <label class="settings-card adnn-setting-card"><div><strong>Reduce motion</strong><span>Calm animations for a lighter, accessibility-friendly dashboard.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_reduce_motion"><i></i></span></label>
     
     <div class="settings-card adnn-setting-card"><div><strong>Terms & Privacy</strong><span>Read the latest studio terms and privacy page.</span></div><a href="#terms" class="apple-home-btn" data-view-link="terms" aria-label="Open terms"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 3.5h8.7L19 7.3v13.2H6.5v-17Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M15 3.8V8h4M9 12h6M9 16h6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></a></div>
@@ -1675,7 +1694,17 @@
     display: flex;
     align-items: center;
     gap: 10px;
+  }
 
+  .os-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: linear-gradient(145deg, #272dcf, #5360ff);
+    display: grid;
+    place-items: center;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.20), 0 4px 16px rgba(39,45,207,0.45);
+    flex-shrink: 0;
   }
 
   .os-icon svg { width: 18px; height: 18px; display: block; }
@@ -1957,7 +1986,12 @@
       <div class="os-topbar">
         <div class="os-brand">
           <div class="os-icon">
-            <img src="adnn icon.svg" alt="Adnn Studio">
+            <svg viewBox="0 0 18 18" fill="none" aria-hidden="true">
+              <rect x="2" y="2" width="6" height="6" rx="1.5" fill="white" opacity="0.9"/>
+              <rect x="10" y="2" width="6" height="6" rx="1.5" fill="white" opacity="0.4"/>
+              <rect x="2" y="10" width="6" height="6" rx="1.5" fill="white" opacity="0.4"/>
+              <rect x="10" y="10" width="6" height="6" rx="1.5" fill="white" opacity="0.75"/>
+            </svg>
           </div>
           <span class="os-name">ADNN Studio</span>
         </div>
@@ -2018,9 +2052,14 @@
   const card = document.getElementById('osCard');
 
   let W, H, particles = [], mouse = {x:-999,y:-999};
+  let osAnimFrame = 0;
   const N = 36;
+  function osReducedMotion(){ try { return localStorage.getItem('adnn_reduce_motion') === 'true' || document.documentElement.classList.contains('adnn-reduce-motion'); } catch(_) { return document.documentElement.classList.contains('adnn-reduce-motion'); } }
+  function stopOsMotion(){ if (osAnimFrame) cancelAnimationFrame(osAnimFrame); osAnimFrame = 0; try { ctx && ctx.clearRect(0,0,W||0,H||0); } catch(_) {} }
+  function startOsMotion(){ if (!canvas || !ctx || !card || osReducedMotion() || osAnimFrame) return; resize(); loop(); }
 
   function resize(){
+    if (osReducedMotion()) return;
     const r = card.getBoundingClientRect();
     const nextW = Math.max(1, Math.floor(r.width));
     const nextH = Math.max(1, Math.floor(r.height || 260));
@@ -2065,6 +2104,7 @@
   }
 
   function loop(){
+    if (osReducedMotion()) { stopOsMotion(); return; }
     ctx.clearRect(0,0,W,H);
     for(const p of particles){
       const mdx=mouse.x-p.x, mdy=mouse.y-p.y;
@@ -2083,7 +2123,7 @@
       ctx.fill();
     }
     drawLines();
-    requestAnimationFrame(loop);
+    osAnimFrame = requestAnimationFrame(loop);
   }
 
   card.addEventListener('mousemove',e=>{
@@ -2097,12 +2137,13 @@
     mouse.x=t.clientX-r.left; mouse.y=t.clientY-r.top;
   },{passive:true});
 
-  window.addEventListener('resize', ()=>{ resize(); });
+  window.addEventListener('resize', ()=>{ if (!osReducedMotion()) resize(); });
   if ('ResizeObserver' in window) {
     new ResizeObserver(()=>resize()).observe(card);
   }
-  init();
-  loop();
+  window.addEventListener('adnn-settings-changed', ()=>{ if (osReducedMotion()) stopOsMotion(); else startOsMotion(); });
+  window.addEventListener('storage', ()=>{ if (osReducedMotion()) stopOsMotion(); else startOsMotion(); });
+  if (!osReducedMotion()) { init(); startOsMotion(); } else { stopOsMotion(); }
 
   const ring = document.getElementById('osRing');
   const ringLabel = document.getElementById('osRingLabel');
@@ -2144,6 +2185,7 @@
   }
 
   checkBtn.addEventListener('click',()=>{
+    if (osReducedMotion()) { showToast('Reduce Motion is on · OS animation paused', 1800); return; }
     checkBtn.disabled=true;
     checkBtn.textContent='Checking…';
     pb.classList.add('running');
@@ -3101,7 +3143,7 @@
     adnn_chat_light_mode: "false",
     adnn_inapp_notifications: "true",
     adnn_browser_notifications: "true",
-    adnn_message_sounds: "true",
+    adnn_message_sounds: "false",
     adnn_reduce_motion: "false"
   };
   function bool(key){

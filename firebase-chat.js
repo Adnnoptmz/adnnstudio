@@ -75,126 +75,6 @@ import {
   deleteObject
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
-
-
-
-/* ADNN ABSOLUTE NO-SOUND MODE
-   This runtime is intentionally silent: no notification tones, no ringtones,
-   no browser notification sounds, no auto media playback, and no hidden Audio().
-*/
-(function installAdnnAbsoluteNoSoundMode(){
-  if (window.__adnnAbsoluteNoSoundModeInstalled) return;
-  window.__adnnAbsoluteNoSoundModeInstalled = true;
-
-  try {
-    localStorage.setItem('adnn_message_sounds', 'false');
-    localStorage.setItem('adnn_browser_notifications', 'false');
-    localStorage.setItem('adnn_inapp_notifications', 'true');
-    localStorage.removeItem('adnn_sound_user_confirmed');
-    localStorage.setItem('adnn_force_silent_mode', 'true');
-  } catch (_) {}
-
-  const silentPromise = () => Promise.resolve();
-
-  try {
-    const OriginalAudio = window.Audio;
-    if (OriginalAudio && !OriginalAudio.__adnnAbsoluteNoSoundPatched) {
-      const PatchedAudio = function() {
-        const audio = new OriginalAudio();
-        try {
-          audio.muted = true;
-          audio.volume = 0;
-          audio.autoplay = false;
-          audio.preload = 'none';
-          audio.dataset.adnnNoSound = '1';
-        } catch (_) {}
-        return audio;
-      };
-      PatchedAudio.prototype = OriginalAudio.prototype;
-      Object.setPrototypeOf(PatchedAudio, OriginalAudio);
-      PatchedAudio.__adnnAbsoluteNoSoundPatched = true;
-      window.Audio = PatchedAudio;
-    }
-  } catch (_) {}
-
-  try {
-    const proto = window.HTMLMediaElement && window.HTMLMediaElement.prototype;
-    if (proto && proto.play && !proto.__adnnAbsoluteNoSoundOriginalPlay) {
-      proto.__adnnAbsoluteNoSoundOriginalPlay = proto.play;
-      proto.play = function adnnNoSoundPlay() {
-        const tag = String(this.tagName || '').toLowerCase();
-        const src = String(this.currentSrc || this.src || this.getAttribute?.('src') || '').toLowerCase();
-        try {
-          if (tag === 'audio') {
-            this.pause?.();
-            this.currentTime = 0;
-            this.muted = true;
-            this.volume = 0;
-            return silentPromise();
-          }
-          if (tag === 'video') {
-            this.muted = true;
-            this.volume = 0;
-            if (/ring|ringer|tone|notification|message|notify|call/.test(src)) {
-              this.pause?.();
-              this.currentTime = 0;
-              return silentPromise();
-            }
-          }
-          if (/ring|ringer|tone|notification|message|notify|call/.test(src)) {
-            this.pause?.();
-            this.currentTime = 0;
-            this.muted = true;
-            this.volume = 0;
-            return silentPromise();
-          }
-        } catch (_) {}
-        return proto.__adnnAbsoluteNoSoundOriginalPlay.apply(this, arguments);
-      };
-    }
-  } catch (_) {}
-
-  try {
-    const desc = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'src');
-    if (desc && desc.set && !desc.set.__adnnAbsoluteNoSoundPatched) {
-      const originalSet = desc.set;
-      const originalGet = desc.get;
-      const patchedSet = function(value) {
-        try {
-          const tag = String(this.tagName || '').toLowerCase();
-          const lower = String(value || '').toLowerCase();
-          if (tag === 'audio' || /ring|ringer|tone|notification|message\s*notification|message%20notification|notify/.test(lower)) {
-            this.dataset.adnnNoSound = '1';
-            this.muted = true;
-            this.volume = 0;
-            this.preload = 'none';
-          }
-        } catch (_) {}
-        return originalSet.call(this, value);
-      };
-      patchedSet.__adnnAbsoluteNoSoundPatched = true;
-      Object.defineProperty(HTMLMediaElement.prototype, 'src', { configurable: true, enumerable: desc.enumerable, get: originalGet, set: patchedSet });
-    }
-  } catch (_) {}
-
-  try {
-    if ('Notification' in window) {
-      const OriginalNotification = window.Notification;
-      if (OriginalNotification && !OriginalNotification.__adnnSilentPatched) {
-        const SilentNotification = function(title, options) {
-          return new OriginalNotification(title, { ...(options || {}), silent: true });
-        };
-        Object.setPrototypeOf(SilentNotification, OriginalNotification);
-        SilentNotification.prototype = OriginalNotification.prototype;
-        Object.defineProperty(SilentNotification, 'permission', { get: () => OriginalNotification.permission });
-        SilentNotification.requestPermission = (...args) => OriginalNotification.requestPermission(...args);
-        SilentNotification.__adnnSilentPatched = true;
-        window.Notification = SilentNotification;
-      }
-    }
-  } catch (_) {}
-})();
-
 const DEFAULT_CONFIG = {
   adminEmail: "getavcollab@gmail.com",
   adminAliasUid: "adnn-admin",
@@ -214,8 +94,8 @@ const DEFAULT_CONFIG = {
   uploadChunkLabelEveryPct: 5,
   deleteStorageOnDeleteForAll: false,
   messageToneFile: "",
-  outgoingCallToneFile: "",
-  incomingCallToneFile: "",
+  outgoingCallToneFile: "call ringer_01.mp3",
+  incomingCallToneFile: "ring-app.mp3",
   iceServers: [
     { urls: "stun:stun.l.google.com:19302" },
     { urls: "stun:stun1.l.google.com:19302" }
@@ -254,15 +134,7 @@ const COLLECTIONS = Object.freeze({
   offerCandidates: "offerCandidates",
   answerCandidates: "answerCandidates"
 });
-const DEFAULT_REACTION_SET = ["\u{1F44D}", "\u{2764}\u{FE0F}", "\u{1F602}", "\u{1F62E}", "\u{1F622}", "\u{1F64F}"];
-const REACTION_SET = [
-  ...DEFAULT_REACTION_SET,
-  "\u{1F389}", "\u{1F525}", "\u{1F60D}", "\u{1F64C}", "\u{1F44F}", "\u{1F914}",
-  "\u{2705}", "\u{2728}", "\u{1F680}", "\u{1F4AF}", "\u{1F44C}", "\u{1FAE1}",
-  "\u{1F60E}", "\u{1F4A1}", "\u{1F44E}", "\u{1F604}", "\u{1F609}", "\u{1F970}",
-  "\u{1F92F}", "\u{1F621}", "\u{1F614}", "\u{1F62D}", "\u{1F4AA}", "\u{1F64B}",
-  "\u{1F91D}", "\u{1F440}", "\u{1F4CC}", "\u{1F4A5}", "\u{1F31F}", "\u{1F381}"
-];
+const REACTION_SET = ["?", "??", "?", "?", "?", "?", "?", "?", "?", "?"];
 
 let app = null;
 let auth = null;
@@ -313,8 +185,6 @@ const ICON = {
   home: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10.5V21h13V10.5"/><path d="M9.5 21v-6h5v6"/></svg>`,
   menu: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>`,
   more: `<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>`,
-  pin: `<svg class="adnn-pin-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 4.5 19.5 9.5"/><path d="M8.4 12.6 4.8 16.2"/><path d="M9.5 5.5 18.5 14.5"/><path d="M7.6 7.4 11.7 3.3c.6-.6 1.6-.6 2.2 0l6.8 6.8c.6.6.6 1.6 0 2.2l-4.1 4.1c-.4.4-1 .5-1.5.2l-2.2-1.1-3.7 3.7c-.7.7-1.8.2-1.8-.7v-2.9l-2.7-2.7c-.7-.7-.2-1.8.7-1.8h2.9l1.1-2.2c-.3-.5-.2-1.1.2-1.5Z"/></svg>`,
-  pinned: `<svg class="adnn-pin-icon is-pinned" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13.9 2.9a1.6 1.6 0 0 0-2.2 0L7.5 7.1c-.4.4-.5 1-.2 1.5l-1 2.1H3.7c-1 0-1.5 1.2-.8 1.9l3 3v3.1c0 1 1.2 1.5 1.9.8l3.9-3.9 2.1-1c.5.3 1.1.2 1.5-.2l4.2-4.2a1.6 1.6 0 0 0 0-2.2l-5.6-5.6Z"/></svg>`,
   search: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>`,
   phone: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v2.4a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.12 3.63 2 2 0 0 1 4.11 1.5h2.4a2 2 0 0 1 2 1.72c.13.96.35 1.9.67 2.8a2 2 0 0 1-.45 2.1L7.7 9.16a16 16 0 0 0 7.14 7.14l1.04-1.03a2 2 0 0 1 2.1-.45c.9.32 1.84.54 2.8.67A2 2 0 0 1 22 16.92Z"/></svg>`,
   video: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="13" height="14" rx="3"/><path d="m16 10 5-3v10l-5-3"/></svg>`,
@@ -343,174 +213,10 @@ const ICON = {
 
 bootChatRuntime();
 
-
-function injectAppleInspiredReactionStyles() {
-  if (document.getElementById("adnnAppleReactionPinStyles")) return;
-  const style = document.createElement("style");
-  style.id = "adnnAppleReactionPinStyles";
-  style.textContent = `
-    .adnn-emoji-panel,
-    .adnn-floating-reaction-sheet,
-    .adnn-reaction-palette {
-      font-family: -apple-system, BlinkMacSystemFont, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", system-ui, sans-serif;
-    }
-    .adnn-emoji-panel button,
-    .adnn-floating-reaction-sheet button,
-    .adnn-reaction-palette button {
-      font-family: -apple-system, BlinkMacSystemFont, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", system-ui, sans-serif;
-      font-size: 22px;
-      line-height: 1;
-      min-width: 38px;
-      min-height: 38px;
-      border-radius: 999px;
-      display: inline-grid;
-      place-items: center;
-    }
-    .adnn-pin-chat {
-      display: inline-grid;
-      place-items: center;
-      width: 26px;
-      height: 26px;
-      border-radius: 999px;
-      color: rgba(255,255,255,.56);
-      background: rgba(255,255,255,.055);
-      border: 1px solid rgba(255,255,255,.08);
-      backdrop-filter: blur(14px) saturate(150%);
-      -webkit-backdrop-filter: blur(14px) saturate(150%);
-    }
-    .adnn-pin-chat:hover {
-      color: #fff;
-      background: rgba(255,255,255,.12);
-    }
-    .adnn-thread.is-pinned .adnn-pin-chat {
-      color: #fff;
-      background: linear-gradient(180deg, rgba(255,255,255,.22), rgba(255,255,255,.08));
-      border-color: rgba(255,255,255,.22);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.26), 0 10px 24px rgba(0,0,0,.22);
-    }
-    .adnn-pin-icon {
-      width: 14px;
-      height: 14px;
-      display: block;
-    }
-    .adnn-floating-reaction-sheet {
-      gap: 8px;
-      padding: 8px;
-      border-radius: 999px;
-      background: rgba(28,28,30,.78);
-      border: 1px solid rgba(255,255,255,.14);
-      backdrop-filter: blur(24px) saturate(180%);
-      -webkit-backdrop-filter: blur(24px) saturate(180%);
-      box-shadow: 0 18px 55px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.18);
-    }
-    .adnn-floating-reaction-sheet.is-expanded {
-      border-radius: 24px;
-      flex-wrap: wrap;
-      max-height: min(380px, calc(100vh - 32px));
-      overflow: auto;
-    }
-    .adnn-reaction-more {
-      font-size: 0 !important;
-      color: rgba(255,255,255,.82);
-      background: rgba(255,255,255,.12) !important;
-    }
-    .adnn-reaction-more::before {
-      content: "+";
-      font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-      font-size: 24px;
-      font-weight: 500;
-      line-height: 1;
-    }
-    .adnn-inapp-stack {
-      position: fixed;
-      right: max(16px, env(safe-area-inset-right));
-      top: max(16px, env(safe-area-inset-top));
-      z-index: 2147483000;
-      display: grid;
-      gap: 10px;
-      width: min(360px, calc(100vw - 32px));
-      pointer-events: none;
-    }
-    .adnn-inapp-card {
-      pointer-events: auto;
-      width: 100%;
-      display: grid;
-      grid-template-columns: 42px 1fr auto;
-      grid-template-rows: auto auto;
-      align-items: center;
-      gap: 2px 12px;
-      padding: 12px 14px;
-      border: 1px solid rgba(255,255,255,.16);
-      border-radius: 22px;
-      color: #fff;
-      text-align: left;
-      background: rgba(28,28,30,.74);
-      box-shadow: 0 18px 55px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.18);
-      backdrop-filter: blur(26px) saturate(180%);
-      -webkit-backdrop-filter: blur(26px) saturate(180%);
-      opacity: 0;
-      transform: translateY(-10px) scale(.98);
-      transition: opacity .32s ease, transform .38s cubic-bezier(.16,1,.3,1);
-      cursor: pointer;
-    }
-    .adnn-inapp-card.is-visible { opacity: 1; transform: translateY(0) scale(1); }
-    .adnn-inapp-card img,
-    .adnn-inapp-card > span {
-      grid-row: 1 / span 2;
-      width: 42px;
-      height: 42px;
-      border-radius: 14px;
-      display: grid;
-      place-items: center;
-      object-fit: cover;
-      background: rgba(255,255,255,.10);
-      font-size: 21px;
-    }
-    .adnn-inapp-card strong {
-      grid-column: 2;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      font: 600 14px/1.25 -apple-system, BlinkMacSystemFont, "Inter", system-ui, sans-serif;
-    }
-    .adnn-inapp-card small {
-      grid-column: 2;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      color: rgba(255,255,255,.66);
-      font: 400 12px/1.25 -apple-system, BlinkMacSystemFont, "Inter", system-ui, sans-serif;
-    }
-    .adnn-inapp-card b {
-      grid-column: 3;
-      grid-row: 1 / span 2;
-      min-width: 24px;
-      height: 24px;
-      border-radius: 999px;
-      display: grid;
-      place-items: center;
-      background: var(--adnn-primary, #272dcf);
-      color: #fff;
-      font-size: 11px;
-    }
-    @media (max-width: 560px) {
-      .adnn-inapp-stack {
-        left: 12px;
-        right: 12px;
-        top: max(12px, env(safe-area-inset-top));
-        width: auto;
-      }
-    }
-  `;
-  document.head.appendChild(style);
-}
-
-
 async function bootChatRuntime() {
   enforceSilentSoundMigration();
   installSilentAudioGuard();
   injectChatStyles();
-  injectAppleInspiredReactionStyles();
   syncChatSettingsFromStorage();
   bindChatSettingsEvents();
   bindGlobalDismissers();
@@ -773,9 +479,8 @@ function watchChatThreads(scope, listId, roomId, options = {}) {
     const unique = new Map();
     chats.forEach((chat) => unique.set(chat.id, { ...(unique.get(chat.id) || {}), ...chat }));
     chats = Array.from(unique.values()).filter(isChatVisibleForCurrentUser);
-    if (isDesignerChatRuntime() && scope !== "admin") chats = chats.filter(isDesignerRelevantChat);
     if (scope === "admin") chats = chats.filter(isVisibleToAdminInbox);
-    if (options.directOnly || options.excludeSupport) chats = chats.filter((chat) => !isSupportLikeChat(chat));
+    if (options.directOnly || options.excludeSupport) chats = chats.filter((chat) => chat.type !== "support");
     chats.sort((a, b) => toMillis(b.updatedAt || b.createdAt || b.updatedAtMs) - toMillis(a.updatedAt || a.createdAt || a.updatedAtMs));
     renderThreadList(chats, list, roomId, scope);
   };
@@ -805,8 +510,8 @@ function watchChatThreads(scope, listId, roomId, options = {}) {
     selfEmailKeyList().forEach((mail, index) => {
       listen(`participant-email-${index}`, query(collection(db, COLLECTIONS.chats), where("participantEmailKeys", "array-contains", mail)));
     });
-    if (isDesignerChatRuntime()) {
-      listenDesignerChatSources(listen);
+    if (activeProfile?.role === "designer") {
+      listen("designer-room", query(collection(db, COLLECTIONS.chats), where("type", "==", "designer-room")));
     }
   }
 
@@ -823,114 +528,6 @@ function stopListWatcher(listId) {
   const old = listWatchers.get(listId);
   old?.();
   listWatchers.delete(listId);
-}
-
-
-function getStoredDesignerProfile() {
-  try {
-    const raw = localStorage.getItem("adnnDesignerUser");
-    return raw ? (JSON.parse(raw) || {}) : {};
-  } catch (_) {
-    return {};
-  }
-}
-
-function isDesignerChatRuntime() {
-  return !!(location.pathname.includes("designer-account.html") || activeProfile?.role === "designer" || localStorage.getItem("adnnDesignerUser"));
-}
-
-function isSupportLikeChat(chat) {
-  const type = String(chat?.type || "").toLowerCase().trim();
-  const title = String(chat?.title || "").toLowerCase().trim();
-  const id = String(chat?.id || "").toLowerCase().trim();
-  const remoteUid = getRemoteUid(chat);
-  const participants = Array.isArray(chat?.participantUids) ? chat.participantUids.map(String) : [];
-
-  // Keep Admin Support out of the User Chats tab, but do NOT hide normal
-  // user-to-user chats just because an admin created/assigned them.
-  return id.startsWith("support_")
-    || type === "support"
-    || type === "admin-support"
-    || type === "designer-support"
-    || title === "admin support"
-    || title === String(CHAT_CONFIG.supportTitle || "").toLowerCase().trim()
-    || remoteUid === ADMIN_ALIAS_UID
-    || participants.includes(ADMIN_ALIAS_UID);
-}
-
-function listenDesignerChatSources(listen) {
-  listen("designer-room", query(collection(db, COLLECTIONS.chats), where("type", "==", "designer-room")));
-  listen("design-room", query(collection(db, COLLECTIONS.chats), where("type", "==", "design-room")));
-  listen("designer-support", query(collection(db, COLLECTIONS.chats), where("type", "==", "designer-support")));
-  listen("designer-inbox", query(collection(db, COLLECTIONS.chats), where("type", "==", "designer")));
-
-  const uidFields = [
-    "designerUid",
-    "assignedDesignerUid",
-    "assignedToUid",
-    "assigneeUid",
-    "designerId",
-    "assignedDesignerId",
-    "assignedTo",
-    "assigneeId"
-  ];
-  const uidArrayFields = [
-    "designerUids",
-    "assignedDesignerUids",
-    "memberUids",
-    "members",
-    "visibleToUids",
-    "allowedUids"
-  ];
-  Array.from(selfUidSet()).forEach((uid, index) => {
-    uidFields.forEach((field) => listen(`designer-${field}-${index}`, query(collection(db, COLLECTIONS.chats), where(field, "==", uid))));
-    uidArrayFields.forEach((field) => listen(`designer-${field}-contains-${index}`, query(collection(db, COLLECTIONS.chats), where(field, "array-contains", uid))));
-  });
-
-  const emailFields = [
-    "designerEmail",
-    "assignedDesignerEmail",
-    "assignedToEmail",
-    "assigneeEmail",
-    "designerMail",
-    "assignedMail"
-  ];
-  const emailArrayFields = [
-    "designerEmails",
-    "assignedDesignerEmails",
-    "memberEmails",
-    "participantEmails",
-    "participantEmailKeys",
-    "visibleToEmails",
-    "allowedEmails"
-  ];
-  selfEmailKeyList().forEach((mail, index) => {
-    emailFields.forEach((field) => listen(`designer-${field}-${index}`, query(collection(db, COLLECTIONS.chats), where(field, "==", mail))));
-    emailArrayFields.forEach((field) => listen(`designer-${field}-contains-${index}`, query(collection(db, COLLECTIONS.chats), where(field, "array-contains", mail))));
-  });
-
-  // Last-resort designer-page inbox: if Firestore rules allow it, this catches older chat
-  // records that were created without designer participant arrays. Client-side filtering
-  // below keeps it relevant to this signed-in designer.
-  listen("designer-recent-updated", query(collection(db, COLLECTIONS.chats), orderBy("updatedAt", "desc"), limit(120)));
-}
-
-function isDesignerRelevantChat(chat) {
-  if (!chat || !isDesignerChatRuntime()) return true;
-  const storedDesigner = getStoredDesignerProfile();
-  const uids = selfUidSet();
-  const emails = selfEmailKeySet();
-  const designerIds = new Set(uniqueClean([storedDesigner.designerid, storedDesigner.designerId, activeProfile?.designerid, activeProfile?.designerId]).map((value) => String(value).toLowerCase()));
-  const uidFields = [chat.designerUid, chat.assignedDesignerUid, chat.assignedToUid, chat.assigneeUid, chat.designerId, chat.assignedDesignerId, chat.assignedTo, chat.assigneeId, chat.clientUid];
-  if (uidFields.some((uid) => uid && (uids.has(String(uid)) || designerIds.has(String(uid).toLowerCase())))) return true;
-  const uidArrays = [chat.participantUids, chat.designerUids, chat.assignedDesignerUids, chat.memberUids, chat.members, chat.visibleToUids, chat.allowedUids];
-  if (uidArrays.some((arr) => Array.isArray(arr) && arr.some((uid) => uids.has(String(uid)) || designerIds.has(String(uid).toLowerCase())))) return true;
-  const emailFields = [chat.designerEmail, chat.assignedDesignerEmail, chat.assignedToEmail, chat.assigneeEmail, chat.designerMail, chat.assignedMail, chat.clientEmail];
-  if (emailFields.some((mail) => mail && emails.has(emailKey(mail)))) return true;
-  const emailArrays = [chat.participantEmailKeys, chat.participantEmails, chat.designerEmails, chat.assignedDesignerEmails, chat.memberEmails, chat.visibleToEmails, chat.allowedEmails];
-  if (emailArrays.some((arr) => Array.isArray(arr) && arr.some((mail) => emails.has(emailKey(mail))))) return true;
-  const type = String(chat.type || "").toLowerCase();
-  return type.includes("designer") || type.includes("design");
 }
 
 
@@ -1041,7 +638,7 @@ function renderThreadList(chats, list, roomId, scope) {
         <small>${escapeHtml(preview)}</small>
       </span>
       <span class="adnn-thread-side">
-        <button type="button" class="adnn-pin-chat" data-pin-chat="${escapeAttr(chat.id)}" title="${pinned ? "Unpin chat" : "Pin chat"}" aria-label="${pinned ? "Unpin chat" : "Pin chat"}">${pinned ? ICON.pinned : ICON.pin}</button>
+        <button type="button" class="adnn-pin-chat" data-pin-chat="${escapeAttr(chat.id)}" title="${pinned ? "Unpin chat" : "Pin chat"}" aria-label="${pinned ? "Unpin chat" : "Pin chat"}">${pinned ? "?" : "?"}</button>
         <time>${escapeHtml(stamp)}</time>
         ${unread > 0 ? `<b>${unread > 99 ? "99+" : unread}</b>` : ""}
       </span>
@@ -1621,12 +1218,6 @@ function renderMessageBubble(message, mine) {
 
 function renderMessageMenu(message, mine, deleted) {
   const canDeleteForAll = mine && !deleted;
-  const defaultReactionButtons = DEFAULT_REACTION_SET
-    .map((emoji) => `<button type="button" data-action="react" data-emoji="${escapeAttr(emoji)}">${escapeHtml(emoji)}</button>`)
-    .join("");
-  const allReactionButtons = REACTION_SET
-    .map((emoji) => `<button type="button" data-action="react" data-emoji="${escapeAttr(emoji)}">${escapeHtml(emoji)}</button>`)
-    .join("");
   return `
     <div class="adnn-message-actions" data-message-menu>
       <button type="button" data-action="reply" title="Reply">${ICON.reply}<span>Reply</span></button>
@@ -1635,8 +1226,7 @@ function renderMessageMenu(message, mine, deleted) {
       <button type="button" data-action="delete-me" class="is-warn" title="Delete for me">${ICON.trash}<span>Me</span></button>
       ${canDeleteForAll ? `<button type="button" data-action="delete-all" class="is-danger" title="Delete for everyone">${ICON.trash}<span>All</span></button>` : ""}
       <div class="adnn-reaction-palette" data-reaction-palette hidden>
-        <span data-default-reactions>${defaultReactionButtons}<button type="button" class="adnn-reaction-more" data-action="show-all-reactions" title="More reactions">+</button></span>
-        <span data-all-reactions hidden>${allReactionButtons}</span>
+        ${REACTION_SET.map((emoji) => `<button type="button" data-action="react" data-emoji="${escapeAttr(emoji)}">${escapeHtml(emoji)}</button>`).join("")}
       </div>
     </div>
   `;
@@ -1666,7 +1256,7 @@ function openMessageMenu(bubble, state, message) {
   closeMessageMenus();
   state.menuMessageId = message.id;
   bubble.classList.add("is-menu-open");
-  
+  if (navigator.vibrate) navigator.vibrate(18);
 }
 
 function handleMessageAction(event, state, message) {
@@ -1681,16 +1271,6 @@ function handleMessageAction(event, state, message) {
   const action = actionBtn.dataset.action;
   if (action === "reply") startReply(state, message);
   if (action === "open-react") openReactionSheet(actionBtn, state, message);
-  if (action === "show-all-reactions") {
-    const palette = actionBtn.closest("[data-reaction-palette]");
-    if (palette) {
-      const defaults = palette.querySelector("[data-default-reactions]");
-      const all = palette.querySelector("[data-all-reactions]");
-      if (defaults) defaults.hidden = true;
-      if (all) all.hidden = false;
-    }
-    return;
-  }
   if (action === "react") toggleReaction(state.chatId, message, actionBtn.dataset.emoji);
   if (action === "copy") copyMessageText(message);
   if (action === "delete-me") deleteMessageForMe(state, message);
@@ -1707,37 +1287,24 @@ function toggleReactionPalette(menu) {
 function openReactionSheet(anchor, state, message) {
   if (!anchor || !state || !message) return;
   closeFloatingReactionSheet();
-
-  const defaultButtons = DEFAULT_REACTION_SET
-    .map((emoji) => `<button type="button" data-emoji="${escapeAttr(emoji)}" title="${escapeAttr(emoji)}">${escapeHtml(emoji)}</button>`)
-    .join("");
-  const allButtons = REACTION_SET
-    .map((emoji) => `<button type="button" data-emoji="${escapeAttr(emoji)}" title="${escapeAttr(emoji)}">${escapeHtml(emoji)}</button>`)
-    .join("");
-
   const sheet = document.createElement("div");
   sheet.className = "adnn-floating-reaction-sheet";
   sheet.dataset.floatingReaction = "1";
-  sheet.innerHTML = `
-    <span data-default-reactions>${defaultButtons}<button type="button" class="adnn-reaction-more" data-show-all-reactions title="More reactions">+</button></span>
-    <span data-all-reactions hidden>${allButtons}</span>
-  `;
+  sheet.innerHTML = REACTION_SET.map((emoji) => `<button type="button" data-emoji="${escapeAttr(emoji)}">${escapeHtml(emoji)}</button>`).join("");
   document.body.appendChild(sheet);
 
   const gap = 8;
   const viewportW = Math.max(280, window.innerWidth || document.documentElement.clientWidth || 320);
   const viewportH = Math.max(360, window.innerHeight || document.documentElement.clientHeight || 480);
+  sheet.style.maxWidth = `${Math.max(220, viewportW - gap * 2)}px`;
 
-  const placeSheet = () => {
-    sheet.style.maxWidth = `${Math.max(220, viewportW - gap * 2)}px`;
-    if (viewportW <= 760) {
-      sheet.style.left = `${gap}px`;
-      sheet.style.right = `${gap}px`;
-      sheet.style.bottom = `calc(${gap}px + env(safe-area-inset-bottom))`;
-      sheet.style.top = "auto";
-      sheet.style.justifyContent = "center";
-      return;
-    }
+  if (viewportW <= 760) {
+    sheet.style.left = `${gap}px`;
+    sheet.style.right = `${gap}px`;
+    sheet.style.bottom = `calc(${gap}px + env(safe-area-inset-bottom))`;
+    sheet.style.top = "auto";
+    sheet.style.justifyContent = "center";
+  } else {
     const rect = anchor.getBoundingClientRect();
     const sheetRect = sheet.getBoundingClientRect();
     const width = Math.min(sheetRect.width || 360, viewportW - gap * 2);
@@ -1750,21 +1317,9 @@ function openReactionSheet(anchor, state, message) {
     sheet.style.right = "auto";
     sheet.style.top = `${top}px`;
     sheet.style.bottom = "auto";
-  };
-  placeSheet();
+  }
 
-  sheet.querySelector("[data-show-all-reactions]")?.addEventListener("click", (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    sheet.classList.add("is-expanded");
-    const defaults = sheet.querySelector("[data-default-reactions]");
-    const all = sheet.querySelector("[data-all-reactions]");
-    if (defaults) defaults.hidden = true;
-    if (all) all.hidden = false;
-    requestAnimationFrame(placeSheet);
-  });
-
-  sheet.querySelectorAll("button[data-emoji]").forEach((btn) => {
+  sheet.querySelectorAll("button").forEach((btn) => {
     btn.addEventListener("click", (event) => {
       event.stopPropagation();
       toggleReaction(state.chatId, message, btn.dataset.emoji);
@@ -1936,7 +1491,7 @@ function renderCallMessageBubble(message) {
     : declined
       ? (outgoing ? `Declined ${kind} call` : `Call declined`)
       : `${outgoing ? "Outgoing" : "Incoming"} ${kind} call`;
-  const detail = `${duration ? formatDuration(duration) + "  " : ""}${formatTime(message.createdAt || message.createdAtMs)}`;
+  const detail = `${duration ? formatDuration(duration) + " · " : ""}${formatTime(message.createdAt || message.createdAtMs)}`;
   return `
     <div class="adnn-call-message ${missed ? "is-missed" : ""}">
       <span>${kind === "video" ? ICON.video : ICON.phone}</span>
@@ -2185,7 +1740,7 @@ function renderFilePreview(state) {
     return `
       <div class="adnn-file-chip" data-file-id="${escapeAttr(item.id)}">
         ${media}
-        <div><strong>${escapeHtml(item.file.name)}</strong><small>${escapeHtml(item.kind)}  ${formatBytes(item.file.size)}</small>${progress ? `<i style="--p:${Math.max(0, Math.min(100, progress.pct))}%"></i>` : ""}</div>
+        <div><strong>${escapeHtml(item.file.name)}</strong><small>${escapeHtml(item.kind)} • ${formatBytes(item.file.size)}</small>${progress ? `<i style="--p:${Math.max(0, Math.min(100, progress.pct))}%"></i>` : ""}</div>
         <button type="button" data-remove-file="${escapeAttr(item.id)}">${ICON.x}</button>
       </div>
     `;
@@ -2486,7 +2041,7 @@ async function startCall(kind, chatId, chatData) {
   const remoteStatus = await getPresenceInfo(receiverUid);
   if (!remoteStatus.online) {
     await writeOfflineMissedCallMessage(chatId, chatData, kind, receiverUid).catch(() => {});
-    showInAppNotification(getChatTitle(chatData, "user"), `Missed ${kind === "video" ? "video" : "audio"} call  user offline`, { tone: "missed", icon: getChatPhoto(chatData, "user") });
+    showInAppNotification(getChatTitle(chatData, "user"), `Missed ${kind === "video" ? "video" : "audio"} call · user offline`, { tone: "missed", icon: getChatPhoto(chatData, "user") });
     return showToast(`${getChatTitle(chatData, "user")} is offline. Missed call saved.`, "warn");
   }
 
@@ -2576,13 +2131,8 @@ function showIncomingCall(callId, call) {
   placeCallPopout(overlay);
   makeDraggable(overlay, overlay.querySelector("[data-call-drag]"));
   startIncomingRingtone();
-  showInAppNotification(`${call.callerName || "Incoming call"}`, `${call.kind === "video" ? "Video" : "Audio"} call`, {
-    tone: "call",
-    icon: call.callerPhotoURL,
-    href: location.pathname.includes("designer-account.html") ? "designer-account.html#chat" : location.pathname.includes("admin.html") ? "admin.html#chats_view" : "account.html#chat"
-  });
   notifyBrowser(`${call.callerName || "Incoming call"}`, `${call.kind === "video" ? "Video" : "Audio"} call`, call.callerPhotoURL);
-  
+  if (navigator.vibrate) navigator.vibrate([80, 40, 80]);
 
   const timeout = setTimeout(() => {
     callWatch?.();
@@ -2849,9 +2399,7 @@ function attachCallMedia() {
   const holdBadge = overlay.querySelector("[data-call-hold-badge]");
 
   if (localVideo && localVideo.srcObject !== activeCall.localStream) localVideo.srcObject = activeCall.localStream;
-  if (localVideo) { localVideo.muted = true; localVideo.volume = 0; }
   if (remoteVideo && remoteVideo.srcObject !== activeCall.remoteStream) remoteVideo.srcObject = activeCall.remoteStream;
-  if (remoteVideo) { remoteVideo.muted = true; remoteVideo.volume = 0; }
   localVideo?.play?.().catch(() => {});
   remoteVideo?.play?.().catch(() => {});
 
@@ -3114,7 +2662,7 @@ function callSummaryLastMessage(message) {
   const kind = message.kind === "video" ? "video" : "audio";
   if (message.callStatus === "missed" || message.endedReason === "timeout" || message.endedReason === "offline") return `Missed ${kind} call`;
   if (message.endedReason === "rejected") return `Declined ${kind} call`;
-  return `${kind[0].toUpperCase()}${kind.slice(1)} call  ${formatDuration(Math.round((message.durationMs || 0) / 1000))}`;
+  return `${kind[0].toUpperCase()}${kind.slice(1)} call · ${formatDuration(Math.round((message.durationMs || 0) / 1000))}`;
 }
 
 async function getProfile(uid, email) {
@@ -3129,11 +2677,6 @@ async function getProfile(uid, email) {
   if (client?.exists()) return enrich("client", client.data());
   const designer = await getDoc(doc(db, "designers", uid)).catch(() => null);
   if (designer?.exists()) return enrich("designer", designer.data());
-  const mail = emailKey(email);
-  const designerByEmail = await getDocs(query(collection(db, "designers"), where("email", "==", mail))).catch(() => null);
-  if (designerByEmail?.docs?.length) return enrich("designer", { id: designerByEmail.docs[0].id, ...designerByEmail.docs[0].data() });
-  const designerByDesignerEmail = await getDocs(query(collection(db, "designers"), where("designerEmail", "==", mail))).catch(() => null);
-  if (designerByDesignerEmail?.docs?.length) return enrich("designer", { id: designerByDesignerEmail.docs[0].id, ...designerByDesignerEmail.docs[0].data() });
   const admin = isAdminEmail(email);
   return enrich(admin ? "admin" : "client", {
     name: activeUser?.displayName || emailKey(email).split("@")[0] || (admin ? `${CHAT_CONFIG.brandName} Admin` : "User")
@@ -3149,9 +2692,6 @@ function getChatTitle(chat, scope = "user") {
   if (chat.type === "group" || chat.isGroup) return chat.groupName || chat.title || "Group chat";
   const names = chat.participantNames || {};
   const uid = getRemoteUid(chat);
-  if (isDesignerChatRuntime()) {
-    return names[uid] || chat.clientName || chat.customerName || chat.userName || chat.ownerName || chat.title || chat.clientEmail || chat.customerEmail || "Designer Chat";
-  }
   return names[uid] || chat.title || chat.clientName || chat.clientEmail || "Workspace Chat";
 }
 
@@ -3160,12 +2700,7 @@ function getRemoteUid(chat) {
   if (chat.type === "support") return isAdminEmail(activeUser.email) ? chat.clientUid : ADMIN_ALIAS_UID;
   const mine = selfUidSet();
   const participants = Array.isArray(chat.participantUids) ? chat.participantUids : [];
-  const participantRemote = participants.find((uid) => !mine.has(uid));
-  if (participantRemote) return participantRemote;
-  if (isDesignerChatRuntime()) {
-    return chat.clientUid || chat.ownerUid || chat.userUid || chat.customerUid || chat.createdByUid || chat.adminUid || ADMIN_ALIAS_UID;
-  }
-  return "";
+  return participants.find((uid) => !mine.has(uid)) || "";
 }
 
 function ownCallUid() {
@@ -3336,30 +2871,16 @@ function safeImageUrl(value) {
 }
 
 function selfUidSet() {
-  const storedDesigner = getStoredDesignerProfile();
-  return new Set(uniqueClean([
-    activeUser?.uid,
-    ownCallUid(),
-    storedDesigner.uid,
-    storedDesigner.designerid,
-    storedDesigner.designerId,
-    activeProfile?.designerid,
-    activeProfile?.designerId
-  ].filter(Boolean).map(String)));
+  return new Set(uniqueClean([activeUser?.uid, ownCallUid()]));
 }
 
 function selfEmailKeyList() {
-  const storedDesigner = getStoredDesignerProfile();
   return uniqueClean([
     activeUser?.email,
     activeProfile?.email,
     activeProfile?.designerEmail,
     activeProfile?.clientEmail,
-    activeProfile?.authEmail,
-    storedDesigner.email,
-    storedDesigner.designerEmail,
-    storedDesigner.authEmail,
-    storedDesigner.clientEmail
+    activeProfile?.authEmail
   ].map(emailKey));
 }
 
@@ -4041,13 +3562,11 @@ function assetUrl(fileName) {
 
 function enforceSilentSoundMigration() {
   try {
-    localStorage.setItem(CHAT_SOUND_KEY, "false");
-    localStorage.removeItem(CHAT_SOUND_CONFIRMED_KEY);
-    localStorage.setItem(CHAT_BROWSER_NOTIFICATION_KEY, "false");
-    localStorage.setItem("adnn_force_silent_mode", "true");
+        if (localStorage.getItem(CHAT_SOUND_CONFIRMED_KEY) !== "true") {
+      localStorage.setItem(CHAT_SOUND_KEY, "false");
+    }
   } catch (_) {}
 }
-
 
 function installSilentAudioGuard() {
   if (window.__adnnSilentAudioGuardInstalled) return;
@@ -4077,18 +3596,24 @@ function installSilentAudioGuard() {
 }
 
 function hasConfirmedSoundOptIn() {
-  return false;
+  try {
+    return localStorage.getItem(CHAT_SOUND_CONFIRMED_KEY) === "true" && localStorage.getItem(CHAT_SOUND_KEY) === "true";
+  } catch (_) {
+    return false;
+  }
 }
-
 
 function isRefreshAudioMuteWindow() {
   return Date.now() - CHAT_PAGE_LOAD_AT_MS < CHAT_REFRESH_AUDIO_MUTE_MS;
 }
 
 function canPlayChatSound() {
-  return false;
+  if (!hasConfirmedSoundOptIn()) return false;
+  if (isRefreshAudioMuteWindow()) return false;
+  if (Date.now() < chatAudioReadyAtMs || Date.now() < notificationsReadyAtMs) return false;
+  if (!chatAudioUnlockedThisSession) return false;
+  return true;
 }
-
 
 function hasFreshUserActivation() {
   try {
@@ -4100,9 +3625,9 @@ function hasFreshUserActivation() {
 }
 
 function unlockChatAudioForSession() {
-  chatAudioUnlockedThisSession = false;
+  chatAudioUnlockedThisSession = true;
+  chatAudioReadyAtMs = Math.min(chatAudioReadyAtMs, Date.now() + 250);
 }
-
 
 ['pointerdown', 'keydown', 'touchstart'].forEach((eventName) => {
   window.addEventListener(eventName, unlockChatAudioForSession, { once: true, passive: true });
@@ -4113,14 +3638,15 @@ function createLoopingAudio(fileName, volume = 0.62) {
 }
 
 
-function playOneShotAudio(fileName, fallbackTone = 'message') { return; }
+function playOneShotAudio(fileName, fallbackTone = 'message') {
+  return;
+}
 
 
 function startOutgoingDialTone() {
   stopOutgoingDialTone();
   return;
 }
-
 
 
 function stopOutgoingDialTone() {
@@ -4134,33 +3660,19 @@ function startIncomingRingtone() {
 }
 
 
-
 function stopIncomingRingtone() {
   try { incomingRingAudio?.pause?.(); if (incomingRingAudio) incomingRingAudio.currentTime = 0; } catch (_) {}
   incomingRingAudio = null;
 }
 
-function playSynthTone(tone = "message") {
+function playSynthTone(tone = 'message') {
   return;
 }
 
 
-
 function bindNotificationPermissionPrimer() {
-  if (notificationPermissionAsked) return;
   notificationPermissionAsked = true;
-  const ask = () => {
-    try {
-      if ("Notification" in window && Notification.permission === "default") {
-        Notification.requestPermission?.().catch?.(() => {});
-      }
-    } catch (_) {}
-  };
-  ["pointerdown", "keydown", "touchstart"].forEach((eventName) => {
-    window.addEventListener(eventName, ask, { once: true, passive: true });
-  });
 }
-
 
 
 function chatReduceMotionEnabled() {
@@ -4197,59 +3709,19 @@ function bindChatSettingsEvents() {
 }
 
 function notifyBrowser(title, body, icon = "") {
-  if (!("Notification" in window) || Notification.permission !== "granted") return;
-  try {
-    new Notification(String(title || CHAT_CONFIG.brandName || "Notification"), {
-      body: String(body || "New update"),
-      icon: icon || undefined,
-      badge: icon || undefined,
-      tag: `adnn-${String(title || "chat").slice(0, 42)}`,
-      renotify: false,
-      silent: true
-    });
-  } catch (_) {}
+  return;
 }
-
 
 
 function showInAppNotification(title, body, options = {}) {
-  let stack = document.getElementById("adnnInAppNotificationStack");
-  if (!stack) {
-    stack = document.createElement("div");
-    stack.id = "adnnInAppNotificationStack";
-    stack.className = "adnn-inapp-stack";
-    document.body.appendChild(stack);
-  }
-
-  const card = document.createElement("button");
-  card.type = "button";
-  card.className = `adnn-inapp-card ${options.tone === "missed" || options.tone === "call" ? "is-call" : "is-message"}`;
-  card.innerHTML = `
-    ${options.icon ? `<img src="${escapeAttr(options.icon)}" alt="">` : `<span>${options.tone === "call" || options.tone === "missed" ? "?" : "?"}</span>`}
-    <strong>${escapeHtml(title || "New notification")}</strong>
-    <small>${escapeHtml(body || "")}</small>
-    ${options.count ? `<b>${escapeHtml(String(options.count > 99 ? "99+" : options.count))}</b>` : ""}
-  `;
-  card.addEventListener("click", () => {
-    if (options.href) location.href = options.href;
-    card.remove();
-  });
-  stack.prepend(card);
-  setTimeout(() => card.classList.add("is-visible"), 20);
-  setTimeout(() => {
-    card.classList.remove("is-visible");
-    setTimeout(() => card.remove(), 420);
-  }, 5200);
-
-  while (stack.children.length > 4) stack.lastElementChild?.remove();
+  document.getElementById("adnnInAppNotificationStack")?.remove();
+  return;
 }
-
 
 
 function playNotificationTone(tone = "message") {
   return;
 }
-
 
 
 function updateBadgeNode(node, value) {

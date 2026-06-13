@@ -952,98 +952,6 @@
   .adnn-os-mark i { width:15px; height:15px; border-radius:5px; background:#fff; box-shadow:0 0 18px rgba(255,255,255,.8); clip-path:polygon(50% 0,64% 36%,100% 50%,64% 64%,50% 100%,36% 64%,0 50%,36% 36%); }
   .adnn-os-chip { padding:7px 10px; border-radius:999px; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.10); color:var(--muted); font:10px var(--font-mono); }
 </style>
-<style id="adnn-unified-panel-layout-fix">
-  :root {
-    --adnn-panel-radius: 28px;
-    --adnn-panel-padding: clamp(18px, 3vw, 34px);
-    --adnn-main-padding: clamp(16px, 2.4vw, 30px);
-  }
-  html,
-  body {
-    height: 100%;
-    overflow: hidden;
-  }
-  .admin-app-container {
-    height: 100svh !important;
-    min-height: 0 !important;
-    overflow: hidden !important;
-  }
-  .admin-main-viewport {
-    height: 100% !important;
-    min-height: 0 !important;
-    overflow: hidden !important;
-    padding: var(--adnn-main-padding) !important;
-  }
-  .admin-main-viewport > .shell {
-    width: 100% !important;
-    max-width: none !important;
-    height: 100% !important;
-    min-height: 0 !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    overflow: hidden !important;
-  }
-  .admin-view-panel-container {
-    width: 100% !important;
-    max-width: none !important;
-    height: 100% !important;
-    min-height: 0 !important;
-    margin: 0 !important;
-    overflow: hidden !important;
-  }
-  .admin-view-panel-container > .panel.glass {
-    height: 100% !important;
-    min-height: 0 !important;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-    overscroll-behavior: contain !important;
-    -webkit-overflow-scrolling: touch !important;
-    border-radius: var(--adnn-panel-radius) !important;
-    padding: var(--adnn-panel-padding) !important;
-  }
-  #chats_view,
-  #adminChatMount {
-    height: 100% !important;
-    min-height: 0 !important;
-    overflow: hidden !important;
-  }
-  body.chat-view-active .admin-main-viewport {
-    padding: 12px !important;
-  }
-  body.chat-view-active #chats_view {
-    height: calc(100svh - 24px) !important;
-  }
-  @media (max-width: 820px) {
-    body.adnn-chat-mobile-lock .mobile-header-bar {
-      display: none !important;
-    }
-    .admin-app-container {
-      height: calc(100svh - 65px) !important;
-    }
-    body.adnn-chat-mobile-lock .admin-app-container {
-      height: 100svh !important;
-    }
-    .admin-main-viewport {
-      height: 100% !important;
-      padding: 12px !important;
-    }
-    .admin-view-panel-container > .panel.glass {
-      border-radius: 22px !important;
-      padding: 18px !important;
-    }
-  }
-  @media (max-width: 760px) {
-    body.chat-view-active .admin-app-container,
-    body.chat-view-active .admin-main-viewport,
-    body.chat-view-active #chats_view,
-    body.chat-view-active #adminChatMount {
-      height: 100svh !important;
-    }
-    body.chat-view-active .admin-main-viewport {
-      padding: 0 !important;
-    }
-  }
-</style>
 </head>
 <body>
 
@@ -1376,10 +1284,10 @@
       </div>
       <label class="settings-card adnn-setting-card"><div><strong>Chat white mode</strong><span>Toggle only the messenger between dark and bright white.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_chat_light_mode"><i></i></span></label>
       <label class="settings-card adnn-setting-card"><div><strong>In-app message alerts</strong><span>Show messenger cards and unread numbers inside the portal.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_inapp_notifications"><i></i></span></label>
+      <label class="settings-card adnn-setting-card"><div><strong>Browser notifications</strong><span>Allow system notifications for messages and missed calls.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_browser_notifications"><i></i></span></label>
+      <label class="settings-card adnn-setting-card"><div><strong>Message sound</strong><span>Play a soft tone for new chat and missed call alerts.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_message_sounds"><i></i></span></label>
       <label class="settings-card adnn-setting-card"><div><strong>Reduce motion</strong><span>Calm animations for a lighter dashboard.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_reduce_motion"><i></i></span></label>
-      
-    </div>
-<!-- ADNN OS interactive bottom card -->
+      <!-- ADNN OS interactive bottom card -->
 <style>
   @import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap");
   @import url("https://fonts.cdnfonts.com/css/aileron");
@@ -1977,7 +1885,7 @@
 })();
 </script>
 <!-- /ADNN OS interactive bottom card -->
-
+    </div>
   </div>
 </div>
 
@@ -3029,15 +2937,15 @@
       }
     });
   </script>
-  <script type="module" src="firebase-chat.js?v=20260613-no-message-sounds"></script>
+  <script type="module" src="firebase-chat.js?v=20260612-scroll-esc-static-os"></script>
 
 <script id="adnn-settings-upgrade-js">
 (function setupAdnnSettingsUpgrade(){
   const defaults = {
     adnn_chat_light_mode: "false",
     adnn_inapp_notifications: "true",
-    adnn_browser_notifications: "false",
-    adnn_message_sounds: "false",
+    adnn_browser_notifications: "true",
+    adnn_message_sounds: "true",
     adnn_reduce_motion: "false"
   };
   function bool(key){
@@ -3045,7 +2953,6 @@
     return (value === null ? defaults[key] : value) === "true";
   }
   function apply(){
-    try { localStorage.setItem("adnn_message_sounds", "false"); localStorage.setItem("adnn_browser_notifications", "false"); localStorage.removeItem("adnn_sound_user_confirmed"); } catch (_) {}
     document.documentElement.classList.toggle("adnn-chat-light", bool("adnn_chat_light_mode"));
     document.documentElement.classList.toggle("adnn-reduce-motion", bool("adnn_reduce_motion"));
     document.querySelectorAll("[data-adnn-setting]").forEach((input) => {
@@ -3057,6 +2964,9 @@
     const input = event.target.closest("[data-adnn-setting]");
     if (!input) return;
     localStorage.setItem(input.dataset.adnnSetting, String(input.checked));
+    if (input.dataset.adnnSetting === "adnn_browser_notifications" && input.checked && "Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission().catch(() => {});
+    }
     apply();
   });
   apply();

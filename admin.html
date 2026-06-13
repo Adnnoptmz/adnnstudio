@@ -1044,25 +1044,6 @@
     }
   }
 </style>
-
-<style id="adnn-low-ram-motion-css">
-  :root.adnn-reduce-motion, :root.adnn-reduce-motion * { scroll-behavior:auto !important; }
-  :root.adnn-reduce-motion *, :root.adnn-reduce-motion *::before, :root.adnn-reduce-motion *::after { animation:none !important; transition:none !important; }
-  :root.adnn-reduce-motion .os-bg-layer canvas, :root.adnn-reduce-motion #osCanvas { display:none !important; }
-  :root.adnn-reduce-motion .os-shimmer, :root.adnn-reduce-motion .os-bg-grid, :root.adnn-reduce-motion .os-progress-bar { display:none !important; }
-  :root.adnn-reduce-motion .os-card, :root.adnn-reduce-motion .adnn-os-card, :root.adnn-reduce-motion [class*="card"], :root.adnn-reduce-motion button, :root.adnn-reduce-motion a { transform:none !important; filter:none !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important; }
-  :root.adnn-reduce-motion video { animation:none !important; transition:none !important; }
-  :root.adnn-reduce-motion .adnn-inapp-card { animation:none !important; transition:none !important; }
-</style>
-<script id="adnn-low-ram-motion-boot">
-(function(){
-  function isReduced(){ try { return localStorage.getItem('adnn_reduce_motion') === 'true'; } catch(_) { return false; } }
-  function apply(){ document.documentElement.classList.toggle('adnn-reduce-motion', isReduced()); }
-  apply();
-  window.addEventListener('storage', apply);
-  window.addEventListener('adnn-settings-changed', apply);
-})();
-</script>
 </head>
 <body>
 
@@ -1395,8 +1376,6 @@
       </div>
       <label class="settings-card adnn-setting-card"><div><strong>Chat white mode</strong><span>Toggle only the messenger between dark and bright white.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_chat_light_mode"><i></i></span></label>
       <label class="settings-card adnn-setting-card"><div><strong>In-app message alerts</strong><span>Show messenger cards and unread numbers inside the portal.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_inapp_notifications"><i></i></span></label>
-      <label class="settings-card adnn-setting-card"><div><strong>Browser notifications</strong><span>Allow system notifications for messages and missed calls.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_browser_notifications"><i></i></span></label>
-      <label class="settings-card adnn-setting-card"><div><strong>Message sound</strong><span>Off = silent mode. No refresh sounds, chat tones, or missed call alerts.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_message_sounds"><i></i></span></label>
       <label class="settings-card adnn-setting-card"><div><strong>Reduce motion</strong><span>Calm animations for a lighter dashboard.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_reduce_motion"><i></i></span></label>
       
     </div>
@@ -3050,27 +3029,23 @@
       }
     });
   </script>
-  <script type="module" src="firebase-chat.js?v=20260613-deep-silent-fix"></script>
+  <script type="module" src="firebase-chat.js?v=20260613-no-message-sounds"></script>
 
 <script id="adnn-settings-upgrade-js">
 (function setupAdnnSettingsUpgrade(){
   const defaults = {
     adnn_chat_light_mode: "false",
     adnn_inapp_notifications: "true",
-    adnn_browser_notifications: "true",
+    adnn_browser_notifications: "false",
     adnn_message_sounds: "false",
     adnn_reduce_motion: "false"
   };
-  try {
-    if (localStorage.getItem("adnn_sound_user_confirmed") !== "true") {
-      localStorage.setItem("adnn_message_sounds", "false");
-    }
-  } catch (_) {}
   function bool(key){
     const value = localStorage.getItem(key);
     return (value === null ? defaults[key] : value) === "true";
   }
   function apply(){
+    try { localStorage.setItem("adnn_message_sounds", "false"); localStorage.setItem("adnn_browser_notifications", "false"); localStorage.removeItem("adnn_sound_user_confirmed"); } catch (_) {}
     document.documentElement.classList.toggle("adnn-chat-light", bool("adnn_chat_light_mode"));
     document.documentElement.classList.toggle("adnn-reduce-motion", bool("adnn_reduce_motion"));
     document.querySelectorAll("[data-adnn-setting]").forEach((input) => {
@@ -3082,12 +3057,6 @@
     const input = event.target.closest("[data-adnn-setting]");
     if (!input) return;
     localStorage.setItem(input.dataset.adnnSetting, String(input.checked));
-    if (input.dataset.adnnSetting === "adnn_message_sounds") {
-      localStorage.setItem("adnn_sound_user_confirmed", input.checked ? "true" : "false");
-    }
-    if (input.dataset.adnnSetting === "adnn_browser_notifications" && input.checked && "Notification" in window && Notification.permission === "default") {
-      Notification.requestPermission().catch(() => {});
-    }
     apply();
   });
   apply();

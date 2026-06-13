@@ -93,7 +93,7 @@ const DEFAULT_CONFIG = {
   snapshotMaxRetryMs: 30000,
   uploadChunkLabelEveryPct: 5,
   deleteStorageOnDeleteForAll: false,
-  messageToneFile: "Message Notification.wav",
+  messageToneFile: "",
   outgoingCallToneFile: "call ringer_01.mp3",
   incomingCallToneFile: "ring-app.mp3",
   iceServers: [
@@ -3562,9 +3562,7 @@ function assetUrl(fileName) {
 
 function enforceSilentSoundMigration() {
   try {
-    // Older builds could leave adnn_message_sounds=true in localStorage.
-    // Do not allow that old value to keep playing refresh/live notification sounds.
-    if (localStorage.getItem(CHAT_SOUND_CONFIRMED_KEY) !== "true") {
+        if (localStorage.getItem(CHAT_SOUND_CONFIRMED_KEY) !== "true") {
       localStorage.setItem(CHAT_SOUND_KEY, "false");
     }
   } catch (_) {}
@@ -3636,39 +3634,20 @@ function unlockChatAudioForSession() {
 });
 
 function createLoopingAudio(fileName, volume = 0.62) {
-  if (!canPlayChatSound()) return null;
-  const url = assetUrl(fileName);
-  if (!url) return null;
-  const audio = new Audio(url);
-  audio.loop = true;
-  audio.preload = 'auto';
-  audio.volume = volume;
-  return audio;
+  return null;
 }
+
 
 function playOneShotAudio(fileName, fallbackTone = 'message') {
-  if (!canPlayChatSound()) return;
-  const now = Date.now();
-  if (now - lastSoundAtMs < 220) return;
-  lastSoundAtMs = now;
-  const url = assetUrl(fileName);
-  if (!url) return playSynthTone(fallbackTone);
-  try {
-    const audio = new Audio(url);
-    audio.volume = fallbackTone === 'missed' ? 0.72 : 0.58;
-    const play = audio.play();
-    if (play?.catch) play.catch(() => playSynthTone(fallbackTone));
-  } catch (_) {
-    playSynthTone(fallbackTone);
-  }
+  return;
 }
 
+
 function startOutgoingDialTone() {
-  if (!canPlayChatSound()) return;
   stopOutgoingDialTone();
-  outgoingDialAudio = createLoopingAudio(CHAT_CONFIG.outgoingCallToneFile, 0.58);
-  outgoingDialAudio?.play?.().catch(() => {});
+  return;
 }
+
 
 function stopOutgoingDialTone() {
   try { outgoingDialAudio?.pause?.(); if (outgoingDialAudio) outgoingDialAudio.currentTime = 0; } catch (_) {}
@@ -3676,11 +3655,10 @@ function stopOutgoingDialTone() {
 }
 
 function startIncomingRingtone() {
-  if (!canPlayChatSound()) return;
   stopIncomingRingtone();
-  incomingRingAudio = createLoopingAudio(CHAT_CONFIG.incomingCallToneFile, 0.72);
-  incomingRingAudio?.play?.().catch(() => {});
+  return;
 }
+
 
 function stopIncomingRingtone() {
   try { incomingRingAudio?.pause?.(); if (incomingRingAudio) incomingRingAudio.currentTime = 0; } catch (_) {}
@@ -3688,24 +3666,9 @@ function stopIncomingRingtone() {
 }
 
 function playSynthTone(tone = 'message') {
-  if (!canPlayChatSound()) return;
-  try {
-    const AudioCtx = window.AudioContext || window.webkitAudioContext;
-    if (!AudioCtx) return;
-    const ctx = new AudioCtx();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.frequency.value = tone === 'missed' ? 330 : 540;
-    osc.type = 'sine';
-    gain.gain.setValueAtTime(0.0001, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.045, ctx.currentTime + 0.018);
-    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.16);
-    osc.connect(gain).connect(ctx.destination);
-    osc.start();
-    osc.stop(ctx.currentTime + 0.18);
-    setTimeout(() => ctx.close?.(), 260);
-  } catch (_) {}
+  return;
 }
+
 
 function bindNotificationPermissionPrimer() {
   notificationPermissionAsked = true;

@@ -1593,25 +1593,592 @@
     <label class="settings-card adnn-setting-card"><div><strong>Browser notifications</strong><span>Allow system notifications for new messages and missed calls.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_browser_notifications"><i></i></span></label>
     <label class="settings-card adnn-setting-card"><div><strong>Message sound</strong><span>Play a soft tone for new chat and missed call alerts.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_message_sounds"><i></i></span></label>
     <label class="settings-card adnn-setting-card"><div><strong>Reduce motion</strong><span>Calm animations for a lighter, accessibility-friendly dashboard.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_reduce_motion"><i></i></span></label>
-    <div class="settings-card adnn-setting-card"><div><strong>Terms & Privacy</strong><span>Read the latest studio terms and privacy page.</span></div><a href="#terms" class="apple-home-btn" data-view-link="terms" aria-label="Open terms"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 3.5h8.7L19 7.3v13.2H6.5v-17Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M15 3.8V8h4M9 12h6M9 16h6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></a></div>
-    <div class="settings-card adnn-os-card adnn-os-interactive-card" aria-label="Interactive system version" role="group">
-      <canvas class="adnn-os-mini-canvas" aria-hidden="true"></canvas>
-      <div class="adnn-os-mini-glow" aria-hidden="true"></div>
-      <div class="adnn-os-mini-left">
-        <span class="adnn-os-mark" aria-hidden="true"><i></i></span>
-        <div class="adnn-os-meta">
-          <strong>ADNN OS <b>1.07</b></strong>
-          <span>Secure workspace system · <em class="adnn-os-session">00:00</em></span>
+    
+<style>
+  @import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap");
+  @import url("https://fonts.cdnfonts.com/css/aileron");
+
+  .os-shell, .os-shell * { box-sizing: border-box; }
+  .os-shell * { margin: 0; padding: 0; }
+
+  .os-shell {
+    font-family: "Aileron", ui-sans-serif, system-ui, sans-serif;
+    font-weight: 300;
+    -webkit-font-smoothing: antialiased;
+    padding: 0;
+    margin-top: 10px;
+    width: 100%;
+    grid-column: 1 / -1;
+    background: transparent;
+  }
+
+  .os-card {
+    position: relative;
+    width: 100%;
+    border-radius: 28px;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.10);
+    background: #0c0c10;
+    box-shadow: 0 2px 0 rgba(0,0,0,0.6), 0 32px 80px rgba(0,0,0,0.5);
+    cursor: default;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  .os-bg-layer {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    overflow: hidden;
+  }
+  .os-bg-layer canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+  .os-bg-grid {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+    background-size: 32px 32px;
+    mask-image: radial-gradient(ellipse at 50% 50%, black 30%, transparent 75%);
+    -webkit-mask-image: radial-gradient(ellipse at 50% 50%, black 30%, transparent 75%);
+  }
+
+  .os-content {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    padding: 28px 28px 24px;
+    min-height: 220px;
+    gap: 20px;
+  }
+
+  .os-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .os-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .os-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: linear-gradient(145deg, #272dcf, #5360ff);
+    display: grid;
+    place-items: center;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.20), 0 4px 16px rgba(39,45,207,0.45);
+    flex-shrink: 0;
+  }
+
+  .os-icon svg { width: 18px; height: 18px; display: block; }
+
+  .os-name {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.42);
+  }
+
+  .os-pills {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+
+  .os-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 10px;
+    border-radius: 999px;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 9px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .os-pill.green {
+    background: rgba(39,207,120,0.08);
+    border-color: rgba(39,207,120,0.22);
+    color: rgba(39,207,120,0.85);
+  }
+  .os-pill.green .dot { width: 5px; height: 5px; border-radius: 50%; background: #27cf78; animation: blink 2.4s ease infinite; }
+
+  .os-pill.blue {
+    background: rgba(83,96,255,0.10);
+    border-color: rgba(83,96,255,0.24);
+    color: rgba(83,96,255,0.90);
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  .os-center {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .os-version-label {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 0.20em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.28);
+    margin-bottom: 2px;
+  }
+
+  .os-version-main {
+    font-family: "Aileron", ui-sans-serif, sans-serif;
+    font-size: clamp(36px, 7vw, 56px);
+    font-weight: 700;
+    letter-spacing: -0.04em;
+    line-height: 0.95;
+    color: #fff;
+  }
+
+  .os-version-main .accent { color: #5360ff; }
+
+  .os-version-sub {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 11px;
+    color: rgba(255,255,255,0.32);
+    letter-spacing: 0.04em;
+    margin-top: 4px;
+  }
+
+  .os-bottombar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    border-top: 1px solid rgba(255,255,255,0.07);
+    padding-top: 18px;
+  }
+
+  .os-stats {
+    display: flex;
+    align-items: center;
+    gap: 22px;
+  }
+
+  .os-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .os-stat-label {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.28);
+  }
+
+  .os-stat-val {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 13px;
+    font-weight: 500;
+    color: rgba(255,255,255,0.75);
+  }
+
+  .os-stat-val.green { color: #27cf78; }
+
+  .os-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .os-action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.10);
+    background: rgba(255,255,255,0.04);
+    color: rgba(255,255,255,0.52);
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    transition: all 0.22s cubic-bezier(.16,1,.3,1);
+    -webkit-user-select: none;
+    pointer-events: all;
+  }
+  .os-action-btn:hover {
+    background: rgba(255,255,255,0.09);
+    border-color: rgba(255,255,255,0.18);
+    color: rgba(255,255,255,0.85);
+    transform: translateY(-1px);
+  }
+  .os-action-btn:active { transform: translateY(0); }
+  .os-action-btn svg { width: 13px; height: 13px; flex-shrink: 0; }
+
+  .os-action-btn.primary {
+    background: rgba(39,45,207,0.80);
+    border-color: rgba(83,96,255,0.50);
+    color: #fff;
+    box-shadow: 0 4px 18px rgba(39,45,207,0.35);
+  }
+  .os-action-btn.primary:hover {
+    background: #272dcf;
+    box-shadow: 0 8px 28px rgba(39,45,207,0.50);
+    color: #fff;
+  }
+
+  .os-progress-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 2px;
+    background: linear-gradient(90deg, #272dcf, #5360ff, #272dcf);
+    background-size: 200% 100%;
+    width: 0%;
+    transition: width 0.6s cubic-bezier(.16,1,.3,1);
+    border-radius: 0 0 0 0;
+    z-index: 10;
+    opacity: 0;
+  }
+  .os-progress-bar.running {
+    opacity: 1;
+    animation: pgslide 1.6s linear infinite;
+    width: 100%;
+  }
+  @keyframes pgslide {
+    0% { background-position: 0% 0; }
+    100% { background-position: 200% 0; }
+  }
+
+  .os-toast {
+    position: absolute;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-8px);
+    background: rgba(39,45,207,0.92);
+    border: 1px solid rgba(83,96,255,0.40);
+    backdrop-filter: blur(12px);
+    border-radius: 999px;
+    padding: 8px 16px;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 11px;
+    color: #fff;
+    white-space: nowrap;
+    z-index: 20;
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.28s cubic-bezier(.16,1,.3,1);
+    box-shadow: 0 8px 28px rgba(39,45,207,0.40);
+  }
+  .os-toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  .os-uptime-ring {
+    position: relative;
+    width: 38px;
+    height: 38px;
+    flex-shrink: 0;
+  }
+  .os-uptime-ring svg { width: 38px; height: 38px; transform: rotate(-90deg); }
+  .os-uptime-ring .ring-bg { fill: none; stroke: rgba(255,255,255,0.08); stroke-width: 2.5; }
+  .os-uptime-ring .ring-fill { fill: none; stroke: #5360ff; stroke-width: 2.5; stroke-linecap: round; stroke-dasharray: 100; transition: stroke-dashoffset 1.2s cubic-bezier(.16,1,.3,1); }
+  .os-uptime-label {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 9px;
+    font-weight: 500;
+    color: rgba(255,255,255,0.65);
+  }
+
+  .os-shimmer {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.03) 50%, transparent 60%);
+    background-size: 200% 100%;
+    pointer-events: none;
+    z-index: 2;
+    animation: shimmerMove 4s ease infinite;
+  }
+  @keyframes shimmerMove {
+    0% { background-position: -100% 0; }
+    100% { background-position: 200% 0; }
+  }
+
+  .settings-grid > .os-shell { grid-column: 1 / -1; width: 100%; }
+  .settings-grid > .os-shell .os-card { width: 100%; }
+
+  @media (max-width: 760px) {
+    .os-bottombar { align-items: flex-start; flex-direction: column; }
+    .os-stats { width: 100%; flex-wrap: wrap; }
+    .os-actions { width: 100%; justify-content: flex-start; flex-wrap: wrap; }
+  }
+
+  @media (max-width: 520px) {
+    .os-content { padding: 20px 18px 18px; min-height: 180px; gap: 16px; }
+    .os-version-main { font-size: 32px; }
+    .os-stats { gap: 14px; }
+    .os-stat-label, .os-action-btn { font-size: 9px; }
+    .os-action-btn.check-btn { display: none; }
+  }
+</style>
+
+<div class="os-shell">
+  <div class="os-card" id="osCard">
+    <div class="os-bg-layer">
+      <canvas id="osCanvas"></canvas>
+      <div class="os-bg-grid"></div>
+    </div>
+    <div class="os-shimmer"></div>
+    <div class="os-progress-bar" id="osProgressBar"></div>
+    <div class="os-toast" id="osToast">Checking for updates…</div>
+
+    <div class="os-content">
+      <div class="os-topbar">
+        <div class="os-brand">
+          <div class="os-icon">
+            <svg viewBox="0 0 18 18" fill="none" aria-hidden="true">
+              <rect x="2" y="2" width="6" height="6" rx="1.5" fill="white" opacity="0.9"/>
+              <rect x="10" y="2" width="6" height="6" rx="1.5" fill="white" opacity="0.4"/>
+              <rect x="2" y="10" width="6" height="6" rx="1.5" fill="white" opacity="0.4"/>
+              <rect x="10" y="10" width="6" height="6" rx="1.5" fill="white" opacity="0.75"/>
+            </svg>
+          </div>
+          <span class="os-name">ADNN Studio</span>
+        </div>
+        <div class="os-pills">
+          <span class="os-pill green"><span class="dot"></span>Secure</span>
+          <span class="os-pill blue">Stable</span>
         </div>
       </div>
-      <div class="adnn-os-mini-actions">
-        <span class="adnn-os-chip"><i></i> Stable</span>
-        <button class="adnn-os-mini-btn adnn-os-check" type="button" aria-label="Check ADNN OS update">Check</button>
-        <button class="adnn-os-mini-btn adnn-os-about" type="button" aria-label="Show ADNN OS about">About</button>
+
+      <div class="os-center">
+        <div class="os-version-label">Workspace OS</div>
+        <div class="os-version-main">ADNN<span class="accent"> OS</span></div>
+        <div class="os-version-main" style="font-size: clamp(22px, 4vw, 32px); color: rgba(255,255,255,0.38); font-weight:400; margin-top:2px;">Version 1<span style="color:rgba(255,255,255,0.18);">.</span><span style="color:rgba(83,96,255,0.85);">07</span></div>
+        <div class="os-version-sub" id="osUptimeLine">Build 2026.06 · Loaded <span id="osUptime">0s ago</span></div>
       </div>
-      <div class="adnn-os-mini-progress" aria-hidden="true"></div>
-      <div class="adnn-os-mini-toast" role="status" aria-live="polite">ADNN OS 1.07 is up to date ✓</div>
+
+      <div class="os-bottombar">
+        <div class="os-stats">
+          <div class="os-uptime-ring" id="osRingWrap">
+            <svg viewBox="0 0 38 38" aria-hidden="true">
+              <circle class="ring-bg" cx="19" cy="19" r="15.9"/>
+              <circle class="ring-fill" id="osRing" cx="19" cy="19" r="15.9" stroke-dashoffset="25"/>
+            </svg>
+            <div class="os-uptime-label" id="osRingLabel">99%</div>
+          </div>
+          <div class="os-stat">
+            <span class="os-stat-label">Status</span>
+            <span class="os-stat-val green" id="osStatus">Online</span>
+          </div>
+          <div class="os-stat">
+            <span class="os-stat-label">Session</span>
+            <span class="os-stat-val" id="osSession">--:--</span>
+          </div>
+          <div class="os-stat">
+            <span class="os-stat-label">Build</span>
+            <span class="os-stat-val">2026.06</span>
+          </div>
+        </div>
+        <div class="os-actions">
+          <button class="os-action-btn check-btn" id="osCheckBtn" type="button">
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M7 1.5A5.5 5.5 0 1 0 12.5 7"/><path d="M9.5 1.5l2.5.5-.5 2.5"/></svg>
+            Check Update
+          </button>
+          <button class="os-action-btn primary" id="osInfoBtn" type="button">
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="7" cy="7" r="5.5"/><path d="M7 6.5v3M7 4.5v.5"/></svg>
+            About
+          </button>
+        </div>
+      </div>
     </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const canvas = document.getElementById('osCanvas');
+  const ctx = canvas.getContext('2d');
+  const card = document.getElementById('osCard');
+
+  let W, H, particles = [], mouse = {x:-999,y:-999};
+  const N = 36;
+
+  function resize(){
+    const r = card.getBoundingClientRect();
+    W = canvas.width = r.width;
+    H = canvas.height = r.height;
+  }
+
+  function mkPart(){
+    return {
+      x: Math.random()*W,
+      y: Math.random()*H,
+      r: Math.random()*1.4+0.4,
+      vx: (Math.random()-0.5)*0.22,
+      vy: (Math.random()-0.5)*0.22,
+      a: Math.random()*0.5+0.1,
+      color: Math.random()>0.6 ? [83,96,255] : [255,255,255]
+    };
+  }
+
+  function init(){
+    resize();
+    particles = Array.from({length:N}, mkPart);
+  }
+
+  function drawLines(){
+    for(let i=0;i<particles.length;i++){
+      for(let j=i+1;j<particles.length;j++){
+        const dx=particles[i].x-particles[j].x, dy=particles[i].y-particles[j].y;
+        const d=Math.sqrt(dx*dx+dy*dy);
+        if(d<110){
+          ctx.beginPath();
+          ctx.moveTo(particles[i].x,particles[i].y);
+          ctx.lineTo(particles[j].x,particles[j].y);
+          ctx.strokeStyle=`rgba(83,96,255,${(1-d/110)*0.12})`;
+          ctx.lineWidth=0.7;
+          ctx.stroke();
+        }
+      }
+    }
+  }
+
+  function loop(){
+    ctx.clearRect(0,0,W,H);
+    for(const p of particles){
+      const mdx=mouse.x-p.x, mdy=mouse.y-p.y;
+      const md=Math.sqrt(mdx*mdx+mdy*mdy);
+      if(md<90){
+        p.vx -= mdx/md*0.08;
+        p.vy -= mdy/md*0.08;
+      }
+      p.vx*=0.98; p.vy*=0.98;
+      p.x+=p.vx; p.y+=p.vy;
+      if(p.x<0||p.x>W) p.vx*=-1;
+      if(p.y<0||p.y>H) p.vy*=-1;
+      ctx.beginPath();
+      ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.fillStyle=`rgba(${p.color[0]},${p.color[1]},${p.color[2]},${p.a})`;
+      ctx.fill();
+    }
+    drawLines();
+    requestAnimationFrame(loop);
+  }
+
+  card.addEventListener('mousemove',e=>{
+    const r=card.getBoundingClientRect();
+    mouse.x=e.clientX-r.left; mouse.y=e.clientY-r.top;
+  });
+  card.addEventListener('mouseleave',()=>{ mouse.x=-999; mouse.y=-999; });
+  card.addEventListener('touchmove',e=>{
+    const r=card.getBoundingClientRect();
+    const t=e.touches[0];
+    mouse.x=t.clientX-r.left; mouse.y=t.clientY-r.top;
+  },{passive:true});
+
+  window.addEventListener('resize', ()=>{ resize(); });
+  init();
+  loop();
+
+  const ring = document.getElementById('osRing');
+  const ringLabel = document.getElementById('osRingLabel');
+  const C = 2*Math.PI*15.9;
+  ring.style.strokeDasharray = C;
+  ring.style.strokeDashoffset = C*(1-0.99);
+  ringLabel.textContent = '99%';
+
+  const sessionEl = document.getElementById('osSession');
+  const uptimeEl = document.getElementById('osUptime');
+  const start = Date.now();
+
+  function formatDur(ms){
+    const s=Math.floor(ms/1000), m=Math.floor(s/60), h=Math.floor(m/60);
+    if(h>0) return `${h}h ${m%60}m`;
+    if(m>0) return `${m}m ${s%60}s`;
+    return `${s}s`;
+  }
+
+  function tick(){
+    const elapsed = Date.now()-start;
+    const s=Math.floor(elapsed/1000), m=Math.floor(s/60);
+    sessionEl.textContent = `${String(m).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+    uptimeEl.textContent = formatDur(elapsed)+' ago';
+  }
+  tick();
+  setInterval(tick,1000);
+
+  const pb = document.getElementById('osProgressBar');
+  const toast = document.getElementById('osToast');
+  const checkBtn = document.getElementById('osCheckBtn');
+  const infoBtn = document.getElementById('osInfoBtn');
+  const statusEl = document.getElementById('osStatus');
+
+  function showToast(msg, dur=2400){
+    toast.textContent=msg;
+    toast.classList.add('show');
+    setTimeout(()=>toast.classList.remove('show'),dur);
+  }
+
+  checkBtn.addEventListener('click',()=>{
+    checkBtn.disabled=true;
+    checkBtn.textContent='Checking…';
+    pb.classList.add('running');
+    statusEl.textContent='Checking';
+    statusEl.style.color='rgba(255,207,39,0.85)';
+    showToast('Checking for updates…', 2200);
+    setTimeout(()=>{
+      pb.classList.remove('running');
+      statusEl.textContent='Up to date';
+      statusEl.style.color='#27cf78';
+      showToast('ADNN OS 1.07 is up to date ✓', 2800);
+      checkBtn.disabled=false;
+      checkBtn.innerHTML=`<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" style="width:13px;height:13px"><path d="M2 7l3.5 3.5L12 3"/></svg> Up to date`;
+      setTimeout(()=>{
+        checkBtn.innerHTML=`<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" style="width:13px;height:13px"><path d="M7 1.5A5.5 5.5 0 1 0 12.5 7"/><path d="M9.5 1.5l2.5.5-.5 2.5"/></svg> Check Update`;
+        statusEl.textContent='Online';
+        statusEl.style.color='#27cf78';
+      }, 4000);
+    },2400);
+  });
+
+  infoBtn.addEventListener('click',()=>{
+    showToast('ADNN OS 1.07 · Stable · adnnstudio.com', 3000);
+  });
+})();
+</script>
+
+    <div class="settings-card adnn-setting-card"><div><strong>Terms & Privacy</strong><span>Read the latest studio terms and privacy page.</span></div><a href="#terms" class="apple-home-btn" data-view-link="terms" aria-label="Open terms"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 3.5h8.7L19 7.3v13.2H6.5v-17Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M15 3.8V8h4M9 12h6M9 16h6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></a></div>
   </div>
 </section>
 
@@ -2588,90 +3155,5 @@
   }, true);
 })();
 </script>
-
-<style id="adnn-os-interactive-compact-css">
-  .settings-grid .adnn-os-interactive-card {
-    position:relative !important;
-    min-height:82px !important;
-    height:auto !important;
-    display:flex !important;
-    align-items:center !important;
-    justify-content:space-between !important;
-    gap:14px !important;
-    padding:14px 16px !important;
-    overflow:hidden !important;
-    border-radius:22px !important;
-    border:1px solid rgba(255,255,255,.12) !important;
-    background:#0c0c10 !important;
-    color:#fff !important;
-    box-shadow:inset 0 1px 0 rgba(255,255,255,.10), 0 16px 42px rgba(0,0,0,.12) !important;
-    pointer-events:auto !important;
-    cursor:default !important;
-    isolation:isolate !important;
-  }
-  .settings-grid .adnn-os-interactive-card:hover { transform:none !important; background:#0c0c10 !important; border-color:rgba(255,255,255,.18) !important; }
-  .settings-grid .adnn-os-interactive-card::before,
-  .settings-grid .adnn-os-interactive-card::after { display:none !important; content:none !important; }
-  .adnn-os-mini-canvas, .adnn-os-mini-glow { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:0; }
-  .adnn-os-mini-glow { background-image:linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px), radial-gradient(circle at var(--os-x, 76%) var(--os-y, 50%), rgba(83,96,255,.24), transparent 34%); background-size:24px 24px,24px 24px,100% 100%; opacity:.95; }
-  .adnn-os-mini-left, .adnn-os-mini-actions { position:relative; z-index:2; display:flex; align-items:center; gap:12px; min-width:0; }
-  .adnn-os-interactive-card .adnn-os-mark { flex:0 0 46px; width:46px; height:46px; border-radius:16px; display:grid; place-items:center; background:linear-gradient(145deg,#272dcf,#5360ff); box-shadow:inset 0 1px 0 rgba(255,255,255,.32), 0 8px 24px rgba(39,45,207,.30); }
-  .adnn-os-interactive-card .adnn-os-mark i { width:15px; height:15px; border-radius:5px; background:#fff; box-shadow:0 0 18px rgba(255,255,255,.8); clip-path:polygon(50% 0,64% 36%,100% 50%,64% 64%,50% 100%,36% 64%,0 50%,36% 36%); }
-  .adnn-os-interactive-card .adnn-os-meta { display:grid; justify-items:start; gap:2px; min-width:0; text-align:left; }
-  .adnn-os-interactive-card .adnn-os-meta strong { margin:0 !important; color:#fff !important; font-size:clamp(15px, 2.2vw, 20px) !important; line-height:1.05 !important; font-weight:760 !important; letter-spacing:-.035em; text-shadow:0 2px 18px rgba(255,255,255,.14); white-space:nowrap; }
-  .adnn-os-interactive-card .adnn-os-meta strong b { color:#5360ff; font-weight:760; }
-  .adnn-os-interactive-card .adnn-os-meta span { color:rgba(255,255,255,.58) !important; font-family:var(--font-mono); font-size:10px !important; letter-spacing:.08em; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
-  .adnn-os-session { color:rgba(39,207,120,.95); font-style:normal; }
-  .adnn-os-interactive-card .adnn-os-chip { display:inline-flex; align-items:center; gap:6px; padding:7px 10px; border-radius:999px; background:rgba(39,207,120,.08); border:1px solid rgba(39,207,120,.22); color:rgba(39,207,120,.92) !important; font:10px var(--font-mono); letter-spacing:.08em; text-transform:uppercase; white-space:nowrap; }
-  .adnn-os-interactive-card .adnn-os-chip i { width:6px; height:6px; border-radius:50%; background:#27cf78; box-shadow:0 0 12px rgba(39,207,120,.85); animation:adnnOsPulse 2.2s ease infinite; }
-  .adnn-os-mini-btn { border:1px solid rgba(255,255,255,.10); border-radius:999px; min-height:32px; padding:0 12px; background:rgba(255,255,255,.055); color:rgba(255,255,255,.78); font:10px var(--font-mono); letter-spacing:.08em; text-transform:uppercase; cursor:pointer; transition:transform .2s cubic-bezier(.16,1,.3,1), background .2s ease, color .2s ease, border-color .2s ease; }
-  .adnn-os-mini-btn:hover { transform:translateY(-1px); background:rgba(255,255,255,.10); color:#fff; border-color:rgba(255,255,255,.18); }
-  .adnn-os-mini-progress { position:absolute; left:0; right:0; bottom:0; z-index:4; height:2px; transform:scaleX(0); transform-origin:left; background:linear-gradient(90deg,#272dcf,#5360ff,#272dcf); background-size:200% 100%; opacity:0; }
-  .adnn-os-interactive-card.is-checking .adnn-os-mini-progress { opacity:1; animation:adnnOsLoad 1.5s linear infinite; transform:scaleX(1); transition:transform 1.6s cubic-bezier(.16,1,.3,1); }
-  .adnn-os-mini-toast { position:absolute; z-index:5; left:50%; top:9px; transform:translate(-50%,-8px); opacity:0; pointer-events:none; white-space:nowrap; padding:7px 12px; border-radius:999px; background:rgba(39,45,207,.94); border:1px solid rgba(83,96,255,.42); color:#fff; box-shadow:0 8px 28px rgba(39,45,207,.36); font:10px var(--font-mono); transition:opacity .24s ease, transform .24s cubic-bezier(.16,1,.3,1); }
-  .adnn-os-mini-toast.show { opacity:1; transform:translate(-50%,0); }
-  @keyframes adnnOsPulse { 0%,100%{opacity:1} 50%{opacity:.34} }
-  @keyframes adnnOsLoad { to { background-position:200% 0; } }
-  @media (max-width:720px) {
-    .settings-grid .adnn-os-interactive-card { min-height:82px !important; padding:12px 14px !important; gap:10px !important; }
-    .adnn-os-mini-actions { gap:7px; }
-    .adnn-os-mini-btn { min-height:30px; padding:0 10px; }
-    .adnn-os-interactive-card .adnn-os-chip { padding:6px 8px; }
-  }
-  @media (max-width:520px) {
-    .settings-grid .adnn-os-interactive-card { align-items:flex-start !important; flex-direction:column !important; min-height:118px !important; }
-    .adnn-os-mini-left, .adnn-os-mini-actions { width:100%; }
-    .adnn-os-mini-actions { justify-content:space-between; }
-    .adnn-os-interactive-card .adnn-os-meta strong { white-space:normal; }
-    .adnn-os-interactive-card .adnn-os-meta span { white-space:normal; }
-  }
-  @media (max-width:370px) { .adnn-os-mini-btn.adnn-os-about { display:none; } }
-</style>
-<script id="adnn-os-interactive-compact-js">
-(function(){
-  function initOsCard(card){
-    if (!card || card.dataset.osReady) return;
-    card.dataset.osReady = '1';
-    const canvas = card.querySelector('.adnn-os-mini-canvas');
-    const ctx = canvas && canvas.getContext ? canvas.getContext('2d') : null;
-    const session = card.querySelector('.adnn-os-session');
-    const check = card.querySelector('.adnn-os-check');
-    const about = card.querySelector('.adnn-os-about');
-    const toast = card.querySelector('.adnn-os-mini-toast');
-    let w=0,h=0,parts=[],mouse={x:-999,y:-999},start=Date.now();
-    function resize(){ const r=card.getBoundingClientRect(); w=Math.max(1,Math.floor(r.width)); h=Math.max(1,Math.floor(r.height)); if(canvas){ canvas.width=w; canvas.height=h; } parts=Array.from({length:Math.min(34, Math.max(16, Math.floor(w/18)))},()=>({x:Math.random()*w,y:Math.random()*h,r:Math.random()*1.25+.35,vx:(Math.random()-.5)*.18,vy:(Math.random()-.5)*.18,a:Math.random()*.42+.12,c:Math.random()>.55?'83,96,255':'255,255,255'})); }
-    function draw(){ if(!ctx) return; ctx.clearRect(0,0,w,h); for(const p of parts){ const dx=mouse.x-p.x, dy=mouse.y-p.y, d=Math.hypot(dx,dy)||1; if(d<78){ p.vx-=dx/d*.035; p.vy-=dy/d*.035; } p.vx*=.985; p.vy*=.985; p.x+=p.vx; p.y+=p.vy; if(p.x<0||p.x>w)p.vx*=-1; if(p.y<0||p.y>h)p.vy*=-1; ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fillStyle='rgba('+p.c+','+p.a+')'; ctx.fill(); } for(let i=0;i<parts.length;i++)for(let j=i+1;j<parts.length;j++){ const d=Math.hypot(parts[i].x-parts[j].x,parts[i].y-parts[j].y); if(d<86){ ctx.beginPath(); ctx.moveTo(parts[i].x,parts[i].y); ctx.lineTo(parts[j].x,parts[j].y); ctx.strokeStyle='rgba(83,96,255,'+((1-d/86)*.10)+')'; ctx.lineWidth=.65; ctx.stroke(); } } requestAnimationFrame(draw); }
-    function show(msg){ if(!toast)return; toast.textContent=msg; toast.classList.add('show'); clearTimeout(toast._t); toast._t=setTimeout(()=>toast.classList.remove('show'),2400); }
-    function tick(){ const s=Math.floor((Date.now()-start)/1000), m=Math.floor(s/60); if(session) session.textContent=String(m).padStart(2,'0')+':'+String(s%60).padStart(2,'0'); }
-    card.addEventListener('pointermove',e=>{ const r=card.getBoundingClientRect(); mouse.x=e.clientX-r.left; mouse.y=e.clientY-r.top; card.style.setProperty('--os-x', mouse.x+'px'); card.style.setProperty('--os-y', mouse.y+'px'); });
-    card.addEventListener('pointerleave',()=>{ mouse.x=-999; mouse.y=-999; });
-    check && check.addEventListener('click',e=>{ e.stopPropagation(); card.classList.add('is-checking'); check.disabled=true; check.textContent='Checking'; show('Checking for updates…'); setTimeout(()=>{ card.classList.remove('is-checking'); check.disabled=false; check.textContent='Check'; show('ADNN OS 1.07 is up to date ✓'); },1700); });
-    about && about.addEventListener('click',e=>{ e.stopPropagation(); show('ADNN OS 1.07 · Stable workspace build'); });
-    resize(); draw(); tick(); setInterval(tick,1000); window.addEventListener('resize', resize);
-  }
-  document.querySelectorAll('.adnn-os-interactive-card').forEach(initOsCard);
-})();
-</script>
-
 </body>
 </html>

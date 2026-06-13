@@ -1,0 +1,449 @@
+/* ADNN final responsive hardening pass */
+:root {
+  --adnn-blue:#272dcf;
+  --adnn-red:#ff2602;
+  --adnn-safe-top:env(safe-area-inset-top,0px);
+  --adnn-safe-bottom:env(safe-area-inset-bottom,0px);
+}
+* { box-sizing:border-box; }
+html, body { width:100%; max-width:100%; overflow-x:hidden; }
+img, svg, video, canvas, iframe { max-width:100%; }
+button, a, input, textarea, select { -webkit-tap-highlight-color:transparent; }
+
+/* dashboard shell: consistent desktop/tablet/mobile sizing */
+.shell, .admin-main-viewport, main.glass, .dashboard-main, .portal-main {
+  min-width:0 !important;
+}
+.shell {
+  width:min(1440px, calc(100% - 32px)) !important;
+  gap:clamp(12px,2vw,28px) !important;
+}
+.shell > aside, .admin-sidebar { min-width:0 !important; }
+.shell > main, main.glass, .admin-main-viewport {
+  min-width:0 !important;
+  max-width:100% !important;
+}
+.view, .admin-view-panel-container, .panel, .glass {
+  min-width:0 !important;
+  max-width:100% !important;
+}
+.view:not(.active), .admin-view-panel-container[style*="display:none"] { display:none !important; }
+
+/* sidebar badge stability */
+.side-notification-badge, .adnn-global-badge, .nav-badge, .badge, .count-badge {
+  min-width:18px !important;
+  height:18px !important;
+  padding:0 5px !important;
+  border-radius:999px !important;
+  display:inline-grid !important;
+  place-items:center !important;
+  background:var(--adnn-red) !important;
+  color:#fff !important;
+  font-size:10px !important;
+  line-height:1 !important;
+  font-weight:700 !important;
+  box-shadow:0 8px 22px rgba(255,38,2,.28) !important;
+}
+.side-nav a .side-notification-badge,
+.side-nav button .side-notification-badge,
+.sidebar-link-item .side-notification-badge {
+  position:absolute !important;
+  right:10px !important;
+  top:50% !important;
+  transform:translateY(-50%) !important;
+}
+body.sidebar-collapsed .side-nav a .side-notification-badge,
+body.sidebar-collapsed .side-nav button .side-notification-badge,
+body.sidebar-collapsed .sidebar-link-item .side-notification-badge {
+  right:0 !important;
+  top:2px !important;
+  transform:none !important;
+}
+
+/* responsive chat app: lock every internal section in its own box */
+.adnn-chat-app {
+  width:100% !important;
+  height:100% !important;
+  min-height:0 !important;
+  max-width:100% !important;
+  overflow:hidden !important;
+}
+.adnn-chat-app .adnn-chat-layout {
+  width:100% !important;
+  max-width:100% !important;
+  height:min(820px, calc(100svh - 28px)) !important;
+  min-height:560px !important;
+  display:grid !important;
+  grid-template-columns:minmax(280px, 38%) minmax(0, 1fr) !important;
+  overflow:hidden !important;
+  border-radius:24px !important;
+}
+.adnn-chat-app .adnn-chat-thread-panel,
+.adnn-chat-app .adnn-chat-room,
+.adnn-chat-app .adnn-room-shell {
+  min-width:0 !important;
+  min-height:0 !important;
+  max-width:100% !important;
+  max-height:100% !important;
+  overflow:hidden !important;
+}
+.adnn-chat-app .adnn-room-shell {
+  position:relative !important;
+  inset:auto !important;
+  height:100% !important;
+  display:grid !important;
+  grid-template-rows:auto minmax(0,1fr) auto !important;
+  grid-template-areas:"head" "messages" "composer" !important;
+}
+.adnn-chat-app .adnn-room-head {
+  grid-area:head !important;
+  position:relative !important;
+  top:auto !important; left:auto !important; right:auto !important; bottom:auto !important;
+  width:100% !important;
+  min-width:0 !important;
+  height:auto !important;
+  min-height:66px !important;
+  display:grid !important;
+  grid-template-columns:auto minmax(0,1fr) auto !important;
+  align-items:center !important;
+  gap:10px !important;
+  padding:10px 14px !important;
+  z-index:20 !important;
+  transform:none !important;
+}
+.adnn-chat-app .adnn-room-head .adnn-back-btn { grid-column:1; }
+.adnn-chat-app .adnn-room-head .adnn-avatar { grid-column:1; }
+.adnn-chat-app .adnn-room-head .adnn-back-btn + .adnn-avatar { display:none !important; }
+.adnn-chat-app .adnn-room-title {
+  grid-column:2 !important;
+  min-width:0 !important;
+  overflow:hidden !important;
+}
+.adnn-chat-app .adnn-room-title strong,
+.adnn-chat-app .adnn-room-title small {
+  display:block !important;
+  overflow:hidden !important;
+  white-space:nowrap !important;
+  text-overflow:ellipsis !important;
+}
+.adnn-chat-app .adnn-room-actions {
+  grid-column:3 !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:flex-end !important;
+  gap:8px !important;
+  min-width:0 !important;
+  max-width:48vw !important;
+}
+.adnn-chat-app .adnn-room-actions > button,
+.adnn-chat-app .adnn-call-btn,
+.adnn-chat-app .adnn-plus-btn,
+.adnn-chat-app .adnn-attach-btn,
+.adnn-chat-app .adnn-emoji-btn,
+.adnn-chat-app .adnn-voice-btn,
+.adnn-chat-app .adnn-send-btn {
+  flex:0 0 auto !important;
+  touch-action:manipulation !important;
+}
+.adnn-chat-app .adnn-message-scroll {
+  grid-area:messages !important;
+  position:relative !important;
+  top:auto !important; bottom:auto !important; left:auto !important; right:auto !important;
+  min-height:0 !important;
+  height:auto !important;
+  overflow-y:auto !important;
+  overflow-x:hidden !important;
+  overscroll-behavior:contain !important;
+  padding:14px clamp(10px, 2vw, 18px) !important;
+  scroll-padding-bottom:90px !important;
+}
+.adnn-chat-app .adnn-composer-wrap {
+  grid-area:composer !important;
+  position:relative !important;
+  left:auto !important; right:auto !important; bottom:auto !important;
+  width:100% !important;
+  min-width:0 !important;
+  max-width:100% !important;
+  z-index:22 !important;
+  padding:8px clamp(8px,1.6vw,12px) max(8px, var(--adnn-safe-bottom)) !important;
+}
+.adnn-chat-app .adnn-composer {
+  width:100% !important;
+  min-width:0 !important;
+  display:flex !important;
+  align-items:flex-end !important;
+  gap:8px !important;
+}
+.adnn-chat-app .adnn-composer textarea {
+  min-width:0 !important;
+  flex:1 1 auto !important;
+  width:100% !important;
+}
+.adnn-chat-app .adnn-message { max-width:min(68%, 560px) !important; }
+.adnn-chat-app .adnn-message-actions,
+.adnn-chat-app .adnn-floating-reaction-sheet,
+.adnn-chat-app .adnn-room-menu,
+.adnn-chat-app .adnn-composer-panel,
+.adnn-chat-app .adnn-emoji-panel,
+.adnn-chat-app .adnn-room-searchbar {
+  max-width:calc(100vw - 20px) !important;
+}
+.adnn-chat-app .adnn-date-separator {
+  position:relative !important;
+  top:auto !important;
+  transform:none !important;
+  align-self:center !important;
+  flex:0 0 auto !important;
+}
+.adnn-chat-app .adnn-chat-welcome { display:none !important; }
+.adnn-chat-app .adnn-chat-empty { min-height:160px !important; height:auto !important; }
+
+/* media and tables must not blow out panels */
+.table-wrap, .live-sheet-table-wrap, .admin-live-sheet, .enquiry-table-wrap {
+  width:100% !important;
+  max-width:100% !important;
+  overflow:auto !important;
+  -webkit-overflow-scrolling:touch;
+}
+table { max-width:100%; border-collapse:collapse; }
+
+/* tablet */
+@media (max-width:1100px) {
+  .shell { width:calc(100% - 24px) !important; grid-template-columns:250px minmax(0,1fr) !important; gap:14px !important; }
+  .admin-main-viewport { padding:18px !important; }
+  .adnn-chat-app .adnn-chat-layout { grid-template-columns:minmax(250px, 36%) minmax(0,1fr) !important; }
+  .adnn-chat-app .adnn-room-actions { gap:6px !important; }
+}
+
+/* mobile app frame */
+@media (max-width:900px) {
+  html, body { min-height:100%; }
+  .mobile-header-bar {
+    display:flex !important;
+    position:sticky !important;
+    top:0 !important;
+    z-index:1200 !important;
+    min-height:58px !important;
+    padding:calc(8px + var(--adnn-safe-top)) 12px 8px !important;
+    align-items:center !important;
+    justify-content:space-between !important;
+    background:rgba(6,6,9,.92) !important;
+    backdrop-filter:blur(18px) saturate(160%) !important;
+    -webkit-backdrop-filter:blur(18px) saturate(160%) !important;
+  }
+  .mobile-menu-trigger, .mobile-home-link, .home-link {
+    width:42px !important; height:42px !important; min-width:42px !important; border-radius:14px !important;
+    display:grid !important; place-items:center !important;
+  }
+  .shell {
+    width:100% !important;
+    display:block !important;
+    padding:0 !important;
+    margin:0 !important;
+  }
+  .shell > aside, .admin-sidebar {
+    position:fixed !important;
+    top:0 !important; bottom:0 !important; left:0 !important;
+    width:min(86vw, 320px) !important;
+    max-width:320px !important;
+    height:100svh !important;
+    max-height:100svh !important;
+    overflow-y:auto !important;
+    z-index:1400 !important;
+    transform:translateX(-110%) !important;
+    transition:transform .28s cubic-bezier(.2,.8,.2,1) !important;
+    border-radius:0 24px 24px 0 !important;
+    padding:calc(18px + var(--adnn-safe-top)) 14px calc(18px + var(--adnn-safe-bottom)) !important;
+  }
+  body.mobile-menu-open .shell > aside,
+  body.mobile-sidebar-open .admin-sidebar,
+  body.sidebar-open .shell > aside {
+    transform:translateX(0) !important;
+  }
+  body.mobile-menu-open::after,
+  body.mobile-sidebar-open::after,
+  body.sidebar-open::after {
+    content:"";
+    position:fixed;
+    inset:0;
+    z-index:1300;
+    background:rgba(0,0,0,.48);
+    backdrop-filter:blur(6px);
+  }
+  .shell > main, main.glass, .admin-main-viewport {
+    width:100% !important;
+    min-height:calc(100svh - 58px) !important;
+    border-radius:0 !important;
+    padding:14px !important;
+    overflow:visible !important;
+  }
+  .view, .admin-view-panel-container {
+    width:100% !important;
+    min-width:0 !important;
+    padding:0 !important;
+  }
+  .portal-top, .dashboard-header, .admin-header {
+    display:none !important;
+  }
+}
+
+/* mobile chat should use true full-screen with no cutouts */
+@media (max-width:760px) {
+  body.chat-view-active { overflow:hidden !important; }
+  body.chat-view-active .mobile-header-bar { display:none !important; }
+  body.chat-view-active > .shell,
+  body.chat-view-active .shell,
+  body.chat-view-active > .admin-layout,
+  body.chat-view-active .admin-main-viewport,
+  body.chat-view-active > .shell > main,
+  body.chat-view-active main.glass {
+    position:fixed !important;
+    inset:0 !important;
+    width:100vw !important;
+    height:100svh !important;
+    min-height:100svh !important;
+    max-height:100svh !important;
+    padding:0 !important;
+    margin:0 !important;
+    border:0 !important;
+    border-radius:0 !important;
+    overflow:hidden !important;
+    z-index:1000 !important;
+  }
+  body.chat-view-active > .shell > aside,
+  body.chat-view-active .shell > aside,
+  body.chat-view-active .admin-sidebar { display:none !important; }
+  body.chat-view-active .view.active,
+  body.chat-view-active #chats_view,
+  body.chat-view-active #adminChatMount,
+  body.chat-view-active #directChatMount,
+  body.chat-view-active #clientChatMount {
+    width:100vw !important;
+    height:100svh !important;
+    min-height:100svh !important;
+    max-height:100svh !important;
+    padding:0 !important;
+    margin:0 !important;
+    border:0 !important;
+    border-radius:0 !important;
+    overflow:hidden !important;
+  }
+  .adnn-chat-app .adnn-chat-layout {
+    position:relative !important;
+    width:100vw !important;
+    height:100svh !important;
+    min-height:100svh !important;
+    max-height:100svh !important;
+    grid-template-columns:1fr !important;
+    border:0 !important;
+    border-radius:0 !important;
+  }
+  .adnn-chat-app .adnn-chat-thread-panel { width:100vw !important; height:100svh !important; }
+  .adnn-chat-app .adnn-chat-layout .adnn-chat-room { display:none !important; }
+  .adnn-chat-app .adnn-chat-layout.is-single .adnn-chat-room,
+  .adnn-chat-app .adnn-chat-layout.is-room-open .adnn-chat-room {
+    display:block !important;
+    width:100vw !important;
+    height:100svh !important;
+  }
+  .adnn-chat-app .adnn-chat-layout.is-room-open .adnn-chat-thread-panel { display:none !important; }
+  .adnn-chat-app .adnn-room-shell {
+    width:100vw !important;
+    height:100svh !important;
+    max-height:100svh !important;
+    grid-template-rows:auto minmax(0,1fr) auto !important;
+  }
+  .adnn-chat-app .adnn-room-head {
+    min-height:60px !important;
+    padding:calc(7px + var(--adnn-safe-top)) 8px 7px !important;
+    grid-template-columns:40px minmax(0,1fr) auto !important;
+    gap:7px !important;
+  }
+  .adnn-chat-app .adnn-room-head .adnn-back-btn { display:grid !important; grid-column:1 !important; }
+  .adnn-chat-app .adnn-room-head .adnn-avatar { display:none !important; }
+  .adnn-chat-app .adnn-room-title strong { font-size:14px !important; }
+  .adnn-chat-app .adnn-room-title small { font-size:11px !important; }
+  .adnn-chat-app .adnn-room-actions {
+    max-width:132px !important;
+    gap:5px !important;
+    overflow:hidden !important;
+  }
+  .adnn-chat-app .adnn-room-actions .adnn-call-btn,
+  .adnn-chat-app .adnn-back-btn,
+  .adnn-chat-app .adnn-plus-btn,
+  .adnn-chat-app .adnn-attach-btn,
+  .adnn-chat-app .adnn-emoji-btn,
+  .adnn-chat-app .adnn-voice-btn,
+  .adnn-chat-app .adnn-send-btn {
+    width:38px !important; height:38px !important; min-width:38px !important;
+  }
+  .adnn-chat-app .adnn-room-actions .adnn-call-btn:nth-child(3) { display:none !important; }
+  .adnn-chat-app .adnn-message-scroll {
+    padding:10px 8px 12px !important;
+    scroll-padding-bottom:92px !important;
+  }
+  .adnn-chat-app .adnn-message { max-width:86vw !important; }
+  .adnn-chat-app .adnn-composer-wrap { padding:7px 7px max(7px, var(--adnn-safe-bottom)) !important; }
+  .adnn-chat-app .adnn-composer { gap:6px !important; }
+  .adnn-chat-app .adnn-composer textarea {
+    min-height:38px !important;
+    max-height:96px !important;
+    font-size:16px !important;
+    padding:10px 12px !important;
+  }
+  .adnn-chat-app .adnn-attach-btn { display:none !important; }
+  .adnn-chat-app .adnn-message-actions {
+    position:fixed !important;
+    left:8px !important;
+    right:8px !important;
+    top:auto !important;
+    bottom:calc(78px + var(--adnn-safe-bottom)) !important;
+    width:auto !important;
+    justify-content:flex-start !important;
+    overflow-x:auto !important;
+    transform:translateY(10px) scale(.98) !important;
+    -webkit-overflow-scrolling:touch !important;
+  }
+  .adnn-chat-app .adnn-message.is-menu-open .adnn-message-actions,
+  .adnn-chat-app .adnn-message:hover .adnn-message-actions,
+  .adnn-chat-app .adnn-message:focus-within .adnn-message-actions {
+    transform:translateY(0) scale(1) !important;
+  }
+  .adnn-chat-app .adnn-room-menu,
+  .adnn-chat-app .adnn-composer-panel,
+  .adnn-chat-app .adnn-emoji-panel {
+    position:fixed !important;
+    left:8px !important;
+    right:8px !important;
+    bottom:calc(74px + var(--adnn-safe-bottom)) !important;
+    top:auto !important;
+    width:auto !important;
+    min-width:0 !important;
+  }
+  .adnn-chat-app .adnn-room-menu { bottom:auto !important; top:calc(58px + var(--adnn-safe-top)) !important; left:auto !important; width:min(230px, calc(100vw - 16px)) !important; }
+  .adnn-chat-app .adnn-floating-reaction-sheet {
+    position:fixed !important;
+    left:8px !important;
+    right:8px !important;
+    bottom:calc(80px + var(--adnn-safe-bottom)) !important;
+    top:auto !important;
+    width:auto !important;
+    justify-content:center !important;
+  }
+}
+
+@media (max-width:480px) {
+  .shell > main, main.glass, .admin-main-viewport { padding:10px !important; }
+  .settings-card, .cards .card, .panel, .glass { border-radius:18px !important; }
+  .adnn-chat-app .adnn-chat-thread-head { padding:14px 12px !important; }
+  .adnn-chat-app .adnn-thread { padding:10px !important; gap:10px !important; }
+  .adnn-chat-app .adnn-avatar { width:40px !important; height:40px !important; border-radius:14px !important; }
+  .adnn-chat-app .adnn-message { max-width:89vw !important; font-size:14px !important; }
+  .adnn-chat-app .adnn-room-actions { max-width:86px !important; }
+  .adnn-chat-app .adnn-room-actions .adnn-call-btn:nth-child(1),
+  .adnn-chat-app .adnn-room-actions .adnn-call-btn:nth-child(2) { display:none !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration:.01ms !important; animation-iteration-count:1 !important; scroll-behavior:auto !important; transition-duration:.01ms !important; }
+}

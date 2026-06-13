@@ -77,96 +77,120 @@ import {
 
 
 
-/* ADNN TOTAL SILENT MODE
-   No notification sounds. No ringtones. No auto tones. No browser notification popups.
-   User-controlled voice-note/audio controls still work only when the user taps play. */
-(function installAdnnTotalSilentMode(){
-  if (window.__adnnTotalSilentModeInstalled) return;
-  window.__adnnTotalSilentModeInstalled = true;
 
-  const BLOCKED_AUDIO_RE = /message\s*notification|message%20notification|notification\.wav|message[-_\s]*notification|notify|notification|ring|ringer|tone|beep|chime|incoming|outgoing|call\s*ringer|ring-app/i;
-  const SILENT_AUDIO_DATA = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA=';
-  const isBlockedAudioSrc = (value) => BLOCKED_AUDIO_RE.test(String(value || ''));
-  const isUserMediaPlayback = (el) => {
-    try {
-      const tag = String(el?.tagName || '').toLowerCase();
-      if (tag !== 'audio' && tag !== 'video') return false;
-      if (el?.controls) return true;
-      if (el?.srcObject instanceof MediaStream) return true;
-      if (el?.closest?.('.adnn-voice-bubble, .adnn-voice-preview, [data-wave-play]')) return true;
-      const src = String(el?.currentSrc || el?.src || el?.getAttribute?.('src') || '');
-      return /blob:|firebasestorage|chat-media|voice_|\.webm|\.ogg|\.m4a|\.mp3|\.mp4/i.test(src) && !isBlockedAudioSrc(src);
-    } catch (_) { return false; }
-  };
+/* ADNN ABSOLUTE NO-SOUND MODE
+   This runtime is intentionally silent: no notification tones, no ringtones,
+   no browser notification sounds, no auto media playback, and no hidden Audio().
+*/
+(function installAdnnAbsoluteNoSoundMode(){
+  if (window.__adnnAbsoluteNoSoundModeInstalled) return;
+  window.__adnnAbsoluteNoSoundModeInstalled = true;
 
   try {
     localStorage.setItem('adnn_message_sounds', 'false');
     localStorage.setItem('adnn_browser_notifications', 'false');
     localStorage.setItem('adnn_inapp_notifications', 'true');
-    localStorage.setItem('adnn_force_silent_mode', 'true');
     localStorage.removeItem('adnn_sound_user_confirmed');
+    localStorage.setItem('adnn_force_silent_mode', 'true');
   } catch (_) {}
+
+  const silentPromise = () => Promise.resolve();
 
   try {
     const OriginalAudio = window.Audio;
-    if (OriginalAudio && !OriginalAudio.__adnnTotalSilentPatched) {
-      const SilentAudio = function(src) {
+    if (OriginalAudio && !OriginalAudio.__adnnAbsoluteNoSoundPatched) {
+      const PatchedAudio = function() {
         const audio = new OriginalAudio();
-        audio.dataset.adnnSilentAudio = '1';
-        audio.muted = true;
-        audio.volume = 0;
-        audio.src = SILENT_AUDIO_DATA;
+        try {
+          audio.muted = true;
+          audio.volume = 0;
+          audio.autoplay = false;
+          audio.preload = 'none';
+          audio.dataset.adnnNoSound = '1';
+        } catch (_) {}
         return audio;
       };
-      SilentAudio.prototype = OriginalAudio.prototype;
-      Object.setPrototypeOf(SilentAudio, OriginalAudio);
-      SilentAudio.__adnnTotalSilentPatched = true;
-      window.Audio = SilentAudio;
+      PatchedAudio.prototype = OriginalAudio.prototype;
+      Object.setPrototypeOf(PatchedAudio, OriginalAudio);
+      PatchedAudio.__adnnAbsoluteNoSoundPatched = true;
+      window.Audio = PatchedAudio;
     }
   } catch (_) {}
 
   try {
     const proto = window.HTMLMediaElement && window.HTMLMediaElement.prototype;
-    if (proto && proto.play && !proto.__adnnTotalSilentOriginalPlay) {
-      proto.__adnnTotalSilentOriginalPlay = proto.play;
-      proto.play = function adnnTotalSilentPlay() {
-        const src = String(this.currentSrc || this.src || this.getAttribute?.('src') || '');
-        const blocked = this?.dataset?.adnnSilentAudio === '1' || isBlockedAudioSrc(src);
-        const autoTone = !this.controls && !isUserMediaPlayback(this);
-        if (blocked || autoTone) {
-          try { this.pause?.(); this.currentTime = 0; this.muted = true; this.volume = 0; } catch (_) {}
-          return Promise.resolve();
-        }
-        return proto.__adnnTotalSilentOriginalPlay.apply(this, arguments);
+    if (proto && proto.play && !proto.__adnnAbsoluteNoSoundOriginalPlay) {
+      proto.__adnnAbsoluteNoSoundOriginalPlay = proto.play;
+      proto.play = function adnnNoSoundPlay() {
+        const tag = String(this.tagName || '').toLowerCase();
+        const src = String(this.currentSrc || this.src || this.getAttribute?.('src') || '').toLowerCase();
+        try {
+          if (tag === 'audio') {
+            this.pause?.();
+            this.currentTime = 0;
+            this.muted = true;
+            this.volume = 0;
+            return silentPromise();
+          }
+          if (tag === 'video') {
+            this.muted = true;
+            this.volume = 0;
+            if (/ring|ringer|tone|notification|message|notify|call/.test(src)) {
+              this.pause?.();
+              this.currentTime = 0;
+              return silentPromise();
+            }
+          }
+          if (/ring|ringer|tone|notification|message|notify|call/.test(src)) {
+            this.pause?.();
+            this.currentTime = 0;
+            this.muted = true;
+            this.volume = 0;
+            return silentPromise();
+          }
+        } catch (_) {}
+        return proto.__adnnAbsoluteNoSoundOriginalPlay.apply(this, arguments);
       };
     }
   } catch (_) {}
 
   try {
     const desc = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'src');
-    if (desc && desc.set && !desc.set.__adnnTotalSilentPatched) {
+    if (desc && desc.set && !desc.set.__adnnAbsoluteNoSoundPatched) {
       const originalSet = desc.set;
       const originalGet = desc.get;
       const patchedSet = function(value) {
-        if (isBlockedAudioSrc(value) || this?.dataset?.adnnSilentAudio === '1') {
-          try { this.dataset.adnnSilentAudio = '1'; this.muted = true; this.volume = 0; } catch (_) {}
-          return originalSet.call(this, SILENT_AUDIO_DATA);
-        }
+        try {
+          const tag = String(this.tagName || '').toLowerCase();
+          const lower = String(value || '').toLowerCase();
+          if (tag === 'audio' || /ring|ringer|tone|notification|message\s*notification|message%20notification|notify/.test(lower)) {
+            this.dataset.adnnNoSound = '1';
+            this.muted = true;
+            this.volume = 0;
+            this.preload = 'none';
+          }
+        } catch (_) {}
         return originalSet.call(this, value);
       };
-      patchedSet.__adnnTotalSilentPatched = true;
+      patchedSet.__adnnAbsoluteNoSoundPatched = true;
       Object.defineProperty(HTMLMediaElement.prototype, 'src', { configurable: true, enumerable: desc.enumerable, get: originalGet, set: patchedSet });
     }
   } catch (_) {}
 
   try {
-    const OriginalNotification = window.Notification;
-    if (OriginalNotification && !OriginalNotification.__adnnSilentNotificationPatched) {
-      const SilentNotification = function(){ return { close(){} }; };
-      SilentNotification.permission = OriginalNotification.permission || 'default';
-      SilentNotification.requestPermission = () => Promise.resolve('denied');
-      SilentNotification.__adnnSilentNotificationPatched = true;
-      window.Notification = SilentNotification;
+    if ('Notification' in window) {
+      const OriginalNotification = window.Notification;
+      if (OriginalNotification && !OriginalNotification.__adnnSilentPatched) {
+        const SilentNotification = function(title, options) {
+          return new OriginalNotification(title, { ...(options || {}), silent: true });
+        };
+        Object.setPrototypeOf(SilentNotification, OriginalNotification);
+        SilentNotification.prototype = OriginalNotification.prototype;
+        Object.defineProperty(SilentNotification, 'permission', { get: () => OriginalNotification.permission });
+        SilentNotification.requestPermission = (...args) => OriginalNotification.requestPermission(...args);
+        SilentNotification.__adnnSilentPatched = true;
+        window.Notification = SilentNotification;
+      }
     }
   } catch (_) {}
 })();
@@ -230,7 +254,7 @@ const COLLECTIONS = Object.freeze({
   offerCandidates: "offerCandidates",
   answerCandidates: "answerCandidates"
 });
-const REACTION_SET = ["👍", "❤️", "😂", "😮", "😢", "🙏", "🔥", "👏", "😍", "🤯", "👌", "💯", "✅", "✨", "👀", "🙌", "😎", "🥳", "😡", "🤍"];
+const REACTION_SET = ["\u{1F44D}", "\u{2764}\u{FE0F}", "\u{1F602}", "\u{1F389}", "\u{1F525}", "\u{1F60D}", "\u{1F64C}", "\u{1F44F}", "\u{1F62E}", "\u{1F622}", "\u{1F914}", "\u{2705}", "\u{2728}", "\u{1F680}", "\u{1F4AF}", "\u{1F44C}", "\u{1F64F}", "\u{1FAE1}", "\u{1F60E}", "\u{1F4A1}"];
 
 let app = null;
 let auth = null;
@@ -281,8 +305,8 @@ const ICON = {
   home: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10.5V21h13V10.5"/><path d="M9.5 21v-6h5v6"/></svg>`,
   menu: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>`,
   more: `<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>`,
-  pin: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4.5 19.5 9.5"/><path d="M8.25 11.75 4.5 15.5l4 4 3.75-3.75"/><path d="M7.5 12.5 14 6l4 4-6.5 6.5"/><path d="m4.5 19.5 4.75-4.75"/></svg>`,
-  pinFilled: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M15.2 3.6a1.2 1.2 0 0 1 1.7 0l3.5 3.5a1.2 1.2 0 0 1 0 1.7l-2.1 2.1-1.6-1.6-4.7 4.7.9 2.9a1 1 0 0 1-1.65 1.02L8.7 15.38 4.8 19.3a1 1 0 0 1-1.42-1.42l3.92-3.9-2.54-2.55a1 1 0 0 1 1.02-1.65l2.9.9 4.7-4.7-1.6-1.6 2.1-2.1Z"/></svg>`,
+  pin: `<svg class="adnn-pin-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 4.5 19.5 9.5"/><path d="M8.4 12.6 4.8 16.2"/><path d="M9.5 5.5 18.5 14.5"/><path d="M7.6 7.4 11.7 3.3c.6-.6 1.6-.6 2.2 0l6.8 6.8c.6.6.6 1.6 0 2.2l-4.1 4.1c-.4.4-1 .5-1.5.2l-2.2-1.1-3.7 3.7c-.7.7-1.8.2-1.8-.7v-2.9l-2.7-2.7c-.7-.7-.2-1.8.7-1.8h2.9l1.1-2.2c-.3-.5-.2-1.1.2-1.5Z"/></svg>`,
+  pinned: `<svg class="adnn-pin-icon is-pinned" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13.9 2.9a1.6 1.6 0 0 0-2.2 0L7.5 7.1c-.4.4-.5 1-.2 1.5l-1 2.1H3.7c-1 0-1.5 1.2-.8 1.9l3 3v3.1c0 1 1.2 1.5 1.9.8l3.9-3.9 2.1-1c.5.3 1.1.2 1.5-.2l4.2-4.2a1.6 1.6 0 0 0 0-2.2l-5.6-5.6Z"/></svg>`,
   search: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>`,
   phone: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v2.4a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.12 3.63 2 2 0 0 1 4.11 1.5h2.4a2 2 0 0 1 2 1.72c.13.96.35 1.9.67 2.8a2 2 0 0 1-.45 2.1L7.7 9.16a16 16 0 0 0 7.14 7.14l1.04-1.03a2 2 0 0 1 2.1-.45c.9.32 1.84.54 2.8.67A2 2 0 0 1 22 16.92Z"/></svg>`,
   video: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="13" height="14" rx="3"/><path d="m16 10 5-3v10l-5-3"/></svg>`,
@@ -311,11 +335,66 @@ const ICON = {
 
 bootChatRuntime();
 
+
+function injectAppleInspiredReactionStyles() {
+  if (document.getElementById("adnnAppleReactionPinStyles")) return;
+  const style = document.createElement("style");
+  style.id = "adnnAppleReactionPinStyles";
+  style.textContent = `
+    .adnn-emoji-panel,
+    .adnn-floating-reaction-sheet,
+    .adnn-reaction-palette {
+      font-family: -apple-system, BlinkMacSystemFont, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", system-ui, sans-serif;
+    }
+    .adnn-emoji-panel button,
+    .adnn-floating-reaction-sheet button,
+    .adnn-reaction-palette button {
+      font-family: -apple-system, BlinkMacSystemFont, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", system-ui, sans-serif;
+      font-size: 22px;
+      line-height: 1;
+      min-width: 38px;
+      min-height: 38px;
+      border-radius: 999px;
+      display: inline-grid;
+      place-items: center;
+    }
+    .adnn-pin-chat {
+      display: inline-grid;
+      place-items: center;
+      width: 26px;
+      height: 26px;
+      border-radius: 999px;
+      color: rgba(255,255,255,.56);
+      background: rgba(255,255,255,.055);
+      border: 1px solid rgba(255,255,255,.08);
+      backdrop-filter: blur(14px) saturate(150%);
+      -webkit-backdrop-filter: blur(14px) saturate(150%);
+    }
+    .adnn-pin-chat:hover {
+      color: #fff;
+      background: rgba(255,255,255,.12);
+    }
+    .adnn-thread.is-pinned .adnn-pin-chat {
+      color: #fff;
+      background: linear-gradient(180deg, rgba(255,255,255,.22), rgba(255,255,255,.08));
+      border-color: rgba(255,255,255,.22);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.26), 0 10px 24px rgba(0,0,0,.22);
+    }
+    .adnn-pin-icon {
+      width: 14px;
+      height: 14px;
+      display: block;
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+
 async function bootChatRuntime() {
   enforceSilentSoundMigration();
   installSilentAudioGuard();
   injectChatStyles();
-  injectAppleChatPolishStyles();
+  injectAppleInspiredReactionStyles();
   syncChatSettingsFromStorage();
   bindChatSettingsEvents();
   bindGlobalDismissers();
@@ -737,7 +816,7 @@ function renderThreadList(chats, list, roomId, scope) {
         <small>${escapeHtml(preview)}</small>
       </span>
       <span class="adnn-thread-side">
-        <button type="button" class="adnn-pin-chat" data-pin-chat="${escapeAttr(chat.id)}" title="${pinned ? "Unpin chat" : "Pin chat"}" aria-label="${pinned ? "Unpin chat" : "Pin chat"}">${pinned ? ICON.pinFilled : ICON.pin}</button>
+        <button type="button" class="adnn-pin-chat" data-pin-chat="${escapeAttr(chat.id)}" title="${pinned ? "Unpin chat" : "Pin chat"}" aria-label="${pinned ? "Unpin chat" : "Pin chat"}">${pinned ? ICON.pinned : ICON.pin}</button>
         <time>${escapeHtml(stamp)}</time>
         ${unread > 0 ? `<b>${unread > 99 ? "99+" : unread}</b>` : ""}
       </span>
@@ -1355,7 +1434,7 @@ function openMessageMenu(bubble, state, message) {
   closeMessageMenus();
   state.menuMessageId = message.id;
   bubble.classList.add("is-menu-open");
-  // silent mode: no vibration feedback
+  
 }
 
 function handleMessageAction(event, state, message) {
@@ -2231,7 +2310,7 @@ function showIncomingCall(callId, call) {
   makeDraggable(overlay, overlay.querySelector("[data-call-drag]"));
   startIncomingRingtone();
   notifyBrowser(`${call.callerName || "Incoming call"}`, `${call.kind === "video" ? "Video" : "Audio"} call`, call.callerPhotoURL);
-  // silent mode: no vibration feedback
+  
 
   const timeout = setTimeout(() => {
     callWatch?.();
@@ -2498,7 +2577,9 @@ function attachCallMedia() {
   const holdBadge = overlay.querySelector("[data-call-hold-badge]");
 
   if (localVideo && localVideo.srcObject !== activeCall.localStream) localVideo.srcObject = activeCall.localStream;
+  if (localVideo) { localVideo.muted = true; localVideo.volume = 0; }
   if (remoteVideo && remoteVideo.srcObject !== activeCall.remoteStream) remoteVideo.srcObject = activeCall.remoteStream;
+  if (remoteVideo) { remoteVideo.muted = true; remoteVideo.volume = 0; }
   localVideo?.play?.().catch(() => {});
   remoteVideo?.play?.().catch(() => {});
 
@@ -3659,82 +3740,15 @@ function assetUrl(fileName) {
 }
 
 
-
-function injectAppleChatPolishStyles() {
-  if (document.getElementById('adnnAppleChatPolishStyles')) return;
-  const style = document.createElement('style');
-  style.id = 'adnnAppleChatPolishStyles';
-  style.textContent = `
-
-/* Apple-inspired chat polish: emoji reactions and pin buttons */
-.adnn-pin-chat {
-  width: 28px;
-  height: 28px;
-  border: 0;
-  border-radius: 999px;
-  display: inline-grid;
-  place-items: center;
-  color: rgba(255,255,255,.48);
-  background: rgba(255,255,255,.06);
-  backdrop-filter: blur(18px) saturate(160%);
-  -webkit-backdrop-filter: blur(18px) saturate(160%);
-  transition: transform .18s ease, background .18s ease, color .18s ease;
-}
-.adnn-pin-chat svg { width: 15px; height: 15px; display: block; }
-.adnn-pin-chat:hover { transform: translateY(-1px); color: #fff; background: rgba(255,255,255,.12); }
-.adnn-thread.is-pinned .adnn-pin-chat { color: #fff; background: linear-gradient(135deg, rgba(83,96,255,.95), rgba(39,45,207,.88)); box-shadow: 0 8px 24px rgba(39,45,207,.28); }
-.adnn-floating-reaction-sheet,
-.adnn-reaction-palette,
-.adnn-emoji-panel {
-  border: 1px solid rgba(255,255,255,.16);
-  background: rgba(22,22,26,.72);
-  box-shadow: 0 22px 70px rgba(0,0,0,.42), inset 0 1px 0 rgba(255,255,255,.12);
-  backdrop-filter: blur(28px) saturate(180%);
-  -webkit-backdrop-filter: blur(28px) saturate(180%);
-}
-.adnn-floating-reaction-sheet {
-  padding: 8px;
-  border-radius: 999px;
-  gap: 4px;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-.adnn-floating-reaction-sheet::-webkit-scrollbar { display: none; }
-.adnn-floating-reaction-sheet button,
-.adnn-reaction-palette button,
-.adnn-emoji-panel button {
-  width: 38px;
-  height: 38px;
-  border: 0;
-  border-radius: 999px;
-  display: inline-grid;
-  place-items: center;
-  font-size: 20px;
-  line-height: 1;
-  background: transparent;
-  transition: transform .16s ease, background .16s ease;
-}
-.adnn-floating-reaction-sheet button:hover,
-.adnn-reaction-palette button:hover,
-.adnn-emoji-panel button:hover {
-  transform: scale(1.16);
-  background: rgba(255,255,255,.12);
-}
-@media (max-width: 760px) {
-  .adnn-floating-reaction-sheet { border-radius: 28px; padding: 10px; flex-wrap: wrap; }
-  .adnn-floating-reaction-sheet button { width: 42px; height: 42px; font-size: 22px; }
-}
-`;
-  document.head.appendChild(style);
-}
-
 function enforceSilentSoundMigration() {
   try {
     localStorage.setItem(CHAT_SOUND_KEY, "false");
-    localStorage.setItem(CHAT_BROWSER_NOTIFICATION_KEY, "false");
     localStorage.removeItem(CHAT_SOUND_CONFIRMED_KEY);
+    localStorage.setItem(CHAT_BROWSER_NOTIFICATION_KEY, "false");
+    localStorage.setItem("adnn_force_silent_mode", "true");
   } catch (_) {}
 }
+
 
 function installSilentAudioGuard() {
   if (window.__adnnSilentAudioGuardInstalled) return;
@@ -3767,6 +3781,7 @@ function hasConfirmedSoundOptIn() {
   return false;
 }
 
+
 function isRefreshAudioMuteWindow() {
   return Date.now() - CHAT_PAGE_LOAD_AT_MS < CHAT_REFRESH_AUDIO_MUTE_MS;
 }
@@ -3774,6 +3789,7 @@ function isRefreshAudioMuteWindow() {
 function canPlayChatSound() {
   return false;
 }
+
 
 function hasFreshUserActivation() {
   try {
@@ -3785,15 +3801,17 @@ function hasFreshUserActivation() {
 }
 
 function unlockChatAudioForSession() {
-  chatAudioUnlockedThisSession = true;
-  chatAudioReadyAtMs = Math.min(chatAudioReadyAtMs, Date.now() + 250);
+  chatAudioUnlockedThisSession = false;
 }
+
 
 ['pointerdown', 'keydown', 'touchstart'].forEach((eventName) => {
   window.addEventListener(eventName, unlockChatAudioForSession, { once: true, passive: true });
 });
 
-function createLoopingAudio(fileName, volume = 0.62) { return null; }
+function createLoopingAudio(fileName, volume = 0.62) {
+  return null;
+}
 
 
 function playOneShotAudio(fileName, fallbackTone = 'message') { return; }
@@ -3803,6 +3821,7 @@ function startOutgoingDialTone() {
   stopOutgoingDialTone();
   return;
 }
+
 
 
 function stopOutgoingDialTone() {
@@ -3816,12 +3835,22 @@ function startIncomingRingtone() {
 }
 
 
+
 function stopIncomingRingtone() {
   try { incomingRingAudio?.pause?.(); if (incomingRingAudio) incomingRingAudio.currentTime = 0; } catch (_) {}
   incomingRingAudio = null;
 }
 
-function playSynthTone(tone = 'message') { return; }
+function playSynthTone(tone = "message") {
+  return;
+}
+
+
+
+function bindNotificationPermissionPrimer() {
+  notificationPermissionAsked = true;
+}
+
 
 
 function chatReduceMotionEnabled() {
@@ -3857,10 +3886,33 @@ function bindChatSettingsEvents() {
   window.addEventListener("adnn-settings-changed", sync);
 }
 
-function notifyBrowser(title, body, icon = '') { return; }
+function notifyBrowser(title, body, icon = "") {
+  return;
+}
 
 
-function playNotificationTone(tone = 'message') { return; }
+
+function showInAppNotification(title, body, options = {}) {
+  document.getElementById("adnnInAppNotificationStack")?.remove();
+  return;
+}
+
+
+
+function playNotificationTone(tone = "message") {
+  return;
+}
+
+
+
+function updateBadgeNode(node, value) {
+  if (!node) return;
+  node.classList?.add("side-notification-badge");
+  const safe = Math.max(0, Number(value) || 0);
+  node.textContent = String(safe > 99 ? "99+" : safe);
+  node.hidden = safe <= 0;
+  node.style.display = safe > 0 ? "grid" : "none";
+}
 
 function ensureSidebarBadges() {
   document.querySelectorAll(".side-nav a, .side-nav button, .sidebar-link-item, .account-popover button").forEach((item) => {

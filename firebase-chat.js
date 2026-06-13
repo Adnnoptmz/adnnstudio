@@ -134,7 +134,7 @@ const COLLECTIONS = Object.freeze({
   offerCandidates: "offerCandidates",
   answerCandidates: "answerCandidates"
 });
-const REACTION_SET = ["👍", "❤️", "😂", "🔥", "👏", "😍", "😮", "😢", "🙏", "✅"];
+const REACTION_SET = ["?", "??", "?", "?", "?", "?", "?", "?", "?", "?"];
 
 let app = null;
 let auth = null;
@@ -638,7 +638,7 @@ function renderThreadList(chats, list, roomId, scope) {
         <small>${escapeHtml(preview)}</small>
       </span>
       <span class="adnn-thread-side">
-        <button type="button" class="adnn-pin-chat" data-pin-chat="${escapeAttr(chat.id)}" title="${pinned ? "Unpin chat" : "Pin chat"}" aria-label="${pinned ? "Unpin chat" : "Pin chat"}">${pinned ? "●" : "○"}</button>
+        <button type="button" class="adnn-pin-chat" data-pin-chat="${escapeAttr(chat.id)}" title="${pinned ? "Unpin chat" : "Pin chat"}" aria-label="${pinned ? "Unpin chat" : "Pin chat"}">${pinned ? "?" : "?"}</button>
         <time>${escapeHtml(stamp)}</time>
         ${unread > 0 ? `<b>${unread > 99 ? "99+" : unread}</b>` : ""}
       </span>
@@ -3708,17 +3708,9 @@ function playSynthTone(tone = 'message') {
 }
 
 function bindNotificationPermissionPrimer() {
-  if (!("Notification" in window)) return;
-  const ask = () => {
-    if (notificationPermissionAsked || Notification.permission !== "default" || !chatSettingBool(CHAT_BROWSER_NOTIFICATION_KEY, true)) return;
-    notificationPermissionAsked = true;
-    Notification.requestPermission().catch(() => {});
-    window.removeEventListener("click", ask);
-    window.removeEventListener("keydown", ask);
-  };
-  window.addEventListener("click", ask, { passive: true });
-  window.addEventListener("keydown", ask, { passive: true });
+  notificationPermissionAsked = true;
 }
+
 
 function chatReduceMotionEnabled() {
   return chatSettingBool(CHAT_REDUCE_MOTION_KEY, false) || document.documentElement.classList.contains('adnn-reduce-motion');
@@ -3754,46 +3746,20 @@ function bindChatSettingsEvents() {
 }
 
 function notifyBrowser(title, body, icon = "") {
-  if (!chatSettingBool(CHAT_BROWSER_NOTIFICATION_KEY, true)) return;
-  // Browser/system notifications can make OS-level sounds outside our audio controls.
-  // Silent mode therefore blocks browser notifications too.
-  if (!hasConfirmedSoundOptIn() || isRefreshAudioMuteWindow()) return;
-  if (!("Notification" in window) || Notification.permission !== "granted") return;
-  try {
-    const note = new Notification(title, { body, silent: true, icon: safeImageUrl(icon) || undefined, tag: `adnn-${title}-${body}`.slice(0, 64) });
-    setTimeout(() => note.close?.(), 6500);
-  } catch (_) {}
+  return;
 }
+
 
 function showInAppNotification(title, body, options = {}) {
-  if (!chatSettingBool(CHAT_INAPP_NOTIFICATION_KEY, true)) return;
-  let stack = document.getElementById("adnnInAppNotificationStack");
-  if (!stack) {
-    stack = document.createElement("div");
-    stack.id = "adnnInAppNotificationStack";
-    stack.className = "adnn-inapp-stack";
-    document.body.appendChild(stack);
-  }
-  const card = document.createElement("button");
-  card.type = "button";
-  card.className = `adnn-inapp-card ${options.tone === "missed" ? "is-missed" : ""}`;
-  card.innerHTML = `
-    ${avatarMarkup(title || "AD", options.icon || "")}
-    <span><strong>${escapeHtml(title || "New update")}</strong><small>${escapeHtml(body || "New message")}</small></span>
-    ${options.count ? `<b>${options.count > 99 ? "99+" : options.count}</b>` : ""}
-  `;
-  card.addEventListener("click", () => {
-    card.remove();
-    if (options.href) location.href = options.href;
-  });
-  stack.prepend(card);
-  playNotificationTone(options.tone);
-  setTimeout(() => card.remove(), options.timeout || 6200);
+  document.getElementById("adnnInAppNotificationStack")?.remove();
+  return;
 }
 
+
 function playNotificationTone(tone = "message") {
-  playOneShotAudio(CHAT_CONFIG.messageToneFile, tone);
+  return;
 }
+
 
 function updateBadgeNode(node, value) {
   if (!node) return;

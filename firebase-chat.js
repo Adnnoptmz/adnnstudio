@@ -775,7 +775,7 @@ function watchChatThreads(scope, listId, roomId, options = {}) {
     chats = Array.from(unique.values()).filter(isChatVisibleForCurrentUser);
     if (isDesignerChatRuntime() && scope !== "admin") chats = chats.filter(isDesignerRelevantChat);
     if (scope === "admin") chats = chats.filter(isVisibleToAdminInbox);
-    if (options.directOnly || options.excludeSupport) chats = chats.filter((chat) => chat.type !== "support");
+    if (options.directOnly || options.excludeSupport) chats = chats.filter((chat) => !isSupportLikeChat(chat));
     chats.sort((a, b) => toMillis(b.updatedAt || b.createdAt || b.updatedAtMs) - toMillis(a.updatedAt || a.createdAt || a.updatedAtMs));
     renderThreadList(chats, list, roomId, scope);
   };
@@ -826,8 +826,40 @@ function stopListWatcher(listId) {
 }
 
 
+function getStoredDesignerProfile() {
+  try {
+    const raw = localStorage.getItem("adnnDesignerUser");
+    return raw ? (JSON.parse(raw) || {}) : {};
+  } catch (_) {
+    return {};
+  }
+}
+
 function isDesignerChatRuntime() {
   return !!(location.pathname.includes("designer-account.html") || activeProfile?.role === "designer" || localStorage.getItem("adnnDesignerUser"));
+}
+
+function isSupportLikeChat(chat) {
+  const type = String(chat?.type || "").toLowerCase();
+  const title = String(chat?.title || "").toLowerCase();
+  const remoteUid = getRemoteUid(chat);
+  const emails = [
+    chat?.adminEmail,
+    chat?.supportEmail,
+    chat?.clientEmail,
+    chat?.receiverEmail,
+    chat?.createdByEmail,
+    ...(Array.isArray(chat?.participantEmailKeys) ? chat.participantEmailKeys : []),
+    ...(Array.isArray(chat?.participantEmails) ? chat.participantEmails : [])
+  ].map(emailKey);
+  const participants = Array.isArray(chat?.participantUids) ? chat.participantUids : [];
+  return type === "support"
+    || type.includes("support")
+    || type.includes("admin")
+    || title.includes("admin support")
+    || remoteUid === ADMIN_ALIAS_UID
+    || participants.includes(ADMIN_ALIAS_UID)
+    || emails.includes(ADMIN_EMAIL);
 }
 
 function listenDesignerChatSources(listen) {
@@ -889,12 +921,14 @@ function listenDesignerChatSources(listen) {
 
 function isDesignerRelevantChat(chat) {
   if (!chat || !isDesignerChatRuntime()) return true;
+  const storedDesigner = getStoredDesignerProfile();
   const uids = selfUidSet();
   const emails = selfEmailKeySet();
+  const designerIds = new Set(uniqueClean([storedDesigner.designerid, storedDesigner.designerId, activeProfile?.designerid, activeProfile?.designerId]).map((value) => String(value).toLowerCase()));
   const uidFields = [chat.designerUid, chat.assignedDesignerUid, chat.assignedToUid, chat.assigneeUid, chat.designerId, chat.assignedDesignerId, chat.assignedTo, chat.assigneeId, chat.clientUid];
-  if (uidFields.some((uid) => uid && uids.has(String(uid)))) return true;
+  if (uidFields.some((uid) => uid && (uids.has(String(uid)) || designerIds.has(String(uid).toLowerCase())))) return true;
   const uidArrays = [chat.participantUids, chat.designerUids, chat.assignedDesignerUids, chat.memberUids, chat.members, chat.visibleToUids, chat.allowedUids];
-  if (uidArrays.some((arr) => Array.isArray(arr) && arr.some((uid) => uids.has(String(uid))))) return true;
+  if (uidArrays.some((arr) => Array.isArray(arr) && arr.some((uid) => uids.has(String(uid)) || designerIds.has(String(uid).toLowerCase())))) return true;
   const emailFields = [chat.designerEmail, chat.assignedDesignerEmail, chat.assignedToEmail, chat.assigneeEmail, chat.designerMail, chat.assignedMail, chat.clientEmail];
   if (emailFields.some((mail) => mail && emails.has(emailKey(mail)))) return true;
   const emailArrays = [chat.participantEmailKeys, chat.participantEmails, chat.designerEmails, chat.assignedDesignerEmails, chat.memberEmails, chat.visibleToEmails, chat.allowedEmails];
@@ -3306,16 +3340,30 @@ function safeImageUrl(value) {
 }
 
 function selfUidSet() {
-  return new Set(uniqueClean([activeUser?.uid, ownCallUid()]));
+  const storedDesigner = getStoredDesignerProfile();
+  return new Set(uniqueClean([
+    activeUser?.uid,
+    ownCallUid(),
+    storedDesigner.uid,
+    storedDesigner.designerid,
+    storedDesigner.designerId,
+    activeProfile?.designerid,
+    activeProfile?.designerId
+  ].filter(Boolean).map(String)));
 }
 
 function selfEmailKeyList() {
+  const storedDesigner = getStoredDesignerProfile();
   return uniqueClean([
     activeUser?.email,
     activeProfile?.email,
     activeProfile?.designerEmail,
     activeProfile?.clientEmail,
-    activeProfile?.authEmail
+    activeProfile?.authEmail,
+    storedDesigner.email,
+    storedDesigner.designerEmail,
+    storedDesigner.authEmail,
+    storedDesigner.clientEmail
   ].map(emailKey));
 }
 
@@ -4181,7 +4229,7 @@ function showInAppNotification(title, body, options = {}) {
   card.type = "button";
   card.className = `adnn-inapp-card ${options.tone === "missed" || options.tone === "call" ? "is-call" : "is-message"}`;
   card.innerHTML = `
-    ${options.icon ? `<img src="${escapeAttr(options.icon)}" alt="">` : `<span>${options.tone === "call" || options.tone === "missed" ? "📞" : "💬"}</span>`}
+    ${options.icon ? `<img src="${escapeAttr(options.icon)}" alt="">` : `<span>${options.tone === "call" || options.tone === "missed" ? "?" : "?"}</span>`}
     <strong>${escapeHtml(title || "New notification")}</strong>
     <small>${escapeHtml(body || "")}</small>
     ${options.count ? `<b>${escapeHtml(String(options.count > 99 ? "99+" : options.count))}</b>` : ""}

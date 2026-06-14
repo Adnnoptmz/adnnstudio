@@ -789,10 +789,66 @@
       height: 32px;
       background: #fff6a0;
       clip-path: polygon(42% 0, 100% 0, 62% 42%, 100% 42%, 28% 100%, 48% 54%, 0 54%);
-      opacity: 0;
+      opacity: 1;
       filter: drop-shadow(0 0 12px rgba(255,246,160,0.9));
-      animation: adnnStormFlash 2.4s ease-in-out infinite;
+      animation: none !important;
     }
+
+    /* Static Apple-inspired weather icons: no weather animation, just the current condition icon. */
+    .adnn-weather-scene,
+    .adnn-weather-scene *,
+    .adnn-weather-scene::before,
+    .adnn-weather-scene::after { animation: none !important; transition: none !important; }
+    .adnn-weather-scene {
+      display: grid;
+      place-items: center;
+      background: linear-gradient(145deg, #1c8cff, #86dcff);
+    }
+    .adnn-weather-sun {
+      width: 52px;
+      height: 52px;
+      left: 50%;
+      top: 50%;
+      right: auto;
+      transform: translate(-50%, -50%);
+      background: radial-gradient(circle at 34% 28%, #fff 0 18%, #ffe682 19% 54%, #ffb347 55% 100%);
+      box-shadow: 0 0 24px rgba(255,221,93,.85), 0 0 52px rgba(255,171,49,.42);
+      opacity: 1;
+    }
+    .adnn-weather-cloud {
+      background: rgba(255,255,255,.92);
+      box-shadow: 0 12px 28px rgba(0,0,0,.10);
+      animation: none !important;
+    }
+    .adnn-weather-rain { animation: none !important; }
+    .adnn-weather-scene[data-weather-scene="clear"] .adnn-weather-cloud,
+    .adnn-weather-scene[data-weather-scene="clear"] .adnn-weather-rain,
+    .adnn-weather-scene[data-weather-scene="clear"]::after { display: none !important; }
+    .adnn-weather-scene[data-weather-scene="cloud"] { background: linear-gradient(145deg, #7fb7ff, #d9efff); }
+    .adnn-weather-scene[data-weather-scene="cloud"] .adnn-weather-sun { width: 38px; height: 38px; left: 66%; top: 34%; opacity: .86; }
+    .adnn-weather-scene[data-weather-scene="cloud"] .cloud-a { left: 18px; bottom: 25px; width: 60px; opacity: .96; }
+    .adnn-weather-scene[data-weather-scene="cloud"] .cloud-b { display:none !important; }
+    .adnn-weather-scene[data-weather-scene="cloud"] .adnn-weather-rain { display:none !important; }
+    .adnn-weather-scene[data-weather-scene="rain"] { background: linear-gradient(145deg, #496079, #9ec3df); }
+    .adnn-weather-scene[data-weather-scene="rain"] .adnn-weather-sun { display:none !important; }
+    .adnn-weather-scene[data-weather-scene="rain"] .cloud-a { left: 19px; bottom: 40px; width: 58px; opacity: .96; }
+    .adnn-weather-scene[data-weather-scene="rain"] .cloud-b { display:none !important; }
+    .adnn-weather-scene[data-weather-scene="rain"] .adnn-weather-rain { opacity: 1; height: 16px; bottom: 16px; background: rgba(255,255,255,.88); }
+    .adnn-weather-scene[data-weather-scene="storm"] { background: linear-gradient(145deg, #20263b, #596173); }
+    .adnn-weather-scene[data-weather-scene="storm"] .adnn-weather-sun { display:none !important; }
+    .adnn-weather-scene[data-weather-scene="storm"] .cloud-a { left: 19px; bottom: 42px; width: 58px; background: rgba(238,242,255,.9); }
+    .adnn-weather-scene[data-weather-scene="storm"] .cloud-b { display:none !important; }
+    .adnn-weather-scene[data-weather-scene="storm"] .adnn-weather-rain { opacity: .9; height: 14px; bottom: 16px; }
+    .adnn-weather-scene[data-weather-scene="fog"] { background: linear-gradient(145deg, #9098a9, #d7dde6); }
+    .adnn-weather-scene[data-weather-scene="fog"] .adnn-weather-sun,
+    .adnn-weather-scene[data-weather-scene="fog"] .adnn-weather-cloud,
+    .adnn-weather-scene[data-weather-scene="fog"] .adnn-weather-rain { display:none !important; }
+    .adnn-weather-scene[data-weather-scene="fog"]::after { opacity: 1; animation: none !important; }
+    .adnn-weather-scene[data-weather-scene="snow"] { background: linear-gradient(145deg, #87a6c9, #eef9ff); }
+    .adnn-weather-scene[data-weather-scene="snow"] .adnn-weather-sun { display:none !important; }
+    .adnn-weather-scene[data-weather-scene="snow"] .cloud-a { left: 19px; bottom: 42px; width: 58px; opacity: .96; }
+    .adnn-weather-scene[data-weather-scene="snow"] .cloud-b { display:none !important; }
+    .adnn-weather-scene[data-weather-scene="snow"] .adnn-weather-rain { width: 5px; height: 5px; border-radius: 50%; bottom: 18px; opacity: 1; background: #fff; }
     .adnn-clock-copy,
     .adnn-weather-copy { position: relative; z-index: 1; min-width: 0; }
     .adnn-clock-copy span,
@@ -2514,15 +2570,15 @@
         tick();
         setInterval(tick, 1000);
 
-        const setWeather = (kind, temp = "--", place = "Local weather") => {
+        const setWeather = (kind, temp = "--", place = "City unavailable") => {
           const scene = ["clear", "cloud", "rain", "storm", "fog", "snow"].includes(kind) ? kind : "clear";
           if (sceneNode) sceneNode.dataset.weatherScene = scene;
           if (tempNode) tempNode.textContent = temp;
           if (placeNode) placeNode.textContent = place;
           if (labelNode) {
             labelNode.textContent = ({
-              clear: "Current weather",
-              cloud: "Cloud cover",
+              clear: "Sunny now",
+              cloud: "Cloudy now",
               rain: "Rain now",
               storm: "Storm now",
               fog: "Fog now",
@@ -2539,16 +2595,25 @@
           if ([1, 2, 3].includes(n)) return "cloud";
           return "clear";
         };
+        const cleanCityName = (value) => String(value || "").trim().replace(/^(near|around)\s+/i, "");
         const resolveCityName = async (latitude, longitude) => {
+          const lat = encodeURIComponent(latitude);
+          const lon = encodeURIComponent(longitude);
           try {
-            const reverseUrl = `https://geocoding-api.open-meteo.com/v1/reverse?latitude=${encodeURIComponent(latitude)}&longitude=${encodeURIComponent(longitude)}&language=en&format=json`;
+            const response = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`);
+            const data = await response.json();
+            const city = cleanCityName(data?.city || data?.locality || data?.principalSubdivision);
+            if (city) return city;
+          } catch (_) {}
+          try {
+            const reverseUrl = `https://geocoding-api.open-meteo.com/v1/reverse?latitude=${lat}&longitude=${lon}&language=en&format=json`;
             const reverseResponse = await fetch(reverseUrl);
             const reverseData = await reverseResponse.json();
             const result = Array.isArray(reverseData?.results) ? reverseData.results[0] : null;
-            return result?.name || result?.admin2 || result?.admin1 || result?.country || "Current city";
-          } catch (_) {
-            return "Current city";
-          }
+            const city = cleanCityName(result?.name || result?.admin2 || result?.admin1);
+            if (city) return city;
+          } catch (_) {}
+          return "City unavailable";
         };
 
         if (!navigator.geolocation || !window.fetch) {

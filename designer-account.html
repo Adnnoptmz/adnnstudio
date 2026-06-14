@@ -138,6 +138,13 @@
       text-overflow:ellipsis;
       white-space:nowrap;
     }
+    .profile > div {
+      min-width:0;
+      display:grid;
+      grid-template-rows:auto auto;
+      align-content:center;
+      gap:3px;
+    }
     .profile strong { font-size:15px; font-weight:500; }
     .profile small { margin-top:3px; color:var(--muted); font-family:var(--font-mono); font-size:11px; }
     .side-nav { display:grid; gap:6px; }
@@ -486,6 +493,52 @@
     .reminder-entry-row span {
       font-size: 13px;
     }
+
+    .adnn-clock-weather-card {
+      margin-top:18px;
+      min-height:168px;
+      border:1px solid rgba(255,255,255,0.12);
+      border-radius:26px;
+      padding:16px;
+      display:grid;
+      grid-template-columns:86px minmax(0,1fr);
+      grid-template-rows:auto auto;
+      gap:12px 14px;
+      position:relative;
+      overflow:hidden;
+      background:radial-gradient(circle at 24% 18%, rgba(255,255,255,0.18), transparent 26%), radial-gradient(circle at 78% 18%, rgba(39,45,207,0.30), transparent 32%), linear-gradient(145deg, rgba(24,24,31,0.92), rgba(5,5,8,0.98));
+      box-shadow:0 24px 70px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.12);
+      isolation:isolate;
+    }
+    .adnn-clock-weather-card:before { content:""; position:absolute; inset:0; background-image:radial-gradient(rgba(255,255,255,0.24) 1px, transparent 1px); background-size:10px 10px; opacity:.08; pointer-events:none; }
+    .adnn-weather-scene { grid-row:1 / 3; width:86px; height:86px; border-radius:26px; position:relative; overflow:hidden; background:linear-gradient(145deg,#272dcf,#58d6ff); box-shadow:0 18px 50px rgba(39,45,207,.34), inset 0 1px 0 rgba(255,255,255,.25); }
+    .adnn-weather-sun { position:absolute; width:38px; height:38px; right:13px; top:13px; border-radius:50%; background:#fff; box-shadow:0 0 30px rgba(255,255,255,.86); animation:adnnWeatherFloat 4.8s ease-in-out infinite; }
+    .adnn-weather-cloud { position:absolute; left:14px; bottom:23px; width:52px; height:22px; border-radius:999px; background:rgba(255,255,255,.82); animation:adnnWeatherCloud 6s ease-in-out infinite; }
+    .adnn-weather-cloud:before, .adnn-weather-cloud:after { content:""; position:absolute; border-radius:50%; background:inherit; }
+    .adnn-weather-cloud:before { width:26px; height:26px; left:8px; top:-13px; }
+    .adnn-weather-cloud:after { width:31px; height:31px; right:6px; top:-16px; }
+    .cloud-b { left:34px; bottom:16px; width:40px; opacity:.42; animation-delay:-2.6s; }
+    .adnn-weather-rain { position:absolute; width:2px; height:18px; border-radius:999px; background:rgba(255,255,255,.75); bottom:8px; opacity:0; animation:adnnRain 1s linear infinite; }
+    .rain-a { left:30px; } .rain-b { left:46px; animation-delay:.18s; } .rain-c { left:62px; animation-delay:.36s; }
+    .adnn-weather-scene[data-weather-scene="rain"] .adnn-weather-rain, .adnn-weather-scene[data-weather-scene="storm"] .adnn-weather-rain { opacity:1; }
+    .adnn-weather-scene[data-weather-scene="cloud"] .adnn-weather-sun, .adnn-weather-scene[data-weather-scene="rain"] .adnn-weather-sun { opacity:.38; }
+    .adnn-clock-copy, .adnn-weather-copy { position:relative; z-index:1; min-width:0; }
+    .adnn-clock-copy span, .adnn-weather-copy small { display:block; font-family:var(--font-mono); font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:rgba(255,255,255,.56); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .adnn-clock-copy strong { display:block; margin-top:4px; font-size:clamp(34px,5vw,50px); line-height:.95; font-weight:300; letter-spacing:-.04em; color:#fff; }
+    .adnn-clock-copy small { display:block; margin-top:8px; color:rgba(255,255,255,.58); font-size:12px; }
+    .adnn-weather-copy { align-self:end; display:flex; justify-content:space-between; gap:12px; align-items:end; grid-column:2; }
+    .adnn-weather-copy strong { font-size:23px; font-weight:400; color:#fff; white-space:nowrap; }
+    @keyframes adnnWeatherFloat { 50% { transform:translate3d(-5px,4px,0) scale(1.04); } }
+    @keyframes adnnWeatherCloud { 50% { transform:translate3d(8px,-2px,0); } }
+    @keyframes adnnRain { from { transform:translateY(-10px); opacity:0; } 30% { opacity:1; } to { transform:translateY(18px); opacity:0; } }
+    :root.adnn-reduce-motion .adnn-weather-sun, :root.adnn-reduce-motion .adnn-weather-cloud, :root.adnn-reduce-motion .adnn-weather-rain { animation:none !important; }
+    @media (max-width:520px) {
+      .adnn-clock-weather-card { grid-template-columns:72px minmax(0,1fr); min-height:148px; padding:14px; border-radius:22px; }
+      .adnn-weather-scene { width:72px; height:72px; border-radius:22px; }
+      .adnn-clock-copy strong { font-size:33px; }
+      .adnn-weather-copy { display:grid; justify-items:start; gap:2px; }
+    }
+
     #newReminderTime {
       width: auto;
       border-radius: 12px;
@@ -734,6 +787,41 @@
   window.addEventListener('adnn-settings-changed', apply);
 })();
 </script>
+
+<style id="adnn-static-apple-weather-card-fix">
+  .adnn-weather-scene {
+    display:grid !important;
+    place-items:center !important;
+    background:radial-gradient(circle at 30% 22%, rgba(255,255,255,.58), transparent 18%), linear-gradient(145deg,#71c8ff 0%,#2d62ff 52%,#272dcf 100%) !important;
+    box-shadow:0 18px 50px rgba(39,45,207,.34), inset 0 1px 0 rgba(255,255,255,.35) !important;
+  }
+  .adnn-weather-scene:before { content:""; position:absolute; inset:1px; border-radius:inherit; background:linear-gradient(180deg,rgba(255,255,255,.30),transparent 52%); pointer-events:none; }
+  .adnn-weather-icon { position:relative; width:min(68px,80%); aspect-ratio:1; z-index:1; filter:drop-shadow(0 14px 22px rgba(0,0,0,.20)); }
+  .adnn-weather-sun { position:absolute !important; width:62% !important; height:62% !important; left:19% !important; top:13% !important; border-radius:50% !important; background:radial-gradient(circle at 34% 28%,#fff9c7 0 10%,#ffe472 38%,#ffb322 72%,#ff8a00 100%) !important; box-shadow:0 0 0 .42rem rgba(255,210,64,.18),0 0 34px rgba(255,205,64,.72) !important; opacity:0; animation:none !important; transform:none; }
+  .adnn-weather-cloud { position:absolute !important; left:12% !important; bottom:19% !important; width:79% !important; height:35% !important; border-radius:999px !important; background:linear-gradient(180deg,#fff,#dce8f7 72%,#b7c6d8) !important; box-shadow:inset 0 1px 0 rgba(255,255,255,.96),0 10px 22px rgba(26,38,72,.18) !important; opacity:0; animation:none !important; filter:none !important; transform:none; }
+  .adnn-weather-cloud:before,.adnn-weather-cloud:after { content:""; position:absolute; border-radius:50%; background:inherit; }
+  .adnn-weather-cloud:before { width:56%; height:125%; left:15%; top:-66%; }
+  .adnn-weather-cloud:after { width:67%; height:150%; right:6%; top:-88%; }
+  .adnn-weather-rain { position:absolute !important; width:4.5% !important; height:21% !important; border-radius:999px !important; background:linear-gradient(180deg,rgba(212,239,255,.96),rgba(84,177,255,.72)) !important; bottom:0 !important; opacity:0; animation:none !important; transform:rotate(18deg) !important; }
+  .rain-a { left:31% !important; } .rain-b { left:50% !important; } .rain-c { left:69% !important; }
+  .adnn-weather-bolt { position:absolute; left:49%; top:54%; width:26%; height:38%; background:linear-gradient(180deg,#fff89b,#ffb600); clip-path:polygon(44% 0,100% 0,62% 42%,92% 42%,28% 100%,43% 55%,10% 55%); filter:drop-shadow(0 0 11px rgba(255,213,55,.86)); opacity:0; z-index:2; }
+  .adnn-weather-scene[data-weather-scene="clear"] .adnn-weather-sun { opacity:1; }
+  .adnn-weather-scene[data-weather-scene="partly"] .adnn-weather-sun { opacity:1; transform:translate(-18%,-9%) scale(.86); }
+  .adnn-weather-scene[data-weather-scene="partly"] .adnn-weather-cloud,
+  .adnn-weather-scene[data-weather-scene="cloud"] .adnn-weather-cloud,
+  .adnn-weather-scene[data-weather-scene="fog"] .adnn-weather-cloud,
+  .adnn-weather-scene[data-weather-scene="rain"] .adnn-weather-cloud,
+  .adnn-weather-scene[data-weather-scene="storm"] .adnn-weather-cloud,
+  .adnn-weather-scene[data-weather-scene="snow"] .adnn-weather-cloud { opacity:1; }
+  .adnn-weather-scene[data-weather-scene="rain"] .adnn-weather-rain,
+  .adnn-weather-scene[data-weather-scene="storm"] .adnn-weather-rain { opacity:1; }
+  .adnn-weather-scene[data-weather-scene="storm"] .adnn-weather-bolt { opacity:1; }
+  .adnn-weather-scene[data-weather-scene="cloud"], .adnn-weather-scene[data-weather-scene="fog"] { background:linear-gradient(145deg,#b9c7d8,#61758c 55%,#334155) !important; }
+  .adnn-weather-scene[data-weather-scene="rain"], .adnn-weather-scene[data-weather-scene="storm"] { background:linear-gradient(145deg,#7f94ad,#34445f 55%,#182035) !important; }
+  .adnn-weather-scene[data-weather-scene="snow"] { background:linear-gradient(145deg,#d8f3ff,#86c7ff 58%,#5f8fe8) !important; }
+  @media (max-width:520px) { .adnn-weather-icon { width:min(56px,80%); } }
+</style>
+
 </head>
 <body class="auth-pending locked">
   <div class="auth-gate">
@@ -886,6 +974,28 @@
             </div>
             <div id="remindersOutputContainer">
               <p class="help">Select a calendar date to view or insert system entries.</p>
+            </div>
+          
+            <div class="adnn-clock-weather-card" data-weather-clock>
+              <div class="adnn-weather-scene" data-weather-scene="clear" aria-hidden="true">
+                <span class="adnn-weather-icon">
+                  <span class="adnn-weather-sun"></span>
+                  <span class="adnn-weather-cloud cloud-a"></span>
+                  <span class="adnn-weather-rain rain-a"></span>
+                  <span class="adnn-weather-rain rain-b"></span>
+                  <span class="adnn-weather-rain rain-c"></span>
+                  <span class="adnn-weather-bolt"></span>
+                </span>
+              </div>
+              <div class="adnn-clock-copy">
+                <span data-clock-label>Device time</span>
+                <strong data-clock-time>--:--</strong>
+                <small data-clock-date>Syncing local clock</small>
+              </div>
+              <div class="adnn-weather-copy">
+                <strong data-weather-temp>--</strong>
+                <small data-weather-place>Weather loading</small>
+              </div>
             </div>
           </div>
         </div>
@@ -1530,7 +1640,7 @@
   <script src="firebase-config.js"></script>
   <script src="designer-users.js"></script>
   <script type="module" src="firebase-designer-auth.js"></script>
-  <script type="module" src="firebase-chat.js?v=20260613-deep-silent-fix"></script>
+  <script type="module" src="firebase-chat.js?v=20260614-realtime-ui"></script>
   <script type="module" src="firebase-designer-items.js"></script>
   <script>
     const userKey = "adnnDesignerUser";
@@ -1703,6 +1813,81 @@
         render();
       });
       render();
+    }
+    function initPortalClockWeather() {
+      const card = document.querySelector("[data-weather-clock]");
+      if (!card) return;
+      const timeNode = card.querySelector("[data-clock-time]");
+      const dateNode = card.querySelector("[data-clock-date]");
+      const tempNode = card.querySelector("[data-weather-temp]");
+      const placeNode = card.querySelector("[data-weather-place]");
+      const labelNode = card.querySelector("[data-clock-label]");
+      const sceneNode = card.querySelector("[data-weather-scene]");
+      const tick = () => {
+        const now = new Date();
+        if (timeNode) timeNode.textContent = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+        if (dateNode) dateNode.textContent = now.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" });
+      };
+      tick();
+      setInterval(tick, 1000);
+
+      const weatherText = {
+        clear: "Sunny",
+        partly: "Partly cloudy",
+        cloud: "Cloudy",
+        fog: "Fog",
+        rain: "Rain",
+        storm: "Storm",
+        snow: "Snow"
+      };
+      const setWeather = (kind, temp = "--", place = "Location needed") => {
+        const safeKind = weatherText[kind] ? kind : "clear";
+        if (sceneNode) sceneNode.dataset.weatherScene = safeKind;
+        if (tempNode) tempNode.textContent = temp;
+        if (placeNode) placeNode.textContent = place;
+        if (labelNode) labelNode.textContent = weatherText[safeKind] || "Current weather";
+      };
+      const codeToKind = (code) => {
+        const n = Number(code);
+        if (n === 0) return "clear";
+        if ([1, 2].includes(n)) return "partly";
+        if (n === 3) return "cloud";
+        if ([45, 48].includes(n)) return "fog";
+        if ([51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82].includes(n)) return "rain";
+        if ([71, 73, 75, 77, 85, 86].includes(n)) return "snow";
+        if ([95, 96, 99].includes(n)) return "storm";
+        return "clear";
+      };
+      const cleanCityName = (value) => String(value || "").replace(/^(city of|governorate of)\s+/i, "").trim();
+      const getCityName = async (latitude, longitude) => {
+        try {
+          const reverseUrl = `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${encodeURIComponent(latitude)}&longitude=${encodeURIComponent(longitude)}&localityLanguage=en`;
+          const response = await fetch(reverseUrl);
+          const data = await response.json();
+          return cleanCityName(data.city || data.locality || data.principalSubdivision || data.countryName) || "Current city";
+        } catch (_) {
+          return "Current city";
+        }
+      };
+
+      if (!navigator.geolocation || !window.fetch) { setWeather("clear", "--", "Location needed"); return; }
+      navigator.geolocation.getCurrentPosition(async (pos) => {
+        try {
+          const { latitude, longitude } = pos.coords || {};
+          const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${encodeURIComponent(latitude)}&longitude=${encodeURIComponent(longitude)}&current=temperature_2m,weather_code&timezone=auto`;
+          const [weatherResponse, cityName] = await Promise.all([
+            fetch(weatherUrl),
+            getCityName(latitude, longitude)
+          ]);
+          const data = await weatherResponse.json();
+          const current = data?.current || {};
+          setWeather(
+            codeToKind(current.weather_code),
+            Number.isFinite(current.temperature_2m) ? `${Math.round(current.temperature_2m)}°` : "--",
+            cityName
+          );
+        } catch (_) { setWeather("clear", "--", "Weather unavailable"); }
+      }, () => setWeather("clear", "--", "Location off"), { maximumAge: 900000, timeout: 8000 });
     }
 
     function setupCalendar(storageKey) {
@@ -1918,6 +2103,7 @@
     window.addEventListener("hashchange", () => setView(location.hash.replace("#", "")));
 
     setupNotes("adnn_designer_notes", "notesInput", "addNoteBtn", "notesList");
+    initPortalClockWeather();
     setupCalendar("adnn_designer_reminders");
     hydrateUser();
     setView(location.hash.replace("#", ""));
@@ -1929,14 +2115,9 @@
     adnn_chat_light_mode: "false",
     adnn_inapp_notifications: "true",
     adnn_browser_notifications: "true",
-    adnn_message_sounds: "false",
+    adnn_message_sounds: "true",
     adnn_reduce_motion: "false"
   };
-  try {
-    if (localStorage.getItem("adnn_sound_user_confirmed") !== "true") {
-      localStorage.setItem("adnn_message_sounds", "false");
-    }
-  } catch (_) {}
   function bool(key){
     const value = localStorage.getItem(key);
     return (value === null ? defaults[key] : value) === "true";

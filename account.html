@@ -1459,123 +1459,160 @@
 
 <style id="adnn-static-apple-weather-card-fix">
   .adnn-weather-scene {
-    display: grid !important;
-    place-items: center !important;
+    width: 86px;
+    height: 86px;
+    border-radius: 26px;
     position: relative;
     overflow: hidden;
+    display: block !important;
     transition: background 0.5s ease;
-    box-shadow: 0 18px 50px rgba(39,45,207,.34), inset 0 1px 0 rgba(255,255,255,.35) !important;
+    box-shadow: 0 18px 50px rgba(39,45,207,.24), inset 0 1px 0 rgba(255,255,255,.15) !important;
   }
-  .adnn-weather-scene:before { 
-    content: ""; 
-    position: absolute; 
-    inset: 1px; 
-    border-radius: inherit; 
-    background: linear-gradient(180deg, rgba(255,255,255,.30), transparent 52%); 
-    pointer-events: none; 
-  }
-  .adnn-weather-icon { 
-    position: relative; 
-    width: min(68px, 80%); 
-    aspect-ratio: 1; 
-    z-index: 1; 
-    filter: drop-shadow(0 14px 22px rgba(0,0,0,.20)); 
-  }
-  
-  /* Reset everything to hidden/default initially */
-  .adnn-weather-sun, .adnn-weather-cloud, .adnn-weather-rain, .adnn-weather-bolt {
+
+  /* Base wrapper logic: hide all elements completely by default */
+  .adnn-weather-element {
+    position: absolute;
     opacity: 0;
+    transform: scale(0.8);
     transition: opacity 0.4s ease, transform 0.4s ease;
+    pointer-events: none;
   }
 
-  /* --- THEME VARIATIONS --- */
-  
-  /* 1. Clear / Sunny & Night Theme */
-  .adnn-weather-scene[data-weather-scene="clear"] { 
-    background: radial-gradient(circle at 30% 22%, rgba(255,255,255,.58), transparent 18%), linear-gradient(145deg, #71c8ff 0%, #2d62ff 52%, #272dcf 100%) !important; 
-  }
-  .adnn-weather-scene[data-weather-scene="clear-night"] { 
-    background: linear-gradient(145deg, #2e3440, #1a1c23, #0b0c10) !important; 
-  }
-  .adnn-weather-scene[data-weather-scene="clear"] .adnn-weather-sun { 
-    opacity: 1; 
-    position: absolute !important; width: 62% !important; height: 62% !important; left: 19% !important; top: 19% !important; border-radius: 50% !important; background: radial-gradient(circle at 34% 28%, #fff9c7 0 10%, #ffe472 38%, #ffb322 72%, #ff8a00 100%) !important; box-shadow: 0 0 0 .42rem rgba(255,210,64,.18),0 0 34px rgba(255,205,64,.72) !important;
-  }
-  /* Moon visual replacement for clear nights */
-  .adnn-weather-scene[data-weather-scene="clear-night"] .adnn-weather-sun { 
-    opacity: 1; 
-    position: absolute !important; width: 50% !important; height: 50% !important; left: 25% !important; top: 25% !important; border-radius: 50% !important; background: #e5e9f0; box-shadow: 0 0 20px rgba(229, 233, 240, 0.4), inset -8px -4px 0px rgba(0,0,0,0.1);
+  /* --- DEFINING EACH INDIVIDUAL WEATHER PIECE --- */
+
+  /* 1. Dynamic Sun Design */
+  .element-sun {
+    width: 44px;
+    height: 44px;
+    left: 21px;
+    top: 21px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 34% 28%, #fff9c7 0 10%, #ffe472 38%, #ffb322 72%, #ff8a00 100%);
+    box-shadow: 0 0 0 .3rem rgba(255,210,64,.15), 0 0 24px rgba(255,205,64,.6);
   }
 
-  /* 2. Partly Cloudy */
-  .adnn-weather-scene[data-weather-scene="partly"] { 
-    background: linear-gradient(145deg, #8dc3eb, #4a7fa5, #2b4c66) !important; 
-  }
-  .adnn-weather-scene[data-weather-scene="partly"] .adnn-weather-sun {
-    opacity: 1;
-    transform: translate(-15%, -15%) scale(0.8);
-    position: absolute !important; width: 62% !important; height: 62% !important; left: 19% !important; top: 19% !important; border-radius: 50% !important; background: radial-gradient(circle at 34% 28%, #fff9c7 0 10%, #ffe472 38%, #ffb322 72%, #ff8a00 100%) !important;
-  }
-  .adnn-weather-scene[data-weather-scene="partly"] .adnn-weather-cloud {
-    opacity: 1;
-    position: absolute !important; left: 12% !important; bottom: 19% !important; width: 79% !important; height: 35% !important; border-radius: 999px !important; background: linear-gradient(180deg,#fff,#dce8f7 72%,#b7c6d8) !important; box-shadow: inset 0 1px 0 rgba(255,255,255,.96), 0 10px 22px rgba(26,38,72,.18) !important;
+  /* 2. Sleek Moon Variant (With a clean subtle lunar shadow edge) */
+  .element-moon {
+    width: 40px;
+    height: 40px;
+    left: 23px;
+    top: 23px;
+    border-radius: 50%;
+    background: #e5e9f0;
+    box-shadow: 0 0 16px rgba(229, 233, 240, 0.35), inset -6px -3px 0px rgba(0,0,0,0.12);
   }
 
-  /* 3. Overcast / Cloudy / Fog */
-  .adnn-weather-scene[data-weather-scene="cloud"], 
-  .adnn-weather-scene[data-weather-scene="fog"] { 
-    background: linear-gradient(145deg, #b9c7d8, #61758c 55%, #334155) !important; 
+  /* 3. Volumetric Cloud Element */
+  .element-cloud {
+    left: 10px;
+    bottom: 18px;
+    width: 66px;
+    height: 26px;
+    border-radius: 999px;
+    background: linear-gradient(180deg, #ffffff, #cbd5e1);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.9), 0 6px 14px rgba(15,23,42,0.15);
   }
-  .adnn-weather-scene[data-weather-scene="cloud"] .adnn-weather-cloud,
-  .adnn-weather-scene[data-weather-scene="fog"] .adnn-weather-cloud {
-    opacity: 1;
-    transform: scale(1.05) translateY(-5px);
-    position: absolute !important; left: 12% !important; bottom: 19% !important; width: 79% !important; height: 35% !important; border-radius: 999px !important; background: linear-gradient(180deg, #f0f4f8, #c2d1e0 72%, #9cb2c9) !important;
+  .element-cloud:before, .element-cloud:after {
+    content: "";
+    position: absolute;
+    border-radius: 50%;
+    background: inherit;
+  }
+  .element-cloud:before { width: 36px; height: 36px; left: 10px; top: -18px; }
+  .element-cloud:after { width: 42px; height: 42px; right: 8px; top: -24px; }
+
+  /* 4. Electric Bolt Element */
+  .element-bolt {
+    left: 36px;
+    top: 36px;
+    width: 18px;
+    height: 28px;
+    background: linear-gradient(180deg, #fff89b, #ffb600);
+    clip-path: polygon(44% 0, 100% 0, 62% 42%, 92% 42%, 28% 100%, 43% 55%, 10% 55%);
+    filter: drop-shadow(0 0 8px rgba(255,213,55,0.8));
+    z-index: 3;
   }
 
-  /* 4. Rainy System */
-  .adnn-weather-scene[data-weather-scene="rain"] { 
-    background: linear-gradient(145deg, #7f94ad, #34445f 55%, #182035) !important; 
+  /* 5. Rain Wrapper & Falling Micro Drops */
+  .element-rain-wrap {
+    inset: 0;
+    width: 100%;
+    height: 100%;
   }
-  .adnn-weather-scene[data-weather-scene="rain"] .adnn-weather-cloud {
-    opacity: 1;
-    position: absolute !important; left: 12% !important; bottom: 25% !important; width: 79% !important; height: 35% !important; border-radius: 999px !important; background: linear-gradient(180deg, #cbd5e1, #64748b) !important;
+  .element-rain-wrap .drop {
+    position: absolute;
+    width: 3px;
+    height: 12px;
+    border-radius: 999px;
+    background: linear-gradient(180deg, #e2e8f0, #38bdf8);
+    bottom: 6px;
+    transform: rotate(15deg);
   }
-  .adnn-weather-scene[data-weather-scene="rain"] .adnn-weather-rain {
+  .drop-a { left: 24px; }
+  .drop-b { left: 42px; }
+  .drop-c { left: 60px; }
+
+
+  /* --- SYSTEM SCENE THEMES (DYNMIC ACTIONS) --- */
+
+  /* Clear Day Scene */
+  .adnn-weather-scene[data-weather-scene="clear"] {
+    background: radial-gradient(circle at 30% 22%, rgba(255,255,255,.4), transparent 25%), linear-gradient(145deg, #38bdf8, #2563eb) !important;
+  }
+  .adnn-weather-scene[data-weather-scene="clear"] .element-sun { opacity: 1; transform: scale(1); }
+
+  /* Clear Night Scene */
+  .adnn-weather-scene[data-weather-scene="clear-night"] {
+    background: linear-gradient(145deg, #1e293b, #0f172a, #020617) !important;
+  }
+  .adnn-weather-scene[data-weather-scene="clear-night"] .element-moon { opacity: 1; transform: scale(1); }
+
+  /* Partly Cloudy Scene */
+  .adnn-weather-scene[data-weather-scene="partly"] {
+    background: linear-gradient(145deg, #bae6fd, #38bdf8, #1d4ed8) !important;
+  }
+  .adnn-weather-scene[data-weather-scene="partly"] .element-sun { opacity: 1; transform: translate(-10px, -10px) scale(0.75); }
+  .adnn-weather-scene[data-weather-scene="partly"] .element-cloud { opacity: 1; transform: scale(1); }
+
+  /* Fully Cloudy / Overcast / Fog Scene */
+  .adnn-weather-scene[data-weather-scene="cloud"],
+  .adnn-weather-scene[data-weather-scene="fog"] {
+    background: linear-gradient(145deg, #94a3b8, #475569) !important;
+  }
+  .adnn-weather-scene[data-weather-scene="cloud"] .element-cloud,
+  .adnn-weather-scene[data-weather-scene="fog"] .element-cloud {
     opacity: 1;
-    position: absolute !important; width: 4.5% !important; height: 21% !important; border-radius: 999px !important; background: linear-gradient(180deg, rgba(212,239,255,.96), rgba(84,177,255,.72)) !important; bottom: 4px !important; transform: rotate(18deg) !important;
+    transform: scale(1.1) translateY(-4px);
+    background: linear-gradient(180deg, #f1f5f9, #cbd5e1);
   }
 
-  /* 5. Storm / Thunderstorms */
-  .adnn-weather-scene[data-weather-scene="storm"] { 
-    background: linear-gradient(145deg, #4b5563, #1f2937 55%, #111827) !important; 
+  /* Rain Scene */
+  .adnn-weather-scene[data-weather-scene="rain"] {
+    background: linear-gradient(145deg, #64748b, #1e293b) !important;
   }
-  .adnn-weather-scene[data-weather-scene="storm"] .adnn-weather-cloud {
-    opacity: 1;
-    position: absolute !important; left: 12% !important; bottom: 25% !important; width: 79% !important; height: 35% !important; border-radius: 999px !important; background: linear-gradient(180deg, #94a3b8, #334155) !important;
-  }
-  .adnn-weather-scene[data-weather-scene="storm"] .adnn-weather-bolt {
-    opacity: 1;
-    position: absolute; left: 45%; top: 45%; width: 26%; height: 38%; background: linear-gradient(180deg, #fff89b, #ffb600); clip-path: polygon(44% 0, 100% 0, 62% 42%, 92% 42%, 28% 100%, 43% 55%, 10% 55%); filter: drop-shadow(0 0 11px rgba(255,213,55,.86)); z-index: 2;
-  }
+  .adnn-weather-scene[data-weather-scene="rain"] .element-cloud { opacity: 1; transform: translateY(-8px) scale(0.95); background: linear-gradient(180deg, #cbd5e1, #94a3b8); }
+  .adnn-weather-scene[data-weather-scene="rain"] .element-rain-wrap { opacity: 1; transform: scale(1); }
 
-  /* 6. Snow System */
-  .adnn-weather-scene[data-weather-scene="snow"] { 
-    background: linear-gradient(145deg, #d8f3ff, #86c7ff 58%, #5f8fe8) !important; 
+  /* Thunderstorm Storm Scene */
+  .adnn-weather-scene[data-weather-scene="storm"] {
+    background: linear-gradient(145deg, #475569, #0f172a) !important;
   }
-  .adnn-weather-scene[data-weather-scene="snow"] .adnn-weather-cloud {
-    opacity: 1;
-    position: absolute !important; left: 12% !important; bottom: 22% !important; width: 79% !important; height: 35% !important; border-radius: 999px !important; background: linear-gradient(180deg, #fff, #e2e8f0) !important;
+  .adnn-weather-scene[data-weather-scene="storm"] .element-cloud { opacity: 1; transform: translateY(-8px) scale(0.95); background: linear-gradient(180deg, #94a3b8, #475569); }
+  .adnn-weather-scene[data-weather-scene="storm"] .element-bolt { opacity: 1; transform: scale(1); }
+  .adnn-weather-scene[data-weather-scene="storm"] .element-rain-wrap { opacity: 1; transform: scale(1); }
+
+  /* Snow Scene */
+  .adnn-weather-scene[data-weather-scene="snow"] {
+    background: linear-gradient(145deg, #e0f2fe, #7dd3fc) !important;
   }
+  .adnn-weather-scene[data-weather-scene="snow"] .element-cloud { opacity: 1; transform: scale(1); background: #ffffff; }
 
-  /* Shared psuedo element setup for cloud rendering mechanics */
-  .adnn-weather-cloud:before, .adnn-weather-cloud:after { content: ""; position: absolute; border-radius: 50%; background: inherit; }
-  .adnn-weather-cloud:before { width: 56%; height: 125%; left: 15%; top: -66%; }
-  .adnn-weather-cloud:after { width: 67%; height: 150%; right: 6%; top: -88%; }
-  
-  .rain-a { left: 31% !important; } .rain-b { left: 50% !important; } .rain-c { left: 69% !important; }
-
-  @media (max-width:520px) { .adnn-weather-icon { width: min(56px, 80%); } }
+  @media (max-width:520px) {
+    .adnn-weather-scene { width: 72px; height: 72px; border-radius: 22px; }
+    .element-sun { width: 36px; height: 36px; left: 18px; top: 18px; }
+    .element-moon { width: 34px; height: 34px; left: 19px; top: 19px; }
+    .element-cloud { width: 56px; height: 22px; left: 8px; bottom: 14px; }
+  }
 </style>
 
 </head>
@@ -1757,15 +1794,20 @@
           
             <div class="adnn-clock-weather-card" data-weather-clock>
               <div class="adnn-weather-scene" data-weather-scene="clear" aria-hidden="true">
-                <span class="adnn-weather-icon">
-                  <span class="adnn-weather-sun"></span>
-                  <span class="adnn-weather-cloud cloud-a"></span>
-                  <span class="adnn-weather-rain rain-a"></span>
-                  <span class="adnn-weather-rain rain-b"></span>
-                  <span class="adnn-weather-rain rain-c"></span>
-                  <span class="adnn-weather-bolt"></span>
-                </span>
-              </div>
+  <div class="adnn-weather-element element-sun"></div>
+
+  <div class="adnn-weather-element element-moon"></div>
+
+  <div class="adnn-weather-element element-cloud"></div>
+
+  <div class="adnn-weather-element element-bolt"></div>
+
+  <div class="adnn-weather-element element-rain-wrap">
+    <span class="drop drop-a"></span>
+    <span class="drop drop-b"></span>
+    <span class="drop drop-c"></span>
+  </div>
+</div>
               <div class="adnn-clock-copy">
                 <span data-clock-label>Device time</span>
                 <strong data-clock-time>--:--</strong>

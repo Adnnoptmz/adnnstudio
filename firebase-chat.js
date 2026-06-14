@@ -77,8 +77,6 @@ import {
 
 
 
-/* ADNN no-sound build: notification tones, browser notification sounds, and call ring tones are disabled. */
-
 const DEFAULT_CONFIG = {
   adminEmail: "getavcollab@gmail.com",
   adminAliasUid: "adnn-admin",
@@ -97,7 +95,7 @@ const DEFAULT_CONFIG = {
   snapshotMaxRetryMs: 30000,
   uploadChunkLabelEveryPct: 5,
   deleteStorageOnDeleteForAll: false,
-  messageToneFile: "",
+  messageToneFile: "Message Notification.wav",
   outgoingCallToneFile: "",
   incomingCallToneFile: "",
   iceServers: [
@@ -138,7 +136,7 @@ const COLLECTIONS = Object.freeze({
   offerCandidates: "offerCandidates",
   answerCandidates: "answerCandidates"
 });
-const REACTION_SET = ["👍", "❤️", "😂", "😮", "😢", "🙏", "🔥", "👏", "✅", "✨", "😍", "🤝", "🎉", "💯", "👀", "💙"];
+const REACTION_SET = ["?", "??", "?", "?", "?", "?", "?", "?", "?", "?", "?", "?", "?", "?", "?", "?"];
 
 let app = null;
 let auth = null;
@@ -642,7 +640,7 @@ function renderThreadList(chats, list, roomId, scope) {
         <small>${escapeHtml(preview)}</small>
       </span>
       <span class="adnn-thread-side">
-        <button type="button" class="adnn-pin-chat" data-pin-chat="${escapeAttr(chat.id)}" title="${pinned ? "Unpin chat" : "Pin chat"}" aria-label="${pinned ? "Unpin chat" : "Pin chat"}">${pinned ? "📌" : "📍"}</button>
+        <button type="button" class="adnn-pin-chat" data-pin-chat="${escapeAttr(chat.id)}" title="${pinned ? "Unpin chat" : "Pin chat"}" aria-label="${pinned ? "Unpin chat" : "Pin chat"}">${pinned ? "?" : "?"}</button>
         <time>${escapeHtml(stamp)}</time>
         ${unread > 0 ? `<b>${unread > 99 ? "99+" : unread}</b>` : ""}
       </span>
@@ -1202,6 +1200,7 @@ function renderMessageBubble(message, mine) {
       ${!mine ? `<strong class="adnn-message-name">${escapeHtml(message.senderName || "User")}</strong>` : ""}
       <p class="adnn-deleted-message">This message was deleted.</p>
       <div class="adnn-message-meta"><time>${formatTime(message.createdAt || message.createdAtMs)}</time>${mine ? renderTicks(message) : ""}</div>
+      <button type="button" class="adnn-message-action-trigger" data-action="toggle-actions" aria-label="Message actions">${ICON.more}</button>
       ${renderMessageMenu(message, mine, true)}
     `;
   }
@@ -1216,6 +1215,7 @@ function renderMessageBubble(message, mine) {
       <time>${formatTime(message.createdAt || message.createdAtMs)}</time>
       ${mine ? renderTicks(message) : ""}
     </div>
+    <button type="button" class="adnn-message-action-trigger" data-action="toggle-actions" aria-label="Message actions">${ICON.more}</button>
     ${renderMessageMenu(message, mine, false)}
   `;
 }
@@ -1273,6 +1273,12 @@ function handleMessageAction(event, state, message) {
 
   event.stopPropagation();
   const action = actionBtn.dataset.action;
+  if (action === "toggle-actions") {
+    const bubble = event.currentTarget;
+    if (bubble.classList.contains("is-menu-open")) bubble.classList.remove("is-menu-open");
+    else openMessageMenu(bubble, state, message);
+    return;
+  }
   if (action === "reply") startReply(state, message);
   if (action === "open-react") openReactionSheet(actionBtn, state, message);
   if (action === "react") toggleReaction(state.chatId, message, actionBtn.dataset.emoji);
@@ -3566,56 +3572,46 @@ function assetUrl(fileName) {
 
 function enforceSilentSoundMigration() {
   try {
-    localStorage.setItem(CHAT_SOUND_KEY, "false");
-    localStorage.removeItem(CHAT_SOUND_CONFIRMED_KEY);
+    if (localStorage.getItem(CHAT_SOUND_KEY) === null) localStorage.setItem(CHAT_SOUND_KEY, "true");
   } catch (_) {}
 }
 
 function installSilentAudioGuard() {
-  if (window.__adnnSilentAudioGuardInstalled) return;
-  window.__adnnSilentAudioGuardInstalled = true;
-  try {
-    const proto = window.HTMLMediaElement && window.HTMLMediaElement.prototype;
-    if (proto && proto.play && !proto.__adnnNoSoundOriginalPlay) {
-      proto.__adnnNoSoundOriginalPlay = proto.play;
-      proto.play = function adnnNoAutoSoundPlay() {
-        const tag = String(this.tagName || "").toLowerCase();
-        const src = String(this.currentSrc || this.src || "").toLowerCase();
-        const effectSound = tag === "audio" && /message|notification|notify|tone|ring|ringer|call ringer|ring-app/.test(src);
-        if (effectSound) {
-          try { this.pause?.(); this.currentTime = 0; this.muted = true; this.volume = 0; } catch (_) {}
-          return Promise.resolve();
-        }
-        return proto.__adnnNoSoundOriginalPlay.apply(this, arguments);
-      };
-    }
-  } catch (_) {}
+  return;
 }
 
 function hasConfirmedSoundOptIn() {
-  return false;
+  return chatSettingBool(CHAT_SOUND_KEY, true);
 }
 
 function isRefreshAudioMuteWindow() {
-  return true;
+  return Date.now() < notificationsReadyAtMs;
 }
 
 function canPlayChatSound() {
-  return false;
+  return hasConfirmedSoundOptIn() && !isRefreshAudioMuteWindow() && !chatReduceMotionEnabled();
 }
 
 function hasFreshUserActivation() {
-  return false;
+  return !!(navigator.userActivation?.hasBeenActive || document.hasFocus());
 }
 
-function unlockChatAudioForSession() {}
+function unlockChatAudioForSession() {
+  chatAudioUnlockedThisSession = true;
+}
 
 function createLoopingAudio(fileName, volume = 0.62) {
   return null;
 }
 
 function playOneShotAudio(fileName, fallbackTone = "message") {
-  return;
+  if (!canPlayChatSound() || !fileName) return;
+  try {
+    const audio = new Audio(assetUrl(fileName));
+    audio.preload = "auto";
+    audio.volume = fallbackTone === "missed" ? 0.72 : 0.56;
+    audio.play().catch(() => {});
+  } catch (_) {}
 }
 
 function startOutgoingDialTone() {
@@ -3660,9 +3656,7 @@ function syncChatSettingsFromStorage() {
   const root = document.documentElement;
   root.classList.toggle("adnn-chat-light", chatSettingBool(CHAT_THEME_STORAGE_KEY, false));
   root.classList.toggle("adnn-reduce-motion", chatSettingBool(CHAT_REDUCE_MOTION_KEY, false));
-  root.classList.add("adnn-silent-mode");
-  stopIncomingRingtone();
-  stopOutgoingDialTone();
+  root.classList.toggle("adnn-silent-mode", !chatSettingBool(CHAT_SOUND_KEY, true));
 }
 
 function bindChatSettingsEvents() {
@@ -3678,12 +3672,35 @@ function notifyBrowser(title, body, icon = "") {
 }
 
 function showInAppNotification(title, body, options = {}) {
-  document.getElementById("adnnInAppNotificationStack")?.remove();
-  return;
+  if (!chatSettingBool(CHAT_INAPP_NOTIFICATION_KEY, true)) return;
+  playNotificationTone(options.tone || "message");
+  let stack = document.getElementById("adnnInAppNotificationStack");
+  if (!stack) {
+    stack = document.createElement("div");
+    stack.id = "adnnInAppNotificationStack";
+    stack.className = "adnn-inapp-stack";
+    document.body.appendChild(stack);
+  }
+  const card = document.createElement(options.href ? "button" : "div");
+  card.type = options.href ? "button" : undefined;
+  card.className = `adnn-inapp-card${options.tone === "missed" ? " is-missed" : ""}`;
+  card.innerHTML = `
+    <span class="adnn-avatar">${options.icon ? `<img src="${escapeAttr(options.icon)}" alt="">` : initials(title)}</span>
+    <span><strong>${escapeHtml(title || "New message")}</strong><small>${escapeHtml(body || "You have a new message.")}</small></span>
+    ${options.count ? `<b>${escapeHtml(String(options.count > 99 ? "99+" : options.count))}</b>` : ""}
+  `;
+  if (options.href) card.addEventListener("click", () => { location.href = options.href; });
+  stack.prepend(card);
+  while (stack.children.length > 3) stack.lastElementChild?.remove();
+  setTimeout(() => {
+    card.style.opacity = "0";
+    card.style.transform = "translateY(-8px) scale(.98)";
+    setTimeout(() => card.remove(), 260);
+  }, 5200);
 }
 
 function playNotificationTone(tone = "message") {
-  return;
+  playOneShotAudio(CHAT_CONFIG.messageToneFile, tone);
 }
 
 function updateBadgeNode(node, value) {
@@ -3976,6 +3993,7 @@ function injectChatStyles() {
     .adnn-message-actions button span { font-size:9px; line-height:1; }
     .adnn-message-actions .is-danger { color:#ff6b5c; }
     .adnn-message-actions .is-warn { color:#ffc66d; }
+    .adnn-message-action-trigger { display:none; }
     .adnn-reaction-palette { display:none !important; }
     .adnn-floating-reaction-sheet { position:fixed; z-index:2147483620; display:flex; gap:5px; max-width:calc(100vw - 16px); overflow-x:auto; padding:7px; border-radius:999px; background:rgba(8,8,12,.98); border:1px solid rgba(255,255,255,.14); box-shadow:0 18px 50px rgba(0,0,0,.42); backdrop-filter:blur(18px); }
     .adnn-floating-reaction-sheet button { width:36px; height:36px; border:0; border-radius:50%; background:rgba(255,255,255,.08); font-size:19px; cursor:pointer; flex:0 0 auto; }
@@ -4207,8 +4225,17 @@ function injectChatStyles() {
       .adnn-room-actions .adnn-call-btn[data-room-search] { display:none; }
       .adnn-message-scroll { padding:12px 10px !important; }
       .adnn-message { max-width:87%; }
-      .is-mine .adnn-message-actions, .is-peer .adnn-message-actions { position:fixed !important; left:10px !important; right:10px !important; top:auto !important; bottom:calc(82px + env(safe-area-inset-bottom)) !important; width:auto !important; max-width:none !important; justify-content:center; overflow-x:auto; transform:translateY(12px) scale(.98); border-radius:20px; padding:7px; }
-      .adnn-message:hover .adnn-message-actions, .adnn-message:focus-within .adnn-message-actions, .adnn-message.is-menu-open .adnn-message-actions { transform:translateY(0) scale(1); }
+      .adnn-message-action-trigger { position:absolute; top:7px; width:30px; height:30px; border:0; border-radius:50%; display:grid; place-items:center; color:#fff; background:rgba(255,255,255,.12); backdrop-filter:blur(12px); box-shadow:0 10px 28px rgba(0,0,0,.2); z-index:30; opacity:.86; }
+      .adnn-message-action-trigger svg { width:15px; height:15px; }
+      .is-mine .adnn-message { padding-right:44px; }
+      .is-peer .adnn-message { padding-left:44px; }
+      .is-mine .adnn-message-action-trigger { right:8px; }
+      .is-peer .adnn-message-action-trigger { left:8px; }
+      .is-mine .adnn-message-actions, .is-peer .adnn-message-actions { position:absolute !important; top:42px !important; bottom:auto !important; width:max-content !important; max-width:calc(100vw - 34px) !important; overflow-x:auto; transform:translateY(-4px) scale(.96) !important; border-radius:18px; padding:6px; }
+      .is-mine .adnn-message-actions { right:8px !important; left:auto !important; }
+      .is-peer .adnn-message-actions { left:8px !important; right:auto !important; }
+      .adnn-message:hover .adnn-message-actions, .adnn-message:focus-within .adnn-message-actions { opacity:0; pointer-events:none; }
+      .adnn-message.is-menu-open .adnn-message-actions { opacity:1; pointer-events:auto; transform:translateY(0) scale(1) !important; }
       .adnn-composer-wrap { padding:6px 8px max(8px, env(safe-area-inset-bottom)); }
       .adnn-composer { gap:6px; }
       .adnn-composer textarea { font-size:16px; min-height:41px; padding:11px 13px; }

@@ -1037,14 +1037,14 @@
           <span>Tasks</span>
         </a>
         <a href="#chat" data-view-link="chat">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
-          <span>User Chats</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5h16v10.2H8.5L4 19.2V5.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M8 9h8M8 12.5h5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          <span>Chat</span>
           <span class="side-notification-badge" data-account-badge="chat" hidden>0</span>
         </a>
         <a href="#admin-support" data-view-link="admin-support">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5c4.7 0 8.5 3.2 8.5 7.2s-3.8 7.2-8.5 7.2c-.9 0-1.8-.1-2.6-.4L4.5 20l1.4-4A6.6 6.6 0 0 1 3.5 10.7c0-4 3.8-7.2 8.5-7.2Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 19 7v5.2c0 4.1-2.8 7.4-7 8.3-4.2-.9-7-4.2-7-8.3V7l7-3.5Z" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linejoin="round"/><path d="M9 12h6M12 9v6" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round"/></svg>
           <span>Admin Support</span>
-          <span class="side-notification-badge" data-account-badge="support" hidden>0</span>
+          <span class="side-notification-badge" data-account-badge="admin-support" hidden>0</span>
         </a>
         <a href="#calendar" data-view-link="calendar">
           <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4" width="17" height="17" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M8 2.5v4M16 2.5v4M3.5 10h9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
@@ -1098,6 +1098,12 @@
       <section id="invoice" class="view">
         <p class="lead">Designer payment records and invoice notes will appear here once added.</p>
         <div class="designer-feed" id="designerInvoiceList"><div class="empty-card"><span><strong>Nothing here</strong><span>No invoice has been added yet.</span></span></div></div>
+      </section>
+      <section id="chat" class="view">
+        <div id="directChatMount"></div>
+      </section>
+      <section id="admin-support" class="view">
+        <div id="clientChatMount" class="adnn-designer-chat-panel" style="margin-top: 0;"></div>
       </section>
       <section id="calendar" class="view">
         <p class="kicker">Schedule</p>
@@ -1167,15 +1173,11 @@
           <div class="notes-list" id="notesList"></div>
         </div>
       </section>
-      <section id="chat" class="view"><div id="directChatMount"></div></section>
-      <section id="admin-support" class="view">
-        <div id="clientChatMount" class="adnn-designer-chat-panel" style="margin-top:0;"></div>
-      </section>
       
 <section id="settings" class="view">
   <p class="kicker">Settings</p>
   <h1>Settings</h1>
-  <p class="lead">Control your designer workspace comfort, chat look, alerts, and motion.</p>
+  <p class="lead">Control your designer workspace comfort and motion.</p>
   <div class="settings-grid">
     <div class="settings-card adnn-setting-card">
       <div><strong>Workspace theme</strong><span>Switch between dark workspace and clean light mode.</span></div>
@@ -1184,10 +1186,6 @@
         <svg class="sun-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
       </button>
     </div>
-    <label class="settings-card adnn-setting-card"><div><strong>Chat white mode</strong><span>Toggle only the messenger between dark and bright white.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_chat_light_mode"><i></i></span></label>
-    <label class="settings-card adnn-setting-card"><div><strong>In-app message alerts</strong><span>Show messenger-style cards and live unread numbers inside the portal.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_inapp_notifications"><i></i></span></label>
-    <label class="settings-card adnn-setting-card"><div><strong>Browser notifications</strong><span>Allow system notifications for new messages and missed calls.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_browser_notifications"><i></i></span></label>
-    <label class="settings-card adnn-setting-card"><div><strong>Message sound</strong><span>Off = silent mode. No refresh sounds, chat tones, or missed call alerts.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_message_sounds"><i></i></span></label>
     <label class="settings-card adnn-setting-card"><div><strong>Reduce motion</strong><span>Calm animations for a lighter, accessibility-friendly dashboard.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_reduce_motion"><i></i></span></label>
     
   </div>
@@ -1797,8 +1795,8 @@
   <script src="firebase-config.js"></script>
   <script src="designer-users.js"></script>
   <script type="module" src="firebase-designer-auth.js"></script>
-  <script type="module" src="firebase-chat.js?v=20260615-standard-account-chat"></script>
   <script type="module" src="firebase-designer-items.js"></script>
+  <script type="module" src="firebase-chat.js?v=20260615-designer-account-chat"></script>
   <script>
     const userKey = "adnnDesignerUser";
     const themeStorageKey = "adnn_designer_light_mode";
@@ -1868,17 +1866,17 @@
       const labels = {
         notifications: ["Designer Workspace", "Notifications"],
         tasks: ["Designer Workspace", "Tasks"],
-        chat: ["", ""],
-        "admin-support": ["", ""],
         calendar: ["Designer Workspace", "Calendar"],
         notes: ["Designer Workspace", "Notes"],
         invoice: ["Designer Workspace", "Invoice"],
+        chat: ["Designer Workspace", "Chat"],
+        "admin-support": ["Designer Workspace", "Admin Support"],
         settings: ["Designer Workspace", "Settings"]
       };
       const selected = Object.prototype.hasOwnProperty.call(labels, view) ? view : "tasks";
       document.querySelectorAll(".view").forEach((section) => section.classList.toggle("active", section.id === selected));
       document.querySelectorAll("[data-view-link]").forEach((link) => link.classList.toggle("active", link.dataset.viewLink === selected));
-      document.body.classList.toggle("chat-view-active", selected === "chat" || selected === "admin-support");
+      document.body.classList.remove("chat-view-active", "adnn-chat-mobile-lock");
       const sub = document.getElementById("dynamicPortalSub");
       const heading = document.getElementById("dynamicPortalHeading");
       if (sub) sub.textContent = labels[selected][0];
@@ -2237,7 +2235,6 @@
 <script id="adnn-settings-upgrade-js">
 (function setupAdnnSettingsUpgrade(){
   const defaults = {
-    adnn_chat_light_mode: "false",
     adnn_inapp_notifications: "true",
     adnn_browser_notifications: "true",
     adnn_message_sounds: "true",
@@ -2248,7 +2245,6 @@
     return (value === null ? defaults[key] : value) === "true";
   }
   function apply(){
-    document.documentElement.classList.toggle("adnn-chat-light", bool("adnn_chat_light_mode"));
     document.documentElement.classList.toggle("adnn-reduce-motion", bool("adnn_reduce_motion"));
     document.querySelectorAll("[data-adnn-setting]").forEach((input) => {
       input.checked = bool(input.dataset.adnnSetting);

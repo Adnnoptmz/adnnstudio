@@ -44,7 +44,7 @@
 */
 
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { getAuth, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import {
   getFirestore,
   collection,
@@ -236,12 +236,16 @@ async function bootChatRuntime() {
   }
 
   try {
-    app = getApps()[0] || initializeApp(FIREBASE_CONFIG);
+    app = getApps().find((item) => item?.options?.apiKey === FIREBASE_CONFIG.apiKey) || getApps()[0] || initializeApp(FIREBASE_CONFIG);
     auth = getAuth(app);
+    await setPersistence(auth, browserLocalPersistence).catch(() => {});
     db = getFirestore(app);
     storage = getStorage(app);
     enableOfflinePersistence();
-    onAuthStateChanged(auth, handleAuthState, (error) => {
+    onAuthStateChanged(auth, (user) => {
+      if (user || auth.currentUser) return handleAuthState(user || auth.currentUser);
+      setTimeout(() => handleAuthState(auth.currentUser || null), 450);
+    }, (error) => {
       renderSignedOutShell("Could not verify chat login.");
       showToast(error?.message || "Auth connection failed.", "bad");
     });
@@ -682,11 +686,6 @@ function renderThreadList(chats, list, roomId, scope) {
   list.innerHTML = "";
   updateChatNavigationBadges(chats, scope);
   if (!chats.length) {
-    if (roomId === "directRoom") {
-      list.innerHTML = "";
-      clearChatRoom(roomId);
-      return;
-    }
     list.innerHTML = `<div class="adnn-chat-empty">No conversations yet.</div>`;
     renderPassiveRoom(roomId, scope === "admin" ? "No client chats yet" : "No direct chats yet", "Conversations will appear here as soon as they are created.", "Waiting for chat");
     if (scope !== "admin") renderStartableUserDirectory(list, roomId);
@@ -756,10 +755,6 @@ function renderThreadList(chats, list, roomId, scope) {
     const firstRow = list.querySelector(".adnn-thread");
     firstRow?.classList.add("is-active");
     openRoom(sortedChats[0].id, sortedChats[0], roomId);
-  }
-
-  if (roomId === "directRoom" && !currentRow) {
-    clearChatRoom(roomId);
   }
 }
 
@@ -3232,20 +3227,7 @@ function closeRoomOnMobile(roomId) {
   const room = document.getElementById(roomId);
   const layout = room?.closest(".adnn-chat-layout");
   layout?.classList.remove("is-room-open");
-  if (roomId === "directRoom") {
-    clearChatRoom(roomId);
-    layout?.querySelectorAll(".adnn-thread.is-active").forEach((row) => row.classList.remove("is-active"));
-  }
   document.body.classList.remove("adnn-chat-mobile-lock");
-}
-
-function clearChatRoom(roomId) {
-  const target = document.getElementById(roomId);
-  if (!target) return;
-  const old = rooms.get(roomId);
-  cleanupRoomState(old);
-  rooms.delete(roomId);
-  target.innerHTML = "";
 }
 
 function goHome() {
@@ -3412,11 +3394,10 @@ function bindMessageScrollEscape(scroller, state) {
 
 function closeMessageScrollChat(scroller, roomId = "") {
   const layout = scroller?.closest?.(".adnn-chat-layout");
-  const actualRoomId = roomId || scroller?.closest?.(".adnn-chat-room")?.id || "";
-  if (!layout?.classList.contains("is-room-open") && actualRoomId !== "directRoom") return false;
-  layout?.classList.remove("is-room-open");
-  layout?.querySelectorAll(".adnn-thread.is-active").forEach((row) => row.classList.remove("is-active"));
-  if (actualRoomId) closeRoomOnMobile(actualRoomId);
+  if (!layout?.classList.contains("is-room-open")) return false;
+  layout.classList.remove("is-room-open");
+  layout.querySelectorAll(".adnn-thread.is-active").forEach((row) => row.classList.remove("is-active"));
+  if (roomId) closeRoomOnMobile(roomId);
   else document.body.classList.remove("adnn-chat-mobile-lock");
   return true;
 }

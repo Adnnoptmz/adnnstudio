@@ -603,7 +603,17 @@ function chatBelongsToCurrentUser(chat) {
     : [];
   if (participantEmailKeys.some((mail) => emails.has(mail))) return true;
 
-  const maps = [chat?.participantEmailMap, chat?.participantEmails, chat?.participants, chat?.participantNames];
+  const designerFields = [
+    chat?.designerUid,
+    chat?.assignedDesignerUid,
+    chat?.designerId,
+    chat?.designerid,
+    chat?.designerEmail,
+    chat?.assignedDesignerEmail
+  ];
+  if (designerFields.some((value) => uids.has(String(value || "")) || emails.has(emailKey(value)))) return true;
+
+  const maps = [chat?.participantEmailMap, chat?.participantEmails, chat?.participants, chat?.participantNames, chat?.designer, chat?.assignedDesigner];
   return maps.some((map) => Object.entries(map || {}).some(([key, value]) => {
     if (uids.has(String(key))) return true;
     if (emails.has(emailKey(key))) return true;
@@ -2842,6 +2852,55 @@ function callSummaryLastMessage(message) {
   return `${kind[0].toUpperCase()}${kind.slice(1)} call  ${formatDuration(Math.round((message.durationMs || 0) / 1000))}`;
 }
 
+
+function getStoredDesignerUser() {
+  if (!location.pathname.includes("designer-account.html")) return null;
+  try {
+    const stored = JSON.parse(localStorage.getItem("adnnDesignerUser") || "null");
+    return stored && typeof stored === "object" ? stored : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+function designerEmailAliases(profile = activeProfile) {
+  const stored = getStoredDesignerUser() || {};
+  const idRaw = profile?.designerid || profile?.designerId || stored.designerid || stored.designerId || "";
+  const id = String(idRaw || "").trim().toLowerCase();
+  const noPrefix = id.replace(/^d/i, "").replace(/[^0-9a-z]/g, "");
+  const padded = /^\d+$/.test(noPrefix) ? `d${noPrefix.padStart(4, "0")}` : id;
+  return uniqueClean([
+    profile?.email,
+    profile?.authEmail,
+    profile?.designerEmail,
+    profile?.displayEmail,
+    stored.email,
+    stored.authEmail,
+    stored.designerEmail,
+    id ? `${id}@adnnstudio.design` : "",
+    padded ? `${padded}@adnnstudio.design` : ""
+  ].map(emailKey));
+}
+
+function designerUidAliases(profile = activeProfile) {
+  const stored = getStoredDesignerUser() || {};
+  const idRaw = profile?.designerid || profile?.designerId || stored.designerid || stored.designerId || "";
+  const id = String(idRaw || "").trim();
+  return uniqueClean([
+    profile?.uid,
+    profile?.id,
+    profile?.designerId,
+    profile?.designerid,
+    stored.uid,
+    stored.id,
+    stored.designerId,
+    stored.designerid,
+    id,
+    id.toLowerCase(),
+    id.toUpperCase()
+  ]);
+}
+
 async function getProfile(uid, email) {
   const enrich = (role, data = {}) => ({
     uid,
@@ -2856,8 +2915,15 @@ async function getProfile(uid, email) {
   if (designer?.exists()) return enrich("designer", designer.data());
   const admin = isAdminEmail(email);
   const designerLocal = location.pathname.includes("designer-account.html");
+  const storedDesigner = designerLocal ? getStoredDesignerUser() : null;
   return enrich(admin ? "admin" : designerLocal ? "designer" : "client", {
-    name: activeUser?.displayName || emailKey(email).split("@")[0] || (admin ? `${CHAT_CONFIG.brandName} Admin` : designerLocal ? "Designer" : "User")
+    ...(storedDesigner || {}),
+    uid,
+    email: email || storedDesigner?.authEmail || storedDesigner?.email || "",
+    authEmail: email || storedDesigner?.authEmail || "",
+    name: storedDesigner?.name || activeUser?.displayName || emailKey(email).split("@")[0] || (admin ? `${CHAT_CONFIG.brandName} Admin` : designerLocal ? "Designer" : "User"),
+    emailKeys: designerLocal ? designerEmailAliases(storedDesigner || {}) : (storedDesigner?.emailKeys || []),
+    uidAliases: designerLocal ? designerUidAliases({ ...(storedDesigner || {}), uid }) : (storedDesigner?.uidAliases || [])
   });
 }
 
@@ -3054,6 +3120,7 @@ function selfUidSet() {
     activeProfile?.id,
     activeProfile?.designerId,
     activeProfile?.designerid,
+    ...designerUidAliases(activeProfile),
     ...(Array.isArray(activeProfile?.uidAliases) ? activeProfile.uidAliases : []),
     ownCallUid()
   ]));
@@ -3067,6 +3134,7 @@ function selfEmailKeyList() {
     activeProfile?.authEmail,
     activeProfile?.designerEmail,
     activeProfile?.displayEmail,
+    ...designerEmailAliases(activeProfile),
     ...(Array.isArray(activeProfile?.emailKeys) ? activeProfile.emailKeys : [])
   ].map(emailKey));
 }
@@ -4454,6 +4522,9 @@ function injectChatStyles() {
 
 // Expose a tiny debug surface without coupling the site to internals.
 window.ADNN_CHAT_RUNTIME = Object.freeze({
+  getDesignerEmailAliases: () => designerEmailAliases(activeProfile),
+  getSelfEmailKeys: () => selfEmailKeyList(),
+  getSelfUidKeys: () => Array.from(selfUidSet()),
   version: "2.3.0-message-card-settings-sheet",
   refresh: refreshAllConnections,
   get activeUser() { return activeUser ? { uid: activeUser.uid, email: activeUser.email } : null; },

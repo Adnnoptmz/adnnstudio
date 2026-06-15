@@ -215,9 +215,7 @@ const ICON = {
   download: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 21h16"/></svg>`
 };
 
-if (!location.pathname.includes("designer-account.html")) {
-  bootChatRuntime();
-}
+bootChatRuntime();
 
 async function bootChatRuntime() {
   enforceSilentSoundMigration();
@@ -2854,9 +2852,12 @@ async function getProfile(uid, email) {
   });
   const client = await getDoc(doc(db, "clients", uid)).catch(() => null);
   if (client?.exists()) return enrich("client", client.data());
+  const designer = await getDoc(doc(db, "designers", uid)).catch(() => null);
+  if (designer?.exists()) return enrich("designer", designer.data());
   const admin = isAdminEmail(email);
-  return enrich(admin ? "admin" : "client", {
-    name: activeUser?.displayName || emailKey(email).split("@")[0] || (admin ? `${CHAT_CONFIG.brandName} Admin` : "User")
+  const designerLocal = location.pathname.includes("designer-account.html");
+  return enrich(admin ? "admin" : designerLocal ? "designer" : "client", {
+    name: activeUser?.displayName || emailKey(email).split("@")[0] || (admin ? `${CHAT_CONFIG.brandName} Admin` : designerLocal ? "Designer" : "User")
   });
 }
 
@@ -3047,7 +3048,15 @@ function safeImageUrl(value) {
 }
 
 function selfUidSet() {
-  return new Set(uniqueClean([activeUser?.uid, activeProfile?.uid, activeProfile?.id, ownCallUid()]));
+  return new Set(uniqueClean([
+    activeUser?.uid,
+    activeProfile?.uid,
+    activeProfile?.id,
+    activeProfile?.designerId,
+    activeProfile?.designerid,
+    ...(Array.isArray(activeProfile?.uidAliases) ? activeProfile.uidAliases : []),
+    ownCallUid()
+  ]));
 }
 
 function selfEmailKeyList() {
@@ -3055,7 +3064,10 @@ function selfEmailKeyList() {
     activeUser?.email,
     activeProfile?.email,
     activeProfile?.clientEmail,
-    activeProfile?.authEmail
+    activeProfile?.authEmail,
+    activeProfile?.designerEmail,
+    activeProfile?.displayEmail,
+    ...(Array.isArray(activeProfile?.emailKeys) ? activeProfile.emailKeys : [])
   ].map(emailKey));
 }
 

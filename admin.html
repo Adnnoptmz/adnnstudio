@@ -666,167 +666,65 @@
       font-size: 13px;
     }
     .adnn-clock-weather-card {
-      margin-top: 18px;
-      min-height: 184px;
-      border: 1px solid rgba(255,255,255,0.12);
-      border-radius: 28px;
-      padding: 18px;
-      display: grid;
-      grid-template-columns: 96px minmax(0, 1fr);
-      grid-template-rows: auto auto;
-      gap: 14px 16px;
-      position: relative;
-      overflow: hidden;
-      background:
-        radial-gradient(circle at 24% 18%, rgba(255,255,255,0.18), transparent 26%),
-        radial-gradient(circle at 78% 18%, rgba(39,45,207,0.30), transparent 32%),
-        linear-gradient(145deg, rgba(24,24,31,0.92), rgba(5,5,8,0.98));
-      box-shadow: 0 24px 75px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.12);
-      isolation: isolate;
+      margin-top:18px;
+      min-height:168px;
+      border:1px solid var(--line);
+      border-radius:26px;
+      padding:16px;
+      display:grid;
+      grid-template-columns:86px minmax(0,1fr);
+      grid-template-rows:auto auto;
+      gap:12px 14px;
+      position:relative;
+      overflow:hidden;
+      background:radial-gradient(circle at 24% 18%, rgba(255,255,255,0.18), transparent 26%), radial-gradient(circle at 78% 18%, rgba(39,45,207,0.30), transparent 32%), linear-gradient(145deg, rgba(24,24,31,0.92), rgba(5,5,8,0.98));
+      box-shadow:0 24px 70px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.12);
+      isolation:isolate;
     }
-    .adnn-clock-weather-card:before {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background-image: radial-gradient(rgba(255,255,255,0.25) 1px, transparent 1px);
-      background-size: 10px 10px;
-      opacity: 0.08;
-      pointer-events: none;
-    }
-    .adnn-weather-scene {
-      grid-row: 1 / 3;
-      width: 96px;
-      height: 96px;
-      border-radius: 28px;
-      position: relative;
-      overflow: hidden;
-      display: block !important;
-      transition: background 0.5s ease;
-      box-shadow: 0 18px 50px rgba(39,45,207,0.24), inset 0 1px 0 rgba(255,255,255,0.15) !important;
-    }
-    .adnn-weather-scene:before {
-      content: "";
-      position: absolute;
-      inset: 1px;
-      border-radius: inherit;
-      background: linear-gradient(180deg, rgba(255,255,255,.30), transparent 52%);
-      pointer-events: none;
-    }
-    .adnn-weather-element {
-      position: absolute;
-      opacity: 0;
-      transform: scale(0.8);
-      transition: opacity 0.4s ease, transform 0.4s ease;
-      pointer-events: none;
-    }
-    .element-sun {
-      width: 48px;
-      height: 48px;
-      left: 24px;
-      top: 24px;
-      border-radius: 50%;
-      background: radial-gradient(circle at 34% 28%, #fff9c7 0 10%, #ffe472 38%, #ffb322 72%, #ff8a00 100%);
-      box-shadow: 0 0 0 .35rem rgba(255,210,64,.15), 0 0 28px rgba(255,205,64,.6);
-    }
-    .element-moon {
-      width: 44px;
-      height: 44px;
-      left: 26px;
-      top: 26px;
-      border-radius: 50%;
-      background: #e5e9f0;
-      box-shadow: 0 0 18px rgba(229, 233, 240, 0.35), inset -6px -3px 0px rgba(0,0,0,0.12);
-    }
-    .element-cloud {
-      left: 12px;
-      bottom: 20px;
-      width: 72px;
-      height: 28px;
-      border-radius: 999px;
-      background: linear-gradient(180deg, #ffffff, #cbd5e1);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.9), 0 6px 14px rgba(15,23,42,0.15);
-    }
-    .element-cloud:before, .element-cloud:after {
-      content: "";
-      position: absolute;
-      border-radius: 50%;
-      background: inherit;
-    }
-    .element-cloud:before { width: 38px; height: 36px; left: 12px; top: -18px; }
-    .element-cloud:after { width: 44px; height: 42px; right: 10px; top: -24px; }
-    .element-bolt {
-      left: 40px;
-      top: 40px;
-      width: 20px;
-      height: 30px;
-      background: linear-gradient(180deg, #fff89b, #ffb600);
-      clip-path: polygon(44% 0, 100% 0, 62% 42%, 92% 42%, 28% 100%, 43% 55%, 10% 55%);
-      filter: drop-shadow(0 0 8px rgba(255,213,55,0.8));
-      z-index: 3;
-    }
+    .adnn-clock-weather-card:before { content:""; position:absolute; inset:0; background-image:radial-gradient(rgba(255,255,255,0.24) 1px, transparent 1px); background-size:10px 10px; opacity:.08; pointer-events:none; }
+    .adnn-weather-scene { grid-row:1 / 3; width:86px; height:86px; border-radius:26px; position:relative; overflow:hidden; display: block !important; transition: background 0.5s ease; box-shadow:0 18px 50px rgba(39,45,207,.34), inset 0 1px 0 rgba(255,255,255,.25) !important; }
+    .adnn-weather-scene:before { content: ""; position: absolute; inset: 1px; border-radius: inherit; background: linear-gradient(180deg, rgba(255,255,255,.4), transparent 52%); pointer-events: none; }
+    .adnn-weather-element { position: absolute; opacity: 0; transform: scale(0.8); transition: opacity 0.4s ease, transform 0.4s ease; pointer-events: none; }
+    .element-sun { width: 44px; height: 44px; left: 21px; top: 21px; border-radius: 50%; background: radial-gradient(circle at 34% 28%, #fff9c7 0 10%, #ffe472 38%, #ffb322 72%, #ff8a00 100%); box-shadow: 0 0 0 .3rem rgba(255,210,64,.15), 0 0 24px rgba(255,205,64,.6); }
+    .element-moon { width: 40px; height: 40px; left: 23px; top: 23px; border-radius: 50%; background: #e5e9f0; box-shadow: 0 0 16px rgba(229, 233, 240, 0.35), inset -6px -3px 0px rgba(0,0,0,0.12); }
+    .element-cloud { left: 10px; bottom: 18px; width: 66px; height: 26px; border-radius: 999px; background: linear-gradient(180deg, #ffffff, #cbd5e1); box-shadow: inset 0 1px 0 rgba(255,255,255,0.9), 0 6px 14px rgba(15,23,42,0.15); }
+    .element-cloud:before, .element-cloud:after { content: ""; position: absolute; border-radius: 50%; background: inherit; }
+    .element-cloud:before { width: 36px; height: 36px; left: 10px; top: -18px; }
+    .element-cloud:after { width: 42px; height: 42px; right: 8px; top: -24px; }
+    .element-bolt { left: 36px; top: 36px; width: 18px; height: 28px; background: linear-gradient(180deg, #fff89b, #ffb600); clip-path: polygon(44% 0, 100% 0, 62% 42%, 92% 42%, 28% 100%, 43% 55%, 10% 55%); filter: drop-shadow(0 0 8px rgba(255,213,55,0.8)); z-index: 3; }
     .element-rain-wrap { inset: 0; width: 100%; height: 100%; }
-    .element-rain-wrap .drop {
-      position: absolute;
-      width: 3px;
-      height: 14px;
-      border-radius: 999px;
-      background: linear-gradient(180deg, #e2e8f0, #38bdf8);
-      bottom: 8px;
-      transform: rotate(15deg);
-    }
-    .drop-a { left: 26px; }
-    .drop-b { left: 48px; }
-    .drop-c { left: 70px; }
-
-    .adnn-weather-scene[data-weather-scene="clear"] {
-      background: radial-gradient(circle at 30% 22%, rgba(255,255,255,.4), transparent 25%), linear-gradient(145deg, #38bdf8, #2563eb) !important;
-    }
+    .element-rain-wrap .drop { position: absolute; width: 3px; height: 12px; border-radius: 999px; background: linear-gradient(180deg, #e2e8f0, #38bdf8); bottom: 6px; transform: rotate(15deg); }
+    .drop-a { left: 24px; } .drop-b { left: 42px; } .drop-c { left: 60px; }
+    .adnn-weather-scene[data-weather-scene="clear"] { background: radial-gradient(circle at 30% 22%, rgba(255,255,255,.4), transparent 25%), linear-gradient(145deg, #38bdf8, #2563eb) !important; }
     .adnn-weather-scene[data-weather-scene="clear"] .element-sun { opacity: 1; transform: scale(1); }
-    .adnn-weather-scene[data-weather-scene="clear-night"] {
-      background: linear-gradient(145deg, #1e293b, #0f172a, #020617) !important;
-    }
+    .adnn-weather-scene[data-weather-scene="clear-night"] { background: linear-gradient(145deg, #1e293b, #0f172a, #020617) !important; }
     .adnn-weather-scene[data-weather-scene="clear-night"] .element-moon { opacity: 1; transform: scale(1); }
-    .adnn-weather-scene[data-weather-scene="partly"] {
-      background: linear-gradient(145deg, #bae6fd, #38bdf8, #1d4ed8) !important;
-    }
+    .adnn-weather-scene[data-weather-scene="partly"] { background: linear-gradient(145deg, #bae6fd, #38bdf8, #1d4ed8) !important; }
     .adnn-weather-scene[data-weather-scene="partly"] .element-sun { opacity: 1; transform: translate(-10px, -10px) scale(0.75); }
     .adnn-weather-scene[data-weather-scene="partly"] .element-cloud { opacity: 1; transform: scale(1); }
-    .adnn-weather-scene[data-weather-scene="cloud"], .adnn-weather-scene[data-weather-scene="fog"] {
-      background: linear-gradient(145deg, #94a3b8, #475569) !important;
-    }
-    .adnn-weather-scene[data-weather-scene="cloud"] .element-cloud, .adnn-weather-scene[data-weather-scene="fog"] .element-cloud {
-      opacity: 1; transform: scale(1.1) translateY(-4px); background: linear-gradient(180deg, #f1f5f9, #cbd5e1);
-    }
-    .adnn-weather-scene[data-weather-scene="rain"] {
-      background: linear-gradient(145deg, #64748b, #1e293b) !important;
-    }
+    .adnn-weather-scene[data-weather-scene="cloud"], .adnn-weather-scene[data-weather-scene="fog"] { background: linear-gradient(145deg, #94a3b8, #475569) !important; }
+    .adnn-weather-scene[data-weather-scene="cloud"] .element-cloud, .adnn-weather-scene[data-weather-scene="fog"] .element-cloud { opacity: 1; transform: scale(1.1) translateY(-4px); background: linear-gradient(180deg, #f1f5f9, #cbd5e1); }
+    .adnn-weather-scene[data-weather-scene="rain"] { background: linear-gradient(145deg, #64748b, #1e293b) !important; }
     .adnn-weather-scene[data-weather-scene="rain"] .element-cloud { opacity: 1; transform: translateY(-8px) scale(0.95); background: linear-gradient(180deg, #cbd5e1, #94a3b8); }
     .adnn-weather-scene[data-weather-scene="rain"] .element-rain-wrap { opacity: 1; transform: scale(1); }
-    .adnn-weather-scene[data-weather-scene="storm"] {
-      background: linear-gradient(145deg, #475569, #0f172a) !important;
-    }
+    .adnn-weather-scene[data-weather-scene="storm"] { background: linear-gradient(145deg, #475569, #0f172a) !important; }
     .adnn-weather-scene[data-weather-scene="storm"] .element-cloud { opacity: 1; transform: translateY(-8px) scale(0.95); background: linear-gradient(180deg, #94a3b8, #475569); }
     .adnn-weather-scene[data-weather-scene="storm"] .element-bolt { opacity: 1; transform: scale(1); }
     .adnn-weather-scene[data-weather-scene="storm"] .element-rain-wrap { opacity: 1; transform: scale(1); }
-    .adnn-weather-scene[data-weather-scene="snow"] {
-      background: linear-gradient(145deg, #e0f2fe, #7dd3fc) !important;
-    }
-    .adnn-weather-scene[data-weather-scene="snow"] .element-cloud { opacity: 1; transform: scale(1); background: #ffffff; } }
-    :root.adnn-reduce-motion .adnn-weather-sun,
-    :root.adnn-reduce-motion .adnn-weather-cloud,
-    :root.adnn-reduce-motion .adnn-weather-rain { animation: none !important; }
+    .adnn-weather-scene[data-weather-scene="snow"] { background: linear-gradient(145deg, #e0f2fe, #7dd3fc) !important; }
+    .adnn-weather-scene[data-weather-scene="snow"] .element-cloud { opacity: 1; transform: scale(1); background: #ffffff; }
+    .adnn-clock-copy, .adnn-weather-copy { position:relative; z-index:1; min-width:0; }
+    .adnn-clock-copy span, .adnn-weather-copy small { display:block; font-family:var(--font-mono); font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:rgba(255,255,255,.56); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .adnn-clock-copy strong { display:block; margin-top:4px; font-size:clamp(34px,5vw,50px); line-height:.95; font-weight:300; letter-spacing:-.04em; color:#fff; }
+    .adnn-clock-copy small { display:block; margin-top:8px; color:rgba(255,255,255,.58); font-size:12px; }
+    .adnn-weather-copy { align-self:end; display:flex; justify-content:space-between; gap:12px; align-items:end; grid-column:2; }
+    .adnn-weather-copy strong { font-size:23px; font-weight:400; color:#fff; white-space:nowrap; }
     @media (max-width: 520px) {
-      .adnn-clock-weather-card {
-        grid-template-columns: 74px minmax(0, 1fr);
-        min-height: 150px;
-        padding: 14px;
-        border-radius: 22px;
-      }
-      .adnn-weather-scene { width: 74px; height: 74px; border-radius: 22px; }
-      .adnn-clock-copy strong { font-size: 34px; }
+      .adnn-clock-weather-card { grid-template-columns: 72px minmax(0, 1fr); min-height: 148px; padding: 14px; border-radius: 22px; }
+      .adnn-weather-scene { width: 72px; height: 72px; border-radius: 22px; }
+      .adnn-clock-copy strong { font-size: 33px; }
       .adnn-weather-copy { display: grid; justify-items: start; gap: 2px; }
     }
-    /* Styles for the Apple-inspired Time Picker and Today highlight */
     #newReminderTime {
       width: auto;
       border-radius: 12px;

@@ -759,20 +759,20 @@ async function renderStartableUserDirectory(list, roomId) {
   list.dataset.directoryLoading = "1";
   try {
     const rows = [];
-    const collections = ["clients"];
+    const collections = ["clients", "designers"];
     for (const name of collections) {
       const snap = await getDocs(collection(db, name)).catch(() => null);
       snap?.forEach((item) => {
         const data = item.data() || {};
-        const email = emailKey(data.email || data.authEmail || data.clientEmail || "");
-        const ids = uniqueClean([item.id, data.uid]);
+        const email = emailKey(data.email || data.authEmail || data.clientEmail || data.designerEmail || "");
+        const ids = uniqueClean([item.id, data.uid, data.designerid, data.designerId]);
         const isSelf = ids.some((id) => selfUidSet().has(id)) || selfEmailKeySet().has(email);
         if (!isSelf && (email || ids.length)) {
           rows.push({
             uid: ids[0] || email,
             email,
-            name: data.name || data.displayName || data.clientName || email || "User",
-            role: "client",
+            name: data.name || data.displayName || data.clientName || data.designerName || email || "User",
+            role: name === "designers" ? "designer" : "client",
             photoURL: data.photoURL || data.avatarURL || data.picture || ""
           });
         }
@@ -781,7 +781,11 @@ async function renderStartableUserDirectory(list, roomId) {
     const unique = new Map();
     rows.forEach((row) => unique.set(row.email || row.uid, row));
     const users = Array.from(unique.values()).sort((a, b) => String(a.name).localeCompare(String(b.name))).slice(0, 80);
-    if (!users.length || !list.isConnected || list.querySelector(".adnn-thread")) return;
+    if (!list.isConnected || list.querySelector(".adnn-thread")) return;
+    if (!users.length) {
+      list.innerHTML = `<div class="adnn-chat-empty">No direct chats yet.<br><small>Direct users could not be listed. Check Firestore rules for clients/designers read access, then refresh.</small></div>`;
+      return;
+    }
     list.innerHTML = `<div class="adnn-chat-empty is-compact">Start a conversation</div>`;
     users.forEach((user) => {
       const row = document.createElement("button");
@@ -3030,7 +3034,7 @@ function normalizeNameKey(name) {
 
 async function isDisplayNameAvailable(name) {
   const key = normalizeNameKey(name);
-  const collections = ["clients"];
+  const collections = ["clients", "designers"];
   for (const collectionName of collections) {
     const snap = await getDocs(collection(db, collectionName)).catch(() => null);
     if (!snap) continue;

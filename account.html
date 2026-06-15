@@ -1230,8 +1230,8 @@
 	      place-items:center;
 	      cursor:pointer;
 	    }
-	    body.auth-pending > .shell, body.auth-pending .auth-gate { visibility:hidden !important; }
-	    body.locked > .shell { display:none !important; }
+	    body.auth-pending > .shell, body.auth-pending .mobile-header-bar, body.auth-pending .auth-gate { visibility:hidden !important; }
+	    body.locked > .shell, body.locked .mobile-header-bar { display:none !important; }
 	    body.locked .auth-gate { display:grid !important; }
 	
       @media (max-width:760px) {
@@ -1403,10 +1403,7 @@
   }
   @media (max-width: 900px) {
     body.adnn-chat-mobile-lock .mobile-header-bar {
-      display: flex !important;
-      position: sticky !important;
-      top: 0 !important;
-      z-index: 1200 !important;
+      display: none !important;
     }
     body > .shell {
       height: calc(100svh - 65px) !important;
@@ -2649,14 +2646,7 @@
 	    }
 	    async function logout() {
 	      try {
-	        if (window.ADNN_FIREBASE_CONFIG) {
-	          const [{ initializeApp, getApps }, { getAuth, signOut }] = await Promise.all([
-	            import("https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js"),
-	            import("https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js")
-	          ]);
-	          const firebaseApp = getApps()[0] || initializeApp(window.ADNN_FIREBASE_CONFIG);
-	          await signOut(getAuth(firebaseApp));
-	        }
+	        // Keep Firebase chat session intact so chats remain available after re-login.
 	      } catch (error) {
 	        console.warn("AdnnStudio account logout warning", error);
 	      }

@@ -548,18 +548,9 @@ function watchChatThreads(scope, listId, roomId, options = {}) {
   } else {
     Array.from(selfUidSet()).forEach((uid, index) => {
       listen(`participant-${index}`, query(collection(db, COLLECTIONS.chats), where("participantUids", "array-contains", uid)));
-      if (activeProfile?.role === "designer") {
-        listen(`designer-uid-${index}`, query(collection(db, COLLECTIONS.chats), where("designerUid", "==", uid)));
-        listen(`assigned-designer-uid-${index}`, query(collection(db, COLLECTIONS.chats), where("assignedDesignerUid", "==", uid)));
-        listen(`designer-id-${index}`, query(collection(db, COLLECTIONS.chats), where("designerId", "==", uid)));
-      }
     });
     selfEmailKeyList().forEach((mail, index) => {
       listen(`participant-email-${index}`, query(collection(db, COLLECTIONS.chats), where("participantEmailKeys", "array-contains", mail)));
-      if (activeProfile?.role === "designer") {
-        listen(`designer-email-${index}`, query(collection(db, COLLECTIONS.chats), where("designerEmail", "==", mail)));
-        listen(`assigned-designer-email-${index}`, query(collection(db, COLLECTIONS.chats), where("assignedDesignerEmail", "==", mail)));
-      }
     });
   }
 
@@ -758,20 +749,20 @@ async function renderStartableUserDirectory(list, roomId) {
   list.dataset.directoryLoading = "1";
   try {
     const rows = [];
-    const collections = ["clients", "designers"];
+    const collections = ["clients"];
     for (const name of collections) {
       const snap = await getDocs(collection(db, name)).catch(() => null);
       snap?.forEach((item) => {
         const data = item.data() || {};
-        const email = emailKey(data.email || data.authEmail || data.clientEmail || data.designerEmail || "");
-        const ids = uniqueClean([item.id, data.uid, data.designerid, data.designerId]);
+        const email = emailKey(data.email || data.authEmail || data.clientEmail || "");
+        const ids = uniqueClean([item.id, data.uid]);
         const isSelf = ids.some((id) => selfUidSet().has(id)) || selfEmailKeySet().has(email);
         if (!isSelf && (email || ids.length)) {
           rows.push({
             uid: ids[0] || email,
             email,
-            name: data.name || data.displayName || data.clientName || data.designerName || email || "User",
-            role: name === "designers" ? "designer" : "client",
+            name: data.name || data.displayName || data.clientName || email || "User",
+            role: "client",
             photoURL: data.photoURL || data.avatarURL || data.picture || ""
           });
         }
@@ -2861,18 +2852,6 @@ async function getProfile(uid, email) {
   });
   const client = await getDoc(doc(db, "clients", uid)).catch(() => null);
   if (client?.exists()) return enrich("client", client.data());
-  const designer = await getDoc(doc(db, "designers", uid)).catch(() => null);
-  if (designer?.exists()) return enrich("designer", { id: designer.id, ...designer.data() });
-
-  const mail = emailKey(email);
-  for (const field of ["authEmail", "email", "designerEmail"]) {
-    const match = await getDocs(query(collection(db, "designers"), where(field, "==", mail), limit(1))).catch(() => null);
-    if (match?.docs?.length) {
-      const item = match.docs[0];
-      return enrich("designer", { id: item.id, ...item.data() });
-    }
-  }
-
   const admin = isAdminEmail(email);
   return enrich(admin ? "admin" : "client", {
     name: activeUser?.displayName || emailKey(email).split("@")[0] || (admin ? `${CHAT_CONFIG.brandName} Admin` : "User")
@@ -2904,11 +2883,11 @@ function ownCallUid() {
 }
 
 function ownDisplayName() {
-  return activeProfile?.name || activeProfile?.displayName || activeProfile?.designerName || activeProfile?.clientName || activeProfile?.email || activeUser?.displayName || activeUser?.email || "User";
+  return activeProfile?.name || activeProfile?.displayName || activeProfile?.clientName || activeProfile?.email || activeUser?.displayName || activeUser?.email || "User";
 }
 
 function setupProfileNameConfirmEditor() {
-  const nameNode = document.getElementById("accountName") || document.getElementById("designerName");
+  const nameNode = document.getElementById("accountName");
   if (!nameNode || nameNode.dataset.adnnNameConfirmReady === "true") return;
   nameNode.dataset.adnnNameConfirmReady = "true";
   const parent = nameNode.parentElement;
@@ -2957,8 +2936,7 @@ async function saveProfileDisplayName(nameNode, button) {
       showToast("That name is already used. Choose another one.", "warn");
       return;
     }
-    const role = activeProfile?.role === "designer" ? "designers" : "clients";
-    await setDoc(doc(db, role, activeUser.uid), {
+    await setDoc(doc(db, "clients", activeUser.uid), {
       name: nextName,
       displayName: nextName,
       nameKey: normalizeNameKey(nextName),
@@ -2983,14 +2961,14 @@ function normalizeNameKey(name) {
 
 async function isDisplayNameAvailable(name) {
   const key = normalizeNameKey(name);
-  const collections = ["clients", "designers"];
+  const collections = ["clients"];
   for (const collectionName of collections) {
     const snap = await getDocs(collection(db, collectionName)).catch(() => null);
     if (!snap) continue;
     const duplicate = snap.docs.some((item) => {
       if (item.id === activeUser?.uid) return false;
       const data = item.data() || {};
-      const other = normalizeNameKey(data.name || data.displayName || data.designerName || data.clientName);
+      const other = normalizeNameKey(data.name || data.displayName || data.clientName);
       return other && other === key;
     });
     if (duplicate) return false;
@@ -3016,11 +2994,11 @@ async function syncChatParticipantName(name) {
 }
 
 function updateLocalProfileName(name) {
-  const key = location.pathname.includes("designer-account.html") ? "customDesignerName" : "customClientName";
+  const key = "customClientName";
   try { localStorage.setItem(key, name); } catch (_) {}
-  const avatar = document.getElementById("accountAvatar") || document.getElementById("designerAvatar");
+  const avatar = document.getElementById("accountAvatar");
   if (avatar && !avatar.style.backgroundImage) avatar.textContent = name.trim().slice(0, 2).toUpperCase();
-  const userKey = location.pathname.includes("designer-account.html") ? "adnnDesignerUser" : "adhnanPortfolioUser";
+  const userKey = "adhnanPortfolioUser";
   try {
     const stored = JSON.parse(localStorage.getItem(userKey) || "null");
     if (stored) {
@@ -3067,27 +3045,15 @@ function safeImageUrl(value) {
 }
 
 function selfUidSet() {
-  return new Set(uniqueClean([
-    activeUser?.uid,
-    activeProfile?.uid,
-    activeProfile?.id,
-    activeProfile?.designerid,
-    activeProfile?.designerId,
-    activeProfile?.designerUID,
-    activeProfile?.assignedDesignerUid,
-    ownCallUid()
-  ]));
+  return new Set(uniqueClean([activeUser?.uid, activeProfile?.uid, activeProfile?.id, ownCallUid()]));
 }
 
 function selfEmailKeyList() {
   return uniqueClean([
     activeUser?.email,
     activeProfile?.email,
-    activeProfile?.designerEmail,
-    activeProfile?.assignedDesignerEmail,
     activeProfile?.clientEmail,
-    activeProfile?.authEmail,
-    activeProfile?.displayEmail
+    activeProfile?.authEmail
   ].map(emailKey));
 }
 
@@ -3962,7 +3928,7 @@ function notifyThreadUnread(chat, title, unread) {
     tone,
     count: unread || 1,
     icon: getChatPhoto(chat, isAdminEmail(activeUser?.email) ? "admin" : "user"),
-    href: location.pathname.includes("designer-account.html") ? "designer-account.html#chat" : location.pathname.includes("admin.html") ? "admin.html#chats_view" : "account.html#chat"
+    href: location.pathname.includes("admin.html") ? "admin.html#chats_view" : "account.html#chat"
   });
   notifyBrowser(title, body, getChatPhoto(chat, isAdminEmail(activeUser?.email) ? "admin" : "user"));
 }
@@ -3989,7 +3955,7 @@ function notifyIncomingMessages(state, messages) {
     showInAppNotification(title, body, {
       tone,
       icon: getChatPhoto(state.chatData, isAdminEmail(activeUser?.email) ? "admin" : "user"),
-      href: location.pathname.includes("designer-account.html") ? "designer-account.html#chat" : location.pathname.includes("admin.html") ? "admin.html#chats_view" : "account.html#chat"
+      href: location.pathname.includes("admin.html") ? "admin.html#chats_view" : "account.html#chat"
     });
     notifyBrowser(title, body, getChatPhoto(state.chatData, isAdminEmail(activeUser?.email) ? "admin" : "user"));
   });
@@ -4090,7 +4056,6 @@ function injectChatStyles() {
     .adnn-chat-app, .adnn-chat-app * { box-sizing:border-box; }
     .adnn-chat-app [hidden], .adnn-call-popout [hidden], .adnn-confirm-backdrop [hidden] { display:none !important; }
     #directChatMount, #clientChatMount, #adminChatMount { width:100% !important; height:100% !important; min-height:0 !important; max-height:none !important; margin:0 !important; overflow:hidden !important; background:transparent !important; box-shadow:none !important; }
-    #clientChatMount.adnn-designer-chat-panel { display:block !important; height:100% !important; min-height:0 !important; border:0 !important; border-radius:0 !important; background:transparent !important; box-shadow:none !important; }
     .adnn-chat-app { --adnn-primary:${t.primary}; --adnn-primary2:${t.primary2}; --adnn-danger:${t.danger}; --adnn-success:${t.success}; --adnn-bg:${t.bg}; --adnn-panel:${t.panel}; --adnn-soft:${t.soft}; --adnn-line:${t.line}; --adnn-text:${t.text}; --adnn-muted:${t.muted}; width:100%; height:100%; min-height:0; color:var(--adnn-text); font:inherit; display:block; overflow:hidden; }
     .adnn-chat-app, .adnn-chat-app * { min-width:0; box-sizing:border-box; }
     .adnn-chat-app img, .adnn-chat-app video, .adnn-chat-app canvas, .adnn-chat-app svg { max-width:100%; }

@@ -2698,6 +2698,7 @@
         picture: profile.picture,
         role: isAdminEmail ? "admin" : "client",
       }));
+      await syncFirebaseChatLogin(accessToken);
       recordGoogleSignIn(accessToken, profile);
       if (isAdminEmail) {
         location.href = "admin.html";
@@ -2709,6 +2710,25 @@
     function recordGoogleSignIn(accessToken, profile) {
       sendAccountSync("recordLogin", accessToken, profile);
     }
+    async function syncFirebaseChatLogin(accessToken) {
+      if (!accessToken || !window.ADNN_FIREBASE_CONFIG) return;
+      try {
+        const [{ initializeApp, getApps }, authModule] = await Promise.all([
+          import("https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js"),
+          import("https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js")
+        ]);
+        const firebaseApp = getApps()[0] || initializeApp(window.ADNN_FIREBASE_CONFIG);
+        const firebaseAuth = authModule.getAuth(firebaseApp);
+        if (authModule.setPersistence && authModule.browserLocalPersistence) {
+          await authModule.setPersistence(firebaseAuth, authModule.browserLocalPersistence).catch(() => {});
+        }
+        const credential = authModule.GoogleAuthProvider.credential(null, accessToken);
+        await authModule.signInWithCredential(firebaseAuth, credential);
+      } catch (error) {
+        console.warn("AdnnStudio Firebase chat login warning", error);
+      }
+    }
+
 
     let accountSyncTimer = null;
     const ADNN_ACCOUNT_ENDPOINT_FALLBACK = "https://script.google.com/macros/s/AKfycbyNYpnnZNDHrvY1E2FgJ8jwcqjt0OkfFlYcHlLPhP3birFb3OBDbIGtgS1M6khnmfljLw/exec";

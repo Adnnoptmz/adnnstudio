@@ -1230,8 +1230,8 @@
 	      place-items:center;
 	      cursor:pointer;
 	    }
-	    body.auth-pending > .shell, body.auth-pending .mobile-header-bar, body.auth-pending .auth-gate { visibility:hidden !important; }
-	    body.locked > .shell, body.locked .mobile-header-bar { display:none !important; }
+	    body.auth-pending > .shell, body.auth-pending .auth-gate { visibility:hidden !important; }
+	    body.locked > .shell { display:none !important; }
 	    body.locked .auth-gate { display:grid !important; }
 	
       @media (max-width:760px) {
@@ -1403,7 +1403,10 @@
   }
   @media (max-width: 900px) {
     body.adnn-chat-mobile-lock .mobile-header-bar {
-      display: none !important;
+      display: flex !important;
+      position: sticky !important;
+      top: 0 !important;
+      z-index: 1200 !important;
     }
     body > .shell {
       height: calc(100svh - 65px) !important;

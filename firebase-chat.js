@@ -44,7 +44,7 @@
 */
 
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getAuth, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import {
   getFirestore,
   collection,
@@ -236,16 +236,12 @@ async function bootChatRuntime() {
   }
 
   try {
-    app = getApps().find((item) => item?.options?.apiKey === FIREBASE_CONFIG.apiKey) || getApps()[0] || initializeApp(FIREBASE_CONFIG);
+    app = getApps()[0] || initializeApp(FIREBASE_CONFIG);
     auth = getAuth(app);
-    await setPersistence(auth, browserLocalPersistence).catch(() => {});
     db = getFirestore(app);
     storage = getStorage(app);
     enableOfflinePersistence();
-    onAuthStateChanged(auth, (user) => {
-      if (user || auth.currentUser) return handleAuthState(user || auth.currentUser);
-      setTimeout(() => handleAuthState(auth.currentUser || null), 450);
-    }, (error) => {
+    onAuthStateChanged(auth, handleAuthState, (error) => {
       renderSignedOutShell("Could not verify chat login.");
       showToast(error?.message || "Auth connection failed.", "bad");
     });
@@ -1051,7 +1047,7 @@ function roomMarkup(roomId) {
         <div class="adnn-voice-preview" data-voice-preview hidden></div>
         <div class="adnn-composer-panel" data-composer-panel hidden>
           <label><span>${ICON.doc}</span><b>Document</b><input type="file" data-panel-file multiple></label>
-          <label><span>${ICON.image}</span><b>Photo/Video</b><input type="file" data-panel-media accept="image/*,video/*" multiple></label>
+          <label><span>${ICON.image}</span><b>Photo/Video</b><input type="file" data-panel-media accept="image/,video/" multiple></label>
           <label><span>${ICON.camera}</span><b>Camera</b><input type="file" data-panel-camera accept="image/*,video/*" capture="environment"></label>
           <label><span>${ICON.mic}</span><b>Audio file</b><input type="file" data-panel-audio accept="audio/*" multiple></label>
         </div>

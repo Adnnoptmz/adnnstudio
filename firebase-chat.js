@@ -287,8 +287,10 @@ async function handleAuthState(user) {
       ...(activeProfile || {}),
       ...localDesignerProfile,
       uid: activeUser.uid,
-      email: activeProfile?.email || localDesignerProfile.email || activeUser.email,
-      authEmail: localDesignerProfile.authEmail || activeUser.email,
+      email: localDesignerProfile.email || localDesignerProfile.authEmail || activeUser.email || activeProfile?.email,
+      authEmail: localDesignerProfile.authEmail || localDesignerProfile.email || activeUser.email || activeProfile?.authEmail,
+      designerid: localDesignerProfile.designerid || localDesignerProfile.designerId || activeProfile?.designerid || activeProfile?.designerId,
+      designerId: localDesignerProfile.designerId || localDesignerProfile.designerid || activeProfile?.designerId || activeProfile?.designerid,
       role: "designer"
     };
   }
@@ -539,10 +541,14 @@ function watchChatThreads(scope, listId, roomId, options = {}) {
     renderThreadList(chats, list, roomId, scope);
   };
 
-  const listen = (key, refOrQuery) => resilientSnapshot(`threads:${listId}:${key}`, refOrQuery, (snapshot) => {
+  const listen = (key, refOrQuery, quiet = false) => resilientSnapshot(`threads:${listId}:${key}`, refOrQuery, (snapshot) => {
     sources.set(key, new Map(snapshot.docs.map((item) => [item.id, { id: item.id, ...item.data(), __pending: item.metadata.hasPendingWrites }])));
     renderMergedThreads();
   }, (error) => {
+    if (quiet) {
+      renderMergedThreads();
+      return;
+    }
     if (!sources.size) {
       list.innerHTML = `<div class="adnn-chat-empty">${escapeHtml(readableFirebaseError(error))}</div>`;
       renderPassiveRoom(roomId, "Chats unavailable", "Chats are not available right now.", "Waiting for chat");
@@ -566,6 +572,8 @@ function watchChatThreads(scope, listId, roomId, options = {}) {
     });
     if (activeProfile?.role === "designer") {
       listen("designer-room", query(collection(db, COLLECTIONS.chats), where("type", "==", "designer-room")));
+      listen("designer-direct-scan", query(collection(db, COLLECTIONS.chats), where("type", "==", "direct")), true);
+      listen("designer-group-scan", query(collection(db, COLLECTIONS.chats), where("type", "==", "group")), true);
     }
   }
 
@@ -597,7 +605,39 @@ function isVisibleToAdminInbox(chat) {
 function isChatVisibleForCurrentUser(chat) {
   if (!chat) return false;
   const deletedFor = Array.isArray(chat.deletedFor) ? chat.deletedFor : [];
-  return !deletedFor.some((uid) => selfUidSet().has(uid));
+  if (deletedFor.some((uid) => selfUidSet().has(uid))) return false;
+  if (isAdminEmail(activeUser?.email)) return true;
+  if (chat.type === "support") {
+    const adminOnly = [ADMIN_ALIAS_UID, ADMIN_EMAIL].includes(String(chat.id || "").toLowerCase());
+    if (adminOnly) return false;
+    return chatBelongsToCurrentUser(chat);
+  }
+  if (chat.type === "designer-room") return activeProfile?.role === "designer";
+  return chatBelongsToCurrentUser(chat);
+}
+
+function chatBelongsToCurrentUser(chat) {
+  const uids = selfUidSet();
+  const emails = selfEmailKeySet();
+  const participantUids = Array.isArray(chat?.participantUids) ? chat.participantUids.map(String) : [];
+  if (participantUids.some((uid) => uids.has(uid))) return true;
+
+  const participantEmailKeys = Array.isArray(chat?.participantEmailKeys)
+    ? chat.participantEmailKeys.map(emailKey)
+    : [];
+  if (participantEmailKeys.some((mail) => emails.has(mail))) return true;
+
+  const maps = [chat?.participantEmailMap, chat?.participantEmails, chat?.participants, chat?.participantNames];
+  return maps.some((map) => Object.entries(map || {}).some(([key, value]) => {
+    if (uids.has(String(key))) return true;
+    if (emails.has(emailKey(key))) return true;
+    if (typeof value === "string" && emails.has(emailKey(value))) return true;
+    if (value && typeof value === "object") {
+      return uids.has(String(value.uid || value.id || "")) ||
+        emails.has(emailKey(value.email || value.authEmail || value.displayEmail || ""));
+    }
+    return false;
+  }));
 }
 
 function isChatBlockedForMe(chat) {
@@ -3035,20 +3075,65 @@ function readLocalDesignerProfile() {
   if (!location.pathname.includes("designer-account.html")) return null;
   try {
     const data = JSON.parse(localStorage.getItem("adnnDesignerUser") || "null");
-    if (!data) return null;
-    const id = String(data.designerid || data.designerId || data.id || "").trim();
+    const directory = readDesignerDirectoryProfile(data);
+    if (!data && !directory) return null;
+    const merged = { ...(directory || {}), ...(data || {}) };
+    const id = String(merged.designerid || merged.designerId || merged.id || "").trim();
     return {
-      ...data,
-      designerid: id || data.designerid,
-      designerId: id || data.designerId,
+      ...merged,
+      designerid: id || merged.designerid,
+      designerId: id || merged.designerId,
       role: "designer",
-      name: data.name || data.displayName || (id ? `Designer ${id}` : "Designer"),
-      email: data.email || data.authEmail || activeUser?.email || "",
-      authEmail: data.authEmail || activeUser?.email || data.email || ""
+      name: merged.name || merged.displayName || (id ? `Designer ${id}` : "Designer"),
+      email: merged.email || merged.authEmail || activeUser?.email || "",
+      authEmail: merged.authEmail || activeUser?.email || merged.email || ""
     };
   } catch (_) {
-    return null;
+    const directory = readDesignerDirectoryProfile();
+    return directory ? { ...directory, role: "designer" } : null;
   }
+}
+
+function readDesignerDirectoryProfile(local = null) {
+  const users = Array.isArray(window.ADNN_DESIGNER_USERS) ? window.ADNN_DESIGNER_USERS : [];
+  if (!users.length) return null;
+  const activeMail = emailKey(activeUser?.email);
+  const localId = String(local?.designerid || local?.designerId || local?.id || "").trim().toLowerCase();
+  const profileIds = uniqueClean([
+    localId,
+    activeProfile?.designerid,
+    activeProfile?.designerId
+  ].map((value) => String(value || "").trim().toLowerCase()));
+  const found = users.find((item) => {
+    const mails = [item.authEmail, item.email, item.displayEmail].map(emailKey);
+    const id = String(item.designerid || item.designerId || item.id || "").trim().toLowerCase();
+    return (activeMail && mails.includes(activeMail)) || (id && profileIds.includes(id));
+  });
+  if (!found) return null;
+  const id = String(found.designerid || found.designerId || found.id || "").trim();
+  return {
+    ...found,
+    designerid: id || found.designerid,
+    designerId: id || found.designerId,
+    role: "designer",
+    name: found.name || found.displayName || (id ? `Designer ${id}` : "Designer"),
+    email: found.email || found.authEmail || activeUser?.email || "",
+    authEmail: found.authEmail || activeUser?.email || found.email || ""
+  };
+}
+
+function designerDirectoryEmailVariants() {
+  const local = readLocalDesignerProfile();
+  return uniqueClean([
+    local?.email,
+    local?.authEmail,
+    ...(Array.isArray(window.ADNN_DESIGNER_USERS) ? window.ADNN_DESIGNER_USERS.flatMap((item) => {
+      const id = String(item.designerid || item.designerId || item.id || "").trim().toLowerCase();
+      const matchesSelf = [item.email, item.authEmail].map(emailKey).includes(emailKey(activeUser?.email)) ||
+        (id && designerIdVariants().map((value) => String(value).toLowerCase()).includes(id));
+      return matchesSelf ? [item.email, item.authEmail] : [];
+    }) : [])
+  ]);
 }
 
 function designerIdVariants() {
@@ -3076,7 +3161,7 @@ function designerEmailVariants() {
 
 function selfUidSet() {
   const designerIds = designerIdVariants();
-  return new Set(uniqueClean([activeUser?.uid, ownCallUid(), ...designerIds]));
+  return new Set(uniqueClean([activeUser?.uid, activeProfile?.uid, activeProfile?.id, ownCallUid(), ...designerIds]));
 }
 
 function selfEmailKeyList() {
@@ -3086,6 +3171,7 @@ function selfEmailKeyList() {
     activeProfile?.designerEmail,
     activeProfile?.clientEmail,
     activeProfile?.authEmail,
+    ...designerDirectoryEmailVariants(),
     ...designerEmailVariants()
   ].map(emailKey));
 }

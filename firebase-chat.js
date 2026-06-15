@@ -281,20 +281,6 @@ async function handleAuthState(user) {
     name: activeUser.displayName || emailKey(activeUser.email).split("@")[0] || "User",
     photoURL: activeUser.photoURL || ""
   }));
-  const localDesignerProfile = readLocalDesignerProfile();
-  if (localDesignerProfile) {
-    activeProfile = {
-      ...(activeProfile || {}),
-      ...localDesignerProfile,
-      uid: activeUser.uid,
-      email: localDesignerProfile.email || localDesignerProfile.authEmail || activeUser.email || activeProfile?.email,
-      authEmail: localDesignerProfile.authEmail || localDesignerProfile.email || activeUser.email || activeProfile?.authEmail,
-      designerid: localDesignerProfile.designerid || localDesignerProfile.designerId || activeProfile?.designerid || activeProfile?.designerId,
-      designerId: localDesignerProfile.designerId || localDesignerProfile.designerid || activeProfile?.designerId || activeProfile?.designerid,
-      role: "designer"
-    };
-  }
-
   sessionStarted = true;
   notificationsReadyAtMs = Date.now() + 12000;
   chatAudioReadyAtMs = Date.now() + 12000;
@@ -541,14 +527,10 @@ function watchChatThreads(scope, listId, roomId, options = {}) {
     renderThreadList(chats, list, roomId, scope);
   };
 
-  const listen = (key, refOrQuery, quiet = false) => resilientSnapshot(`threads:${listId}:${key}`, refOrQuery, (snapshot) => {
+  const listen = (key, refOrQuery) => resilientSnapshot(`threads:${listId}:${key}`, refOrQuery, (snapshot) => {
     sources.set(key, new Map(snapshot.docs.map((item) => [item.id, { id: item.id, ...item.data(), __pending: item.metadata.hasPendingWrites }])));
     renderMergedThreads();
   }, (error) => {
-    if (quiet) {
-      renderMergedThreads();
-      return;
-    }
     if (!sources.size) {
       list.innerHTML = `<div class="adnn-chat-empty">${escapeHtml(readableFirebaseError(error))}</div>`;
       renderPassiveRoom(roomId, "Chats unavailable", "Chats are not available right now.", "Waiting for chat");
@@ -570,11 +552,6 @@ function watchChatThreads(scope, listId, roomId, options = {}) {
     selfEmailKeyList().forEach((mail, index) => {
       listen(`participant-email-${index}`, query(collection(db, COLLECTIONS.chats), where("participantEmailKeys", "array-contains", mail)));
     });
-    if (activeProfile?.role === "designer") {
-      listen("designer-room", query(collection(db, COLLECTIONS.chats), where("type", "==", "designer-room")));
-      listen("designer-direct-scan", query(collection(db, COLLECTIONS.chats), where("type", "==", "direct")), true);
-      listen("designer-group-scan", query(collection(db, COLLECTIONS.chats), where("type", "==", "group")), true);
-    }
   }
 
   listWatchers.set(listId, () => {
@@ -612,7 +589,6 @@ function isChatVisibleForCurrentUser(chat) {
     if (adminOnly) return false;
     return chatBelongsToCurrentUser(chat);
   }
-  if (chat.type === "designer-room") return activeProfile?.role === "designer";
   return chatBelongsToCurrentUser(chat);
 }
 
@@ -825,7 +801,7 @@ async function createOrOpenDirectChat(other, roomId, row = null) {
   const otherUid = String(other.uid);
   const keyParts = uniqueClean([ownPrimary, otherUid].sort()).join("_");
   const chatId = `direct_${keyParts.replace(/[^a-z0-9_-]/gi, "_").slice(0, 120)}`;
-  const participantUids = uniqueClean([ownPrimary, ownCallUid(), ...designerIdVariants(), otherUid]);
+  const participantUids = uniqueClean([ownPrimary, ownCallUid(), otherUid]);
   const participantEmailKeys = uniqueClean([...selfEmailKeyList(), other.email].map(emailKey));
   const payload = {
     type: "direct",
@@ -3071,97 +3047,8 @@ function safeImageUrl(value) {
   return "";
 }
 
-function readLocalDesignerProfile() {
-  if (!location.pathname.includes("designer-account.html")) return null;
-  try {
-    const data = JSON.parse(localStorage.getItem("adnnDesignerUser") || "null");
-    const directory = readDesignerDirectoryProfile(data);
-    if (!data && !directory) return null;
-    const merged = { ...(directory || {}), ...(data || {}) };
-    const id = String(merged.designerid || merged.designerId || merged.id || "").trim();
-    return {
-      ...merged,
-      designerid: id || merged.designerid,
-      designerId: id || merged.designerId,
-      role: "designer",
-      name: merged.name || merged.displayName || (id ? `Designer ${id}` : "Designer"),
-      email: merged.email || merged.authEmail || activeUser?.email || "",
-      authEmail: merged.authEmail || activeUser?.email || merged.email || ""
-    };
-  } catch (_) {
-    const directory = readDesignerDirectoryProfile();
-    return directory ? { ...directory, role: "designer" } : null;
-  }
-}
-
-function readDesignerDirectoryProfile(local = null) {
-  const users = Array.isArray(window.ADNN_DESIGNER_USERS) ? window.ADNN_DESIGNER_USERS : [];
-  if (!users.length) return null;
-  const activeMail = emailKey(activeUser?.email);
-  const localId = String(local?.designerid || local?.designerId || local?.id || "").trim().toLowerCase();
-  const profileIds = uniqueClean([
-    localId,
-    activeProfile?.designerid,
-    activeProfile?.designerId
-  ].map((value) => String(value || "").trim().toLowerCase()));
-  const found = users.find((item) => {
-    const mails = [item.authEmail, item.email, item.displayEmail].map(emailKey);
-    const id = String(item.designerid || item.designerId || item.id || "").trim().toLowerCase();
-    return (activeMail && mails.includes(activeMail)) || (id && profileIds.includes(id));
-  });
-  if (!found) return null;
-  const id = String(found.designerid || found.designerId || found.id || "").trim();
-  return {
-    ...found,
-    designerid: id || found.designerid,
-    designerId: id || found.designerId,
-    role: "designer",
-    name: found.name || found.displayName || (id ? `Designer ${id}` : "Designer"),
-    email: found.email || found.authEmail || activeUser?.email || "",
-    authEmail: found.authEmail || activeUser?.email || found.email || ""
-  };
-}
-
-function designerDirectoryEmailVariants() {
-  const local = readLocalDesignerProfile();
-  return uniqueClean([
-    local?.email,
-    local?.authEmail,
-    ...(Array.isArray(window.ADNN_DESIGNER_USERS) ? window.ADNN_DESIGNER_USERS.flatMap((item) => {
-      const id = String(item.designerid || item.designerId || item.id || "").trim().toLowerCase();
-      const matchesSelf = [item.email, item.authEmail].map(emailKey).includes(emailKey(activeUser?.email)) ||
-        (id && designerIdVariants().map((value) => String(value).toLowerCase()).includes(id));
-      return matchesSelf ? [item.email, item.authEmail] : [];
-    }) : [])
-  ]);
-}
-
-function designerIdVariants() {
-  const local = readLocalDesignerProfile();
-  const ids = uniqueClean([
-    activeProfile?.designerid,
-    activeProfile?.designerId,
-    local?.designerid,
-    local?.designerId
-  ]);
-  return uniqueClean(ids.flatMap((id) => {
-    const raw = String(id || "").trim();
-    if (!raw) return [];
-    return [raw, raw.toUpperCase(), raw.toLowerCase()];
-  }));
-}
-
-function designerEmailVariants() {
-  const ids = designerIdVariants();
-  return uniqueClean([
-    ...ids.map((id) => `${String(id).toLowerCase()}@adnnstudio.design`),
-    ...ids.map((id) => `designer${String(id).replace(/^d/i, "").toLowerCase()}@adnnstudio.com`)
-  ]);
-}
-
 function selfUidSet() {
-  const designerIds = designerIdVariants();
-  return new Set(uniqueClean([activeUser?.uid, activeProfile?.uid, activeProfile?.id, ownCallUid(), ...designerIds]));
+  return new Set(uniqueClean([activeUser?.uid, activeProfile?.uid, activeProfile?.id, ownCallUid()]));
 }
 
 function selfEmailKeyList() {
@@ -3170,9 +3057,7 @@ function selfEmailKeyList() {
     activeProfile?.email,
     activeProfile?.designerEmail,
     activeProfile?.clientEmail,
-    activeProfile?.authEmail,
-    ...designerDirectoryEmailVariants(),
-    ...designerEmailVariants()
+    activeProfile?.authEmail
   ].map(emailKey));
 }
 

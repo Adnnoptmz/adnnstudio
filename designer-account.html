@@ -1796,7 +1796,7 @@
   <script src="designer-users.js"></script>
   <script type="module" src="firebase-designer-auth.js"></script>
   <script type="module" src="firebase-designer-items.js"></script>
-  <script type="module" src="firebase-chat.js?v=20260615-designer-account-chat"></script>
+  <script type="module" src="firebase-chat.js?v=20260615-designer-account-chat-final-3"></script>
   <script>
     const userKey = "adnnDesignerUser";
     const themeStorageKey = "adnn_designer_light_mode";
@@ -1877,6 +1877,8 @@
       document.querySelectorAll(".view").forEach((section) => section.classList.toggle("active", section.id === selected));
       document.querySelectorAll("[data-view-link]").forEach((link) => link.classList.toggle("active", link.dataset.viewLink === selected));
       document.body.classList.remove("chat-view-active", "adnn-chat-mobile-lock");
+      document.body.classList.toggle("chat-view-active", selected === "chat" || selected === "admin-support");
+      window.dispatchEvent(new CustomEvent("adnn-designer-view-changed", { detail: { view: selected } }));
       const sub = document.getElementById("dynamicPortalSub");
       const heading = document.getElementById("dynamicPortalHeading");
       if (sub) sub.textContent = labels[selected][0];

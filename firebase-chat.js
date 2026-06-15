@@ -548,9 +548,18 @@ function watchChatThreads(scope, listId, roomId, options = {}) {
   } else {
     Array.from(selfUidSet()).forEach((uid, index) => {
       listen(`participant-${index}`, query(collection(db, COLLECTIONS.chats), where("participantUids", "array-contains", uid)));
+      if (activeProfile?.role === "designer") {
+        listen(`designer-uid-${index}`, query(collection(db, COLLECTIONS.chats), where("designerUid", "==", uid)));
+        listen(`assigned-designer-uid-${index}`, query(collection(db, COLLECTIONS.chats), where("assignedDesignerUid", "==", uid)));
+        listen(`designer-id-${index}`, query(collection(db, COLLECTIONS.chats), where("designerId", "==", uid)));
+      }
     });
     selfEmailKeyList().forEach((mail, index) => {
       listen(`participant-email-${index}`, query(collection(db, COLLECTIONS.chats), where("participantEmailKeys", "array-contains", mail)));
+      if (activeProfile?.role === "designer") {
+        listen(`designer-email-${index}`, query(collection(db, COLLECTIONS.chats), where("designerEmail", "==", mail)));
+        listen(`assigned-designer-email-${index}`, query(collection(db, COLLECTIONS.chats), where("assignedDesignerEmail", "==", mail)));
+      }
     });
   }
 
@@ -2853,7 +2862,17 @@ async function getProfile(uid, email) {
   const client = await getDoc(doc(db, "clients", uid)).catch(() => null);
   if (client?.exists()) return enrich("client", client.data());
   const designer = await getDoc(doc(db, "designers", uid)).catch(() => null);
-  if (designer?.exists()) return enrich("designer", designer.data());
+  if (designer?.exists()) return enrich("designer", { id: designer.id, ...designer.data() });
+
+  const mail = emailKey(email);
+  for (const field of ["authEmail", "email", "designerEmail"]) {
+    const match = await getDocs(query(collection(db, "designers"), where(field, "==", mail), limit(1))).catch(() => null);
+    if (match?.docs?.length) {
+      const item = match.docs[0];
+      return enrich("designer", { id: item.id, ...item.data() });
+    }
+  }
+
   const admin = isAdminEmail(email);
   return enrich(admin ? "admin" : "client", {
     name: activeUser?.displayName || emailKey(email).split("@")[0] || (admin ? `${CHAT_CONFIG.brandName} Admin` : "User")
@@ -3048,7 +3067,16 @@ function safeImageUrl(value) {
 }
 
 function selfUidSet() {
-  return new Set(uniqueClean([activeUser?.uid, activeProfile?.uid, activeProfile?.id, ownCallUid()]));
+  return new Set(uniqueClean([
+    activeUser?.uid,
+    activeProfile?.uid,
+    activeProfile?.id,
+    activeProfile?.designerid,
+    activeProfile?.designerId,
+    activeProfile?.designerUID,
+    activeProfile?.assignedDesignerUid,
+    ownCallUid()
+  ]));
 }
 
 function selfEmailKeyList() {
@@ -3056,8 +3084,10 @@ function selfEmailKeyList() {
     activeUser?.email,
     activeProfile?.email,
     activeProfile?.designerEmail,
+    activeProfile?.assignedDesignerEmail,
     activeProfile?.clientEmail,
-    activeProfile?.authEmail
+    activeProfile?.authEmail,
+    activeProfile?.displayEmail
   ].map(emailKey));
 }
 

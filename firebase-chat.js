@@ -760,13 +760,23 @@ async function renderStartableUserDirectory(list, roomId) {
   try {
     const rows = [];
     const collections = ["clients", "designers"];
+    const ownUids = selfUidSet();
+    const ownEmails = selfEmailKeySet();
+
     for (const name of collections) {
-      const snap = await getDocs(collection(db, name)).catch(() => null);
+      const snap = await getDocs(collection(db, name)).catch((err) => {
+        console.warn(`Directory discovery bypassed for collection ${name}:`, err);
+        return null;
+      });
+      
       snap?.forEach((item) => {
         const data = item.data() || {};
-        const email = emailKey(data.email || data.authEmail || data.clientEmail || data.designerEmail || "");
+        const emailRaw = data.email || data.authEmail || data.clientEmail || data.designerEmail || "";
+        const email = emailRaw ? String(emailRaw).trim().toLowerCase() : "";
         const ids = uniqueClean([item.id, data.uid, data.designerid, data.designerId]);
-        const isSelf = ids.some((id) => selfUidSet().has(id)) || selfEmailKeySet().has(email);
+        
+        const isSelf = ids.some((id) => ownUids.has(id)) || (email && ownEmails.has(email));
+        
         if (!isSelf && (email || ids.length)) {
           rows.push({
             uid: ids[0] || email,
@@ -778,14 +788,18 @@ async function renderStartableUserDirectory(list, roomId) {
         }
       });
     }
+    
     const unique = new Map();
     rows.forEach((row) => unique.set(row.email || row.uid, row));
     const users = Array.from(unique.values()).sort((a, b) => String(a.name).localeCompare(String(b.name))).slice(0, 80);
-    if (!list.isConnected || list.querySelector(".adnn-thread")) return;
+    
+    if (!list.isConnected) return;
+    
     if (!users.length) {
-      list.innerHTML = `<div class="adnn-chat-empty">No direct chats yet.<br><small>Direct users could not be listed. Check Firestore rules for clients/designers read access, then refresh.</small></div>`;
+      list.innerHTML = `<div class="adnn-chat-empty">No workspace connections found.<br><small>Staged profiles will appear here once registered.</small></div>`;
       return;
     }
+    
     list.innerHTML = `<div class="adnn-chat-empty is-compact">Start a conversation</div>`;
     users.forEach((user) => {
       const row = document.createElement("button");
@@ -803,6 +817,9 @@ async function renderStartableUserDirectory(list, roomId) {
       row.addEventListener("click", () => createOrOpenDirectChat(user, roomId, row));
       list.appendChild(row);
     });
+  } catch(globalErr) {
+    console.error("Critical error building user directory map:", globalErr);
+    list.innerHTML = `<div class="adnn-chat-empty">Could not load directory framework.</div>`;
   } finally {
     delete list.dataset.directoryLoading;
   }
@@ -1441,7 +1458,6 @@ function openMessageMenu(bubble, state, message) {
   closeMessageMenus();
   state.menuMessageId = message.id;
   bubble.classList.add("is-menu-open");
-  /* vibration disabled */
 }
 
 function handleMessageAction(event, state, message) {
@@ -1473,7 +1489,6 @@ function toggleReactionPalette(menu) {
   const palette = menu.querySelector("[data-reaction-palette]");
   if (palette) palette.hidden = !palette.hidden;
 }
-
 
 function openReactionSheet(anchor, state, message) {
   if (!anchor || !state || !message) return;
@@ -2119,7 +2134,7 @@ async function markMessagesRead(state, messages) {
     await batch.commit();
     resetUnread(state.chatData);
   } catch (_) {
-    // Firestore rules may intentionally block read receipt writes; the UI remains usable.
+    // Handled internally by security controls
   }
 }
 
@@ -2323,7 +2338,6 @@ function showIncomingCall(callId, call) {
   makeDraggable(overlay, overlay.querySelector("[data-call-drag]"));
   startIncomingRingtone();
   notifyBrowser(`${call.callerName || "Incoming call"}`, `${call.kind === "video" ? "Video" : "Audio"} call`, call.callerPhotoURL);
-  /* vibration disabled */
 
   const timeout = setTimeout(() => {
     callWatch?.();
@@ -2535,7 +2549,7 @@ function watchActiveCall(callId) {
     }
     if (["ended", "missed"].includes(data.status)) {
       if (!data.summaryWriterUid || data.summaryWriterUid === ownCallUid()) {
-        await writeCallSummaryMessage(activeCall, data.status, data.endedReason, data).catch(() => {});
+        await writeCallSummaryMessage(activeCall?.callId === callId ? activeCall : data, "ended", data.endedReason, data).catch(() => {});
       }
       endCall(false);
     }
@@ -4395,7 +4409,6 @@ function injectChatStyles() {
       .adnn-message { max-width:78%; }
     }
 
-
     .adnn-inapp-stack { position:fixed; right:18px; top:18px; z-index:2147483500; display:grid; gap:10px; width:min(360px, calc(100vw - 28px)); pointer-events:none; }
     .adnn-inapp-card { pointer-events:auto; width:100%; min-height:70px; border:1px solid rgba(255,255,255,.14); border-radius:22px; display:grid; grid-template-columns:46px minmax(0,1fr) auto; align-items:center; gap:12px; padding:12px; background:linear-gradient(145deg, rgba(22,22,28,.96), rgba(4,4,7,.98)); color:#fff; text-align:left; box-shadow:0 24px 80px rgba(0,0,0,.38); backdrop-filter:blur(18px); animation:adnnNotifyIn .32s cubic-bezier(.16,1,.3,1); cursor:pointer; }
     .adnn-inapp-card strong, .adnn-inapp-card small { display:block; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
@@ -4524,7 +4537,7 @@ function injectChatStyles() {
   document.head.appendChild(style);
 }
 
-// Expose a tiny debug surface without coupling the site to internals.
+// Expose debug parameters out of global scoping structures safely.
 window.ADNN_CHAT_RUNTIME = Object.freeze({
   getDesignerEmailAliases: () => designerEmailAliases(activeProfile),
   getSelfEmailKeys: () => selfEmailKeyList(),

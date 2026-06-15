@@ -700,143 +700,121 @@
       border-radius: 28px;
       position: relative;
       overflow: hidden;
-      display: grid;
-      place-items: center;
-      background:
-        radial-gradient(circle at 30% 22%, rgba(255,255,255,0.58), transparent 18%),
-        linear-gradient(145deg, #71c8ff 0%, #2d62ff 52%, #272dcf 100%);
-      box-shadow: 0 18px 50px rgba(39,45,207,0.34), inset 0 1px 0 rgba(255,255,255,0.35);
+      display: block !important;
+      transition: background 0.5s ease;
+      box-shadow: 0 18px 50px rgba(39,45,207,0.24), inset 0 1px 0 rgba(255,255,255,0.15) !important;
     }
     .adnn-weather-scene:before {
       content: "";
       position: absolute;
       inset: 1px;
       border-radius: inherit;
-      background: linear-gradient(180deg, rgba(255,255,255,0.30), transparent 52%);
+      background: linear-gradient(180deg, rgba(255,255,255,.30), transparent 52%);
       pointer-events: none;
     }
-    .adnn-weather-icon {
-      position: relative;
-      width: 68px;
-      height: 68px;
-      z-index: 1;
-      filter: drop-shadow(0 14px 22px rgba(0,0,0,0.20));
-    }
-    .adnn-weather-sun {
+    .adnn-weather-element {
       position: absolute;
-      width: 42px;
-      height: 42px;
-      left: 13px;
-      top: 9px;
+      opacity: 0;
+      transform: scale(0.8);
+      transition: opacity 0.4s ease, transform 0.4s ease;
+      pointer-events: none;
+    }
+    .element-sun {
+      width: 48px;
+      height: 48px;
+      left: 24px;
+      top: 24px;
       border-radius: 50%;
       background: radial-gradient(circle at 34% 28%, #fff9c7 0 10%, #ffe472 38%, #ffb322 72%, #ff8a00 100%);
-      box-shadow: 0 0 0 7px rgba(255,210,64,0.18), 0 0 34px rgba(255,205,64,0.72);
-      opacity: 0;
+      box-shadow: 0 0 0 .35rem rgba(255,210,64,.15), 0 0 28px rgba(255,205,64,.6);
     }
-    .adnn-weather-cloud {
-      position: absolute;
-      left: 8px;
-      bottom: 13px;
-      width: 54px;
-      height: 24px;
+    .element-moon {
+      width: 44px;
+      height: 44px;
+      left: 26px;
+      top: 26px;
+      border-radius: 50%;
+      background: #e5e9f0;
+      box-shadow: 0 0 18px rgba(229, 233, 240, 0.35), inset -6px -3px 0px rgba(0,0,0,0.12);
+    }
+    .element-cloud {
+      left: 12px;
+      bottom: 20px;
+      width: 72px;
+      height: 28px;
       border-radius: 999px;
-      background: linear-gradient(180deg, #fff, #dce8f7 72%, #b7c6d8);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.96), 0 10px 22px rgba(26,38,72,0.18);
-      opacity: 0;
+      background: linear-gradient(180deg, #ffffff, #cbd5e1);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.9), 0 6px 14px rgba(15,23,42,0.15);
     }
-    .adnn-weather-cloud:before,
-    .adnn-weather-cloud:after {
+    .element-cloud:before, .element-cloud:after {
       content: "";
       position: absolute;
       border-radius: 50%;
       background: inherit;
     }
-    .adnn-weather-cloud:before { width: 30px; height: 30px; left: 8px; top: -16px; }
-    .adnn-weather-cloud:after { width: 36px; height: 36px; right: 3px; top: -21px; }
-    .adnn-weather-rain {
+    .element-cloud:before { width: 38px; height: 36px; left: 12px; top: -18px; }
+    .element-cloud:after { width: 44px; height: 42px; right: 10px; top: -24px; }
+    .element-bolt {
+      left: 40px;
+      top: 40px;
+      width: 20px;
+      height: 30px;
+      background: linear-gradient(180deg, #fff89b, #ffb600);
+      clip-path: polygon(44% 0, 100% 0, 62% 42%, 92% 42%, 28% 100%, 43% 55%, 10% 55%);
+      filter: drop-shadow(0 0 8px rgba(255,213,55,0.8));
+      z-index: 3;
+    }
+    .element-rain-wrap { inset: 0; width: 100%; height: 100%; }
+    .element-rain-wrap .drop {
       position: absolute;
       width: 3px;
       height: 14px;
       border-radius: 999px;
-      background: linear-gradient(180deg, rgba(212,239,255,0.96), rgba(84,177,255,0.72));
-      bottom: 0;
-      opacity: 0;
-      transform: rotate(18deg);
+      background: linear-gradient(180deg, #e2e8f0, #38bdf8);
+      bottom: 8px;
+      transform: rotate(15deg);
     }
-    .rain-a { left: 21px; }
-    .rain-b { left: 34px; }
-    .rain-c { left: 47px; }
-    .adnn-weather-bolt {
-      position: absolute;
-      left: 33px;
-      top: 37px;
-      width: 18px;
-      height: 26px;
-      background: linear-gradient(180deg, #fff89b, #ffb600);
-      clip-path: polygon(44% 0, 100% 0, 62% 42%, 92% 42%, 28% 100%, 43% 55%, 10% 55%);
-      filter: drop-shadow(0 0 11px rgba(255,213,55,0.86));
-      opacity: 0;
-      z-index: 2;
+    .drop-a { left: 26px; }
+    .drop-b { left: 48px; }
+    .drop-c { left: 70px; }
+
+    .adnn-weather-scene[data-weather-scene="clear"] {
+      background: radial-gradient(circle at 30% 22%, rgba(255,255,255,.4), transparent 25%), linear-gradient(145deg, #38bdf8, #2563eb) !important;
     }
-    .adnn-weather-scene[data-weather-scene="clear"] .adnn-weather-sun { opacity: 1; }
-    .adnn-weather-scene[data-weather-scene="cloud"] .adnn-weather-cloud,
-    .adnn-weather-scene[data-weather-scene="fog"] .adnn-weather-cloud { opacity: 1; }
-    .adnn-weather-scene[data-weather-scene="partly"] .adnn-weather-sun { opacity: 1; transform: translate(-12px, -6px) scale(0.86); }
-    .adnn-weather-scene[data-weather-scene="partly"] .adnn-weather-cloud { opacity: 1; }
-    .adnn-weather-scene[data-weather-scene="rain"] .adnn-weather-cloud,
-    .adnn-weather-scene[data-weather-scene="rain"] .adnn-weather-rain,
-    .adnn-weather-scene[data-weather-scene="storm"] .adnn-weather-cloud,
-    .adnn-weather-scene[data-weather-scene="storm"] .adnn-weather-rain,
-    .adnn-weather-scene[data-weather-scene="storm"] .adnn-weather-bolt { opacity: 1; }
-    .adnn-weather-scene[data-weather-scene="snow"] .adnn-weather-cloud { opacity: 1; }
-    .adnn-weather-scene[data-weather-scene="cloud"],
-    .adnn-weather-scene[data-weather-scene="fog"] { background:linear-gradient(145deg, #b9c7d8, #61758c 55%, #334155); }
-    .adnn-weather-scene[data-weather-scene="rain"],
-    .adnn-weather-scene[data-weather-scene="storm"] { background:linear-gradient(145deg, #7f94ad, #34445f 55%, #182035); }
-    .adnn-weather-scene[data-weather-scene="snow"] { background:linear-gradient(145deg, #d8f3ff, #86c7ff 58%, #5f8fe8); }
-    .adnn-clock-copy,
-    .adnn-weather-copy { position: relative; z-index: 1; min-width: 0; }
-    .adnn-clock-copy span,
-    .adnn-weather-copy small {
-      display: block;
-      font-family: var(--font-mono);
-      font-size: 10px;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: rgba(255,255,255,0.56);
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+    .adnn-weather-scene[data-weather-scene="clear"] .element-sun { opacity: 1; transform: scale(1); }
+    .adnn-weather-scene[data-weather-scene="clear-night"] {
+      background: linear-gradient(145deg, #1e293b, #0f172a, #020617) !important;
     }
-    .adnn-clock-copy strong {
-      display: block;
-      margin-top: 4px;
-      font-size: clamp(36px, 5vw, 54px);
-      line-height: 0.95;
-      font-weight: 300;
-      letter-spacing: -0.04em;
-      color: #fff;
+    .adnn-weather-scene[data-weather-scene="clear-night"] .element-moon { opacity: 1; transform: scale(1); }
+    .adnn-weather-scene[data-weather-scene="partly"] {
+      background: linear-gradient(145deg, #bae6fd, #38bdf8, #1d4ed8) !important;
     }
-    .adnn-clock-copy small {
-      display: block;
-      margin-top: 8px;
-      color: rgba(255,255,255,0.58);
-      font-size: 12px;
+    .adnn-weather-scene[data-weather-scene="partly"] .element-sun { opacity: 1; transform: translate(-10px, -10px) scale(0.75); }
+    .adnn-weather-scene[data-weather-scene="partly"] .element-cloud { opacity: 1; transform: scale(1); }
+    .adnn-weather-scene[data-weather-scene="cloud"], .adnn-weather-scene[data-weather-scene="fog"] {
+      background: linear-gradient(145deg, #94a3b8, #475569) !important;
     }
-    .adnn-weather-copy {
-      align-self: end;
-      display: flex;
-      justify-content: space-between;
-      gap: 12px;
-      align-items: end;
-      grid-column: 2;
+    .adnn-weather-scene[data-weather-scene="cloud"] .element-cloud, .adnn-weather-scene[data-weather-scene="fog"] .element-cloud {
+      opacity: 1; transform: scale(1.1) translateY(-4px); background: linear-gradient(180deg, #f1f5f9, #cbd5e1);
     }
-    .adnn-weather-copy strong {
-      font-size: 24px;
-      font-weight: 400;
-      color: #fff;
-      white-space: nowrap;
+    .adnn-weather-scene[data-weather-scene="rain"] {
+      background: linear-gradient(145deg, #64748b, #1e293b) !important;
     }
+    .adnn-weather-scene[data-weather-scene="rain"] .element-cloud { opacity: 1; transform: translateY(-8px) scale(0.95); background: linear-gradient(180deg, #cbd5e1, #94a3b8); }
+    .adnn-weather-scene[data-weather-scene="rain"] .element-rain-wrap { opacity: 1; transform: scale(1); }
+    .adnn-weather-scene[data-weather-scene="storm"] {
+      background: linear-gradient(145deg, #475569, #0f172a) !important;
+    }
+    .adnn-weather-scene[data-weather-scene="storm"] .element-cloud { opacity: 1; transform: translateY(-8px) scale(0.95); background: linear-gradient(180deg, #94a3b8, #475569); }
+    .adnn-weather-scene[data-weather-scene="storm"] .element-bolt { opacity: 1; transform: scale(1); }
+    .adnn-weather-scene[data-weather-scene="storm"] .element-rain-wrap { opacity: 1; transform: scale(1); }
+    .adnn-weather-scene[data-weather-scene="snow"] {
+      background: linear-gradient(145deg, #e0f2fe, #7dd3fc) !important;
+    }
+    .adnn-weather-scene[data-weather-scene="snow"] .element-cloud { opacity: 1; transform: scale(1); background: #ffffff; } }
+    :root.adnn-reduce-motion .adnn-weather-sun,
+    :root.adnn-reduce-motion .adnn-weather-cloud,
+    :root.adnn-reduce-motion .adnn-weather-rain { animation: none !important; }
     @media (max-width: 520px) {
       .adnn-clock-weather-card {
         grid-template-columns: 74px minmax(0, 1fr);
@@ -845,7 +823,6 @@
         border-radius: 22px;
       }
       .adnn-weather-scene { width: 74px; height: 74px; border-radius: 22px; }
-      .adnn-weather-icon { width: 54px; height: 54px; transform: scale(0.9); }
       .adnn-clock-copy strong { font-size: 34px; }
       .adnn-weather-copy { display: grid; justify-items: start; gap: 2px; }
     }
@@ -1170,6 +1147,37 @@
   .adnn-os-mark i { width:15px; height:15px; border-radius:5px; background:#fff; box-shadow:0 0 18px rgba(255,255,255,.8); clip-path:polygon(50% 0,64% 36%,100% 50%,64% 64%,50% 100%,36% 64%,0 50%,36% 36%); }
   .adnn-os-chip { padding:7px 10px; border-radius:999px; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.10); color:var(--muted); font:10px var(--font-mono); }
 </style>
+<style id="adnn-mobile-overflow-guard">
+  html, body { max-width: 100%; overflow-x: clip; overscroll-behavior-x: none; }
+  @supports not (overflow-x: clip) { html, body { overflow-x: hidden; } }
+  body, .shell, main, aside, .view, .admin-view-panel-container, .panel, .glass { min-width: 0; max-width: 100%; }
+  img, video, canvas, svg { max-width: 100%; }
+  @media (max-width: 760px) {
+    body { width: 100%; position: relative; }
+    .shell, main, .view, .admin-view-panel-container { overflow-x: hidden; }
+  }
+</style>
+<style id="adnn-mobile-header-stability">
+  @media (max-width: 760px) {
+    body:not(.locked):not(.auth-pending) .mobile-header-bar {
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      right: 0 !important;
+      z-index: 2147482500 !important;
+      display: flex !important;
+      transform: none !important;
+      will-change: auto !important;
+      backface-visibility: hidden;
+    }
+    body:not(.locked):not(.auth-pending):not(.adnn-chat-mobile-lock) > .shell {
+      padding-top: 64px !important;
+    }
+    body.adnn-chat-mobile-lock .mobile-header-bar {
+      display: none !important;
+    }
+  }
+</style>
 </head>
 <body>
 
@@ -1482,26 +1490,31 @@
               <p class="help">Select a calendar date to view or insert system entries.</p>
             </div>
             <div class="adnn-clock-weather-card" data-weather-clock>
-              <div class="adnn-weather-scene" data-weather-scene="clear" aria-hidden="true">
-                <span class="adnn-weather-icon">
-                  <span class="adnn-weather-sun"></span>
-                  <span class="adnn-weather-cloud"></span>
-                  <span class="adnn-weather-rain rain-a"></span>
-                  <span class="adnn-weather-rain rain-b"></span>
-                  <span class="adnn-weather-rain rain-c"></span>
-                  <span class="adnn-weather-bolt"></span>
-                </span>
-              </div>
-              <div class="adnn-clock-copy">
-                <span id="adminWeatherLabel">Device time</span>
-                <strong id="adminClockTime">--:--</strong>
-                <small id="adminClockDate">Syncing local clock</small>
-              </div>
-              <div class="adnn-weather-copy">
-                <strong id="adminWeatherTemp">--</strong>
-                <small id="adminWeatherPlace">Weather loading</small>
-              </div>
-            </div>
+  <div class="adnn-weather-scene" data-weather-scene="clear" aria-hidden="true">
+    <div class="adnn-weather-element element-sun"></div>
+
+    <div class="adnn-weather-element element-moon"></div>
+
+    <div class="adnn-weather-element element-cloud"></div>
+
+    <div class="adnn-weather-element element-bolt"></div>
+
+    <div class="adnn-weather-element element-rain-wrap">
+      <span class="drop drop-a"></span>
+      <span class="drop drop-b"></span>
+      <span class="drop drop-c"></span>
+    </div>
+  </div>
+  <div class="adnn-clock-copy">
+    <span id="adminWeatherLabel">Device time</span>
+    <strong id="adminClockTime">--:--</strong>
+    <small id="adminClockDate">Syncing local clock</small>
+  </div>
+  <div class="adnn-weather-copy">
+    <strong id="adminWeatherTemp">--</strong>
+    <small id="adminWeatherPlace">Weather loading</small>
+  </div>
+</div>
           </div>
         </div>
       </div>
@@ -2504,6 +2517,7 @@
 
         const weatherText = {
           clear: "Sunny",
+          "clear-night": "Clear Night",
           partly: "Partly cloudy",
           cloud: "Cloudy",
           fog: "Fog",
@@ -2511,25 +2525,29 @@
           storm: "Storm",
           snow: "Snow"
         };
+
         const setWeather = (kind, temp = "--", place = "Local weather") => {
           const safeKind = weatherText[kind] ? kind : "clear";
-          if (sceneNode) sceneNode.dataset.weatherScene = safeKind;
+          if (sceneNode) sceneNode.setAttribute("data-weather-scene", safeKind);
           if (tempNode) tempNode.textContent = temp;
           if (placeNode) placeNode.textContent = place;
           if (labelNode) labelNode.textContent = weatherText[safeKind] || "Current weather";
         };
-        const codeToKind = (code) => {
+
+        const codeToKind = (code, isDaytime) => {
           const n = Number(code);
-          if (n === 0) return "clear";
+          if (n === 0) return isDaytime ? "clear" : "clear-night";
           if ([1, 2].includes(n)) return "partly";
           if (n === 3) return "cloud";
           if ([45, 48].includes(n)) return "fog";
           if ([51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82].includes(n)) return "rain";
           if ([71, 73, 75, 77, 85, 86].includes(n)) return "snow";
           if ([95, 96, 99].includes(n)) return "storm";
-          return "clear";
+          return isDaytime ? "clear" : "clear-night";
         };
+
         const cleanCityName = (value) => String(value || "").replace(/^(city of|governorate of)\s+/i, "").trim();
+
         const getCityName = async (latitude, longitude) => {
           try {
             const reverseUrl = `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${encodeURIComponent(latitude)}&longitude=${encodeURIComponent(longitude)}&localityLanguage=en`;
@@ -2542,28 +2560,32 @@
         };
 
         if (!navigator.geolocation || !window.fetch) {
-          setWeather("clear", "--", "Location needed");
+          setWeather("clear", "--", "Device clock");
           return;
         }
         navigator.geolocation.getCurrentPosition(async (pos) => {
           try {
             const { latitude, longitude } = pos.coords || {};
-            const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${encodeURIComponent(latitude)}&longitude=${encodeURIComponent(longitude)}&current=temperature_2m,weather_code&timezone=auto`;
+            const url = `https://api.open-meteo.com/v1/forecast?latitude=${encodeURIComponent(latitude)}&longitude=${encodeURIComponent(longitude)}&current=temperature_2m,weather_code,is_day&timezone=auto`;
+            
             const [weatherResponse, cityName] = await Promise.all([
-              fetch(weatherUrl),
+              fetch(url),
               getCityName(latitude, longitude)
             ]);
+
             const data = await weatherResponse.json();
             const current = data?.current || {};
+            const isDaytime = current.is_day === 1;
+            
             setWeather(
-              codeToKind(current.weather_code),
-              Number.isFinite(current.temperature_2m) ? `${Math.round(current.temperature_2m)}°` : "--",
+              codeToKind(current.weather_code, isDaytime), 
+              Number.isFinite(current.temperature_2m) ? `${Math.round(current.temperature_2m)}°` : "--", 
               cityName
             );
           } catch (_) {
             setWeather("clear", "--", "Weather unavailable");
           }
-        }, () => setWeather("clear", "--", "Location off"), { maximumAge: 900000, timeout: 8000 });
+        }, () => setWeather("clear", "--", "Location off"), { maximumAge: 900000, timeout: 5000 });
       }
 
       function moveAdminOsToSettingsOnly() {
@@ -2870,7 +2892,9 @@
             uid: docSnap.id,
             collectionName,
             role: data.role || (collectionName === "designers" ? "designer" : "client"),
-            email: emailKey(data.email || data.authEmail || data.displayEmail || email),
+            email: emailKey(collectionName === "designers"
+              ? (data.authEmail || data.email || data.displayEmail || email)
+              : (data.email || data.authEmail || data.displayEmail || email)),
             name: data.name || data.displayName || data.designerName || data.displayEmail || data.email || email,
             photoURL: data.photoURL || data.avatarURL || data.picture || data.profilePhotoURL || ""
           };
@@ -2967,7 +2991,9 @@
       onSnapshot(collection(db, collectionName), (snapshot) => {
         snapshot.docs.forEach((item) => {
           const data = item.data() || {};
-          const email = emailKey(data.email || data.authEmail || data.displayEmail);
+          const email = emailKey(collectionName === "designers"
+            ? (data.authEmail || data.email || data.displayEmail)
+            : (data.email || data.authEmail || data.displayEmail));
           if (!email) return;
           portalSuggestionUsers.set(`${collectionName}:${item.id}`, {
             id: item.id,
@@ -3268,7 +3294,7 @@
       }
     });
   </script>
-  <script type="module" src="firebase-chat.js?v=20260614-realtime-ui"></script>
+  <script type="module" src="firebase-chat.js?v=20260615-standard-account-chat"></script>
 
 <script id="adnn-settings-upgrade-js">
 (function setupAdnnSettingsUpgrade(){

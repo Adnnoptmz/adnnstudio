@@ -2692,8 +2692,9 @@
       if (!accessToken) return;
       sessionStorage.setItem("adnnGoogleAccessToken", accessToken);
       
-      // Clear thread unread cache values to refresh interface states smoothly
+      // Clear cache tokens to enforce a fresh, un-cached data fetch from Firestore
       try { localStorage.removeItem("adnn_pinned_chat_ids"); } catch(_) {}
+      try { localStorage.removeItem("adnn_chat_unread_total"); } catch(_) {}
       history.replaceState(null, "", location.pathname);
       const response = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
         headers: { Authorization: `Bearer ${accessToken}` },
@@ -3479,7 +3480,7 @@
 	    }
 	  </script>
   <script type="module" src="firebase-account.js" onerror="window.adnnAccountModuleFallback && window.adnnAccountModuleFallback()"></script>
-  <script type="module" src="firebase-chat.js?v=20260615-standard-account-chat"></script>
+  <script type="module" src="firebase-chat.js?v=20260616-chat-list-fix"></script>
 
 <script id="adnn-settings-upgrade-js">
 (function setupAdnnSettingsUpgrade(){

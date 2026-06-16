@@ -1631,7 +1631,7 @@
   (function() {
     try {
       const userSession = JSON.parse(localStorage.getItem("adhnanPortfolioUser"));
-      if (userSession && userSession.email && ["getavcollab@gmail.com", "youradmin@gmail.com"].includes(userSession.email.trim().toLowerCase())) {
+      if (userSession && userSession.email && userSession.email.trim().toLowerCase() === "getavcollab@gmail.com") {
         window.location.replace("admin.html");
       }
     } catch(e) {}
@@ -2574,7 +2574,7 @@
 	    }
     function hydrateUser() {
       const user = getUser();
-      if (user && user.email && ["getavcollab@gmail.com", "youradmin@gmail.com"].includes(user.email.trim().toLowerCase())) {
+      if (user && user.email && user.email.trim().toLowerCase() === "getavcollab@gmail.com") {
         location.href = "admin.html";
         return;
       }
@@ -2701,7 +2701,7 @@
       if (!response.ok) throw new Error("Google profile request failed.");
       const profile = await response.json();
       if (!profile || !profile.email) throw new Error("Google profile email is missing.");
-      const isAdminEmail = ["getavcollab@gmail.com", "youradmin@gmail.com"].includes(profile.email.trim().toLowerCase());
+      const isAdminEmail = profile.email.trim().toLowerCase() === "getavcollab@gmail.com";
       localStorage.setItem(userKey, JSON.stringify({
         name: profile.name,
         email: profile.email,

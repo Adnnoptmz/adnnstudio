@@ -2568,6 +2568,13 @@
   .side-notification-badge { min-width:18px; height:18px; padding:0 5px; border-radius:999px; display:grid; place-items:center; background:#ff2602; color:#fff; font-size:10px; line-height:1; box-shadow:0 0 0 2px rgba(0,0,0,.18), 0 8px 22px rgba(255,38,2,.38); }
   .side-notification-badge[hidden] { display:none !important; }
 </style>
+<style id="adnn-site-overflow-guard">
+  html, body { max-width: 100%; overflow-x: clip; overscroll-behavior-x: none; }
+  @supports not (overflow-x: clip) { html, body { overflow-x: hidden; } }
+  body { width: 100%; position: relative; }
+  main, section, header, footer { max-width: 100%; }
+  img, video, canvas, svg { max-width: 100%; }
+</style>
 </head>
 	<body class="auth-state-pending">
 	  <img src="bg1-hero.jpg" fetchpriority="high" loading="eager" width="2048" height="1365" alt="" style="position:absolute; width:1px; height:1px; opacity:0.01; pointer-events:none; z-index:-9999; top:0; left:0;" aria-hidden="true" decoding="sync">
@@ -3783,6 +3790,12 @@
     const accessToken = params.get("access_token");
     if (!accessToken) return;
     sessionStorage.setItem("adnnGoogleAccessToken", accessToken);
+    
+    // Clear thread unread cache values to refresh interface states smoothly
+    try { localStorage.removeItem("adnn_pinned_chat_ids"); } catch(_) {}
+    
+    // Clear out any old offline persistence parameters to force clean chat sync
+    try { localStorage.removeItem("adnn_pinned_chat_ids"); } catch(_) {}
 
     history.replaceState(null, "", location.pathname);
     const response = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {

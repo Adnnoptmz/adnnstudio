@@ -551,10 +551,12 @@ function watchChatThreads(scope, listId, roomId, options = {}) {
     });
   } else {
     Array.from(selfUidSet()).forEach((uid, index) => {
-      listen(`participant-${index}`, query(collection(db, COLLECTIONS.chats), where("participantUids", "array-contains", uid)));
+      if (!uid || uid.trim() === "") return;
+      listenSource(`participant-${index}`, query(collection(db, COLLECTIONS.chats), where("participantUids", "array-contains", uid)));
     });
     selfEmailKeyList().forEach((mail, index) => {
-      listen(`participant-email-${index}`, query(collection(db, COLLECTIONS.chats), where("participantEmailKeys", "array-contains", mail)));
+      if (!mail || mail.trim() === "") return;
+      listenSource(`participant-email-${index}`, query(collection(db, COLLECTIONS.chats), where("participantEmailKeys", "array-contains", mail)));
     });
   }
 
@@ -2902,7 +2904,7 @@ function designerEmailAliases(profile = activeProfile) {
     stored.designerEmail,
     id ? `${id}@adnnstudio.design` : "",
     padded ? `${padded}@adnnstudio.design` : ""
-  ].map(emailKey));
+  ].map(emailKey)).filter(email => email && email.trim() !== ""); // Strip empty strings to prevent query crashes
 }
 
 function designerUidAliases(profile = activeProfile) {
@@ -3159,7 +3161,7 @@ function selfEmailKeyList() {
     activeProfile?.displayEmail,
     ...designerEmailAliases(activeProfile),
     ...(Array.isArray(activeProfile?.emailKeys) ? activeProfile.emailKeys : [])
-  ].map(emailKey));
+  ].map(emailKey)).filter(email => email && email.trim() !== ""); // Strict enforcement check
 }
 
 function selfEmailKeySet() {

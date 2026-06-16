@@ -859,6 +859,7 @@ async function createOrOpenDirectChat(other, roomId, row = null) {
       [ownCallUid()]: emailKey(activeUser.email),
       [otherUid]: other.email || ""
     },
+    participantEmailKeys: [emailKey(activeUser.email), emailKey(other.email || "")], // Force clean array mapping
     lastMessage: "Channel connected.",
     lastMessageKind: "system",
     unreadBy: {},

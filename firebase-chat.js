@@ -281,9 +281,13 @@ async function handleAuthState(user) {
     name: activeUser.displayName || emailKey(activeUser.email).split("@")[0] || "User",
     photoURL: activeUser.photoURL || ""
   }));
+
+  // Introduce a slight delay allowing Firebase token verification to settle with database rules
+  await new Promise(resolve => setTimeout(resolve, 300));
+
   sessionStarted = true;
-  notificationsReadyAtMs = Date.now() + 12000;
-  chatAudioReadyAtMs = Date.now() + 12000;
+  notificationsReadyAtMs = Date.now() + 1400;
+  chatAudioReadyAtMs = Date.now() + 1400;
   threadUnreadCache.clear();
   threadNotifyState.clear();
   startPresence(activeUser);
@@ -3520,7 +3524,8 @@ function cleanupSession({ keepFirebase = false } = {}) {
   activeProfile = null;
   activeUser = null;
   sessionStarted = false;
-}
+  window.notificationsReadyAtMs = Date.now() + 2600; // Reset initialization delays safely
+  if (!keepFirebase) {
 
 
 function confirmDanger(title, message, confirmText = "Confirm") {

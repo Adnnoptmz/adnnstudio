@@ -2691,6 +2691,9 @@
       const accessToken = params.get("access_token");
       if (!accessToken) return;
       sessionStorage.setItem("adnnGoogleAccessToken", accessToken);
+      
+      // Clear thread unread cache values to refresh interface states smoothly
+      try { localStorage.removeItem("adnn_pinned_chat_ids"); } catch(_) {}
       history.replaceState(null, "", location.pathname);
       const response = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
         headers: { Authorization: `Bearer ${accessToken}` },
@@ -3207,7 +3210,7 @@
       setInterval(tick, 1000);
 
       const weatherText = {
-        clear: "Sunny",
+        clear: "-----",
         "clear-night": "Clear Night",
         partly: "Partly cloudy",
         cloud: "Cloudy",

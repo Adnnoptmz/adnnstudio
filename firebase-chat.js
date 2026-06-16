@@ -287,6 +287,7 @@ async function handleAuthState(user) {
 
   sessionStarted = true;
   notificationsReadyAtMs = Date.now() + 1400;
+  chatAudioReadyAtMs = Date.now() + 1400; // Restore missing timestamp assignment
   threadUnreadCache.clear();
   threadNotifyState.clear();
   startPresence(activeUser);

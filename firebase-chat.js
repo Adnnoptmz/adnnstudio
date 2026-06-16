@@ -593,9 +593,8 @@ function isChatVisibleForCurrentUser(chat) {
   if (chat.type === "support") {
     const adminOnly = [ADMIN_ALIAS_UID, ADMIN_EMAIL].includes(String(chat.id || "").toLowerCase());
     if (adminOnly) return false;
-    return chatBelongsToCurrentUser(chat);
   }
-  return chatBelongsToCurrentUser(chat);
+  return true;
 }
 
 function chatBelongsToCurrentUser(chat) {

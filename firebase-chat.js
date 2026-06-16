@@ -282,12 +282,11 @@ async function handleAuthState(user) {
     photoURL: activeUser.photoURL || ""
   }));
 
-  // Introduce a slight delay allowing Firebase token verification to settle with database rules
+  // Wait 300ms for Firebase security claims to register before spinning up listeners
   await new Promise(resolve => setTimeout(resolve, 300));
 
   sessionStarted = true;
   notificationsReadyAtMs = Date.now() + 1400;
-  chatAudioReadyAtMs = Date.now() + 1400;
   threadUnreadCache.clear();
   threadNotifyState.clear();
   startPresence(activeUser);
@@ -3524,7 +3523,7 @@ function cleanupSession({ keepFirebase = false } = {}) {
   activeProfile = null;
   activeUser = null;
   sessionStarted = false;
-  window.notificationsReadyAtMs = Date.now() + 2600; // Reset initialization delays safely
+  notificationsReadyAtMs = Date.now() + 2600; // Reset initialization gates to silences flash fetches
   if (!keepFirebase) {
 
 

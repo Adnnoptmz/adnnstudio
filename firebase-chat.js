@@ -552,11 +552,11 @@ function watchChatThreads(scope, listId, roomId, options = {}) {
   } else {
     Array.from(selfUidSet()).forEach((uid, index) => {
       if (!uid || uid.trim() === "") return;
-      listenSource(`participant-${index}`, query(collection(db, COLLECTIONS.chats), where("participantUids", "array-contains", uid)));
+      listen(`participant-${index}`, query(collection(db, COLLECTIONS.chats), where("participantUids", "array-contains", uid)));
     });
     selfEmailKeyList().forEach((mail, index) => {
       if (!mail || mail.trim() === "") return;
-      listenSource(`participant-email-${index}`, query(collection(db, COLLECTIONS.chats), where("participantEmailKeys", "array-contains", mail)));
+      listen(`participant-email-${index}`, query(collection(db, COLLECTIONS.chats), where("participantEmailKeys", "array-contains", mail)));
     });
   }
 
@@ -4549,7 +4549,7 @@ window.ADNN_CHAT_RUNTIME = Object.freeze({
   getDesignerEmailAliases: () => designerEmailAliases(activeProfile),
   getSelfEmailKeys: () => selfEmailKeyList(),
   getSelfUidKeys: () => Array.from(selfUidSet()),
-  version: "2.3.0-message-card-settings-sheet",
+  version: "2.3.1-chat-list-listener-fix",
   refresh: refreshAllConnections,
   get activeUser() { return activeUser ? { uid: activeUser.uid, email: activeUser.email } : null; },
   get activeCall() { return activeCall ? { callId: activeCall.callId, kind: activeCall.kind, role: activeCall.role } : null; },

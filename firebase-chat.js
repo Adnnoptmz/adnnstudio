@@ -531,10 +531,14 @@ function watchChatThreads(scope, listId, roomId, options = {}) {
     renderThreadList(chats, list, roomId, scope);
   };
 
-  const listen = (key, refOrQuery) => resilientSnapshot(`threads:${listId}:${key}`, refOrQuery, (snapshot) => {
+  const listen = (key, refOrQuery, quiet = false) => resilientSnapshot(`threads:${listId}:${key}`, refOrQuery, (snapshot) => {
     sources.set(key, new Map(snapshot.docs.map((item) => [item.id, { id: item.id, ...item.data(), __pending: item.metadata.hasPendingWrites }])));
     renderMergedThreads();
   }, (error) => {
+    if (quiet) {
+      renderMergedThreads();
+      return;
+    }
     if (!sources.size) {
       list.innerHTML = `<div class="adnn-chat-empty">${escapeHtml(readableFirebaseError(error))}</div>`;
       renderPassiveRoom(roomId, "Chats unavailable", "Chats are not available right now.", "Waiting for chat");
@@ -550,13 +554,25 @@ function watchChatThreads(scope, listId, roomId, options = {}) {
       listen(`admin-email-${index}`, query(collection(db, COLLECTIONS.chats), where("participantEmailKeys", "array-contains", mail)));
     });
   } else {
+    const primaryUids = new Set(uniqueClean([activeUser.uid, ownCallUid()]));
+    const primaryEmail = emailKey(activeUser.email);
     Array.from(selfUidSet()).forEach((uid, index) => {
       if (!uid || uid.trim() === "") return;
-      listen(`participant-${index}`, query(collection(db, COLLECTIONS.chats), where("participantUids", "array-contains", uid)));
+      const quietAlias = !primaryUids.has(uid);
+      listen(`participant-${index}`, query(collection(db, COLLECTIONS.chats), where("participantUids", "array-contains", uid)), quietAlias);
+      listen(`legacy-member-uid-${index}`, query(collection(db, COLLECTIONS.chats), where("members", "array-contains", uid)), true);
+      listen(`legacy-user-uid-${index}`, query(collection(db, COLLECTIONS.chats), where("userUids", "array-contains", uid)), true);
     });
     selfEmailKeyList().forEach((mail, index) => {
       if (!mail || mail.trim() === "") return;
-      listen(`participant-email-${index}`, query(collection(db, COLLECTIONS.chats), where("participantEmailKeys", "array-contains", mail)));
+      const quietAlias = mail !== primaryEmail;
+      listen(`participant-email-${index}`, query(collection(db, COLLECTIONS.chats), where("participantEmailKeys", "array-contains", mail)), quietAlias);
+      listen(`legacy-participant-email-${index}`, query(collection(db, COLLECTIONS.chats), where("participantEmails", "array-contains", mail)), true);
+      listen(`legacy-member-email-${index}`, query(collection(db, COLLECTIONS.chats), where("memberEmails", "array-contains", mail)), true);
+      listen(`legacy-member-mail-${index}`, query(collection(db, COLLECTIONS.chats), where("members", "array-contains", mail)), true);
+      listen(`legacy-client-email-${index}`, query(collection(db, COLLECTIONS.chats), where("clientEmail", "==", mail)), true);
+      listen(`legacy-designer-email-${index}`, query(collection(db, COLLECTIONS.chats), where("designerEmail", "==", mail)), true);
+      listen(`legacy-assigned-designer-email-${index}`, query(collection(db, COLLECTIONS.chats), where("assignedDesignerEmail", "==", mail)), true);
     });
   }
 
@@ -860,7 +876,6 @@ async function createOrOpenDirectChat(other, roomId, row = null) {
       [ownCallUid()]: emailKey(activeUser.email),
       [otherUid]: other.email || ""
     },
-    participantEmailKeys: [emailKey(activeUser.email), emailKey(other.email || "")], // Force clean array mapping
     lastMessage: "Channel connected.",
     lastMessageKind: "system",
     unreadBy: {},

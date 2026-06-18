@@ -123,20 +123,9 @@ const DEFAULT_CONFIG = {
 };
 
 const CHAT_CONFIG = deepMerge(DEFAULT_CONFIG, window.ADNN_CHAT_CONFIG || {});
-
-const ADNN_FIREBASE_FALLBACK_CONFIG = Object.freeze({
-  apiKey: "AIzaSyChrcjNZdMZ1QehOSDsyWO2jeArnZ1AgCk",
-  authDomain: "adnnstudio-ffdc7.firebaseapp.com",
-  projectId: "adnnstudio-ffdc7",
-  storageBucket: "adnnstudio-ffdc7.firebasestorage.app",
-  messagingSenderId: "525462599967",
-  appId: "1:525462599967:web:51bfcb3cf5f1af629ad82a",
-  measurementId: "G-D6HWQB9V0M"
-});
-
 const ADMIN_EMAIL = emailKey(CHAT_CONFIG.adminEmail);
 const ADMIN_ALIAS_UID = CHAT_CONFIG.adminAliasUid;
-const FIREBASE_CONFIG = window.ADNN_FIREBASE_CONFIG || window.firebaseConfig || ADNN_FIREBASE_FALLBACK_CONFIG;
+const FIREBASE_CONFIG = window.ADNN_FIREBASE_CONFIG || window.firebaseConfig || null;
 const COLLECTIONS = Object.freeze({
   chats: "chats",
   messages: "messages",
@@ -4560,7 +4549,7 @@ window.ADNN_CHAT_RUNTIME = Object.freeze({
   getDesignerEmailAliases: () => designerEmailAliases(activeProfile),
   getSelfEmailKeys: () => selfEmailKeyList(),
   getSelfUidKeys: () => Array.from(selfUidSet()),
-  version: "2.3.2-deep-chat-config-rules-fix",
+  version: "2.3.0-message-card-settings-sheet",
   refresh: refreshAllConnections,
   get activeUser() { return activeUser ? { uid: activeUser.uid, email: activeUser.email } : null; },
   get activeCall() { return activeCall ? { callId: activeCall.callId, kind: activeCall.kind, role: activeCall.role } : null; },

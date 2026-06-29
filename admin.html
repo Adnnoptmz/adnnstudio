@@ -2975,6 +2975,15 @@
             payload.createdAtMs = now;
           }
           await setDoc(chatRef, payload, { merge: true });
+          await Promise.all([userA, userB].map((user) => setDoc(doc(db, "chatUsers", user.uid), {
+            uid: user.uid,
+            email: user.email,
+            displayEmail: user.email,
+            name: user.name,
+            photoURL: user.photoURL || "",
+            role: user.role || "client",
+            updatedAt: serverTimestamp()
+          }, { merge: true }))).catch(() => {});
           form.reset();
           say(existed ? `Existing chat refreshed for ${userA.email} and ${userB.email}.` : `Chat created. It is now visible in both users' User Chats feed.`);
         } catch (error) {
@@ -3049,6 +3058,15 @@
             payload.createdAtMs = now;
           }
           await setDoc(chatRef, payload, { merge: true });
+          await Promise.all(users.map((user) => setDoc(doc(db, "chatUsers", user.uid), {
+            uid: user.uid,
+            email: user.email,
+            displayEmail: user.email,
+            name: user.name,
+            photoURL: user.photoURL || "",
+            role: user.role || "client",
+            updatedAt: serverTimestamp()
+          }, { merge: true }))).catch(() => {});
           form.reset();
           say(existed ? `Existing group refreshed: ${groupName}.` : `Group created. It is now visible to ${users.length} users.`);
         } catch (error) {
@@ -3194,7 +3212,7 @@
       }
     });
   </script>
-  <script type="module" src="firebase-chat.js?v=20260629-user-direct-legacy-email"></script>
+  <script type="module" src="firebase-chat.js?v=20260629-chat-users-directory"></script>
 
 <script id="adnn-settings-upgrade-js">
 (function setupAdnnSettingsUpgrade(){

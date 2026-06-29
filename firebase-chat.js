@@ -615,7 +615,9 @@ function watchChatThreads(scope, listId, roomId, options = {}) {
     chats.forEach((chat) => unique.set(chat.id, { ...(unique.get(chat.id) || {}), ...chat }));
     chats = Array.from(unique.values()).filter(isChatVisibleForCurrentUser);
     if (scope === "admin") chats = chats.filter(isVisibleToAdminInbox);
-    if (options.directOnly || options.excludeSupport) chats = chats.filter((chat) => chat.type !== "support");
+    if (options.directOnly || options.excludeSupport) {
+      chats = chats.filter((chat) => chat.type !== "support" && !chat.legacySupport && !String(chat.id || "").startsWith("support_"));
+    }
     chats.sort((a, b) => toMillis(b.updatedAt || b.createdAt || b.updatedAtMs) - toMillis(a.updatedAt || a.createdAt || a.updatedAtMs));
     renderThreadList(chats, list, roomId, scope);
   };

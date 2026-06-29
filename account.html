@@ -960,6 +960,22 @@
 	      font-size:11px;
 	    }
 	    
+	    /* Forces Client Mounted Container To Render Exactly As Designer Layout style */
+	    #clientChatMount.adnn-designer-chat-panel {
+	      display: grid !important;
+	      grid-template-rows: 1fr auto !important;
+	      height: 560px !important;
+	      min-height: 0 !important;
+	      border: 1px solid var(--line) !important;
+	      border-radius: 24px !important;
+	      overflow: hidden !important;
+	      background: transparent !important;
+	      box-shadow: none !important;
+	    }
+	    #clientChatMount.adnn-designer-chat-panel .adnn-chat-messages {
+	      height: 100% !important;
+	      min-height: 0 !important;
+	    }
 	    /* Unaltered Admin Studio Interactive Calendar Core UI */
     .apple-cal-wrap {
       display: grid;
@@ -1684,6 +1700,11 @@
 	          <span>User Chats</span>
               <span class="side-notification-badge" data-account-badge="chat" hidden>0</span>
 	        </a>
+            <a href="#admin-support" data-view-link="admin-support">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5c4.7 0 8.5 3.2 8.5 7.2s-3.8 7.2-8.5 7.2c-.9 0-1.8-.1-2.6-.4L4.5 20l1.4-4A6.6 6.6 0 0 1 3.5 10.7c0-4 3.8-7.2 8.5-7.2Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+              <span>Admin Support</span>
+              <span class="side-notification-badge" data-account-badge="support" hidden>0</span>
+            </a>
 	        <a href="#calendar" data-view-link="calendar">
 	          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4" width="17" height="17" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M8 2.5v4M16 2.5v4M3.5 10h9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
 	          <span>Calendar</span>
@@ -1747,6 +1768,10 @@
 	      <section id="chat" class="view">
         <div id="directChatMount"></div>
       </section>
+
+      <section id="admin-support" class="view">
+	    <div id="clientChatMount" class="adnn-designer-chat-panel" style="margin-top: 0;"></div>
+	  </section>
 
 	      <section id="calendar" class="view">
         <p class="kicker">Schedule</p>
@@ -2596,15 +2621,16 @@
       }
     }
 	    function setView(view) {
-	      const selected = ["notifications", "tasks", "chat", "calendar", "notes", "invoice", "settings", "terms"].includes(view) ? view : "tasks";
+	      const selected = ["notifications", "tasks", "chat", "admin-support", "calendar", "notes", "invoice", "settings", "terms"].includes(view) ? view : "tasks";
 	      document.querySelectorAll(".view").forEach((section) => section.classList.toggle("active", section.id === selected));
 	      document.querySelectorAll("[data-view-link]").forEach((link) => link.classList.toggle("active", link.dataset.viewLink === selected));
-	      document.body.classList.toggle("chat-view-active", selected === "chat");
+	      document.body.classList.toggle("chat-view-active", selected === "chat" || selected === "admin-support");
 	      if (location.hash.replace("#", "") !== selected) history.replaceState(null, "", `#${selected}`);
 	      const headingMap = {
 	        notifications: ["Private Account", "Notifications"],
 	        tasks: ["Project Workspace", "Tasks"],
 	        chat: ["", ""],
+        "admin-support": ["", ""],
 	        calendar: ["Personal Schedule", "Reminder Calendar"],
 	        notes: ["Personal Notes", "Notes"],
 	        invoice: ["Billing", "Invoice"],
@@ -3454,7 +3480,7 @@
 	    }
 	  </script>
   <script type="module" src="firebase-account.js" onerror="window.adnnAccountModuleFallback && window.adnnAccountModuleFallback()"></script>
-  <script type="module" src="firebase-chat.js?v=20260629-admin-restored-support-removed"></script>
+  <script type="module" src="firebase-chat.js?v=20260618-chat-rulesafe-listeners"></script>
 
 <script id="adnn-settings-upgrade-js">
 (function setupAdnnSettingsUpgrade(){

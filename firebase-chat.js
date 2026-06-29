@@ -2422,6 +2422,7 @@ async function startCall(kind, chatId, chatData) {
     activeCall.ringTimer = setTimeout(() => markCallMissed(callId), CHAT_CONFIG.callRingTimeoutMs + 1200);
     watchActiveCall(callId);
   } catch (error) {
+    console.error("Call Engine Error:", error);
     endCall(false);
     showToast("Camera or microphone permission is needed.", "bad");
   }
@@ -2718,9 +2719,16 @@ function attachCallMedia() {
   if (localVideo && localVideo.srcObject !== activeCall.localStream) localVideo.srcObject = activeCall.localStream;
   if (remoteVideo && remoteVideo.srcObject !== activeCall.remoteStream) remoteVideo.srcObject = activeCall.remoteStream;
   
-  // Force WebRTC video elements to wake up instantly
-  localVideo?.play?.().catch(() => {});
-  remoteVideo?.play?.().catch(() => {});
+  // Safely play WebRTC video elements without crashing on strict browser states
+  try {
+    const p1 = localVideo?.play?.();
+    if (p1 && typeof p1.catch === "function") p1.catch(() => {});
+  } catch (e) {}
+  
+  try {
+    const p2 = remoteVideo?.play?.();
+    if (p2 && typeof p2.catch === "function") p2.catch(() => {});
+  } catch (e) {}
 
   // Simplify validation to guarantee tiles render when upgraded to video
   const localOn = activeCall.kind === "video" && !activeCall.onHold && activeCall.cameraOn;

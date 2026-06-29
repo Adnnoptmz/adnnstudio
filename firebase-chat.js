@@ -2590,10 +2590,10 @@ async function setupPeerConnection(call, caller) {
     addDoc(collection(db, COLLECTIONS.calls, call.callId, path), event.candidate.toJSON()).catch(() => {});
   };
 
-  pc.ontrack = (event) => {
-    const streams = event.streams?.length ? event.streams : [new MediaStream([event.track])];
-    streams[0].getTracks().forEach((track) => {
-      if (!call.remoteStream.getTracks().some((existing) => existing.id === track.id)) {
+  pc.ontrackpc.ontrack = (event) => {
+    const stream = event.streams?.[0] || new MediaStream([event.track]);
+    stream.getTracks().forEach((track) => {
+      if (!call.remoteStream.getTracks().includes(track)) {
         call.remoteStream.addTrack(track);
         track.onunmute = () => attachCallMedia();
       }
@@ -2717,12 +2717,15 @@ function attachCallMedia() {
 
   if (localVideo && localVideo.srcObject !== activeCall.localStream) localVideo.srcObject = activeCall.localStream;
   if (remoteVideo && remoteVideo.srcObject !== activeCall.remoteStream) remoteVideo.srcObject = activeCall.remoteStream;
+  
+  // Force WebRTC video elements to wake up instantly
   localVideo?.play?.().catch(() => {});
   remoteVideo?.play?.().catch(() => {});
 
-  const localOn = activeCall.kind === "video" && !activeCall.onHold && activeCall.cameraOn && activeCall.localStream.getVideoTracks().some((track) => track.readyState !== "ended" && track.enabled !== false);
-  const remoteHasVideo = activeCall.remoteStream.getVideoTracks().some((track) => track.readyState !== "ended");
-  const remoteOn = activeCall.kind === "video" && !activeCall.remoteOnHold && (activeCall.remoteCameraOn || remoteHasVideo) && remoteHasVideo;
+  // Simplify validation to guarantee tiles render when upgraded to video
+  const localOn = activeCall.kind === "video" && !activeCall.onHold && activeCall.cameraOn;
+  const remoteOn = activeCall.kind === "video" && !activeCall.remoteOnHold;
+  
   if (localTile) localTile.hidden = !localOn;
   if (remoteTile) remoteTile.hidden = !remoteOn;
   if (audioFace) audioFace.hidden = localOn || remoteOn;
@@ -2923,9 +2926,11 @@ function cleanupCallInbox(callId, uid) {
 }
 
 
+const writtenCallSummaries = new Set();
 async function writeCallSummaryMessage(call, status = "ended", endedReason = "hangup", data = {}) {
   if (!call?.chatId || !call?.callId || !db) return;
-  if (call.summaryWritten && status !== "missed") return;
+  if (writtenCallSummaries.has(call.callId)) return;
+  writtenCallSummaries.add(call.callId);
   call.summaryWritten = true;
   const endedAtMs = Number(data.endedAtMs || Date.now());
   const acceptedAtMs = Number(data.acceptedAtMs || call.acceptedAtMs || 0);
@@ -3536,26 +3541,28 @@ function bindMessageScrollEscape(scroller, state) {
 
 function closeMessageScrollChat(scroller, roomId = "") {
   const layout = scroller?.closest?.(".adnn-chat-layout");
-  if (!layout?.classList.contains("is-room-open")) return false;
-  layout.classList.remove("is-room-open");
-  layout.querySelectorAll(".adnn-thread.is-active").forEach((row) => row.classList.remove("is-active"));
+  if (layout) {
+    layout.classList.remove("is-room-open");
+    layout.querySelectorAll(".adnn-thread.is-active").forEach((row) => row.classList.remove("is-active"));
+  }
   if (roomId) closeRoomOnMobile(roomId);
-  else document.body.classList.remove("adnn-chat-mobile-lock");
+  document.body.classList.remove("adnn-chat-mobile-lock");
   return true;
 }
 
 function closeOpenChatThreadPanels() {
   const active = document.activeElement;
   if (active && active !== document.body && typeof active.blur === "function") active.blur();
-  document.querySelectorAll(".adnn-chat-layout.is-room-open").forEach((layout) => {
+  
+  document.querySelectorAll(".adnn-chat-layout").forEach((layout) => {
     layout.classList.remove("is-room-open");
     layout.querySelectorAll(".adnn-thread.is-active").forEach((row) => row.classList.remove("is-active"));
   });
+  
   rooms.forEach((state) => {
-    const target = document.getElementById(state.roomId);
-    const layout = target?.closest(".adnn-chat-layout");
-    layout?.classList.remove("is-room-open");
-    layout?.querySelectorAll(".adnn-thread.is-active").forEach((row) => row.classList.remove("is-active"));
+    if (!state.chatId.startsWith("passive_")) {
+      renderPassiveRoom(state.roomId, "Chat closed", "Select a conversation to resume.", "Waiting for chat");
+    }
   });
   document.body.classList.remove("adnn-chat-mobile-lock");
 }

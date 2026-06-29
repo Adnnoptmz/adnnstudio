@@ -296,6 +296,7 @@ async function handleAuthState(user) {
       role: "designer"
     };
   }
+  await syncChatUserDirectory().catch(() => {});
 
   sessionStarted = true;
   notificationsReadyAtMs = Date.now() + 12000;
@@ -366,6 +367,21 @@ function buildUserChatPortals() {
 
 function isAccountClientPage() {
   return location.pathname.includes("account.html") && activeUser && !isAdminEmail(activeUser.email) && activeProfile?.role !== "designer";
+}
+
+async function syncChatUserDirectory() {
+  if (!db || !activeUser || isAdminEmail(activeUser.email)) return;
+  const email = emailKey(activeUser.email || activeProfile?.email || activeProfile?.authEmail || "");
+  if (!email) return;
+  await setDoc(doc(db, "chatUsers", activeUser.uid), {
+    uid: activeUser.uid,
+    email,
+    displayEmail: activeUser.email || activeProfile?.displayEmail || email,
+    name: ownDisplayName(),
+    photoURL: ownPhotoUrl(),
+    role: activeProfile?.role === "designer" ? "designer" : "client",
+    updatedAt: serverTimestamp()
+  }, { merge: true });
 }
 
 async function ensureLegacyAccountDirectChat() {
@@ -866,25 +882,22 @@ async function renderStartableUserDirectory(list, roomId) {
   list.dataset.directoryLoading = "1";
   try {
     const rows = [];
-    const collections = ["clients", "designers"];
-    for (const name of collections) {
-      const snap = await getDocs(collection(db, name)).catch(() => null);
-      snap?.forEach((item) => {
-        const data = item.data() || {};
-        const email = emailKey(data.email || data.authEmail || data.clientEmail || data.designerEmail || "");
-        const ids = uniqueClean([item.id, data.uid, data.designerid, data.designerId]);
-        const isSelf = ids.some((id) => selfUidSet().has(id)) || selfEmailKeySet().has(email);
-        if (!isSelf && (email || ids.length)) {
-          rows.push({
-            uid: ids[0] || email,
-            email,
-            name: data.name || data.displayName || data.clientName || data.designerName || email || "User",
-            role: name === "designers" ? "designer" : "client",
-            photoURL: data.photoURL || data.avatarURL || data.picture || ""
-          });
-        }
-      });
-    }
+    const snap = await getDocs(collection(db, "chatUsers")).catch(() => null);
+    snap?.forEach((item) => {
+      const data = item.data() || {};
+      const email = emailKey(data.email || data.authEmail || data.displayEmail || "");
+      const ids = uniqueClean([item.id, data.uid, data.designerid, data.designerId]);
+      const isSelf = ids.some((id) => selfUidSet().has(id)) || selfEmailKeySet().has(email);
+      if (!isSelf && (email || ids.length)) {
+        rows.push({
+          uid: ids[0] || email,
+          email,
+          name: data.name || data.displayName || data.clientName || data.designerName || data.displayEmail || email || "User",
+          role: data.role || "client",
+          photoURL: data.photoURL || data.avatarURL || data.picture || ""
+        });
+      }
+    });
     const unique = new Map();
     rows.forEach((row) => unique.set(row.email || row.uid, row));
     const users = Array.from(unique.values()).sort((a, b) => String(a.name).localeCompare(String(b.name))).slice(0, 80);
@@ -918,7 +931,12 @@ async function createOrOpenDirectChat(other, roomId, row = null) {
   const otherUid = String(other.uid);
   const keyParts = uniqueClean([ownPrimary, otherUid].sort()).join("_");
   const chatId = `direct_${keyParts.replace(/[^a-z0-9_-]/gi, "_").slice(0, 120)}`;
-  const participantUids = uniqueClean([ownPrimary, ownCallUid(), ...designerIdVariants(), otherUid]);
+  const participantUids = uniqueClean([
+    ownPrimary,
+    ownCallUid(),
+    ...(activeProfile?.role === "designer" ? designerIdVariants() : []),
+    otherUid
+  ]);
   const participantEmailKeys = uniqueClean([...selfEmailKeyList(), other.email].map(emailKey));
   const payload = {
     type: "direct",

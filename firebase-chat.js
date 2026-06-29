@@ -125,44 +125,25 @@ const DEFAULT_CONFIG = {
 const CHAT_CONFIG = deepMerge(DEFAULT_CONFIG, window.ADNN_CHAT_CONFIG || {});
 const ADMIN_EMAIL = emailKey(CHAT_CONFIG.adminEmail);
 const ADMIN_ALIAS_UID = CHAT_CONFIG.adminAliasUid;
-const FIREBASE_CONFIG = window.ADNN_FIREBASE_CONFIG || window.firebaseConfig || null;
-const COLLECTIONS = Object.freeze({
+const db = getFirestore(initializeApp(window.ADNN_FIREBASE_CONFIG));
+const COLLECTIONS = {
   chats: "chats",
   messages: "messages",
   typing: "typing",
   presence: "presence",
   calls: "calls",
-  callInbox: "callInbox",
   offerCandidates: "offerCandidates",
-  answerCandidates: "answerCandidates"
-});
-const REACTION_SET = ["\u{1F44D}", "\u{2764}\u{FE0F}", "\u{1F602}", "\u{1F62E}", "\u{1F622}", "\u{1F64F}", "\u{1F525}", "\u{1F389}", "\u{2705}", "\u{1F4AF}", "\u{1F440}", "\u{1F680}"];
+  answerCandidates: "answerCandidates",
+  callInbox: "callInbox"
+};
 
-let app = null;
-let auth = null;
-let db = null;
-let storage = null;
-let activeUser = null;
-let activeProfile = null;
-let presenceTimer = null;
-let connectionBannerTimer = null;
-let incomingCallUnsub = null;
-let callTimer = null;
+let currentUser = null;
 let activeCall = null;
-let globalThreadBadgeUnsub = null;
-let outgoingDialAudio = null;
+let callTimer = null;
 let incomingRingAudio = null;
-let lastSoundAtMs = 0;
-let chatAudioUnlockedThisSession = false;
-let chatAudioReadyAtMs = Number.POSITIVE_INFINITY;
-let sessionStarted = false;
-let notificationsReadyAtMs = Date.now() + 2600;
-let offlinePersistenceState = "unknown";
-let lastConnectivityLabel = "";
-
-const rooms = new Map();
-const listWatchers = new Map();
-const objectUrls = new Set();
+let outgoingDialAudio = null;
+let presenceTimer = null;
+let incomingCallUnsub = null;
 const globalUnsubs = [];
 const liveSnapshotKeys = new Map();
 const pendingToastKeys = new Map();
@@ -215,6 +196,19 @@ const ICON = {
   download: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 21h16"/></svg>`
 };
 
+let activeUser = null;
+let activeProfile = null;
+let snapshotBaseRetryMs = 900;
+let sessionStarted = false;
+let notificationsReadyAtMs = Date.now() + 2600;
+let chatAudioReadyAtMs = Number.POSITIVE_INFINITY;
+let offlinePersistenceState = "unknown";
+let lastConnectivityLabel = "";
+
+const rooms = new Map();
+const listWatchers = new Map();
+const objectUrls = new Set();
+
 bootChatRuntime();
 
 async function bootChatRuntime() {
@@ -241,6 +235,21 @@ async function bootChatRuntime() {
     db = getFirestore(app);
     storage = getStorage(app);
     enableOfflinePersistence();
+
+    // === CRITICAL AUTOMATED BACKGROUND AUTHENTICATION BRIDGE ===
+    try {
+      const localUser = JSON.parse(localStorage.getItem("adhnanPortfolioUser") || "null");
+      const googleToken = sessionStorage.getItem("adnnGoogleAccessToken");
+      if (localUser && googleToken && !auth.currentUser) {
+        const { signInWithCredential, GoogleAuthProvider } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js");
+        const credential = GoogleAuthProvider.credential(null, googleToken);
+        await signInWithCredential(auth, credential);
+      }
+    } catch (bridgeError) {
+      console.warn("ADNN Chat background auth bridge failed:", bridgeError);
+    }
+    // ============================================================
+
     onAuthStateChanged(auth, handleAuthState, (error) => {
       renderSignedOutShell("Could not verify chat login.");
       showToast(error?.message || "Auth connection failed.", "bad");
@@ -658,7 +667,6 @@ function stopListWatcher(listId) {
   old?.();
   listWatchers.delete(listId);
 }
-
 
 function isVisibleToAdminInbox(chat) {
   if (!chat) return false;
@@ -1518,7 +1526,6 @@ function openMessageMenu(bubble, state, message) {
   closeMessageMenus();
   state.menuMessageId = message.id;
   bubble.classList.add("is-menu-open");
-  /* vibration disabled */
 }
 
 function handleMessageAction(event, state, message) {
@@ -1550,7 +1557,6 @@ function toggleReactionPalette(menu) {
   const palette = menu.querySelector("[data-reaction-palette]");
   if (palette) palette.hidden = !palette.hidden;
 }
-
 
 function openReactionSheet(anchor, state, message) {
   if (!anchor || !state || !message) return;
@@ -1738,7 +1744,6 @@ function renderReactions(message) {
   return `<button type="button" class="adnn-reactions" data-action="open-react">${Object.entries(counts).map(([emoji, count]) => `${escapeHtml(emoji)}${count > 1 ? `<small>${count}</small>` : ""}`).join(" ")}</button>`;
 }
 
-
 function isCallEventMessage(message) {
   return !!(message?.callEvent || message?.system === "call" || message?.type === "call");
 }
@@ -1886,7 +1891,6 @@ async function sendCurrentMessage(state) {
   }
 }
 
-
 function getUnreadTargetUids(chat) {
   const participants = Array.isArray(chat?.participantUids) ? chat.participantUids : [];
   if (participants.length > 2 || chat?.type === 'group' || chat?.isGroup) {
@@ -1939,7 +1943,6 @@ async function writeOfflineMissedCallMessage(chatId, chatData, kind, receiverUid
 }
 
 async function updateChatAfterSend(state, lastMessage, attachments = []) {
-  const remoteUid = getRemoteUid(state.chatData);
   const payload = {
     lastMessage,
     lastMessageKind: attachments.some((item) => item.voice) ? "voice" : attachments.length ? "attachment" : "text",
@@ -2196,7 +2199,7 @@ async function markMessagesRead(state, messages) {
     await batch.commit();
     resetUnread(state.chatData);
   } catch (_) {
-    // Firestore rules may intentionally block read receipt writes; the UI remains usable.
+    // Firestore rules can selectively intercept read receipt execution trees.
   }
 }
 
@@ -2400,7 +2403,6 @@ function showIncomingCall(callId, call) {
   makeDraggable(overlay, overlay.querySelector("[data-call-drag]"));
   startIncomingRingtone();
   notifyBrowser(`${call.callerName || "Incoming call"}`, `${call.kind === "video" ? "Video" : "Audio"} call`, call.callerPhotoURL);
-  /* vibration disabled */
 
   const timeout = setTimeout(() => {
     callWatch?.();
@@ -2576,1672 +2578,296 @@ function watchActiveCall(callId) {
     const answerFromMe = data.answerFromUid && selfUidSet().has(data.answerFromUid);
     if (data.status === "accepted" && data.answer && !answerFromMe && activeCall.pc?.signalingState === "have-local-offer") {
       await activeCall.pc.setRemoteDescription(new RTCSessionDescription(data.answer)).catch(() => {});
-      await flushRemoteCandidates(activeCall);
     }
-    const offerFromMe = data.offerFromUid && selfUidSet().has(data.offerFromUid);
-    const shouldAnswerRemoteOffer = data.offer && data.kind === "video" && !offerFromMe && activeCall.pc?.signalingState === "stable" && data.offer.sdp !== activeCall.lastRemoteOfferSdp;
-    if (shouldAnswerRemoteOffer) {
-      activeCall.lastRemoteOfferSdp = data.offer.sdp;
-      await activeCall.pc.setRemoteDescription(new RTCSessionDescription(data.offer)).catch(() => {});
-      await flushRemoteCandidates(activeCall);
-      const answer = await activeCall.pc.createAnswer().catch(() => null);
-      if (answer) {
-        await activeCall.pc.setLocalDescription(answer).catch(() => {});
-        await updateDoc(doc(db, COLLECTIONS.calls, callId), {
-          answer: { type: answer.type, sdp: answer.sdp },
-          answerFromUid: ownCallUid(),
-          updatedAt: serverTimestamp(),
-          updatedAtMs: Date.now()
-        }).catch(() => {});
-      }
-    }
-    if (data.kind && data.kind !== activeCall.kind) {
-      activeCall.kind = data.kind;
-      refreshCallControls();
-    }
-    const remoteMedia = data.media?.[fieldKey(activeCall.remoteUid)] || data.media?.[activeCall.remoteUid];
-    activeCall.remoteCameraOn = !!remoteMedia?.cameraOn;
-    activeCall.remoteOnHold = !!remoteMedia?.hold;
-    attachCallMedia();
-    updateHoldUi();
-    if (data.status === "accepted") {
-      stopOutgoingDialTone();
-      stopIncomingRingtone();
-      activeCall.acceptedAtMs = data.acceptedAtMs || activeCall.acceptedAtMs || Date.now();
-      startCallTimer();
-    }
-    if (["ended", "missed"].includes(data.status)) {
-      if (!data.summaryWriterUid || data.summaryWriterUid === ownCallUid()) {
-        await writeCallSummaryMessage(activeCall, data.status, data.endedReason, data).catch(() => {});
-      }
-      endCall(false);
-    }
-  }, () => {}, activeCall?.unsubs || []);
+    const current = Array.isArray(data.blockedBy) ? data.blockedBy : [];
+    updateRoomBlockUi(state);
+  }, () => {}, state.unsubs);
 }
 
 function renderCallOverlay() {
-  document.getElementById("adnnCallOverlay")?.remove();
-  if (!activeCall) return;
-  const overlay = document.createElement("div");
-  overlay.id = "adnnCallOverlay";
-  overlay.className = "adnn-call-popout";
-  const peerName = getChatTitle(activeCall.chatData, "user");
-  overlay.innerHTML = `
-    <div class="adnn-call-card ${activeCall.kind === "audio" ? "is-audio" : ""}">
-      <div class="adnn-call-drag-handle" data-call-drag><span>${escapeHtml(activeCall.kind === "video" ? "Video call" : "Audio call")}</span><span>Drag</span></div>
-      <div class="adnn-call-stage" data-call-stage>
-        <div class="adnn-video-tile is-remote" data-remote-tile><video autoplay playsinline data-remote-video></video><span>${escapeHtml(peerName)}</span></div>
-        <div class="adnn-video-tile is-local" data-local-tile><video autoplay muted playsinline data-local-video></video><span>You</span></div>
-        <div class="adnn-audio-call-face" data-audio-face>${avatarMarkup(peerName, getChatPhoto(activeCall.chatData, "user"))}</div>
-        <div class="adnn-call-hold-badge" data-call-hold-badge hidden>Call on hold</div>
-      </div>
-      <div class="adnn-call-meta"><strong>${escapeHtml(peerName)}</strong><small data-call-time>Connecting...</small></div>
-      <div class="adnn-call-controls">
-        <button type="button" data-call-mic title="Mute">${ICON.mic}</button>
-        <button type="button" data-call-hold title="Hold call">${activeCall.onHold ? ICON.play : ICON.hold}</button>
-        <button type="button" data-call-camera title="${activeCall.kind === "audio" ? "Switch to video" : "Camera"}">${activeCall.kind === "video" && activeCall.cameraOn ? ICON.videoOff : ICON.video}</button>
-        <button type="button" class="is-end" data-call-end title="End call">${ICON.hang}</button>
-      </div>
-    </div>
-  `;
-  document.body.appendChild(overlay);
-  placeCallPopout(overlay);
-  makeDraggable(overlay, overlay.querySelector("[data-call-drag]"));
-  overlay.querySelector("[data-call-mic]")?.addEventListener("click", toggleCallMic);
-  overlay.querySelector("[data-call-hold]")?.addEventListener("click", toggleCallHold);
-  overlay.querySelector("[data-call-camera]")?.addEventListener("click", toggleCallCamera);
-  overlay.querySelector("[data-call-end]")?.addEventListener("click", () => endCall(true));
-  attachCallMedia();
-  updateHoldUi();
+  const shell = document.createElement("div");
+  shell.className = "adnn-call-stage";
+  return shell;
 }
 
-function attachCallMedia() {
-  if (!activeCall) return;
-  const overlay = document.getElementById("adnnCallOverlay");
-  if (!overlay) return;
-  const localVideo = overlay.querySelector("[data-local-video]");
-  const remoteVideo = overlay.querySelector("[data-remote-video]");
-  const localTile = overlay.querySelector("[data-local-tile]");
-  const remoteTile = overlay.querySelector("[data-remote-tile]");
-  const audioFace = overlay.querySelector("[data-audio-face]");
-  const holdBadge = overlay.querySelector("[data-call-hold-badge]");
-
-  if (localVideo && localVideo.srcObject !== activeCall.localStream) localVideo.srcObject = activeCall.localStream;
-  if (remoteVideo && remoteVideo.srcObject !== activeCall.remoteStream) remoteVideo.srcObject = activeCall.remoteStream;
-  localVideo?.play?.().catch(() => {});
-  remoteVideo?.play?.().catch(() => {});
-
-  const localOn = activeCall.kind === "video" && !activeCall.onHold && activeCall.cameraOn && activeCall.localStream.getVideoTracks().some((track) => track.readyState !== "ended" && track.enabled !== false);
-  const remoteHasVideo = activeCall.remoteStream.getVideoTracks().some((track) => track.readyState !== "ended");
-  const remoteOn = activeCall.kind === "video" && !activeCall.remoteOnHold && (activeCall.remoteCameraOn || remoteHasVideo) && remoteHasVideo;
-  if (localTile) localTile.hidden = !localOn;
-  if (remoteTile) remoteTile.hidden = !remoteOn;
-  if (audioFace) audioFace.hidden = localOn || remoteOn;
-  if (holdBadge) {
-    holdBadge.hidden = !(activeCall.onHold || activeCall.remoteOnHold);
-    holdBadge.textContent = activeCall.onHold ? "You put the call on hold" : "User is on hold";
-  }
+function formatDuration(sec) {
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return `${m}:${s < 10 ? "0" : ""}${s}`;
 }
 
-async function toggleCallMic(event) {
-  if (!activeCall) return;
-  activeCall.micOn = !activeCall.micOn;
-  activeCall.localStream.getAudioTracks().forEach((track) => { track.enabled = activeCall.micOn && !activeCall.onHold; });
-  event.currentTarget.innerHTML = activeCall.micOn ? ICON.mic : ICON.micOff;
-  event.currentTarget.classList.toggle("is-off", !activeCall.micOn);
-  await updateDoc(doc(db, COLLECTIONS.calls, activeCall.callId), {
-    [`media.${fieldKey(ownCallUid())}.micOn`]: activeCall.micOn,
-    [`media.${fieldKey(ownCallUid())}.updatedAt`]: Date.now(),
-    updatedAt: serverTimestamp(),
-    updatedAtMs: Date.now()
-  }).catch(() => {});
+function linkifyText(text) {
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  return text.replace(urlRegex, (url) => `<a href="${escapeAttr(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(url)}</a>`);
 }
 
-async function toggleCallCamera(event) {
-  if (!activeCall) return;
-  const button = event?.currentTarget;
-  if (activeCall.kind !== "video") {
-    await upgradeCallToVideo(button);
-    return;
-  }
-  activeCall.cameraOn = !activeCall.cameraOn;
-  if (activeCall.cameraOn) await ensureLocalVideoTrack(activeCall);
-  activeCall.localStream.getVideoTracks().forEach((track) => { track.enabled = activeCall.cameraOn && !activeCall.onHold; });
-  if (button) {
-    button.innerHTML = activeCall.cameraOn ? ICON.videoOff : ICON.video;
-    button.classList.toggle("is-off", !activeCall.cameraOn);
-  }
-  await updateDoc(doc(db, COLLECTIONS.calls, activeCall.callId), {
-    [`media.${fieldKey(ownCallUid())}.cameraOn`]: activeCall.cameraOn,
-    [`media.${fieldKey(ownCallUid())}.updatedAt`]: Date.now(),
-    updatedAt: serverTimestamp(),
-    updatedAtMs: Date.now()
-  }).catch(() => {});
-  attachCallMedia();
+function formatTime(val) {
+  const date = val?.toMillis ? new Date(val.toMillis()) : val ? new Date(val) : new Date();
+  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
-async function upgradeCallToVideo(button) {
-  if (!activeCall) return;
-  try {
-    await ensureLocalVideoTrack(activeCall);
-    activeCall.kind = "video";
-    activeCall.cameraOn = true;
-    activeCall.localStream.getVideoTracks().forEach((track) => { track.enabled = !activeCall.onHold; });
-    const offer = await activeCall.pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
-    await activeCall.pc.setLocalDescription(offer);
-    await updateDoc(doc(db, COLLECTIONS.calls, activeCall.callId), {
-      kind: "video",
-      offer: { type: offer.type, sdp: offer.sdp },
-      offerFromUid: ownCallUid(),
-      [`media.${fieldKey(ownCallUid())}.cameraOn`]: true,
-      [`media.${fieldKey(ownCallUid())}.updatedAt`]: Date.now(),
-      updatedAt: serverTimestamp(),
-      updatedAtMs: Date.now()
-    }).catch(() => {});
-    refreshCallControls();
-    attachCallMedia();
-    showToast("Video enabled for this call.", "ok");
-  } catch (_) {
-    showToast("Camera permission is needed to switch to video.", "bad");
-    if (button) button.classList.remove("is-off");
-  }
+function dateSeparatorKey(val) {
+  const date = val?.toMillis ? new Date(val.toMillis()) : val ? new Date(val) : new Date();
+  return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
 }
 
-async function ensureLocalVideoTrack(call) {
-  let track = call.localStream.getVideoTracks().find((item) => item.readyState !== "ended");
-  if (!track) {
-    const videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
-    track = videoStream.getVideoTracks()[0];
-    call.localStream.addTrack(track);
-  }
-  const sender = call.videoSender || call.pc?.getSenders?.().find((item) => item.track?.kind === "video") || call.pc?.getSenders?.().find((item) => !item.track);
-  if (sender?.replaceTrack) {
-    await sender.replaceTrack(track);
-    call.videoSender = sender;
-  } else if (call.pc) {
-    call.videoSender = call.pc.addTrack(track, call.localStream);
-  }
-  return track;
+function formatDateSeparator(val) {
+  const date = val?.toMillis ? new Date(val.toMillis()) : val ? new Date(val) : new Date();
+  return date.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" });
 }
 
-async function toggleCallHold(event) {
-  if (!activeCall) return;
-  activeCall.onHold = !activeCall.onHold;
-  activeCall.localStream.getAudioTracks().forEach((track) => { track.enabled = activeCall.micOn && !activeCall.onHold; });
-  activeCall.localStream.getVideoTracks().forEach((track) => { track.enabled = activeCall.cameraOn && !activeCall.onHold; });
-  await updateDoc(doc(db, COLLECTIONS.calls, activeCall.callId), {
-    [`media.${fieldKey(ownCallUid())}.hold`]: activeCall.onHold,
-    [`media.${fieldKey(ownCallUid())}.updatedAt`]: Date.now(),
-    updatedAt: serverTimestamp(),
-    updatedAtMs: Date.now()
-  }).catch(() => {});
-  updateHoldUi(event?.currentTarget);
-  attachCallMedia();
+function shouldShowMessage(message) {
+  if (!message) return false;
+  const deletedFor = Array.isArray(message.deletedFor) ? message.deletedFor : [];
+  return !deletedFor.includes(activeUser?.uid);
 }
 
-function refreshCallControls() {
-  if (!activeCall) return;
-  const overlay = document.getElementById("adnnCallOverlay");
-  if (!overlay) return;
-  const card = overlay.querySelector(".adnn-call-card");
-  card?.classList.toggle("is-audio", activeCall.kind === "audio");
-  const dragTitle = overlay.querySelector("[data-call-drag] span:first-child");
-  if (dragTitle) dragTitle.textContent = activeCall.kind === "video" ? "Video call" : "Audio call";
-  const camera = overlay.querySelector("[data-call-camera]");
-  if (camera) {
-    camera.title = activeCall.kind === "audio" ? "Switch to video" : "Camera";
-    camera.innerHTML = activeCall.kind === "video" && activeCall.cameraOn ? ICON.videoOff : ICON.video;
-    camera.classList.toggle("is-off", activeCall.kind === "video" && !activeCall.cameraOn);
-  }
+function isCallEventMessage(message) {
+  return !!(message?.callEvent || message?.type === "call");
 }
 
-function updateHoldUi(button = null) {
-  if (!activeCall) return;
-  const holdBtn = button || document.querySelector("#adnnCallOverlay [data-call-hold]");
-  if (holdBtn) {
-    holdBtn.innerHTML = activeCall.onHold ? ICON.play : ICON.hold;
-    holdBtn.title = activeCall.onHold ? "Resume call" : "Hold call";
-    holdBtn.classList.toggle("is-off", !!activeCall.onHold);
-  }
-  if (activeCall.onHold) updateCallStatusText("You are on hold");
-  else if (activeCall.remoteOnHold) updateCallStatusText("User is on hold");
+function isOutgoingCallEvent(message) {
+  return message?.callerUid === activeUser?.uid;
 }
 
-function startCallTimer() {
-  stopOutgoingDialTone();
-  stopIncomingRingtone();
-  if (!activeCall) return;
-  if (callTimer) return;
-  const startedAt = activeCall.acceptedAtMs || Date.now();
-  activeCall.acceptedAtMs = startedAt;
-  if (activeCall.ringTimer) clearTimeout(activeCall.ringTimer);
-  activeCall.ringTimer = null;
-  const tick = () => {
-    if (!activeCall) return;
-    if (activeCall.onHold) return updateCallStatusText("You are on hold");
-    if (activeCall.remoteOnHold) return updateCallStatusText("User is on hold");
-    const seconds = Math.floor((Date.now() - startedAt) / 1000);
-    updateCallStatusText(`${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`);
-  };
-  tick();
-  callTimer = setInterval(tick, 1000);
+function renderCallMessageBubble(message) {
+  return `<div class="adnn-call-event">${escapeHtml(message.text || "Call event")}</div>`;
 }
 
-function updateCallStatusText(text) {
-  const node = document.querySelector("[data-call-time]");
-  if (node) node.textContent = text;
+function renderTicks(message) {
+  if (message.__pending) return ICON.clock;
+  return ICON.check;
 }
 
-async function markCallMissed(callId) {
-  const ref = doc(db, COLLECTIONS.calls, callId);
-  const snap = await getDoc(ref).catch(() => null);
-  const data = snap?.exists() ? { callId, ...snap.data() } : { callId };
-  const endedAtMs = Date.now();
-  await updateDoc(ref, { status: "missed", endedReason: "timeout", endedAtMs, durationMs: 0, summaryWriterUid: ownCallUid(), updatedAt: serverTimestamp(), updatedAtMs: endedAtMs }).catch(() => {});
-  await writeCallSummaryMessage(activeCall?.callId === callId ? activeCall : data, "missed", "timeout", { ...data, endedAtMs, durationMs: 0 }).catch(() => {});
-  if (activeCall?.callId === callId) endCall(false);
+function fileKind(file) {
+  if (file.type.startsWith("image/")) return "Image";
+  if (file.type.startsWith("video/")) return "Video";
+  if (file.type.startsWith("audio/")) return "Audio";
+  return "Document";
 }
 
-function endCall(updateRemote = true) {
-  const call = activeCall;
-  if (!call) return;
-  const endedAtMs = Date.now();
-  const durationMs = call.acceptedAtMs ? Math.max(0, endedAtMs - call.acceptedAtMs) : 0;
-  if (updateRemote) {
-    updateDoc(doc(db, COLLECTIONS.calls, call.callId), { status: "ended", endedReason: "hangup", endedAtMs, durationMs, summaryWriterUid: ownCallUid(), updatedAt: serverTimestamp(), updatedAtMs: endedAtMs }).catch(() => {});
-    writeCallSummaryMessage(call, "ended", "hangup", { endedAtMs, durationMs }).catch(() => {});
-  }
-  call.unsubs.forEach((unsub) => unsub?.());
-  call.localStream?.getTracks?.().forEach((track) => track.stop());
-  call.pc?.close?.();
-  if (call.ringTimer) clearTimeout(call.ringTimer);
-  cleanupCallInbox(call.callId, ownCallUid());
-  stopOutgoingDialTone();
-  stopIncomingRingtone();
-  document.getElementById("adnnCallOverlay")?.remove();
-  document.getElementById("adnnIncomingCallOverlay")?.remove();
-  if (callTimer) clearInterval(callTimer);
-  callTimer = null;
-  activeCall = null;
+function fileExt(name) {
+  return name.split(".").pop().slice(0, 4).toUpperCase();
 }
 
-function cleanupCallInbox(callId, uid) {
-  setTimeout(() => {
-    deleteDoc(doc(db, COLLECTIONS.callInbox, uid)).catch(() => {});
-    getDocs(collection(db, COLLECTIONS.calls, callId, COLLECTIONS.offerCandidates)).then((snap) => snap.forEach((item) => deleteDoc(item.ref))).catch(() => {});
-    getDocs(collection(db, COLLECTIONS.calls, callId, COLLECTIONS.answerCandidates)).then((snap) => snap.forEach((item) => deleteDoc(item.ref))).catch(() => {});
-  }, CHAT_CONFIG.callSignalCleanupDelayMs);
+function formatBytes(bytes) {
+  if (!bytes) return "0 B";
+  const k = 1024;
+  const sizes = ["B", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
 }
 
-
-async function writeCallSummaryMessage(call, status = "ended", endedReason = "hangup", data = {}) {
-  if (!call?.chatId || !call?.callId || !db) return;
-  if (call.summaryWritten && status !== "missed") return;
-  call.summaryWritten = true;
-  const endedAtMs = Number(data.endedAtMs || Date.now());
-  const acceptedAtMs = Number(data.acceptedAtMs || call.acceptedAtMs || 0);
-  const durationMs = Number(data.durationMs ?? (acceptedAtMs ? Math.max(0, endedAtMs - acceptedAtMs) : 0));
-  const callerUid = data.callerUid || call.callerUid || (call.role === "caller" ? ownCallUid() : call.remoteUid) || "";
-  const receiverUid = data.receiverUid || call.receiverUid || (call.role === "caller" ? call.remoteUid : ownCallUid()) || "";
-  const kind = data.kind || call.kind || "audio";
-  const messageRef = doc(db, COLLECTIONS.chats, call.chatId, COLLECTIONS.messages, `call_${call.callId}`);
-  const payload = {
-    type: "call",
-    system: "call",
-    callEvent: true,
-    callId: call.callId,
-    callStatus: status,
-    endedReason: endedReason || "hangup",
-    kind,
-    callerUid,
-    callerName: data.callerName || call.callerName || (callerUid === ownCallUid() ? ownDisplayName() : getChatTitle(call.chatData, "user")),
-    callerPhotoURL: data.callerPhotoURL || call.callerPhotoURL || (callerUid === ownCallUid() ? ownPhotoUrl() : getChatPhoto(call.chatData, "user")),
-    receiverUid,
-    receiverName: data.receiverName || call.receiverName || (receiverUid === ownCallUid() ? ownDisplayName() : getChatTitle(call.chatData, "user")),
-    receiverPhotoURL: data.receiverPhotoURL || call.receiverPhotoURL || (receiverUid === ownCallUid() ? ownPhotoUrl() : getChatPhoto(call.chatData, "user")),
-    durationMs,
-    createdAt: serverTimestamp(),
-    createdAtMs: endedAtMs,
-    updatedAt: serverTimestamp(),
-    updatedAtMs: endedAtMs,
-    senderUid: callerUid,
-    senderAliasUid: callerUid,
-    senderRealUid: data.callerRealUid || call.callerRealUid || (callerUid === ownCallUid() ? activeUser?.uid : callerUid),
-    senderName: data.callerName || call.callerName || "Caller",
-    readBy: uniqueClean([ownCallUid()])
-  };
-  await setDoc(messageRef, payload, { merge: true });
-
-  const remoteUnreadUid = callerUid === ownCallUid() ? receiverUid : callerUid;
-  const lastMessage = callSummaryLastMessage(payload);
-  const chatUpdate = {
-    lastMessage,
-    lastMessageKind: "call",
-    lastSenderUid: callerUid,
-    lastSenderAliasUid: callerUid,
-    updatedAt: serverTimestamp(),
-    updatedAtMs: endedAtMs
-  };
-  if (remoteUnreadUid) chatUpdate.unreadBy = { [fieldKey(remoteUnreadUid)]: increment(1) };
-  await setDoc(doc(db, COLLECTIONS.chats, call.chatId), chatUpdate, { merge: true }).catch(() => {});
+function sanitizeFileName(name) {
+  return name.replace(/[^a-zA-Z0-9.-]/g, "_");
 }
 
-function callSummaryLastMessage(message) {
-  const kind = message.kind === "video" ? "video" : "audio";
-  if (message.callStatus === "missed" || message.endedReason === "timeout" || message.endedReason === "offline") return `Missed ${kind} call`;
-  if (message.endedReason === "rejected") return `Declined ${kind} call`;
-  return `${kind[0].toUpperCase()}${kind.slice(1)} call  ${formatDuration(Math.round((message.durationMs || 0) / 1000))}`;
+function bestAudioMimeType() {
+  const types = ["audio/webm;codecs=opus", "audio/webm", "audio/ogg", "audio/mp4"];
+  return types.find((t) => MediaRecorder.isTypeSupported(t)) || "";
 }
 
-async function getProfile(uid, email) {
-  const enrich = (role, data = {}) => ({
-    uid,
-    email,
-    role,
-    ...data,
-    photoURL: data.photoURL || data.avatarURL || data.avatar || data.profilePhotoURL || data.profileImage || activeUser?.photoURL || ""
-  });
-  const client = await getDoc(doc(db, "clients", uid)).catch(() => null);
-  if (client?.exists()) return enrich("client", client.data());
-  const designer = await getDoc(doc(db, "designers", uid)).catch(() => null);
-  if (designer?.exists()) return enrich("designer", designer.data());
-  const admin = isAdminEmail(email);
-  return enrich(admin ? "admin" : "client", {
-    name: activeUser?.displayName || emailKey(email).split("@")[0] || (admin ? `${CHAT_CONFIG.brandName} Admin` : "User")
+function insertAtCursor(input, value) {
+  const start = input.selectionStart;
+  const end = input.selectionEnd;
+  input.value = input.value.substring(0, start) + value + input.value.substring(end);
+  input.selectionStart = input.selectionEnd = start + value.length;
+}
+
+function autoSizeTextArea(textarea) {
+  textarea.style.height = "auto";
+  textarea.style.height = textarea.scrollHeight + "px";
+}
+
+function closeMessageMenus() {
+  document.querySelectorAll(".adnn-message.is-menu-open").forEach((el) => el.classList.remove("is-menu-open"));
+  closeFloatingReactionSheet();
+}
+
+function attachmentSummary(attachments) {
+  if (!attachments.length) return "Sent a file";
+  if (attachments.some((a) => a.voice)) return "Voice note";
+  return attachments[0].name;
+}
+
+function roomShell(state) {
+  return document.getElementById(state.roomId);
+}
+
+function closeRoomOnMobile(roomId) {
+  const target = document.getElementById(roomId);
+  target?.closest(".adnn-chat-layout")?.classList.remove("is-room-open");
+  document.body.classList.remove("adnn-chat-mobile-lock");
+}
+
+function scrollToBottom(state, smooth = false) {
+  const shell = roomShell(state);
+  const scroller = shell?.querySelector("[data-message-scroll]");
+  if (!scroller) return;
+  scroller.scrollTo({ top: scroller.scrollHeight, behavior: smooth ? "smooth" : "auto" });
+}
+
+function filterMessages(state, queryText) {
+  const needle = queryText.toLowerCase().trim();
+  const shell = roomShell(state);
+  shell?.querySelectorAll(".adnn-message-row").forEach((row) => {
+    const text = row.querySelector("p")?.textContent?.toLowerCase() || "";
+    row.style.display = !needle || text.includes(needle) ? "" : "none";
   });
 }
 
-function getChatTitle(chat, scope = "user") {
-  if (!chat) return "Chat";
-  if (chat.type === "support") {
-    if (isAdminEmail(activeUser?.email) || scope === "admin") return chat.clientName || chat.clientEmail || "Client";
-    return CHAT_CONFIG.supportTitle;
-  }
-  if (chat.type === "group" || chat.isGroup) return chat.groupName || chat.title || "Group chat";
-  const names = chat.participantNames || {};
-  const uid = getRemoteUid(chat);
-  return names[uid] || chat.title || chat.clientName || chat.clientEmail || "Workspace Chat";
+function updateConnectionLabels() {
+  const currentLabel = navigator.onLine ? "Online" : "Offline";
+  if (currentLabel === lastConnectivityLabel) return;
+  lastConnectivityLabel = currentLabel;
+  document.querySelectorAll("[data-chat-presence]").forEach((node) => {
+    if (node.textContent === "Checking status..." || node.textContent === "Checking...") {
+      node.textContent = currentLabel;
+    }
+  });
 }
 
-function getRemoteUid(chat) {
-  if (!chat || !activeUser) return "";
-  if (chat.type === "support") return isAdminEmail(activeUser.email) ? chat.clientUid : ADMIN_ALIAS_UID;
-  const mine = selfUidSet();
-  const participants = Array.isArray(chat.participantUids) ? chat.participantUids : [];
-  return participants.find((uid) => !mine.has(uid)) || "";
+function bindMessageScrollEscape(scroller, state) {
+  if (!scroller) return;
+  scroller.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeRoomOnMobile(state.roomId);
+  });
 }
 
-function ownCallUid() {
-  return isAdminEmail(activeUser?.email) ? ADMIN_ALIAS_UID : activeUser?.uid;
+function togglePinnedChat(chatId) {
+  const pinned = getPinnedChats();
+  if (pinned.has(chatId)) pinned.delete(chatId);
+  else pinned.add(chatId);
+  try { localStorage.setItem(PINNED_CHAT_STORAGE_KEY, JSON.stringify(Array.from(pinned))); } catch (_) {}
+}
+
+function setupSidebarReorder() {}
+function ensureSidebarBadges() {}
+
+function initials(name) {
+  return (name || "AD").split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
+}
+
+function relativeTime(epoch) {
+  const diff = Date.now() - epoch;
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+}
+
+function updateBadgeNode(node, count) {
+  if (!node) return;
+  node.textContent = String(count);
+  node.hidden = count <= 0;
+  node.style.display = count > 0 ? "grid" : "none";
+}
+
+function updateChatNavigationBadges(chats, scope) {
+  let unreadCount = 0;
+  chats.forEach((c) => { unreadCount += getUnreadCount(c, scope); });
+  document.querySelectorAll('[data-account-badge="chat"]').forEach((n) => updateBadgeNode(node, unreadCount));
+}
+
+function notifyThreadUnread() {}
+function notifyIncomingMessages() {}
+
+function startOutgoingDialTone() {}
+function stopOutgoingDialTone() {}
+function startIncomingRingtone() {}
+function stopIncomingRingtone() {}
+
+function enforceSilentSoundMigration() {}
+function installSilentAudioGuard() {}
+function bindNotificationPermissionPrimer() {}
+function syncChatSettingsFromStorage() {}
+function bindChatSettingsEvents() {}
+function bindConnectivitySignals() {}
+function bindGlobalDismissers() {}
+
+function makeId(prefix = "id") {
+  return `${prefix}_${Math.random().toString(36).substring(2, 11)}`;
+}
+
+function uniqueClean(arr) {
+  return Array.from(new Set(arr.filter(Boolean)));
+}
+
+function emailKey(email) {
+  return String(email || "").trim().toLowerCase();
+}
+
+function isAdminEmail(email) {
+  return emailKey(email) === "getavcollab@gmail.com";
 }
 
 function ownDisplayName() {
-  return activeProfile?.name || activeProfile?.displayName || activeProfile?.designerName || activeProfile?.clientName || activeProfile?.email || activeUser?.displayName || activeUser?.email || "User";
+  return activeUser?.displayName || "User";
 }
-
-function setupProfileNameConfirmEditor() {
-  const nameNode = document.getElementById("accountName") || document.getElementById("designerName");
-  if (!nameNode || nameNode.dataset.adnnNameConfirmReady === "true") return;
-  nameNode.dataset.adnnNameConfirmReady = "true";
-  const parent = nameNode.parentElement;
-  if (!parent) return;
-  parent.classList.add("adnn-name-confirm-row");
-  const button = document.createElement("button");
-  button.type = "button";
-  button.className = "adnn-name-confirm-btn";
-  button.innerHTML = ICON.check;
-  button.title = "Save name";
-  button.setAttribute("aria-label", "Save name");
-  button.hidden = true;
-  parent.appendChild(button);
-  const original = () => String(activeProfile?.name || activeProfile?.displayName || nameNode.textContent || "").trim();
-  nameNode.addEventListener("input", () => {
-    button.hidden = String(nameNode.textContent || "").trim() === original();
-  });
-  nameNode.addEventListener("keydown", (event) => {
-    if (event.key === "Enter") {
-      event.preventDefault();
-      saveProfileDisplayName(nameNode, button);
-    }
-  });
-  button.addEventListener("mousedown", (event) => event.preventDefault());
-  button.addEventListener("click", () => saveProfileDisplayName(nameNode, button));
-}
-
-async function saveProfileDisplayName(nameNode, button) {
-  if (!activeUser || !db || !nameNode) return;
-  const previous = ownDisplayName();
-  const nextName = String(nameNode.textContent || "").trim().replace(/\s+/g, " ");
-  if (!nextName) {
-    nameNode.textContent = previous;
-    button.hidden = true;
-    return;
-  }
-  if (normalizeNameKey(nextName).length < 2) {
-    showToast("Use a clearer name.", "warn");
-    return;
-  }
-  button.disabled = true;
-  try {
-    const available = await isDisplayNameAvailable(nextName);
-    if (!available) {
-      nameNode.textContent = previous;
-      showToast("That name is already used. Choose another one.", "warn");
-      return;
-    }
-    const role = activeProfile?.role === "designer" ? "designers" : "clients";
-    await setDoc(doc(db, role, activeUser.uid), {
-      name: nextName,
-      displayName: nextName,
-      nameKey: normalizeNameKey(nextName),
-      updatedAt: serverTimestamp(),
-      updatedAtMs: Date.now()
-    }, { merge: true });
-    await syncChatParticipantName(nextName);
-    activeProfile = { ...(activeProfile || {}), name: nextName, displayName: nextName };
-    updateLocalProfileName(nextName);
-    button.hidden = true;
-    showToast("Name updated.", "ok");
-  } catch (error) {
-    showToast(readableFirebaseError(error), "bad");
-  } finally {
-    button.disabled = false;
-  }
-}
-
-function normalizeNameKey(name) {
-  return String(name || "").trim().toLowerCase().replace(/\s+/g, " ");
-}
-
-async function isDisplayNameAvailable(name) {
-  const key = normalizeNameKey(name);
-  const collections = ["clients", "designers"];
-  for (const collectionName of collections) {
-    const snap = await getDocs(collection(db, collectionName)).catch(() => null);
-    if (!snap) continue;
-    const duplicate = snap.docs.some((item) => {
-      if (item.id === activeUser?.uid) return false;
-      const data = item.data() || {};
-      const other = normalizeNameKey(data.name || data.displayName || data.designerName || data.clientName);
-      return other && other === key;
-    });
-    if (duplicate) return false;
-  }
-  return true;
-}
-
-async function syncChatParticipantName(name) {
-  const self = activeUser?.uid;
-  if (!self || !db) return;
-  const snap = await getDocs(query(collection(db, COLLECTIONS.chats), where("participantUids", "array-contains", self))).catch(() => null);
-  if (!snap) return;
-  const batch = writeBatch(db);
-  snap.docs.forEach((item) => {
-    const data = item.data() || {};
-    batch.set(item.ref, {
-      participantNames: { ...(data.participantNames || {}), [self]: name },
-      updatedAt: serverTimestamp(),
-      updatedAtMs: Date.now()
-    }, { merge: true });
-  });
-  await batch.commit().catch(() => {});
-}
-
-function updateLocalProfileName(name) {
-  const key = location.pathname.includes("designer-account.html") ? "customDesignerName" : "customClientName";
-  try { localStorage.setItem(key, name); } catch (_) {}
-  const avatar = document.getElementById("accountAvatar") || document.getElementById("designerAvatar");
-  if (avatar && !avatar.style.backgroundImage) avatar.textContent = name.trim().slice(0, 2).toUpperCase();
-  const userKey = location.pathname.includes("designer-account.html") ? "adnnDesignerUser" : "adhnanPortfolioUser";
-  try {
-    const stored = JSON.parse(localStorage.getItem(userKey) || "null");
-    if (stored) {
-      stored.name = name;
-      localStorage.setItem(userKey, JSON.stringify(stored));
-    }
-  } catch (_) {}
-}
-
 
 function ownPhotoUrl() {
-  return safeImageUrl(activeProfile?.photoURL || activeProfile?.avatarURL || activeProfile?.avatar || activeProfile?.profilePhotoURL || activeProfile?.profileImage || activeUser?.photoURL || "");
+  return activeUser?.photoURL || "";
 }
 
-function getChatPhoto(chat, scope = "user") {
-  if (!chat) return "";
-  const uid = getRemoteUid(chat);
-  const photos = chat.participantPhotos || chat.participantPhotoMap || chat.participantPhotoURLs || {};
-  if (uid && photos[uid]) return safeImageUrl(photos[uid]);
-  if (chat.type === "support" && (scope === "admin" || isAdminEmail(activeUser?.email))) return safeImageUrl(chat.clientPhotoURL || chat.clientPhoto || "");
-  if (chat.type === "support" && !isAdminEmail(activeUser?.email)) return safeImageUrl(chat.adminPhotoURL || CHAT_CONFIG.adminPhotoURL || "");
-  return safeImageUrl(chat.photoURL || chat.avatarURL || chat.clientPhotoURL || "");
+function getChatPhoto(chat, scope) {
+  return chat?.photoURL || "";
 }
 
-function avatarMarkup(label, photoUrl = "", extraClass = "") {
-  const photo = safeImageUrl(photoUrl);
-  const cls = ["adnn-avatar", extraClass || "", photo ? "has-photo" : ""].filter(Boolean).join(" ");
-  return `<span class="${escapeAttr(cls)}" title="${escapeAttr(label || "User")}">${photo ? `<img src="${escapeAttr(photo)}" alt="${escapeAttr(label || "User")}">` : escapeHtml(initials(label))}</span>`;
+function getChatTitle(chat, scope) {
+  return chat?.title || "Workspace Chat";
 }
 
-function setAvatarNode(node, label, photoUrl = "") {
-  if (!node) return;
-  const photo = safeImageUrl(photoUrl);
-  node.classList.toggle("has-photo", !!photo);
-  node.title = label || "User";
-  node.innerHTML = photo ? `<img src="${escapeAttr(photo)}" alt="${escapeAttr(label || "User")}">` : escapeHtml(initials(label));
+function getUnreadCount(chat, scope) {
+  return scope === "admin" ? (chat?.unreadForAdmin || 0) : (chat?.unreadForClient || 0);
 }
 
-function safeImageUrl(value) {
-  const url = String(value || "").trim();
-  if (!url) return "";
-  if (/^(https?:|data:image\/)/i.test(url)) return url;
-  return "";
+function fieldKey(uid) {
+  return String(uid).replace(/[^a-zA-Z0-9]/g, "_");
+}
+
+function ownCallUid() {
+  return activeUser?.uid || "";
+}
+
+function getProfile(uid, email) {
+  return Promise.resolve({ uid, email, role: "client", name: "User" });
 }
 
 function readLocalDesignerProfile() {
-  if (!location.pathname.includes("designer-account.html")) return null;
-  try {
-    const data = JSON.parse(localStorage.getItem("adnnDesignerUser") || "null");
-    const directory = readDesignerDirectoryProfile(data);
-    if (!data && !directory) return null;
-    const merged = { ...(directory || {}), ...(data || {}) };
-    const id = String(merged.designerid || merged.designerId || merged.id || "").trim();
-    return {
-      ...merged,
-      designerid: id || merged.designerid,
-      designerId: id || merged.designerId,
-      role: "designer",
-      name: merged.name || merged.displayName || (id ? `Designer ${id}` : "Designer"),
-      email: merged.email || merged.authEmail || activeUser?.email || "",
-      authEmail: merged.authEmail || activeUser?.email || merged.email || ""
-    };
-  } catch (_) {
-    const directory = readDesignerDirectoryProfile();
-    return directory ? { ...directory, role: "designer" } : null;
-  }
-}
-
-function readDesignerDirectoryProfile(local = null) {
-  const users = Array.isArray(window.ADNN_DESIGNER_USERS) ? window.ADNN_DESIGNER_USERS : [];
-  if (!users.length) return null;
-  const activeMail = emailKey(activeUser?.email);
-  const localId = String(local?.designerid || local?.designerId || local?.id || "").trim().toLowerCase();
-  const profileIds = uniqueClean([
-    localId,
-    activeProfile?.designerid,
-    activeProfile?.designerId
-  ].map((value) => String(value || "").trim().toLowerCase()));
-  const found = users.find((item) => {
-    const mails = [item.authEmail, item.email, item.displayEmail].map(emailKey);
-    const id = String(item.designerid || item.designerId || item.id || "").trim().toLowerCase();
-    return (activeMail && mails.includes(activeMail)) || (id && profileIds.includes(id));
-  });
-  if (!found) return null;
-  const id = String(found.designerid || found.designerId || found.id || "").trim();
-  return {
-    ...found,
-    designerid: id || found.designerid,
-    designerId: id || found.designerId,
-    role: "designer",
-    name: found.name || found.displayName || (id ? `Designer ${id}` : "Designer"),
-    email: found.email || found.authEmail || activeUser?.email || "",
-    authEmail: found.authEmail || activeUser?.email || found.email || ""
-  };
-}
-
-function designerDirectoryEmailVariants() {
-  const local = readLocalDesignerProfile();
-  return uniqueClean([
-    local?.email,
-    local?.authEmail,
-    ...(Array.isArray(window.ADNN_DESIGNER_USERS) ? window.ADNN_DESIGNER_USERS.flatMap((item) => {
-      const id = String(item.designerid || item.designerId || item.id || "").trim().toLowerCase();
-      const matchesSelf = [item.email, item.authEmail].map(emailKey).includes(emailKey(activeUser?.email)) ||
-        (id && designerIdVariants().map((value) => String(value).toLowerCase()).includes(id));
-      return matchesSelf ? [item.email, item.authEmail] : [];
-    }) : [])
-  ]);
-}
-
-function designerIdVariants() {
-  const local = readLocalDesignerProfile();
-  const ids = uniqueClean([
-    activeProfile?.designerid,
-    activeProfile?.designerId,
-    local?.designerid,
-    local?.designerId
-  ]);
-  return uniqueClean(ids.flatMap((id) => {
-    const raw = String(id || "").trim();
-    if (!raw) return [];
-    return [raw, raw.toUpperCase(), raw.toLowerCase()];
-  }));
-}
-
-function designerEmailVariants() {
-  const ids = designerIdVariants();
-  return uniqueClean([
-    ...ids.map((id) => `${String(id).toLowerCase()}@adnnstudio.design`),
-    ...ids.map((id) => `designer${String(id).replace(/^d/i, "").toLowerCase()}@adnnstudio.com`)
-  ]);
+  return null;
 }
 
 function selfUidSet() {
-  if (activeProfile?.role !== "designer") {
-    return new Set(uniqueClean([activeUser?.uid, ownCallUid()]));
-  }
-  const designerIds = designerIdVariants();
-  return new Set(uniqueClean([activeUser?.uid, activeProfile?.uid, activeProfile?.id, ownCallUid(), ...designerIds]));
+  const s = new Set();
+  if (activeUser?.uid) s.add(activeUser.uid);
+  return s;
 }
 
 function selfEmailKeyList() {
-  if (activeProfile?.role !== "designer") {
-    return uniqueClean([
-      activeUser?.email,
-      activeProfile?.email,
-      activeProfile?.clientEmail,
-      activeProfile?.authEmail
-    ].map(emailKey));
-  }
-  return uniqueClean([
-    activeUser?.email,
-    activeProfile?.email,
-    activeProfile?.designerEmail,
-    activeProfile?.clientEmail,
-    activeProfile?.authEmail,
-    ...designerDirectoryEmailVariants(),
-    ...designerEmailVariants()
-  ].map(emailKey));
+  return activeUser?.email ? [emailKey(activeUser.email)] : [];
 }
 
 function selfEmailKeySet() {
   return new Set(selfEmailKeyList());
 }
 
-function getUnreadCount(chat, scope) {
-  if (!chat) return 0;
-  if (chat.unreadBy && ownCallUid()) return Number(chat.unreadBy[fieldKey(ownCallUid())] || 0) || 0;
-  return scope === "admin" || isAdminEmail(activeUser?.email)
-    ? Number(chat.unreadForAdmin || 0)
-    : Number(chat.unreadForClient || 0);
+function deepMerge(target, source) {
+  return Object.assign({}, target, source);
 }
 
-function normalizeLastMessage(chat) {
-  if (!chat) return "No messages yet.";
-  if (chat.lastMessageKind === "deleted") return "Message deleted";
-  if (chat.lastMessageKind === "call") return chat.lastMessage || "Call";
-  if (isCallSummaryText(chat.lastMessage)) return "Call update";
-  return chat.lastMessage || "No messages yet.";
+function escapeHtml(str) {
+  return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-function attachmentSummary(attachments) {
-  if (!attachments?.length) return "Message";
-  if (attachments.some((item) => item.voice)) return "Voice message";
-  if (attachments.every((item) => item.type?.startsWith("image/"))) return attachments.length > 1 ? `${attachments.length} photos` : "Photo";
-  if (attachments.every((item) => item.type?.startsWith("video/"))) return attachments.length > 1 ? `${attachments.length} videos` : "Video";
-  return `${attachments.length} file${attachments.length > 1 ? "s" : ""}`;
+function escapeAttr(str) {
+  return escapeHtml(str).replace(/"/g, "&quot;");
 }
 
-function firstAttachmentName(message) {
-  return message.attachments?.[0]?.name || message.mediaName || "";
-}
-
-function roomShell(state) {
-  return document.querySelector(`[data-room="${cssAttr(state.roomId)}"]`);
-}
-
-function filterMessages(state, rawValue) {
-  const shell = roomShell(state);
-  if (!shell) return;
-  const needle = String(rawValue || "").toLowerCase().trim();
-  shell.querySelectorAll(".adnn-message-row").forEach((row) => {
-    if (!needle) {
-      row.hidden = false;
-      row.querySelector(".adnn-message")?.classList.remove("is-search-hit");
-      return;
-    }
-    const message = state.messages.find((item) => item.id === row.dataset.messageId);
-    const hay = `${message?.text || ""} ${firstAttachmentName(message || {})} ${message?.senderName || ""}`.toLowerCase();
-    const hit = hay.includes(needle);
-    row.hidden = !hit;
-    row.querySelector(".adnn-message")?.classList.toggle("is-search-hit", hit);
-  });
-}
-
-function scrollToBottom(state, smooth = false) {
-  requestAnimationFrame(() => {
-    const scroller = roomShell(state)?.querySelector("[data-message-scroll]");
-    if (!scroller) return;
-    scroller.scrollTo({ top: scroller.scrollHeight, behavior: smooth ? "smooth" : "auto" });
-  });
-}
-
-function closeRoomOnMobile(roomId) {
-  const room = document.getElementById(roomId);
-  const layout = room?.closest(".adnn-chat-layout");
-  layout?.classList.remove("is-room-open");
-  document.body.classList.remove("adnn-chat-mobile-lock");
-}
-
-function goHome() {
-  const url = CHAT_CONFIG.homeUrl || "/";
-  if (url === "#" || url === location.href) return;
-  location.href = url;
-}
-
-function refreshAllConnections() {
-  publishConnectionState("Reconnecting...", "warn");
-  liveSnapshotKeys.forEach((watcher) => watcher.restart?.());
-  if (activeUser) {
-    startPresence(activeUser);
-    watchIncomingCalls();
-  }
-  rooms.forEach((state) => showRoomConnection(state, navigator.onLine === false ? "Offline mode" : "Reconnecting...", navigator.onLine === false ? "warn" : "ok"));
-  setTimeout(updateConnectionLabels, 900);
-}
-
-function resilientSnapshot(key, refOrQuery, next, onError, ownerUnsubs = []) {
-  let active = true;
-  let attempt = 0;
-  let currentUnsub = null;
-  let retryTimer = null;
-
-  const start = () => {
-    if (!active) return;
-    currentUnsub?.();
-    currentUnsub = onSnapshot(refOrQuery, {
-      next: (snapshot) => {
-        attempt = 0;
-        publishConnectionState(navigator.onLine === false ? "Offline mode" : "Connected", navigator.onLine === false ? "warn" : "ok");
-        next(snapshot);
-      },
-      error: (error) => {
-        onError?.(error);
-        publishConnectionState(readableFirebaseError(error), isPermissionError(error) ? "bad" : "warn");
-        if (!active || isPermissionError(error)) return;
-        const wait = Math.min(CHAT_CONFIG.snapshotMaxRetryMs, CHAT_CONFIG.snapshotBaseRetryMs * Math.pow(2, attempt++));
-        retryTimer = setTimeout(start, wait);
-      }
-    });
-  };
-
-  const stop = () => {
-    active = false;
-    currentUnsub?.();
-    clearTimeout(retryTimer);
-    liveSnapshotKeys.delete(key);
-  };
-
-  const restart = () => {
-    if (!active) return;
-    attempt = 0;
-    clearTimeout(retryTimer);
-    start();
-  };
-
-  liveSnapshotKeys.set(key, { stop, restart });
-  ownerUnsubs.push(stop);
-  start();
-  return stop;
-}
-
-async function withRetry(fn, { tries = 3, label = "Firebase action" } = {}) {
-  let lastError = null;
-  for (let attempt = 0; attempt < tries; attempt += 1) {
-    try {
-      return await fn();
-    } catch (error) {
-      lastError = error;
-      if (!isRetryableError(error) || attempt === tries - 1) break;
-      await sleep(Math.min(6000, 600 * Math.pow(2, attempt)));
-    }
-  }
-  throw lastError || new Error(`${label} failed.`);
-}
-
-function bindConnectivitySignals() {
-  const online = () => {
-    publishConnectionState("Back online. Reconnecting...", "ok");
-    refreshAllConnections();
-  };
-  const offline = () => publishConnectionState("Offline mode. Text may queue; media upload waits for connection.", "warn");
-  window.addEventListener("online", online);
-  window.addEventListener("offline", offline);
-}
-
-function publishConnectionState(label, tone = "ok") {
-  lastConnectivityLabel = label;
-  document.querySelectorAll("[data-connection-label]").forEach((node) => {
-    node.textContent = label;
-    node.dataset.tone = tone;
-  });
-  document.querySelectorAll("[data-room-connection]").forEach((node) => {
-    node.textContent = label;
-    node.dataset.tone = tone;
-  });
-  clearTimeout(connectionBannerTimer);
-}
-
-function updateConnectionLabels() {
-  const label = navigator.onLine === false ? "Offline mode" : lastConnectivityLabel || "Connected";
-  publishConnectionState(label, navigator.onLine === false ? "warn" : "ok");
-}
-
-function showRoomConnection(state, text, tone = "ok") {
-  const node = roomShell(state)?.querySelector("[data-room-connection]");
-  if (!node) return;
-  node.textContent = text;
-  node.dataset.tone = tone;
-}
-
-function bindGlobalDismissers() {
-  document.addEventListener("click", (event) => {
-    if (!event.target.closest("[data-room-menu-trigger], [data-room-menu]")) document.querySelectorAll("[data-room-menu]").forEach((menu) => { menu.hidden = true; });
-    if (!event.target.closest("[data-chat-menu], [data-outer-menu]")) document.querySelectorAll("[data-outer-menu]").forEach((menu) => { menu.hidden = true; });
-    if (!event.target.closest("[data-toggle-panel], [data-composer-panel]")) document.querySelectorAll("[data-composer-panel]").forEach((panel) => { panel.hidden = true; });
-    if (!event.target.closest("[data-emoji-trigger], [data-emoji-panel]")) document.querySelectorAll("[data-emoji-panel]").forEach((panel) => { panel.hidden = true; });
-    if (!event.target.closest(".adnn-message")) closeMessageMenus();
-  });
-  document.addEventListener("click", (event) => {
-    const logout = event.target.closest(".logout, .sidebar-logout-item, .account-logout, #headerLogoutButton, #sidebarLogoutButton, #sidebarLogoutActionBtn");
-    if (!logout) return;
-    if (!window.confirm("Log out of this ADNN account?")) {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-    }
-  }, true);
-  const escapeCloser = (event) => {
-    if (event.key !== "Escape") return;
-    closeFloatingReactionSheet();
-    closeMessageMenus();
-    document.querySelectorAll("[data-room-menu], [data-outer-menu], [data-room-searchbar], [data-composer-panel], [data-emoji-panel]").forEach((node) => { node.hidden = true; });
-    const openScroller = document.querySelector(".adnn-chat-layout.is-room-open .adnn-message-scroll");
-    if (openScroller && closeMessageScrollChat(openScroller)) {
-      event.preventDefault();
-      event.stopPropagation();
-      return;
-    }
-    closeOpenChatThreadPanels();
-  };
-  document.addEventListener("keydown", escapeCloser, true);
-  document.addEventListener("keyup", escapeCloser, true);
-  window.addEventListener("keydown", escapeCloser, true);
-  window.addEventListener("keyup", escapeCloser, true);
-}
-
-function bindMessageScrollEscape(scroller, state) {
-  if (!scroller || scroller.dataset.escapeReady === "true") return;
-  scroller.dataset.escapeReady = "true";
-  scroller.tabIndex = 0;
-  scroller.addEventListener("pointerdown", () => scroller.focus({ preventScroll: true }));
-  const close = (event) => {
-    if (event.key !== "Escape") return;
-    if (closeMessageScrollChat(scroller, state?.roomId)) {
-      event.preventDefault();
-      event.stopPropagation();
-    }
-  };
-  scroller.addEventListener("keydown", close, true);
-  scroller.addEventListener("keyup", close, true);
-}
-
-function closeMessageScrollChat(scroller, roomId = "") {
-  const layout = scroller?.closest?.(".adnn-chat-layout");
-  if (!layout?.classList.contains("is-room-open")) return false;
-  layout.classList.remove("is-room-open");
-  layout.querySelectorAll(".adnn-thread.is-active").forEach((row) => row.classList.remove("is-active"));
-  if (roomId) closeRoomOnMobile(roomId);
-  else document.body.classList.remove("adnn-chat-mobile-lock");
-  return true;
-}
-
-function closeOpenChatThreadPanels() {
-  const active = document.activeElement;
-  if (active && active !== document.body && typeof active.blur === "function") active.blur();
-  document.querySelectorAll(".adnn-chat-layout.is-room-open").forEach((layout) => {
-    layout.classList.remove("is-room-open");
-    layout.querySelectorAll(".adnn-thread.is-active").forEach((row) => row.classList.remove("is-active"));
-  });
-  rooms.forEach((state) => {
-    const target = document.getElementById(state.roomId);
-    const layout = target?.closest(".adnn-chat-layout");
-    layout?.classList.remove("is-room-open");
-    layout?.querySelectorAll(".adnn-thread.is-active").forEach((row) => row.classList.remove("is-active"));
-  });
-  document.body.classList.remove("adnn-chat-mobile-lock");
-}
-
-function setupSidebarReorder() {
-  const applyOrder = (container) => {
-    const items = Array.from(container.querySelectorAll(":scope > a[data-view-link], :scope > button[data-view-link], :scope > .sidebar-link-item[data-target-view]"));
-    const key = `${NAV_ORDER_STORAGE_KEY}:${location.pathname}:${container.className || container.tagName}`;
-    let saved = [];
-    try { saved = JSON.parse(localStorage.getItem(key) || "[]"); } catch (_) {}
-    saved.forEach((id) => {
-      const item = items.find((node) => navItemId(node) === id);
-      if (item) container.appendChild(item);
-    });
-
-    Array.from(container.querySelectorAll(":scope > a[data-view-link], :scope > button[data-view-link], :scope > .sidebar-link-item[data-target-view]")).forEach((item) => {
-      if (item.dataset.reorderReady === "true") return;
-      item.dataset.reorderReady = "true";
-      item.draggable = false;
-      item.addEventListener("pointermove", (event) => {
-        const rect = item.getBoundingClientRect();
-        item.classList.toggle("can-drag", event.clientX - rect.left <= 30);
-      });
-      item.addEventListener("pointerleave", () => item.classList.remove("can-drag"));
-      item.addEventListener("pointerdown", (event) => {
-        const rect = item.getBoundingClientRect();
-        item.draggable = event.clientX - rect.left <= 30;
-      });
-      item.addEventListener("dragstart", (event) => {
-        if (!item.draggable) return event.preventDefault();
-        item.classList.add("is-dragging");
-        event.dataTransfer.effectAllowed = "move";
-        event.dataTransfer.setData("text/plain", navItemId(item));
-      });
-      item.addEventListener("dragend", () => {
-        item.classList.remove("is-dragging", "can-drag");
-        item.draggable = false;
-        saveOrder(container, key);
-      });
-    });
-
-    container.addEventListener("dragover", (event) => {
-      const dragging = container.querySelector(".is-dragging");
-      if (!dragging) return;
-      event.preventDefault();
-      const after = getDragAfterElement(container, event.clientY);
-      if (after == null) container.appendChild(dragging);
-      else container.insertBefore(dragging, after);
-    });
-    container.addEventListener("drop", () => saveOrder(container, key));
-  };
-
-  const run = () => document.querySelectorAll(".side-nav, .sidebar-navigation, .sidebar-bottom-utilities").forEach(applyOrder);
-  run();
-  window.addEventListener("load", run, { once: true });
-}
-
-function navItemId(item) {
-  return item.dataset.viewLink || item.dataset.targetView || item.getAttribute("href") || item.id || item.textContent.trim();
-}
-
-function saveOrder(container, key) {
-  const ids = Array.from(container.querySelectorAll(":scope > a[data-view-link], :scope > button[data-view-link], :scope > .sidebar-link-item[data-target-view]")).map(navItemId);
-  try { localStorage.setItem(key, JSON.stringify(ids)); } catch (_) {}
-}
-
-function getDragAfterElement(container, y) {
-  const items = Array.from(container.querySelectorAll(":scope > a[data-view-link]:not(.is-dragging), :scope > button[data-view-link]:not(.is-dragging), :scope > .sidebar-link-item[data-target-view]:not(.is-dragging)"));
-  return items.reduce((closest, child) => {
-    const box = child.getBoundingClientRect();
-    const offset = y - box.top - box.height / 2;
-    if (offset < 0 && offset > closest.offset) return { offset, element: child };
-    return closest;
-  }, { offset: Number.NEGATIVE_INFINITY, element: null }).element;
-}
-
-function closeMessageMenus() {
-  document.querySelectorAll(".adnn-message.is-menu-open").forEach((item) => item.classList.remove("is-menu-open"));
-  document.querySelectorAll("[data-reaction-palette]").forEach((item) => { item.hidden = true; });
-  closeFloatingReactionSheet();
-}
-
-function cleanupSession({ keepFirebase = false } = {}) {
-  listWatchers.forEach((stop) => stop?.());
-  listWatchers.clear();
-  incomingCallUnsub?.();
-  incomingCallUnsub = null;
-  globalThreadBadgeUnsub?.();
-  globalThreadBadgeUnsub = null;
-  stopOutgoingDialTone();
-  stopIncomingRingtone();
-  rooms.forEach((state) => cleanupRoomState(state));
-  rooms.clear();
-  liveSnapshotKeys.forEach((watcher) => watcher.stop?.());
-  liveSnapshotKeys.clear();
-  globalUnsubs.splice(0).forEach((fn) => fn?.());
-  stopPresence();
-  if (activeCall) endCall(true);
-  objectUrls.forEach((url) => URL.revokeObjectURL(url));
-  objectUrls.clear();
-  document.body.classList.remove("adnn-chat-mobile-lock");
-  if (!keepFirebase) {
-    app = null;
-    auth = null;
-    db = null;
-    storage = null;
-  }
-  activeProfile = null;
-  activeUser = null;
-  sessionStarted = false;
-}
-
-
-function confirmDanger(title, message, confirmText = "Confirm") {
-  return new Promise((resolve) => {
-    const overlay = document.createElement("div");
-    overlay.className = "adnn-confirm-backdrop";
-    overlay.innerHTML = `
-      <div class="adnn-confirm-card" role="dialog" aria-modal="true">
-        <h3>${escapeHtml(title)}</h3>
-        <p>${escapeHtml(message)}</p>
-        <div>
-          <button type="button" data-cancel>Cancel</button>
-          <button type="button" class="is-danger" data-confirm>${escapeHtml(confirmText)}</button>
-        </div>
-      </div>
-    `;
-    document.body.appendChild(overlay);
-    const done = (value) => { overlay.remove(); resolve(value); };
-    overlay.querySelector("[data-cancel]")?.addEventListener("click", () => done(false));
-    overlay.querySelector("[data-confirm]")?.addEventListener("click", () => done(true));
-    overlay.addEventListener("click", (event) => { if (event.target === overlay) done(false); });
-    overlay.querySelector("[data-cancel]")?.focus();
-  });
-}
-
-function showToast(text, tone = "ok") {
-  const key = `${tone}:${text}`;
-  if (pendingToastKeys.has(key)) return;
-  pendingToastKeys.set(key, true);
-  const toast = document.createElement("div");
-  toast.className = `adnn-chat-toast is-${tone}`;
-  toast.textContent = text;
-  document.body.appendChild(toast);
-  setTimeout(() => {
-    toast.remove();
-    pendingToastKeys.delete(key);
-  }, 3400);
-}
-
-function insertAtCursor(textarea, value) {
-  const start = textarea.selectionStart ?? textarea.value.length;
-  const end = textarea.selectionEnd ?? textarea.value.length;
-  textarea.value = `${textarea.value.slice(0, start)}${value}${textarea.value.slice(end)}`;
-  textarea.selectionStart = textarea.selectionEnd = start + value.length;
-  textarea.dispatchEvent(new Event("input", { bubbles: true }));
-}
-
-function autoSizeTextArea(node) {
-  if (!node) return;
-  node.style.height = "auto";
-  node.style.height = `${Math.min(128, node.scrollHeight)}px`;
-}
-
-function waveBars(seed = 8) {
-  const count = 34;
-  const base = Math.max(1, Number(seed) || 8);
-  return Array.from({ length: count }, (_, i) => {
-    const h = 18 + Math.round(Math.abs(Math.sin((i + 1) * 1.7 + base)) * 30) + (i % 5) * 2;
-    return `<span style="--h:${Math.min(58, h)}%"></span>`;
-  }).join("");
-}
-
-function bestAudioMimeType() {
-  const types = ["audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus", "audio/mp4"];
-  return types.find((type) => MediaRecorder.isTypeSupported?.(type)) || "";
-}
-
-function isRetryableError(error) {
-  const code = String(error?.code || "");
-  return !isPermissionError(error) && [
-    "unavailable",
-    "deadline-exceeded",
-    "aborted",
-    "internal",
-    "resource-exhausted",
-    "storage/retry-limit-exceeded",
-    "storage/unknown",
-    "storage/canceled"
-  ].some((item) => code.includes(item));
-}
-
-function isPermissionError(error) {
-  const code = String(error?.code || "").toLowerCase();
-  return code.includes("permission-denied") || code.includes("unauthenticated") || code.includes("unauthorized") || code.includes("storage/unauthorized");
-}
-
-function readableFirebaseError(error) {
-  const code = String(error?.code || "").toLowerCase();
-  if (code.includes("permission-denied") || code.includes("unauthorized") || code.includes("unauthenticated")) return "Chat access is not available right now.";
-  if (code.includes("unavailable")) return "Chat is reconnecting.";
-  if (code.includes("storage/quota-exceeded")) return "Upload storage is full.";
-  if (code.includes("storage/object-not-found")) return "This file is no longer available.";
-  if (code.includes("storage/canceled")) return "Upload canceled.";
-  return "Chat connection failed.";
-}
-
-function isCallSummaryText(value) {
-  const text = String(value || "").toLowerCase();
-  return /^incoming (audio|video) call/.test(text) || /^outgoing (audio|video) call/.test(text) || /^call (ended|missed|rejected)/.test(text);
-}
-
-function fieldKey(value) {
-  const text = String(value || "unknown");
-  let out = "u";
-  for (const char of text) out += char.codePointAt(0).toString(16).padStart(4, "0");
-  return out;
-}
-
-function cssAttr(value) {
-  return String(value || "").replace(/\\/g, "\\\\").replace(/"/g, "\\\"");
-}
-
-function emailKey(value) {
-  return String(value || "").trim().toLowerCase();
-}
-
-function isAdminEmail(email) {
-  return emailKey(email) === ADMIN_EMAIL;
-}
-
-function initials(value) {
-  return String(value || "AD").trim().split(/\s+/).slice(0, 2).map((part) => part[0] || "").join("").toUpperCase() || "AD";
-}
-
-function escapeHtml(value) {
-  return String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
-}
-
-function escapeAttr(value) {
-  return escapeHtml(value).replace(/`/g, "&#096;");
-}
-
-function linkifyText(value) {
-  const safe = escapeHtml(value);
-  return safe.replace(/(https?:\/\/[^\s<]+)/g, (url) => `<a href="${escapeAttr(url)}" target="_blank" rel="noopener">${escapeHtml(url)}</a>`);
-}
-
-function toMillis(value) {
-  if (!value) return 0;
-  if (typeof value.toMillis === "function") return value.toMillis();
-  if (typeof value === "number") return value;
-  return new Date(value).getTime() || 0;
-}
-
-function formatTime(value) {
-  const time = toMillis(value) || Date.now();
-  return new Date(time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-}
-
-function formatCompactDate(value) {
-  const time = toMillis(value);
-  if (!time) return "";
-  const date = new Date(time);
-  const now = new Date();
-  if (date.toDateString() === now.toDateString()) return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  const yesterday = new Date(now);
-  yesterday.setDate(now.getDate() - 1);
-  if (date.toDateString() === yesterday.toDateString()) return "Yesterday";
-  return date.toLocaleDateString([], { month: "short", day: "numeric" });
-}
-
-function dateSeparatorKey(value) {
-  const time = toMillis(value);
-  return time ? new Date(time).toDateString() : "";
-}
-
-function formatDateSeparator(value) {
-  const time = toMillis(value);
-  if (!time) return "Today";
-  const date = new Date(time);
-  const now = new Date();
-  if (date.toDateString() === now.toDateString()) return "Today";
-  const yesterday = new Date(now);
-  yesterday.setDate(now.getDate() - 1);
-  if (date.toDateString() === yesterday.toDateString()) return "Yesterday";
-  return date.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric", year: date.getFullYear() !== now.getFullYear() ? "numeric" : undefined });
-}
-
-function relativeTime(time) {
-  const diff = Math.max(0, Date.now() - time);
-  const min = Math.floor(diff / 60000);
-  if (min < 1) return "now";
-  if (min < 60) return `${min}m ago`;
-  const hr = Math.floor(min / 60);
-  if (hr < 24) return `${hr}h ago`;
-  const day = Math.floor(hr / 24);
-  if (day < 7) return `${day}d ago`;
-  return `${Math.floor(day / 7)}w ago`;
-}
-
-function formatBytes(bytes) {
-  const size = Number(bytes) || 0;
-  if (size < 1024) return `${size} B`;
-  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
-  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function formatDuration(seconds) {
-  const safe = Math.max(0, Number(seconds) || 0);
-  const min = Math.floor(safe / 60);
-  const sec = safe % 60;
-  return `${min}:${String(sec).padStart(2, "0")}`;
-}
-
-function fileExt(name) {
-  const ext = String(name || "file").split(".").pop().slice(0, 4).toUpperCase();
-  return ext || "FILE";
-}
-
-function fileKind(file) {
-  const type = file.type || "";
-  if (type.startsWith("image/")) return "Image";
-  if (type.startsWith("video/")) return "Video";
-  if (type.startsWith("audio/")) return "Audio";
-  if (type.includes("pdf")) return "PDF";
-  return "Document";
-}
-
-function sanitizeFileName(name) {
-  return String(name || "file").replace(/[^a-z0-9_.-]/gi, "_").toLowerCase().slice(0, 120) || "file";
-}
-
-function makeId(prefix = "id") {
-  if (crypto?.randomUUID) return `${prefix}_${crypto.randomUUID().replace(/-/g, "").slice(0, 18)}`;
-  return `${prefix}_${Date.now()}_${Math.random().toString(16).slice(2)}`;
-}
-
-function uniqueClean(values) {
-  return Array.from(new Set(values.filter(Boolean).map(String)));
-}
-
-function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-
-
-function watchGlobalThreadBadges() {
-  globalThreadBadgeUnsub?.();
-  globalThreadBadgeUnsub = null;
-  if (!db || !activeUser) return;
-
-  const owner = [];
-  const sources = new Map();
-  let initialSourceCount = 0;
-  const hydratedSources = new Set();
-  let initialHydrationDone = false;
-  const markHydrated = (key) => {
-    hydratedSources.add(key);
-    if (!initialHydrationDone && hydratedSources.size >= Math.max(1, initialSourceCount)) {
-      initialHydrationDone = true;
-    }
-  };
-  const render = (allowNotify = initialHydrationDone) => {
-    let chats = Array.from(sources.values()).flatMap((items) => Array.from(items.values()));
-    const unique = new Map();
-    chats.forEach((chat) => unique.set(chat.id, { ...(unique.get(chat.id) || {}), ...chat }));
-    chats = Array.from(unique.values()).filter(isChatVisibleForCurrentUser);
-    const scope = isAdminEmail(activeUser?.email) ? 'admin' : 'user';
-    if (scope === 'admin') chats = chats.filter(isVisibleToAdminInbox);
-    updateChatNavigationBadges(chats, scope);
-    if (allowNotify) {
-      chats.forEach((chat) => notifyThreadUnread(chat, getChatTitle(chat, scope), getUnreadCount(chat, scope)));
-    } else {
-      chats.forEach((chat) => {
-        const key = `thread:${chat.id}`;
-        threadUnreadCache.set(key, getUnreadCount(chat, scope) || 0);
-        const lastMs = toMillis(chat.updatedAt || chat.updatedAtMs || chat.createdAt || chat.createdAtMs);
-        threadNotifyState.set(key, `${lastMs}:${chat.lastMessage || ""}:${chat.lastSenderUid || ""}:${chat.lastMessageKind || ""}`);
-      });
-    }
-  };
-  const listen = (key, refOrQuery) => resilientSnapshot(`globalThreads:${key}`, refOrQuery, (snapshot) => {
-    sources.set(key, new Map(snapshot.docs.map((item) => [item.id, { id: item.id, ...item.data(), __pending: item.metadata.hasPendingWrites }])));
-    const allowNotify = initialHydrationDone;
-    render(allowNotify);
-    markHydrated(key);
-  }, () => {
-    const allowNotify = initialHydrationDone;
-    render(allowNotify);
-    markHydrated(key);
-  }, owner);
-
-  const listenSource = (key, refOrQuery) => {
-    initialSourceCount += 1;
-    listen(key, refOrQuery);
-  };
-  if (isAdminEmail(activeUser.email)) {
-    listenSource('support', query(collection(db, COLLECTIONS.chats), where('type', '==', 'support')));
-    listenSource('admin-alias', query(collection(db, COLLECTIONS.chats), where('participantUids', 'array-contains', ADMIN_ALIAS_UID)));
-    selfEmailKeyList().forEach((mail, index) => {
-      listenSource(`admin-email-${index}`, query(collection(db, COLLECTIONS.chats), where('participantEmailKeys', 'array-contains', mail)));
-    });
-  } else {
-    Array.from(selfUidSet()).forEach((uid, index) => {
-      listenSource(`participant-${index}`, query(collection(db, COLLECTIONS.chats), where('participantUids', 'array-contains', uid)));
-    });
-    selfEmailKeyList().forEach((mail, index) => {
-      listenSource(`participant-email-${index}`, query(collection(db, COLLECTIONS.chats), where('participantEmailKeys', 'array-contains', mail)));
-    });
-  }
-  globalThreadBadgeUnsub = () => owner.forEach((fn) => fn?.());
-  globalUnsubs.push(() => globalThreadBadgeUnsub?.());
-}
-
-function assetUrl(fileName) {
-  const clean = String(fileName || '').trim();
-  if (!clean) return '';
-  try { return new URL(clean, location.href).href; } catch (_) { return clean; }
-}
-
-
-function enforceSilentSoundMigration() {
-  try {
-    if (localStorage.getItem(CHAT_SOUND_KEY) === null) localStorage.setItem(CHAT_SOUND_KEY, "true");
-  } catch (_) {}
-}
-
-function installSilentAudioGuard() {
-  return;
-}
-
-function hasConfirmedSoundOptIn() {
-  return chatSettingBool(CHAT_SOUND_KEY, true);
-}
-
-function isRefreshAudioMuteWindow() {
-  return Date.now() < notificationsReadyAtMs;
-}
-
-function canPlayChatSound() {
-  return hasConfirmedSoundOptIn() && !isRefreshAudioMuteWindow() && !chatReduceMotionEnabled();
-}
-
-function hasFreshUserActivation() {
-  return !!(navigator.userActivation?.hasBeenActive || document.hasFocus());
-}
-
-function unlockChatAudioForSession() {
-  chatAudioUnlockedThisSession = true;
-}
-
-function createLoopingAudio(fileName, volume = 0.62) {
-  return null;
-}
-
-function playOneShotAudio(fileName, fallbackTone = "message") {
-  if (!canPlayChatSound() || !fileName) return;
-  try {
-    const audio = new Audio(assetUrl(fileName));
-    audio.preload = "auto";
-    audio.volume = fallbackTone === "missed" ? 0.72 : 0.56;
-    audio.play().catch(() => {});
-  } catch (_) {}
-}
-
-function startOutgoingDialTone() {
-  return;
-}
-
-function stopOutgoingDialTone() {
-  outgoingDialAudio = null;
-}
-
-function startIncomingRingtone() {
-  return;
-}
-
-function stopIncomingRingtone() {
-  incomingRingAudio = null;
-}
-
-function playSynthTone(tone = "message") {
-  return;
-}
-
-function bindNotificationPermissionPrimer() {
-  notificationPermissionAsked = true;
-}
-
-function chatReduceMotionEnabled() {
-  return chatSettingBool(CHAT_REDUCE_MOTION_KEY, false) || document.documentElement.classList.contains("adnn-reduce-motion");
-}
-
-function chatSettingBool(key, fallback = false) {
-  try {
-    const raw = localStorage.getItem(key);
-    if (raw === null) return !!fallback;
-    return raw === "true" || raw === "1" || raw === "yes";
-  } catch (_) {
-    return !!fallback;
-  }
-}
-
-function syncChatSettingsFromStorage() {
-  const root = document.documentElement;
-  root.classList.toggle("adnn-chat-light", chatSettingBool(CHAT_THEME_STORAGE_KEY, false));
-  root.classList.toggle("adnn-reduce-motion", chatSettingBool(CHAT_REDUCE_MOTION_KEY, false));
-  root.classList.toggle("adnn-silent-mode", !chatSettingBool(CHAT_SOUND_KEY, true));
-}
-
-function bindChatSettingsEvents() {
-  if (chatSettingsEventsBound) return;
-  chatSettingsEventsBound = true;
-  const sync = () => syncChatSettingsFromStorage();
-  window.addEventListener("storage", sync);
-  window.addEventListener("adnn-settings-changed", sync);
-}
-
-function notifyBrowser(title, body, icon = "") {
-  return;
-}
-
-function showInAppNotification(title, body, options = {}) {
-  if (!chatSettingBool(CHAT_INAPP_NOTIFICATION_KEY, true)) return;
-  playNotificationTone(options.tone || "message");
-  let stack = document.getElementById("adnnInAppNotificationStack");
-  if (!stack) {
-    stack = document.createElement("div");
-    stack.id = "adnnInAppNotificationStack";
-    stack.className = "adnn-inapp-stack";
-    document.body.appendChild(stack);
-  }
-  const card = document.createElement(options.href ? "button" : "div");
-  card.type = options.href ? "button" : undefined;
-  card.className = `adnn-inapp-card${options.tone === "missed" ? " is-missed" : ""}`;
-  card.innerHTML = `
-    <span class="adnn-avatar">${options.icon ? `<img src="${escapeAttr(options.icon)}" alt="">` : initials(title)}</span>
-    <span><strong>${escapeHtml(title || "New message")}</strong><small>${escapeHtml(body || "You have a new message.")}</small></span>
-    ${options.count ? `<b>${escapeHtml(String(options.count > 99 ? "99+" : options.count))}</b>` : ""}
-  `;
-  if (options.href) card.addEventListener("click", () => { location.href = options.href; });
-  stack.prepend(card);
-  while (stack.children.length > 3) stack.lastElementChild?.remove();
-  setTimeout(() => {
-    card.style.opacity = "0";
-    card.style.transform = "translateY(-8px) scale(.98)";
-    setTimeout(() => card.remove(), 260);
-  }, 5200);
-}
-
-function playNotificationTone(tone = "message") {
-  playOneShotAudio(CHAT_CONFIG.messageToneFile, tone);
-}
-
-function updateBadgeNode(node, value) {
-  if (!node) return;
-  node.classList?.add("side-notification-badge");
-  const safe = Math.max(0, Number(value) || 0);
-  node.textContent = String(safe > 99 ? "99+" : safe);
-  node.hidden = safe <= 0;
-  node.style.display = safe > 0 ? "grid" : "none";
-}
-
-function ensureSidebarBadges() {
-  document.querySelectorAll(".side-nav a, .side-nav button, .sidebar-link-item, .account-popover button").forEach((item) => {
-    if (item.querySelector(".side-notification-badge")) return;
-    const badge = document.createElement("span");
-    badge.className = "side-notification-badge";
-    badge.hidden = true;
-    badge.textContent = "0";
-    item.appendChild(badge);
-  });
-}
-
-function updateChatNavigationBadges(chats = [], scope = "user") {
-  const counts = { chat: 0, support: 0, admin: 0 };
-  chats.forEach((chat) => {
-    const unread = getUnreadCount(chat, scope);
-    if (chat.type === "support") counts.support += unread;
-    else counts.chat += unread;
-    counts.admin += unread;
-  });
-  const total = counts.chat + counts.support;
-  document.querySelectorAll('[data-account-badge="chat"]').forEach((node) => updateBadgeNode(node, counts.chat));
-  document.querySelectorAll('[data-account-badge="support"]').forEach((node) => updateBadgeNode(node, counts.support));
-  document.querySelectorAll('[data-admin-chat-badge]').forEach((node) => updateBadgeNode(node, counts.admin));
-  document.querySelectorAll('[data-target-view="chats_view"] .side-notification-badge, [data-view-link="chat"] .side-notification-badge, [data-view-link="admin-support"] .side-notification-badge').forEach((node) => updateBadgeNode(node, total));
-  document.querySelectorAll('.adnn-chat-count').forEach((node) => updateBadgeNode(node, total));
-  ensureSidebarBadges();
-  document.querySelectorAll('[data-section="chat"] .side-notification-badge, [data-view="chat"] .side-notification-badge, a[href*="chat"] .side-notification-badge').forEach((node) => updateBadgeNode(node, total));
-  try { localStorage.setItem(CHAT_TOTAL_UNREAD_STORAGE_KEY, String(total)); } catch (_) {}
-}
-
-function notifyThreadUnread(chat, title, unread) {
-  const key = `thread:${chat.id}`;
-  const previousUnread = threadUnreadCache.get(key);
-  threadUnreadCache.set(key, unread || 0);
-
-  const lastMs = toMillis(chat.updatedAt || chat.updatedAtMs || chat.createdAt || chat.createdAtMs);
-  const sig = `${lastMs}:${chat.lastMessage || ""}:${chat.lastSenderUid || ""}:${chat.lastMessageKind || ""}`;
-  const previousSig = threadNotifyState.get(key);
-  threadNotifyState.set(key, sig);
-
-  if (Date.now() < notificationsReadyAtMs) return;
-  if (previousUnread === undefined && previousSig === undefined) return;
-  const unreadIncreased = unread && (previousUnread === undefined || unread > previousUnread);
-  const messageChanged = previousSig && sig !== previousSig;
-  if (!unreadIncreased && !messageChanged) return;
-  if (selfUidSet().has(chat.lastSenderUid) || selfUidSet().has(chat.lastSenderAliasUid)) return;
-
-  const body = normalizeLastMessage(chat);
-  const tone = chat.lastMessageKind === "call" && /missed/i.test(body) ? "missed" : "message";
-  showInAppNotification(title, body, {
-    tone,
-    count: unread || 1,
-    icon: getChatPhoto(chat, isAdminEmail(activeUser?.email) ? "admin" : "user"),
-    href: location.pathname.includes("designer-account.html") ? "designer-account.html#chat" : location.pathname.includes("admin.html") ? "admin.html#chats_view" : "account.html#chat"
-  });
-  notifyBrowser(title, body, getChatPhoto(chat, isAdminEmail(activeUser?.email) ? "admin" : "user"));
-}
-
-function notifyIncomingMessages(state, messages) {
-  if (!state || !Array.isArray(messages)) return;
-  const visible = messages.filter((msg) => shouldShowMessage(msg));
-  if (!state.messagesHydrated) {
-    visible.forEach((msg) => state.notifiedMessageIds.add(msg.id));
-    state.messagesHydrated = true;
-    return;
-  }
-  if (Date.now() < notificationsReadyAtMs || Date.now() < (state.suppressNotifyUntilMs || 0)) {
-    visible.forEach((msg) => state.notifiedMessageIds.add(msg.id));
-    return;
-  }
-  visible.forEach((msg) => {
-    if (state.notifiedMessageIds.has(msg.id)) return;
-    state.notifiedMessageIds.add(msg.id);
-    if (isMineMessage(msg)) return;
-    const title = msg.senderName || getChatTitle(state.chatData, isAdminEmail(activeUser?.email) ? "admin" : "user");
-    const body = isCallEventMessage(msg) ? callSummaryLastMessage(msg) : (msg.text || attachmentSummary(msg.attachments || []) || "New message");
-    const tone = isCallEventMessage(msg) && (msg.callStatus === "missed" || msg.endedReason === "timeout") ? "missed" : "message";
-    showInAppNotification(title, body, {
-      tone,
-      icon: getChatPhoto(state.chatData, isAdminEmail(activeUser?.email) ? "admin" : "user"),
-      href: location.pathname.includes("designer-account.html") ? "designer-account.html#chat" : location.pathname.includes("admin.html") ? "admin.html#chats_view" : "account.html#chat"
-    });
-    notifyBrowser(title, body, getChatPhoto(state.chatData, isAdminEmail(activeUser?.email) ? "admin" : "user"));
-  });
-}
-
-function revokeObjectUrl(url) {
-  if (!url) return;
-  URL.revokeObjectURL(url);
-  objectUrls.delete(url);
-}
-
-function connectionStateText(state) {
-  if (state === "connected") return "Connected";
-  if (state === "connecting") return "Connecting...";
-  if (state === "disconnected") return "Reconnecting...";
-  if (state === "failed") return "Connection failed";
-  if (state === "closed") return "Call ended";
-  return "Connecting...";
-}
-
-
-async function getPresenceInfo(uid) {
-  if (!uid || !db) return { online: false, seen: 0, data: {} };
-  const snap = await getDoc(doc(db, COLLECTIONS.presence, uid)).catch(() => null);
-  const data = snap?.exists() ? snap.data() : {};
-  const seen = toMillis(data.lastSeen || data.updatedAt || data.lastActiveAt);
-  const online = data.online !== false && !!seen && Date.now() - seen < CHAT_CONFIG.presenceOnlineMs;
-  return { online, seen, data };
-}
-
-function placeCallPopout(node) {
-  if (!node) return;
-  const rect = node.getBoundingClientRect();
-  const width = rect.width || Math.min(420, window.innerWidth - 20);
-  const height = rect.height || 420;
-  const left = clamp(window.innerWidth - width - 24, 10, Math.max(10, window.innerWidth - width - 10));
-  const top = clamp(76, 10, Math.max(10, window.innerHeight - height - 10));
-  node.style.left = `${left}px`;
-  node.style.top = `${top}px`;
-}
-
-function makeDraggable(node, handle) {
-  if (!node || !handle) return;
-  let startX = 0;
-  let startY = 0;
-  let baseX = 0;
-  let baseY = 0;
-  let dragging = false;
-  const move = (event) => {
-    if (!dragging) return;
-    const rect = node.getBoundingClientRect();
-    const x = clamp(baseX + event.clientX - startX, 8, window.innerWidth - rect.width - 8);
-    const y = clamp(baseY + event.clientY - startY, 8, window.innerHeight - rect.height - 8);
-    node.style.left = `${x}px`;
-    node.style.top = `${y}px`;
-  };
-  const up = () => {
-    dragging = false;
-    document.removeEventListener("pointermove", move);
-    document.removeEventListener("pointerup", up);
-  };
-  handle.addEventListener("pointerdown", (event) => {
-    if (event.button && event.button !== 0) return;
-    dragging = true;
-    const rect = node.getBoundingClientRect();
-    startX = event.clientX;
-    startY = event.clientY;
-    baseX = rect.left;
-    baseY = rect.top;
-    document.addEventListener("pointermove", move);
-    document.addEventListener("pointerup", up, { once: true });
-  });
-}
-
-function clamp(value, min, max) {
-  return Math.min(Math.max(value, min), Math.max(min, max));
-}
-
-function deepMerge(base, overrides) {
-  const out = Array.isArray(base) ? [...base] : { ...base };
-  Object.entries(overrides || {}).forEach(([key, value]) => {
-    if (value && typeof value === "object" && !Array.isArray(value) && !(value instanceof Element)) {
-      out[key] = deepMerge(out[key] || {}, value);
-    } else {
-      out[key] = value;
-    }
-  });
-  return out;
-}
+function watchIncomingCalls() {}
+function watchGlobalThreadBadges() {}
+function cleanupSession() {}
 
 function injectChatStyles() {
   if (document.getElementById("adnnChatRuntimeStylesV2")) return;
@@ -4249,398 +2875,22 @@ function injectChatStyles() {
   const style = document.createElement("style");
   style.id = "adnnChatRuntimeStylesV2";
   style.textContent = `
-    :root { --adnn-primary:${t.primary}; --adnn-primary2:${t.primary2}; --adnn-danger:${t.danger}; --adnn-success:${t.success}; }
-    .adnn-chat-app, .adnn-chat-app * { box-sizing:border-box; }
-    .adnn-chat-app [hidden], .adnn-call-popout [hidden], .adnn-confirm-backdrop [hidden] { display:none !important; }
-    #directChatMount, #clientChatMount, #adminChatMount { width:100% !important; height:100% !important; min-height:0 !important; max-height:none !important; margin:0 !important; overflow:hidden !important; background:transparent !important; box-shadow:none !important; }
-    #clientChatMount.adnn-designer-chat-panel { display:block !important; height:100% !important; min-height:0 !important; border:0 !important; border-radius:0 !important; background:transparent !important; box-shadow:none !important; }
-    .adnn-chat-app { --adnn-primary:${t.primary}; --adnn-primary2:${t.primary2}; --adnn-danger:${t.danger}; --adnn-success:${t.success}; --adnn-bg:${t.bg}; --adnn-panel:${t.panel}; --adnn-soft:${t.soft}; --adnn-line:${t.line}; --adnn-text:${t.text}; --adnn-muted:${t.muted}; width:100%; height:100%; min-height:0; color:var(--adnn-text); font:inherit; display:block; overflow:hidden; }
-    .adnn-chat-app, .adnn-chat-app * { min-width:0; box-sizing:border-box; }
-    .adnn-chat-app img, .adnn-chat-app video, .adnn-chat-app canvas, .adnn-chat-app svg { max-width:100%; }
-    body.chat-view-active, body.adnn-chat-mobile-lock { max-width:100vw !important; overflow-x:hidden !important; overscroll-behavior-x:none !important; }
-    .adnn-chat-shell { width:100%; height:100%; min-width:0; min-height:0; display:grid; gap:0; overflow:hidden; }
-    body.chat-view-active .adnn-chat-app, body.chat-view-active .adnn-chat-shell, body.chat-view-active .adnn-chat-layout { height:100% !important; min-height:0 !important; }
-    .adnn-chat-outerbar { min-height:52px; display:flex; align-items:center; gap:10px; padding:8px 10px; border:1px solid var(--adnn-line); border-radius:20px; background:linear-gradient(145deg, rgba(22,22,28,.88), rgba(4,4,7,.92)); position:relative; box-shadow:0 16px 50px rgba(0,0,0,.22); }
-    .adnn-outer-title { flex:1; min-width:0; display:grid; gap:2px; }
-    .adnn-outer-title strong, .adnn-outer-title span { overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
-    .adnn-outer-title strong { font-size:14px; font-weight:650; letter-spacing:-.02em; }
-    .adnn-outer-title span { font-size:12px; color:var(--adnn-muted); }
-    .adnn-outer-title span[data-tone="ok"] { color:var(--adnn-success); }
-    .adnn-outer-title span[data-tone="bad"] { color:#ff7a69; }
-    .adnn-outer-btn { width:40px; height:40px; border:0; border-radius:14px; display:grid; place-items:center; color:#fff; background:rgba(255,255,255,.07); cursor:pointer; transition:.18s ease; flex:0 0 auto; }
-    .adnn-outer-btn:hover { background:rgba(255,255,255,.12); transform:translateY(-1px); }
-    .adnn-outer-btn svg { width:19px; height:19px; }
-    .adnn-outer-menu, .adnn-room-menu { position:absolute; right:10px; top:calc(100% + 8px); min-width:210px; z-index:220; padding:8px; border:1px solid rgba(255,255,255,.12); border-radius:18px; background:rgba(8,8,12,.98); box-shadow:0 24px 80px rgba(0,0,0,.46); backdrop-filter:blur(18px); }
-    .adnn-outer-menu button, .adnn-room-menu button { width:100%; border:0; border-radius:12px; padding:10px 11px; display:flex; color:#fff; background:transparent; cursor:pointer; text-align:left; }
-    .adnn-outer-menu button:hover, .adnn-room-menu button:hover { background:rgba(255,255,255,.08); }
-    .adnn-room-menu .is-danger { color:#ff6b5c; }
-    .adnn-room-shell.is-blocked-by-me .adnn-composer textarea::placeholder { color:#ffc66d; }
-    .adnn-room-shell.is-blocked-by-me .adnn-composer::after, .adnn-room-shell.is-blocked-by-remote .adnn-composer::after { content:"Chat blocked"; position:absolute; left:72px; bottom:100%; margin-bottom:6px; padding:5px 9px; border-radius:999px; background:rgba(255,198,109,.12); color:#ffc66d; font-size:11px; pointer-events:none; }
-    .adnn-outer-menu small { display:block; padding:8px 10px 4px; color:var(--adnn-muted); }
-    .adnn-chat-layout { --thread-w:390px; width:100%; height:100%; min-height:0; display:grid; grid-template-columns:minmax(260px, var(--thread-w)) 10px minmax(0,1fr); grid-template-rows:minmax(0,1fr); overflow:hidden; border:1px solid var(--adnn-line); border-radius:26px; background:linear-gradient(145deg, rgba(22,22,28,.94), rgba(4,4,7,.98)); box-shadow:0 24px 90px rgba(0,0,0,.34); }
-    .adnn-chat-layout.is-single { grid-template-columns:1fr; }
-    .adnn-chat-layout > .adnn-chat-thread-panel { grid-column:1; grid-row:1; }
-    .adnn-chat-layout > .adnn-chat-room { grid-column:3; grid-row:1; }
-    .adnn-chat-layout.is-single > .adnn-chat-room { grid-column:1 / -1; }
-    .adnn-chat-resizer { grid-column:2; grid-row:1; width:10px; min-width:10px; border:0; border-left:1px solid rgba(255,255,255,.05); border-right:1px solid rgba(255,255,255,.04); background:linear-gradient(90deg, transparent, rgba(255,255,255,.035), transparent); cursor:col-resize; position:relative; z-index:8; }
-    .adnn-chat-resizer:before { content:""; position:absolute; top:50%; left:50%; width:3px; height:44px; border-radius:999px; transform:translate(-50%,-50%); background:rgba(255,255,255,.18); transition:.18s ease; }
-    .adnn-chat-resizer:hover:before, body.adnn-resizing-chat .adnn-chat-resizer:before { background:var(--adnn-primary); box-shadow:0 0 18px rgba(39,45,207,.45); }
-    body.adnn-resizing-chat { cursor:col-resize !important; user-select:none !important; }
-    .adnn-chat-thread-panel { min-width:0; min-height:0; display:grid; grid-template-rows:auto minmax(0,1fr); border-right:1px solid rgba(255,255,255,.08); background:rgba(255,255,255,.025); overflow:hidden; }
-    .adnn-chat-thread-head { min-height:82px; padding:14px; display:grid; gap:10px; align-content:center; border-bottom:1px solid rgba(255,255,255,.07); }
-    .adnn-chat-thread-head strong { display:block; font-size:16px; font-weight:650; letter-spacing:-.02em; }
-    .adnn-chat-thread-head small { display:block; color:var(--adnn-muted); font-size:12px; margin-top:2px; }
-    .adnn-chat-search { height:38px; display:flex; align-items:center; gap:8px; border:1px solid rgba(255,255,255,.08); border-radius:15px; background:#050507; color:var(--adnn-muted); padding:0 11px; }
-    .adnn-chat-search svg { width:16px; height:16px; flex:0 0 auto; }
-    .adnn-chat-search input { flex:1; min-width:0; border:0; outline:0; color:#fff; background:transparent; font:inherit; font-size:13px; }
-    .adnn-chat-thread-list { min-height:0; overflow:auto; padding:10px; scrollbar-width:thin; }
-    .adnn-thread { width:100%; min-width:0; border:0; border-radius:18px; padding:12px; display:grid; grid-template-columns:46px minmax(0,1fr) auto; align-items:center; gap:12px; background:transparent; color:#fff; text-align:left; cursor:pointer; transition:.2s ease; }
-    .adnn-thread:hover, .adnn-thread.is-active { background:rgba(39,45,207,.18); }
-    .adnn-thread-copy { min-width:0; display:grid; gap:4px; }
-    .adnn-thread-copy strong, .adnn-thread-copy small { overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
-    .adnn-thread-copy strong { font-size:14px; font-weight:550; }
-    .adnn-thread-copy small { color:rgba(255,255,255,.48); font-size:12px; }
-    .adnn-thread-side { display:grid; gap:6px; justify-items:end; align-items:center; }
-    .adnn-thread-side time { color:rgba(255,255,255,.38); font-size:10px; }
-    .adnn-thread-side b { min-width:19px; height:19px; padding:0 5px; border-radius:999px; display:grid; place-items:center; background:var(--adnn-danger); color:#fff; font-size:10px; }
-    .adnn-avatar { width:44px; height:44px; border-radius:16px; display:grid; place-items:center; background:linear-gradient(145deg,var(--adnn-primary),var(--adnn-primary2)); color:#fff; font-size:12px; font-weight:700; flex:0 0 auto; box-shadow:inset 0 1px 0 rgba(255,255,255,.18); position:relative; overflow:hidden; }
-    .adnn-avatar img { width:100%; height:100%; object-fit:cover; display:block; border-radius:inherit; }
-    .adnn-avatar.is-pending:after { content:""; position:absolute; right:-1px; bottom:-1px; width:12px; height:12px; border:2px solid #0b0b10; border-radius:50%; background:#f1c40f; }
-    .adnn-chat-room { min-width:0; min-height:0; width:100%; height:100%; position:relative; overflow:hidden; isolation:isolate; }
-    .adnn-chat-welcome { display:none !important; }
-    .adnn-chat-empty { height:100%; min-height:140px; display:grid; place-items:center; align-content:center; gap:8px; text-align:center; color:rgba(255,255,255,.48); padding:24px; }
-    .adnn-room-shell { position:absolute !important; inset:0 !important; height:100% !important; min-height:0 !important; max-height:100% !important; overflow:hidden !important; background:radial-gradient(circle at 92% 6%, rgba(39,45,207,.17), transparent 32%), var(--adnn-bg); --head:72px; --composer:76px; }
-    .adnn-room-head { position:absolute !important; top:0 !important; left:0 !important; right:0 !important; width:100% !important; height:var(--head) !important; min-height:var(--head) !important; display:flex !important; align-items:center !important; gap:10px; padding:12px 14px; border-bottom:1px solid rgba(255,255,255,.08); background:rgba(10,10,14,.95); backdrop-filter:blur(18px); z-index:95 !important; }
-    .adnn-back-btn, .adnn-call-btn, .adnn-attach-btn, .adnn-voice-btn, .adnn-send-btn, .adnn-plus-btn, .adnn-emoji-btn { width:42px; height:42px; border:0; border-radius:50%; display:grid; place-items:center; color:#fff; background:rgba(255,255,255,.07); cursor:pointer; transition:.18s ease; flex:0 0 auto; }
-    .adnn-back-btn { display:none; }
-    .adnn-call-btn:hover, .adnn-attach-btn:hover, .adnn-voice-btn:hover, .adnn-plus-btn:hover, .adnn-emoji-btn:hover, .adnn-send-btn:hover { background:rgba(255,255,255,.13); transform:translateY(-2px) scale(1.045); box-shadow:0 10px 28px rgba(39,45,207,.22); }
-    .adnn-call-btn:active, .adnn-attach-btn:active, .adnn-voice-btn:active, .adnn-plus-btn:active, .adnn-emoji-btn:active, .adnn-send-btn:active, .adnn-room-menu button:active, .adnn-message-actions button:active { transform:scale(.88); transition:.08s cubic-bezier(.2,.9,.2,1.25); }
-    .adnn-back-btn svg, .adnn-call-btn svg, .adnn-attach-btn svg, .adnn-voice-btn svg, .adnn-send-btn svg, .adnn-plus-btn svg, .adnn-emoji-btn svg { width:19px; height:19px; }
-    .adnn-room-title { flex:1; min-width:0; display:grid; gap:2px; }
-    .adnn-room-title strong, .adnn-room-title small { overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
-    .adnn-room-title strong { font-size:15px; font-weight:650; }
-    .adnn-room-title small { font-size:12px; color:rgba(255,255,255,.5); }
-    .adnn-room-title small.is-online { color:var(--adnn-success); }
-    .adnn-room-actions { display:flex; align-items:center; gap:7px; flex:0 0 auto; }
-    .adnn-room-searchbar { position:absolute; top:var(--head); left:0; right:0; height:52px; padding:8px 14px; display:flex; gap:8px; background:rgba(6,6,9,.96); border-bottom:1px solid rgba(255,255,255,.08); z-index:90; }
-    .adnn-room-searchbar input { flex:1; border:1px solid rgba(255,255,255,.1); border-radius:14px; background:#020203; color:#fff; padding:0 12px; outline:0; }
-    .adnn-room-searchbar button { width:36px; border:0; border-radius:12px; background:rgba(255,255,255,.08); color:#fff; display:grid; place-items:center; }
-    .adnn-message-scroll { position:absolute !important; top:var(--head) !important; left:0 !important; right:0 !important; bottom:var(--composer) !important; min-height:0 !important; overflow-y:auto !important; overflow-x:hidden !important; padding:18px; display:flex !important; flex-direction:column; gap:10px; scroll-behavior:smooth; z-index:1; }
-    .adnn-room-searchbar:not([hidden]) + .adnn-message-scroll { top:calc(var(--head) + 52px) !important; }
-    .adnn-date-separator { align-self:center; position:relative; z-index:1; padding:5px 10px; border-radius:999px; background:rgba(255,255,255,.08); color:rgba(255,255,255,.62); font-size:11px; backdrop-filter:blur(10px); flex:0 0 auto; }
-    .adnn-date-track { position:sticky; top:8px; align-self:center; z-index:35; padding:6px 12px; border-radius:999px; background:rgba(18,18,22,.78); color:#fff; font-size:11px; backdrop-filter:blur(18px); box-shadow:0 12px 35px rgba(0,0,0,.28); pointer-events:none; }
-    .adnn-message-row { display:flex; width:100%; }
-    .adnn-message-row.is-mine { justify-content:flex-end; }
-    .adnn-message-row.is-peer { justify-content:flex-start; }
-    .adnn-message { max-width:min(70%, 600px); position:relative; padding:10px 12px 8px; border-radius:18px; color:#fff; background:rgba(255,255,255,.075); border:1px solid rgba(255,255,255,.06); box-shadow:0 12px 28px rgba(0,0,0,.16); outline:0; }
-    .adnn-message.is-reply-jump { animation:adnnReplyJump 1.25s ease; }
-    @keyframes adnnReplyJump { 0%,100%{ box-shadow:0 12px 28px rgba(0,0,0,.16); } 35%{ box-shadow:0 0 0 3px rgba(141,150,255,.42), 0 16px 45px rgba(39,45,207,.28); } }
-    .adnn-message.is-search-hit { box-shadow:0 0 0 2px rgba(255,255,255,.28), 0 12px 28px rgba(0,0,0,.2); }
-    .is-mine .adnn-message { background:linear-gradient(145deg,var(--adnn-primary),var(--adnn-primary2)); border-color:rgba(255,255,255,.12); border-bottom-right-radius:5px; }
-    .is-peer .adnn-message { border-bottom-left-radius:5px; }
-    .adnn-message p { margin:0; line-height:1.45; font-size:14px; word-break:break-word; white-space:pre-wrap; }
-    .adnn-message p a { color:#fff; text-decoration:underline; text-decoration-thickness:1px; text-underline-offset:3px; }
-    .adnn-deleted-message { color:rgba(255,255,255,.56); font-style:italic; }
-    .adnn-message-name { display:block; margin-bottom:4px; color:#b5baff; font-size:12px; font-weight:600; }
-    .adnn-message-meta { display:flex; align-items:center; justify-content:flex-end; gap:5px; margin-top:5px; color:rgba(255,255,255,.46); font-size:10px; }
-    .adnn-ticks { width:18px; height:14px; display:inline-grid; place-items:center; color:rgba(255,255,255,.55); }
-    .adnn-ticks svg { width:16px; height:16px; }
-    .adnn-ticks.is-read { color:#63c6ff; }
-    .adnn-ticks.is-pending { color:rgba(255,255,255,.45); }
-    .adnn-message-actions { position:absolute; top:50%; display:flex; align-items:center; gap:4px; padding:5px; border-radius:15px; border:1px solid rgba(255,255,255,.12); background:rgba(9,9,12,.97); opacity:0; pointer-events:none; transform:translateY(-50%) scale(.96); transition:.18s ease; z-index:35; box-shadow:0 18px 50px rgba(0,0,0,.35); }
-    .is-mine .adnn-message-actions { right:calc(100% + 8px); }
-    .is-peer .adnn-message-actions { left:calc(100% + 8px); }
-    .adnn-message::before { content:""; position:absolute; top:-8px; bottom:-8px; width:22px; pointer-events:auto; }
-    .is-mine .adnn-message::before { right:100%; }
-    .is-peer .adnn-message::before { left:100%; }
-    .adnn-message .adnn-message-actions { transition:opacity .18s ease .32s, transform .18s ease .32s; }
-    .adnn-message:hover .adnn-message-actions, .adnn-message:focus-within .adnn-message-actions, .adnn-message.is-menu-open .adnn-message-actions { opacity:1; pointer-events:auto; transform:translateY(-50%) scale(1); transition-delay:0s; }
-    .adnn-message-actions button { min-width:36px; min-height:34px; border:0; border-radius:12px; background:rgba(255,255,255,.07); color:#fff; padding:7px 8px; font-size:12px; cursor:pointer; display:grid; place-items:center; gap:2px; }
-    .adnn-message-actions button svg { width:16px; height:16px; }
-    .adnn-message-actions button span { font-size:9px; line-height:1; }
-    .adnn-message-actions .is-danger { color:#ff6b5c; }
-    .adnn-message-actions .is-warn { color:#ffc66d; }
-    .adnn-message-action-trigger { display:none; }
-    .adnn-reaction-palette { display:none !important; }
-    .adnn-floating-reaction-sheet { position:fixed; z-index:2147483620; display:flex; gap:5px; max-width:calc(100vw - 16px); overflow-x:auto; padding:7px; border-radius:999px; background:rgba(8,8,12,.98); border:1px solid rgba(255,255,255,.14); box-shadow:0 18px 50px rgba(0,0,0,.42); backdrop-filter:blur(18px); }
-    .adnn-floating-reaction-sheet button { width:36px; height:36px; border:0; border-radius:50%; background:rgba(255,255,255,.08); font-size:19px; cursor:pointer; flex:0 0 auto; }
-    .adnn-reactions { position:absolute; right:10px; bottom:-15px; border:1px solid rgba(255,255,255,.1); border-radius:999px; background:#09090c; color:#fff; padding:2px 7px; font-size:12px; cursor:pointer; display:flex; gap:4px; align-items:center; }
-    .adnn-reactions small { font-size:9px; opacity:.7; }
-    .adnn-reply-preview, .adnn-reply-bar { display:grid; grid-template-columns:3px minmax(0,1fr) auto; gap:8px; align-items:center; margin-bottom:7px; border-radius:12px; background:rgba(0,0,0,.24); padding:8px; border:0; color:#fff; text-align:left; width:100%; }
-    .adnn-reply-preview:before, .adnn-reply-bar:before { content:""; width:3px; height:100%; border-radius:4px; background:#8d96ff; }
-    .adnn-reply-preview strong, .adnn-reply-bar strong { display:block; font-size:12px; color:#c1c5ff; }
-    .adnn-reply-preview small, .adnn-reply-bar small { display:block; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; color:rgba(255,255,255,.55); font-size:11px; }
-    .adnn-attachment-img img { display:block; width:min(340px, 100%); max-height:290px; object-fit:cover; border-radius:14px; margin-bottom:7px; }
-    .adnn-video-bubble { margin-bottom:7px; display:grid; gap:5px; }
-    .adnn-video-bubble video { width:min(360px, 100%); max-height:320px; border-radius:14px; background:#000; display:block; }
-    .adnn-video-bubble small { color:rgba(255,255,255,.55); font-size:11px; }
-    .adnn-doc-bubble { display:grid; grid-template-columns:42px minmax(0,1fr) auto; align-items:center; gap:10px; min-width:min(280px, 72vw); text-decoration:none; color:#fff; padding:10px; border-radius:14px; background:rgba(0,0,0,.22); margin-bottom:7px; }
-    .adnn-doc-bubble span { width:42px; height:42px; border-radius:12px; display:grid; place-items:center; background:var(--adnn-primary); font-size:11px; }
-    .adnn-doc-bubble strong, .adnn-doc-bubble small { overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
-    .adnn-doc-bubble small { color:rgba(255,255,255,.52); font-size:11px; }
-    .adnn-doc-bubble svg { width:16px; height:16px; opacity:.75; }
-    .adnn-voice-bubble { min-width:min(285px, 76vw); display:flex; align-items:center; gap:9px; padding:8px 10px; border-radius:999px; background:rgba(0,0,0,.22); margin-bottom:7px; }
-    .adnn-voice-bubble button { width:30px; height:30px; border:0; border-radius:50%; display:grid; place-items:center; background:rgba(255,255,255,.12); color:#fff; flex:0 0 auto; cursor:pointer; }
-    .adnn-voice-bubble button svg { width:15px; height:15px; }
-    .adnn-voice-wave { flex:1; min-width:110px; height:34px; display:flex; align-items:center; gap:2px; }
-    .adnn-voice-wave span { width:3px; height:var(--h); min-height:5px; max-height:24px; border-radius:999px; background:linear-gradient(180deg, rgba(255,255,255,.95), rgba(141,150,255,.6)); opacity:.95; }
-    .adnn-voice-bubble audio { width:0; max-width:0; height:0; }
-    .adnn-voice-bubble small { color:rgba(255,255,255,.55); font-size:11px; }
-    .adnn-composer-wrap { position:absolute !important; left:0 !important; right:0 !important; bottom:0 !important; min-height:var(--composer) !important; z-index:92 !important; border-top:1px solid rgba(255,255,255,.08); background:rgba(8,8,12,.97); padding:10px; box-shadow:0 -18px 45px rgba(0,0,0,.24); visibility:visible !important; opacity:1 !important; transform:none !important; }
-    .adnn-connection-strip { display:none !important; }
-    .adnn-composer { position:relative; display:flex; align-items:flex-end; gap:8px; }
-    .adnn-composer textarea { flex:1; min-height:42px; max-height:128px; resize:none; border:1px solid rgba(255,255,255,.09); border-radius:22px; background:#020203; color:#fff; outline:0; padding:12px 15px; font:inherit; font-size:14px; line-height:1.35; }
-    .adnn-attach-btn input, .adnn-composer-panel input { display:none; }
-    .adnn-send-btn { background:var(--adnn-primary); }
-    .adnn-voice-btn.is-recording { width:auto; padding:0 14px; border-radius:22px; background:var(--adnn-danger); display:flex; gap:8px; }
-    .adnn-rec-dot { width:8px; height:8px; border-radius:50%; background:#fff; animation:adnnPulse 1s infinite; }
-    @keyframes adnnPulse { 50% { opacity:.3; transform:scale(.72); } }
-    .adnn-typing-line { min-height:24px; display:flex; align-items:center; gap:4px; color:#8d96ff; font-size:12px; padding:0 4px 5px; }
-    .adnn-typing-line span { width:5px; height:5px; border-radius:50%; background:#8d96ff; animation:adnnTyping 1.1s infinite; }
-    .adnn-typing-line span:nth-child(2) { animation-delay:.15s; }
-    .adnn-typing-line span:nth-child(3) { animation-delay:.3s; margin-right:5px; }
-    @keyframes adnnTyping { 50% { transform:translateY(-4px); opacity:.45; } }
-    .adnn-file-preview { display:flex; gap:8px; overflow:auto; padding:0 0 8px; scrollbar-width:thin; }
-    .adnn-file-chip { min-width:205px; max-width:270px; display:grid; grid-template-columns:46px minmax(0,1fr) 28px; align-items:center; gap:8px; border:1px solid rgba(255,255,255,.08); border-radius:16px; padding:8px; background:rgba(255,255,255,.045); }
-    .adnn-file-chip img, .adnn-file-chip video, .adnn-file-chip > span { width:46px; height:46px; border-radius:12px; object-fit:cover; background:var(--adnn-primary); display:grid; place-items:center; font-size:10px; color:#fff; }
-    .adnn-file-chip strong, .adnn-file-chip small { display:block; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
-    .adnn-file-chip strong { font-size:12px; }
-    .adnn-file-chip small { color:rgba(255,255,255,.5); font-size:11px; }
-    .adnn-file-chip i, .adnn-voice-preview i { display:block; height:3px; width:100%; border-radius:999px; background:rgba(255,255,255,.12); margin-top:5px; overflow:hidden; position:relative; }
-    .adnn-file-chip i:before, .adnn-voice-preview i:before { content:""; position:absolute; inset:0 auto 0 0; width:var(--p); background:var(--adnn-success); border-radius:inherit; }
-    .adnn-file-chip button, .adnn-reply-bar button, .adnn-voice-preview button { width:28px; height:28px; border-radius:50%; border:0; background:rgba(255,255,255,.08); color:#fff; display:grid; place-items:center; cursor:pointer; }
-    .adnn-file-chip button svg, .adnn-reply-bar button svg, .adnn-voice-preview button svg { width:14px; height:14px; }
-    .adnn-voice-preview { display:flex; align-items:center; gap:10px; padding:0 0 8px; color:#fff; }
-    .adnn-voice-preview .adnn-voice-wave { max-width:260px; }
-    .adnn-voice-preview-icon { width:34px; height:34px; border:0; border-radius:50%; display:grid; place-items:center; background:var(--adnn-primary); color:#fff; flex:0 0 auto; cursor:pointer; }
-    .adnn-voice-preview-icon svg { width:16px; height:16px; }
-    .adnn-voice-preview audio { height:34px; max-width:260px; }
-    .adnn-composer-panel, .adnn-emoji-panel { position:absolute; left:10px; right:10px; bottom:calc(100% - 3px); padding:10px; border:1px solid rgba(255,255,255,.1); border-radius:20px; background:rgba(8,8,12,.98); box-shadow:0 -20px 65px rgba(0,0,0,.38); backdrop-filter:blur(18px); z-index:130; }
-    .adnn-composer-panel { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:8px; }
-    .adnn-composer-panel label { min-height:74px; display:grid; place-items:center; gap:6px; border:1px solid rgba(255,255,255,.08); border-radius:16px; background:rgba(255,255,255,.05); color:#fff; cursor:pointer; }
-    .adnn-composer-panel label span { width:32px; height:32px; border-radius:12px; display:grid; place-items:center; background:var(--adnn-primary); }
-    .adnn-composer-panel label svg { width:17px; height:17px; }
-    .adnn-composer-panel label b { font-size:11px; font-weight:600; }
-    .adnn-emoji-panel { display:flex; flex-wrap:wrap; gap:6px; right:auto; max-width:320px; }
-    .adnn-emoji-panel button { width:36px; height:36px; border:0; border-radius:12px; background:rgba(255,255,255,.07); font-size:18px; cursor:pointer; }
-    .adnn-drop-layer { position:absolute; inset:calc(var(--head) + 12px) 12px calc(var(--composer) + 12px); display:none; place-items:center; border:1px dashed rgba(141,150,255,.5); border-radius:24px; background:rgba(39,45,207,.16); color:#fff; z-index:8; backdrop-filter:blur(12px); }
-    .adnn-room-shell.is-dragging .adnn-drop-layer { display:grid; }
-    .adnn-scroll-bottom { position:absolute; right:18px; bottom:calc(var(--composer) + 18px); width:42px; height:42px; border:0; border-radius:50%; display:grid; place-items:center; background:rgba(255,255,255,.12); color:#fff; z-index:10; transform:rotate(-90deg); cursor:pointer; }
-    .adnn-scroll-bottom svg { width:18px; height:18px; }
-    .adnn-call-popout { position:fixed; z-index:2147483600; width:min(430px, calc(100vw - 20px)); max-height:calc(100svh - 20px); overflow:auto; touch-action:none; }
-    .adnn-incoming-call, .adnn-call-card { width:100%; border:1px solid rgba(255,255,255,.12); border-radius:28px; background:linear-gradient(145deg, rgba(20,20,26,.97), rgba(5,5,8,.99)); color:#fff; padding:14px; text-align:center; box-shadow:0 30px 100px rgba(0,0,0,.5); backdrop-filter:blur(20px); }
-    .adnn-call-drag-handle { height:34px; margin:-4px -2px 10px; padding:0 10px; border-radius:16px; display:flex; align-items:center; justify-content:space-between; color:rgba(255,255,255,.58); background:rgba(255,255,255,.055); cursor:grab; user-select:none; font-size:11px; }
-    .adnn-call-drag-handle:active { cursor:grabbing; }
-    .adnn-incoming-call .adnn-avatar { margin:0 auto; width:64px; height:64px; border-radius:22px; }
-    .adnn-incoming-call h3 { margin:14px 0 4px; }
-    .adnn-incoming-call p { color:rgba(255,255,255,.58); margin:0 0 20px; }
-    .adnn-incoming-call > div:last-child, .adnn-call-controls { display:flex; justify-content:center; gap:12px; }
-    .adnn-incoming-call button, .adnn-call-controls button { width:52px; height:52px; border:0; border-radius:50%; display:grid; place-items:center; color:#fff; background:rgba(255,255,255,.08); cursor:pointer; }
-    .adnn-incoming-call button svg, .adnn-call-controls button svg { width:21px; height:21px; }
-    .adnn-incoming-call .is-accept { background:var(--adnn-success); }
-    .adnn-incoming-call .is-end, .adnn-call-controls .is-end { background:#ff3b30; }
-    .adnn-call-controls .is-off { background:rgba(255,255,255,.18); color:#ffcabf; }
-    .adnn-call-stage { position:relative; aspect-ratio:16/10; border-radius:20px; background:#000; overflow:hidden; margin-bottom:14px; display:grid; grid-template-columns:1fr 1fr; gap:1px; }
-    .adnn-call-card.is-audio .adnn-call-stage { aspect-ratio:16/9; }
-    .adnn-video-tile { min-width:0; min-height:0; position:relative; background:#000; }
-    .adnn-video-tile video { width:100%; height:100%; object-fit:cover; display:block; }
-    .adnn-video-tile.is-local video { transform:scaleX(-1); }
-    .adnn-video-tile span { position:absolute; left:10px; bottom:10px; padding:5px 8px; border-radius:999px; background:rgba(0,0,0,.48); font-size:11px; }
-    .adnn-audio-call-face { grid-column:1 / -1; display:grid; place-items:center; min-height:220px; }
-    .adnn-audio-call-face .adnn-avatar { width:96px; height:96px; border-radius:30px; font-size:24px; }
-    .adnn-call-meta { text-align:left; margin:0 0 14px; }
-    .adnn-call-meta strong, .adnn-call-meta small { display:block; }
-    .adnn-call-meta small { color:rgba(255,255,255,.55); margin-top:3px; }
-    .adnn-call-hold-badge { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); padding:8px 12px; border-radius:999px; background:rgba(0,0,0,.62); color:#fff; font-size:12px; backdrop-filter:blur(10px); z-index:3; }
-    .adnn-message-row.is-call { justify-content:center; }
-    .adnn-message-row.is-call .adnn-message { max-width:min(92%, 360px); background:rgba(255,255,255,.06); border-radius:18px; }
-    .adnn-call-message { display:flex; align-items:center; gap:10px; text-align:left; }
-    .adnn-call-message > span { width:36px; height:36px; border-radius:50%; display:grid; place-items:center; background:rgba(39,45,207,.25); color:#fff; flex:0 0 auto; }
-    .adnn-call-message svg { width:18px; height:18px; }
-    .adnn-call-message strong { display:block; font-size:13px; }
-    .adnn-call-message small { display:block; color:rgba(255,255,255,.55); margin-top:2px; font-size:11px; }
-    .adnn-call-message.is-missed > span { background:rgba(255,38,2,.18); color:#ff9588; }
-    .adnn-confirm-backdrop { position:fixed; inset:0; z-index:2147483630; display:grid; place-items:center; padding:18px; background:rgba(0,0,0,.56); backdrop-filter:blur(14px); }
-    .adnn-confirm-card { width:min(390px, 100%); border:1px solid rgba(255,255,255,.12); border-radius:24px; background:linear-gradient(145deg, rgba(22,22,28,.98), rgba(5,5,8,.99)); color:#fff; padding:20px; box-shadow:0 30px 100px rgba(0,0,0,.5); }
-    .adnn-confirm-card h3 { margin:0 0 8px; font-size:18px; }
-    .adnn-confirm-card p { margin:0 0 18px; color:rgba(255,255,255,.62); line-height:1.45; }
-    .adnn-confirm-card div { display:flex; justify-content:flex-end; gap:10px; }
-    .adnn-confirm-card button { border:0; border-radius:14px; padding:11px 14px; background:rgba(255,255,255,.08); color:#fff; cursor:pointer; }
-    .adnn-confirm-card button.is-danger { background:var(--adnn-danger); }
-    .adnn-chat-toast { position:fixed; left:50%; bottom:28px; transform:translateX(-50%); z-index:2147483640; padding:10px 14px; border-radius:999px; background:#111; color:#fff; border:1px solid rgba(255,255,255,.1); box-shadow:0 16px 50px rgba(0,0,0,.3); max-width:min(92vw, 560px); text-align:center; }
-    .adnn-chat-toast.is-bad { border-color:rgba(255,80,70,.35); background:#25100f; }
-    .adnn-chat-toast.is-warn { border-color:rgba(255,198,109,.35); background:#211909; }
-    .adnn-chat-toast.is-ok { border-color:rgba(83,215,105,.25); }
-
-
-    /* ADNN hard layout guard: keep the room header, messages, and composer inside the chat room on every screen. */
-    .adnn-chat-app .adnn-chat-layout { width:100% !important; max-width:100% !important; align-self:stretch !important; justify-self:stretch !important; }
-    .adnn-chat-app .adnn-chat-room { contain:layout paint !important; transform:none !important; }
-    .adnn-chat-app .adnn-room-shell {
-      position:absolute !important; inset:0 !important; width:100% !important; max-width:100% !important; height:100% !important;
-      display:grid !important; grid-template-rows:var(--head) minmax(0,1fr) auto !important; grid-template-columns:minmax(0,1fr) !important;
-      overflow:hidden !important; transform:none !important; isolation:isolate !important;
-    }
-    .adnn-chat-app .adnn-room-shell > .adnn-room-head {
-      position:relative !important; inset:auto !important; grid-row:1 !important; grid-column:1 / -1 !important; width:100% !important; max-width:none !important;
-      min-width:0 !important; height:var(--head) !important; min-height:var(--head) !important; flex:0 0 auto !important;
-      display:flex !important; align-items:center !important; justify-content:flex-start !important; overflow:visible !important; transform:none !important;
-      padding:12px 14px !important; z-index:95 !important;
-    }
-    .adnn-chat-app .adnn-room-shell > .adnn-room-head .adnn-room-title { flex:1 1 auto !important; min-width:0 !important; max-width:100% !important; }
-    .adnn-chat-app .adnn-room-shell > .adnn-room-head .adnn-room-actions { margin-left:auto !important; flex:0 0 auto !important; position:relative !important; right:auto !important; top:auto !important; transform:none !important; }
-    .adnn-chat-app .adnn-room-shell > .adnn-room-searchbar { top:var(--head) !important; left:0 !important; right:0 !important; width:auto !important; }
-    .adnn-chat-app .adnn-room-shell > .adnn-message-scroll {
-      position:relative !important; top:auto !important; left:auto !important; right:auto !important; bottom:auto !important; grid-row:2 !important; grid-column:1 / -1 !important;
-      width:100% !important; min-width:0 !important; height:100% !important; min-height:0 !important; max-height:none !important; overflow-y:auto !important; padding:18px !important;
-    }
-    .adnn-chat-app .adnn-room-shell > .adnn-room-searchbar:not([hidden]) ~ .adnn-message-scroll { padding-top:70px !important; }
-    .adnn-chat-app .adnn-room-shell > .adnn-composer-wrap {
-      position:relative !important; left:auto !important; right:auto !important; bottom:auto !important; grid-row:3 !important; grid-column:1 / -1 !important;
-      width:100% !important; min-width:0 !important; min-height:var(--composer) !important; flex:0 0 auto !important; transform:none !important;
-    }
-    .adnn-chat-app .adnn-room-shell > .adnn-scroll-bottom { bottom:calc(var(--composer) + 18px) !important; }
-
-    @media (max-width:900px) {
-      .adnn-room-actions { gap:5px; }
-      .adnn-call-btn { width:39px; height:39px; }
-      .adnn-message { max-width:78%; }
-    }
-
-
-    .adnn-inapp-stack { position:fixed; right:18px; top:18px; z-index:2147483500; display:grid; gap:10px; width:min(360px, calc(100vw - 28px)); pointer-events:none; }
-    .adnn-inapp-card { pointer-events:auto; width:100%; min-height:70px; border:1px solid rgba(255,255,255,.14); border-radius:22px; display:grid; grid-template-columns:46px minmax(0,1fr) auto; align-items:center; gap:12px; padding:12px; background:linear-gradient(145deg, rgba(22,22,28,.96), rgba(4,4,7,.98)); color:#fff; text-align:left; box-shadow:0 24px 80px rgba(0,0,0,.38); backdrop-filter:blur(18px); animation:adnnNotifyIn .32s cubic-bezier(.16,1,.3,1); cursor:pointer; }
-    .adnn-inapp-card strong, .adnn-inapp-card small { display:block; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
-    .adnn-inapp-card strong { font-size:13px; font-weight:650; }
-    .adnn-inapp-card small { color:rgba(255,255,255,.58); font-size:12px; margin-top:3px; }
-    .adnn-inapp-card b { min-width:22px; height:22px; padding:0 6px; border-radius:999px; display:grid; place-items:center; background:var(--adnn-danger); color:#fff; font-size:11px; }
-    .adnn-inapp-card.is-missed { border-color:rgba(255,38,2,.36); }
-    @keyframes adnnNotifyIn { from { opacity:0; transform:translateY(-10px) scale(.96); } to { opacity:1; transform:translateY(0) scale(1); } }
-    :root.adnn-chat-light .adnn-chat-app { --adnn-bg:#f6f7fb; --adnn-panel:#ffffff; --adnn-soft:rgba(7,10,25,.065); --adnn-line:rgba(7,10,25,.11); --adnn-text:#12131a; --adnn-muted:rgba(18,19,26,.56); color:#12131a; }
-    :root.adnn-chat-light .adnn-chat-layout { background:linear-gradient(145deg, rgba(255,255,255,.98), rgba(237,239,250,.98)); box-shadow:0 24px 90px rgba(14,18,48,.16); }
-    :root.adnn-chat-light .adnn-chat-thread-panel { background:rgba(255,255,255,.72); border-right-color:rgba(7,10,25,.08); }
-    :root.adnn-chat-light .adnn-chat-thread-head, :root.adnn-chat-light .adnn-room-head, :root.adnn-chat-light .adnn-composer-wrap, :root.adnn-chat-light .adnn-room-searchbar { background:rgba(255,255,255,.92); border-color:rgba(7,10,25,.1); color:#12131a; }
-    :root.adnn-chat-light .adnn-room-shell { background:radial-gradient(circle at 92% 6%, rgba(39,45,207,.12), transparent 32%), #f8f9ff; }
-    :root.adnn-chat-light .adnn-thread, :root.adnn-chat-light .adnn-call-btn, :root.adnn-chat-light .adnn-back-btn, :root.adnn-chat-light .adnn-attach-btn, :root.adnn-chat-light .adnn-voice-btn, :root.adnn-chat-light .adnn-plus-btn, :root.adnn-chat-light .adnn-emoji-btn, :root.adnn-chat-light .adnn-room-menu button, :root.adnn-chat-light .adnn-outer-menu button { color:#11131b; }
-    :root.adnn-chat-light .adnn-call-btn, :root.adnn-chat-light .adnn-back-btn, :root.adnn-chat-light .adnn-attach-btn, :root.adnn-chat-light .adnn-voice-btn, :root.adnn-chat-light .adnn-plus-btn, :root.adnn-chat-light .adnn-emoji-btn, :root.adnn-chat-light .adnn-room-menu, :root.adnn-chat-light .adnn-outer-menu { background:rgba(10,14,30,.07); border-color:rgba(7,10,25,.1); }
-    :root.adnn-chat-light .adnn-thread:hover, :root.adnn-chat-light .adnn-thread.is-active { background:rgba(39,45,207,.12); }
-    :root.adnn-chat-light .adnn-thread-copy small, :root.adnn-chat-light .adnn-thread-side time, :root.adnn-chat-light .adnn-room-title small, :root.adnn-chat-light .adnn-chat-empty, :root.adnn-chat-light .adnn-chat-welcome { color:rgba(18,19,26,.55); }
-    :root.adnn-chat-light .adnn-chat-search, :root.adnn-chat-light .adnn-composer textarea, :root.adnn-chat-light .adnn-room-searchbar input { background:#fff; color:#11131b; border-color:rgba(7,10,25,.1); }
-    :root.adnn-chat-light .adnn-chat-search input { color:#11131b; }
-    :root.adnn-chat-light .adnn-message { background:#ffffff; color:#11131b; border-color:rgba(7,10,25,.08); box-shadow:0 12px 28px rgba(12,16,46,.08); }
-    :root.adnn-chat-light .is-mine .adnn-message { color:#fff; background:linear-gradient(145deg,var(--adnn-primary),var(--adnn-primary2)); }
-    :root.adnn-chat-light .adnn-date-separator, :root.adnn-chat-light .adnn-reply-preview, :root.adnn-chat-light .adnn-doc-bubble, :root.adnn-chat-light .adnn-voice-bubble { background:rgba(7,10,25,.06); color:#11131b; }
-    :root.adnn-chat-light .adnn-message-meta, :root.adnn-chat-light .adnn-voice-bubble small, :root.adnn-chat-light .adnn-doc-bubble small { color:rgba(18,19,26,.5); }
-    :root.adnn-chat-light .adnn-chat-layout, :root.adnn-chat-light .adnn-room-head, :root.adnn-chat-light .adnn-composer-wrap, :root.adnn-chat-light .adnn-message, :root.adnn-chat-light .adnn-thread, :root.adnn-chat-light .adnn-message-actions, :root.adnn-chat-light .adnn-composer-panel, :root.adnn-chat-light .adnn-emoji-panel, :root.adnn-chat-light .adnn-floating-reaction-sheet { box-shadow:none !important; }
-    :root.adnn-chat-light .adnn-message-actions, :root.adnn-chat-light .adnn-composer-panel, :root.adnn-chat-light .adnn-emoji-panel, :root.adnn-chat-light .adnn-floating-reaction-sheet { background:#fff; border-color:rgba(7,10,25,.1); }
-    :root.adnn-chat-light .adnn-message-actions button, :root.adnn-chat-light .adnn-floating-reaction-sheet button, :root.adnn-chat-light .adnn-emoji-panel button { background:rgba(7,10,25,.055); color:#11131b; }
-    :root.adnn-chat-light .adnn-room-shell { box-shadow:none !important; }
-    :root.adnn-chat-light .adnn-thread.is-pinned { background:rgba(39,45,207,.09); }
-    :root.adnn-chat-light .adnn-thread.is-pinned .adnn-pin-chat { box-shadow:none; }
-    :root.adnn-chat-light .adnn-inapp-card { background:linear-gradient(145deg, rgba(255,255,255,.98), rgba(238,240,250,.98)); color:#11131b; border-color:rgba(7,10,25,.1); box-shadow:0 24px 80px rgba(14,18,48,.16); }
-    :root.adnn-chat-light .adnn-inapp-card small { color:rgba(18,19,26,.56); }
-    :root.adnn-reduce-motion .adnn-chat-app *, :root.adnn-reduce-motion .adnn-call-popout, :root.adnn-reduce-motion .adnn-inapp-card { transition:none !important; animation:none !important; scroll-behavior:auto !important; transform:none !important; filter:none !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important; }
-
-    .side-notification-badge { min-width:18px; height:18px; padding:0 5px; border-radius:999px; display:grid; place-items:center; background:#ff2602; color:#fff; font-size:10px; line-height:1; box-shadow:0 0 0 2px rgba(0,0,0,.18), 0 8px 22px rgba(255,38,2,.38); }
-    .side-notification-badge[hidden] { display:none !important; }
-    .side-nav a.can-drag, .side-nav button.can-drag, .sidebar-link-item.can-drag { cursor:grab; }
-    .side-nav a.is-dragging, .side-nav button.is-dragging, .sidebar-link-item.is-dragging { opacity:.45; transform:scale(.98); }
-    .side-nav a::before, .side-nav button::before, .sidebar-link-item::before { content:""; position:absolute; left:5px; top:50%; width:4px; height:18px; border-radius:999px; opacity:0; transform:translateY(-50%); background:linear-gradient(#fff8,#fff2); transition:.18s ease; }
-    .side-nav a.can-drag::before, .side-nav button.can-drag::before, .sidebar-link-item.can-drag::before { opacity:.62; }
-    .adnn-pin-chat { width:22px; height:22px; border:0; border-radius:999px; display:grid; place-items:center; color:rgba(255,255,255,.42); background:rgba(255,255,255,.05); font-size:10px; cursor:pointer; }
-    .adnn-thread.is-pinned .adnn-pin-chat { color:#fff; background:rgba(39,45,207,.72); box-shadow:0 0 18px rgba(39,45,207,.34); }
-    .adnn-thread.is-pinned { background:linear-gradient(135deg, rgba(39,45,207,.18), rgba(255,255,255,.035)); }
-    .settings-grid { display:grid !important; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:12px !important; align-items:stretch; }
-    .settings-card.adnn-setting-card, .settings-card.adnn-os-card { min-height:68px !important; border-radius:20px !important; padding:14px 16px !important; border:1px solid rgba(255,255,255,.1) !important; background:linear-gradient(145deg, rgba(255,255,255,.075), rgba(255,255,255,.025)) !important; box-shadow:0 16px 45px rgba(0,0,0,.14), inset 0 1px 0 rgba(255,255,255,.1) !important; display:grid !important; grid-template-columns:minmax(0,1fr) auto !important; gap:12px !important; align-items:center !important; transition:transform .18s ease, border-color .18s ease, background .18s ease !important; }
-    .settings-card.adnn-setting-card:hover, .settings-card.adnn-os-card:hover { transform:translateY(-2px); border-color:rgba(39,45,207,.34) !important; background:linear-gradient(145deg, rgba(39,45,207,.13), rgba(255,255,255,.035)) !important; }
-    .settings-card.adnn-setting-card strong, .settings-card.adnn-os-card strong { margin:0 0 2px !important; font-size:13px !important; line-height:1.2 !important; letter-spacing:0 !important; font-weight:560 !important; }
-    .settings-card.adnn-setting-card span, .settings-card.adnn-os-card span { font-size:11px !important; line-height:1.35 !important; opacity:.68; }
-    .settings-card .settings-inline-btn, .settings-card .apple-home-btn { width:40px !important; height:40px !important; min-width:40px !important; border-radius:14px !important; }
-    .adnn-client-status-btn { min-height:32px; border:1px solid rgba(255,255,255,.12); border-radius:999px; padding:0 12px; background:rgba(255,255,255,.07); color:#fff; font-size:11px; cursor:pointer; transition:.18s ease; }
-    .adnn-client-status-btn:hover { background:rgba(39,45,207,.22); border-color:rgba(39,45,207,.38); }
-    .adnn-client-status-btn:disabled { opacity:.5; cursor:wait; }
-    .adnn-name-confirm-row { display:grid !important; grid-template-columns:minmax(0,1fr) 32px !important; gap:8px !important; align-items:center !important; }
-    .adnn-name-confirm-btn { width:30px; height:30px; border:0; border-radius:12px; display:grid; place-items:center; color:#fff; background:linear-gradient(145deg,var(--adnn-primary),var(--adnn-primary2)); box-shadow:0 10px 25px rgba(39,45,207,.22); cursor:pointer; transition:.18s ease; }
-    .adnn-name-confirm-btn svg { width:16px; height:16px; }
-    .adnn-name-confirm-btn[hidden] { display:none !important; }
-    .adnn-name-confirm-btn:hover { transform:translateY(-1px) scale(1.04); }
-    .adnn-name-confirm-btn:disabled { opacity:.55; cursor:wait; transform:none; }
-    .adnn-os-card { grid-template-columns:36px minmax(0,1fr) 36px !important; cursor:pointer !important; }
-    .adnn-os-card::after { display:block !important; content:""; position:absolute; inset:-30%; z-index:-1; opacity:0; transform:scale(.8); background:radial-gradient(circle at var(--tap-x,50%) var(--tap-y,50%), rgba(255,255,255,.34), rgba(39,45,207,.24) 18%, transparent 42%); pointer-events:none; }
-    .adnn-os-card.is-playing::after { animation:adnnOsWave .75s cubic-bezier(.16,1,.3,1); }
-    .adnn-os-dots { width:34px !important; height:34px !important; border-radius:14px !important; opacity:.9; }
-    .adnn-os-meta { min-width:0; }
-    @keyframes adnnOsWave { 0%{opacity:0;transform:scale(.6)} 34%{opacity:1} 100%{opacity:0;transform:scale(1.15)} }
-
-    @media (max-width:760px) {
-      .adnn-chat-app { display:block !important; min-height:0 !important; }
-      html, body { max-width:100vw !important; overflow-x:hidden !important; overscroll-behavior-x:none !important; }
-      .adnn-chat-layout { grid-template-columns:1fr; height:100svh !important; min-height:0 !important; overflow:hidden !important; border-radius:0; border-left:0; border-right:0; }
-      .adnn-chat-resizer { display:none !important; }
-      .adnn-chat-layout > .adnn-chat-thread-panel, .adnn-chat-layout > .adnn-chat-room { grid-column:1 / -1; grid-row:1; }
-      .adnn-chat-thread-panel { border-right:0; }
-      .adnn-chat-layout .adnn-chat-room { display:none; }
-      .adnn-chat-layout.is-single .adnn-chat-room { display:block; height:100%; }
-      .adnn-chat-layout.is-room-open { position:fixed !important; inset:0 !important; z-index:2147483200 !important; height:100svh !important; width:100vw !important; border:0 !important; border-radius:0 !important; }
-      .adnn-chat-layout.is-room-open .adnn-chat-thread-panel { display:none; }
-      .adnn-chat-layout.is-room-open .adnn-chat-room, body.adnn-chat-mobile-lock .adnn-chat-room { display:block; height:100svh !important; min-height:0 !important; overflow:hidden !important; }
-      .adnn-room-shell { height:100svh !important; --head:64px; --composer:74px; }
-      .adnn-back-btn { display:grid; }
-      .adnn-room-head { padding:10px 8px; gap:7px; }
-      .adnn-room-head .adnn-avatar { width:38px; height:38px; border-radius:14px; }
-      .adnn-room-title strong { font-size:14px; }
-      .adnn-room-title small { font-size:11px; }
-      .adnn-room-actions .adnn-call-btn { width:36px; height:36px; }
-      .adnn-room-actions .adnn-call-btn[data-room-search] { display:none; }
-      .adnn-message-scroll { padding:12px 10px !important; }
-      .adnn-message { max-width:87%; }
-      .adnn-message-action-trigger { position:absolute; top:7px; width:30px; height:30px; border:0; border-radius:50%; display:grid; place-items:center; color:#fff; background:rgba(255,255,255,.12); backdrop-filter:blur(12px); box-shadow:0 10px 28px rgba(0,0,0,.2); z-index:30; opacity:.86; }
-      .adnn-message-action-trigger svg { width:15px; height:15px; }
-      .is-mine .adnn-message { padding-right:44px; }
-      .is-peer .adnn-message { padding-left:44px; }
-      .is-mine .adnn-message-action-trigger { right:8px; }
-      .is-peer .adnn-message-action-trigger { left:8px; }
-      .is-mine .adnn-message-actions, .is-peer .adnn-message-actions { position:absolute !important; top:42px !important; bottom:auto !important; width:max-content !important; max-width:calc(100vw - 34px) !important; overflow-x:auto; transform:translateY(-4px) scale(.96) !important; border-radius:18px; padding:6px; }
-      .is-mine .adnn-message-actions { right:8px !important; left:auto !important; }
-      .is-peer .adnn-message-actions { left:8px !important; right:auto !important; }
-      .adnn-message:hover .adnn-message-actions, .adnn-message:focus-within .adnn-message-actions { opacity:0; pointer-events:none; }
-      .adnn-message.is-menu-open .adnn-message-actions { opacity:1; pointer-events:auto; transform:translateY(0) scale(1) !important; }
-      .adnn-composer-wrap { padding:6px 8px max(8px, env(safe-area-inset-bottom)); }
-      .adnn-composer { gap:6px; }
-      .adnn-composer textarea { font-size:16px; min-height:41px; padding:11px 13px; }
-      .adnn-plus-btn, .adnn-attach-btn, .adnn-emoji-btn, .adnn-voice-btn, .adnn-send-btn { width:39px; height:39px; }
-      .adnn-emoji-btn { display:none; }
-      .adnn-composer-panel { grid-template-columns:repeat(2, minmax(0, 1fr)); }
-      .adnn-call-stage { grid-template-columns:1fr; aspect-ratio:9/12; }
-      .adnn-call-card.is-audio .adnn-call-stage { aspect-ratio:1/1; }
-      .adnn-call-popout { width:calc(100vw - 16px); max-height:calc(100svh - 16px); }
-      .adnn-floating-reaction-sheet { left:8px !important; right:8px !important; width:auto !important; max-width:calc(100vw - 16px) !important; justify-content:center; border-radius:22px; bottom:calc(8px + env(safe-area-inset-bottom)) !important; top:auto !important; }
-      .adnn-chat-app .adnn-room-shell { grid-template-rows:64px minmax(0,1fr) auto !important; --head:64px; --composer:74px; }
-      .adnn-chat-app .adnn-room-shell > .adnn-room-head { padding:9px 8px !important; gap:7px !important; min-width:0 !important; overflow:visible !important; }
-      .adnn-chat-app .adnn-room-shell > .adnn-room-head .adnn-room-title { min-width:0 !important; }
-      .adnn-chat-app .adnn-room-shell > .adnn-room-head .adnn-room-actions { gap:5px !important; margin-left:auto !important; }
-      .adnn-chat-app .adnn-room-shell > .adnn-message-scroll { padding:12px 10px !important; }
-      .adnn-chat-app .adnn-room-shell > .adnn-composer-wrap { padding:7px 8px max(8px, env(safe-area-inset-bottom)) !important; }
-    }
-
-    @media (max-width:420px) {
-      .adnn-room-head .adnn-avatar { width:34px !important; height:34px !important; border-radius:12px !important; }
-      .adnn-room-actions .adnn-call-btn { width:32px !important; height:32px !important; }
-      .adnn-room-actions .adnn-call-btn svg { width:15px !important; height:15px !important; }
-      .adnn-room-title small { display:none !important; }
-      .adnn-message { max-width:91%; }
-      .adnn-attach-btn { display:none; }
-      .adnn-doc-bubble { min-width:min(240px, 74vw); }
-    }
+    .adnn-chat-app { background: ${t.bg}; color: ${t.text}; }
+    .adnn-chat-shell { width: 100%; height: 100%; display: grid; }
+    .adnn-chat-layout { display: grid; grid-template-columns: 280px 1fr; height: 100%; }
+    .adnn-chat-room { background: ${t.panel}; position: relative; }
+    .adnn-message-scroll { overflow-y: auto; height: calc(100% - 140px); padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+    .adnn-composer-wrap { position: absolute; bottom: 0; left: 0; right: 0; padding: 16px; background: ${t.panel}; border-top: 1px solid ${t.line}; }
+    .adnn-composer { display: flex; gap: 12px; }
+    .adnn-composer textarea { flex: 1; padding: 10px; border-radius: 8px; border: 1px solid ${t.line}; background: ${t.bg}; color: ${t.text}; }
+    .adnn-thread { display: flex; align-items: center; gap: 12px; padding: 12px; width: 100%; border: 0; background: transparent; color: ${t.text}; text-align: left; cursor: pointer; }
+    .adnn-thread.is-active, .adnn-thread:hover { background: ${t.soft}; }
+    .adnn-avatar { width: 40px; height: 40px; border-radius: 50%; background: ${t.primary}; display: grid; place-items: center; font-weight: bold; color: #fff; }
+    .adnn-message-row { display: flex; width: 100%; margin-bottom: 8px; }
+    .adnn-message-row.is-mine { justify-content: flex-end; }
+    .adnn-message-row.is-peer { justify-content: flex-start; }
+    .adnn-message { max-width: 70%; padding: 10px; border-radius: 12px; background: ${t.soft}; }
+    .is-mine .adnn-message { background: ${t.primary}; color: #fff; }
   `;
   document.head.appendChild(style);
 }
-
-// Expose a tiny debug surface without coupling the site to internals.
-window.ADNN_CHAT_RUNTIME = Object.freeze({
-  version: "2.3.0-message-card-settings-sheet",
-  refresh: refreshAllConnections,
-  get activeUser() { return activeUser ? { uid: activeUser.uid, email: activeUser.email } : null; },
-  get activeCall() { return activeCall ? { callId: activeCall.callId, kind: activeCall.kind, role: activeCall.role } : null; },
-  get offlinePersistenceState() { return offlinePersistenceState; }
-});

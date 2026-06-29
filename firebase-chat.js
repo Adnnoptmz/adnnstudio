@@ -1,81 +1,19 @@
 /*
   firebase-chat.js
   New ADNN chat runtime. Drop-in replacement for the older firebase-chat file.
-
-  Required before this module loads:
-    window.ADNN_FIREBASE_CONFIG = { ...firebase web config... }
-
-  Optional overrides:
-    window.ADNN_CHAT_CONFIG = {
-      adminEmail: "getavcollab@gmail.com",
-      adminAliasUid: "adnn-admin",
-      homeUrl: "/",
-      firebaseVersion: "10.8.0",
-      msgLimit: 180,
-      maxFiles: 10,
-      maxFileSizeMb: 40,
-      iceServers: [
-        { urls: "stun:stun.l.google.com:19302" },
-        { urls: "stun:stun1.l.google.com:19302" }
-        // Add your TURN servers here for production-grade calls.
-      ],
-      theme: {
-        primary: "#272dcf",
-        primary2: "#161bba",
-        danger: "#ff2602",
-        success: "#25d366",
-        bg: "#050506",
-        panel: "#0b0b10"
-      }
-    }
-
-  Expected Firestore structure used by this runtime:
-    chats/{chatId}
-    chats/{chatId}/messages/{messageId}
-    chats/{chatId}/typing/{uid}
-    presence/{uid}
-    calls/{callId}
-    calls/{callId}/offerCandidates/{candidateId}
-    calls/{callId}/answerCandidates/{candidateId}
-    callInbox/{uid}
-
-  Existing mount IDs kept:
-    #directChatMount, #clientChatMount, #adminChatMount, #chats_view
 */
 
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import {
-  getFirestore,
-  collection,
-  doc,
-  setDoc,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  getDoc,
-  getDocs,
-  query,
-  orderBy,
-  limit,
-  where,
-  onSnapshot,
-  serverTimestamp,
-  increment,
-  arrayUnion,
-  deleteField,
-  enableMultiTabIndexedDbPersistence,
-  writeBatch
+  getFirestore, collection, doc, setDoc, addDoc, updateDoc, deleteDoc,
+  getDoc, getDocs, query, orderBy, limit, where, onSnapshot,
+  serverTimestamp, increment, arrayUnion, deleteField,
+  enableMultiTabIndexedDbPersistence, writeBatch
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import {
-  getStorage,
-  ref as storageRef,
-  uploadBytesResumable,
-  getDownloadURL,
-  deleteObject
+  getStorage, ref as storageRef, uploadBytesResumable, getDownloadURL, deleteObject
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
-
-
 
 const DEFAULT_CONFIG = {
   adminEmail: "getavcollab@gmail.com",
@@ -176,8 +114,6 @@ const CHAT_BROWSER_NOTIFICATION_KEY = "adnn_browser_notifications";
 const CHAT_SOUND_KEY = "adnn_message_sounds";
 const CHAT_SOUND_CONFIRMED_KEY = "adnn_sound_user_confirmed";
 const CHAT_REDUCE_MOTION_KEY = "adnn_reduce_motion";
-const CHAT_PAGE_LOAD_AT_MS = Date.now();
-const CHAT_REFRESH_AUDIO_MUTE_MS = 18000;
 const CHAT_TOTAL_UNREAD_STORAGE_KEY = "adnn_chat_unread_total";
 const PINNED_CHAT_STORAGE_KEY = "adnn_pinned_chat_ids";
 const NAV_ORDER_STORAGE_KEY = "adnn_sidebar_nav_order";
@@ -290,7 +226,6 @@ async function handleAuthState(user) {
       email: localDesignerProfile.email || localDesignerProfile.authEmail || activeUser.email || activeProfile?.email,
       authEmail: localDesignerProfile.authEmail || localDesignerProfile.email || activeUser.email || activeProfile?.authEmail,
       designerid: localDesignerProfile.designerid || localDesignerProfile.designerId || activeProfile?.designerid || activeProfile?.designerId,
-      designerId: localDesignerProfile.designerId || localDesignerProfile.designerid || activeProfile?.designerId || activeProfile?.designerid,
       role: "designer"
     };
   }
@@ -306,9 +241,7 @@ async function handleAuthState(user) {
 
   if (location.pathname.includes("admin.html")) {
     buildAdminChatPortal();
-    runAdminAutoHeal(); // Instantly fixes all broken ghost chats on load
-    
-    // Intercept message card creation to heal new chats instantly
+    runAdminAutoHeal();
     setTimeout(() => {
       document.getElementById("messageCardMakerForm")?.addEventListener("submit", () => setTimeout(runAdminAutoHeal, 2000));
       document.getElementById("groupCardMakerForm")?.addEventListener("submit", () => setTimeout(runAdminAutoHeal, 2000));
@@ -321,20 +254,25 @@ async function handleAuthState(user) {
   publishConnectionState(navigator.onLine === false ? "Offline mode" : "Connected", navigator.onLine === false ? "warn" : "ok");
 }
 
-// THE AUTO-HEAL ENGINE: Silently patches broken UIDs using the exact Firebase Auth Presence data
+// MASTER ADMIN AUTO-HEAL: Silently patches broken UIDs using the exact Firebase Auth Presence data
 async function runAdminAutoHeal() {
   if (!db || !activeUser || !isAdminEmail(activeUser.email)) return;
   try {
     const emailToUid = new Map();
-    const presenceSnap = await getDocs(collection(db, COLLECTIONS.presence)).catch(()=>null);
-    presenceSnap?.forEach(d => {
-      if (d.data().email) emailToUid.set(emailKey(d.data().email), d.id);
-    });
-    const clientsSnap = await getDocs(collection(db, "clients")).catch(()=>null);
-    clientsSnap?.forEach(d => {
-      const email = d.data().email || d.data().displayEmail;
-      if (email && !emailToUid.has(emailKey(email))) emailToUid.set(emailKey(email), d.id);
-    });
+    
+    // 1. Gather all users from clients, designers, and presence
+    const collectionsToScan = ["presence", "clients", "designers"];
+    for (const colName of collectionsToScan) {
+      const snap = await getDocs(collection(db, colName)).catch(()=>null);
+      snap?.forEach(d => {
+        const data = d.data();
+        const emails = [data.email, data.displayEmail, data.authEmail].filter(Boolean).map(emailKey);
+        emails.forEach(mail => emailToUid.set(mail, d.id));
+        // Also map designer IDs to UID
+        const dId = String(data.designerid || data.designerId || "").trim().toLowerCase();
+        if (dId) emailToUid.set(dId, d.id);
+      });
+    }
 
     const chatsSnap = await getDocs(collection(db, COLLECTIONS.chats)).catch(()=>null);
     if (!chatsSnap) return;
@@ -345,17 +283,31 @@ async function runAdminAutoHeal() {
     chatsSnap.forEach(chatDoc => {
       const data = chatDoc.data();
       if (data.type === "support") return;
-      const emails = Array.isArray(data.participantEmailKeys) ? data.participantEmailKeys : [];
+      
       const uids = Array.isArray(data.participantUids) ? data.participantUids : [];
+      const emails = Array.isArray(data.participantEmailKeys) ? data.participantEmailKeys : [];
       let added = false;
       const nextUids = [...uids];
 
+      // Check emails
       emails.forEach(mail => {
         const realUid = emailToUid.get(emailKey(mail));
         if (realUid && !nextUids.includes(realUid)) {
           nextUids.push(realUid);
           added = true;
         }
+      });
+
+      // Check designer IDs lurking in uids array
+      uids.forEach(uid => {
+         const lowerUid = String(uid).toLowerCase();
+         if (lowerUid.startsWith("d00")) {
+            const realUid = emailToUid.get(lowerUid);
+            if (realUid && !nextUids.includes(realUid)) {
+              nextUids.push(realUid);
+              added = true;
+            }
+         }
       });
 
       if (added && updates < 490) {
@@ -659,25 +611,43 @@ function watchChatThreads(scope, listId, roomId, options = {}) {
     renderThreadList(chats, list, roomId, scope);
   };
 
-  const listen = (key, refOrQuery) => resilientSnapshot(`threads:${listId}:${key}`, refOrQuery, (snapshot) => {
+  const listen = (key, refOrQuery, quiet = false) => resilientSnapshot(`threads:${listId}:${key}`, refOrQuery, (snapshot) => {
     sources.set(key, new Map(snapshot.docs.map((item) => [item.id, { id: item.id, ...item.data(), __pending: item.metadata.hasPendingWrites }])));
+    
+    // CLIENT AUTO-HEAL: If we found a broken chat via the email fallback, fix it permanently!
+    snapshot.docs.forEach(docSnap => {
+      const data = docSnap.data();
+      if (activeUser && activeUser.uid && !(data.participantUids || []).includes(activeUser.uid)) {
+         updateDoc(docSnap.ref, { participantUids: arrayUnion(activeUser.uid) }).catch(()=>{});
+      }
+    });
+
     renderMergedThreads();
   }, (error) => {
-    console.error("Chat Thread Error:", key, error);
-    if (!sources.size) {
-      list.innerHTML = `<div class="adnn-chat-empty">Error: ${escapeHtml(readableFirebaseError(error))}</div>`;
-      renderPassiveRoom(roomId, "Chats unavailable", readableFirebaseError(error), "Waiting for chat");
-    } else {
-      renderMergedThreads();
+    if (!quiet) {
+      console.warn("Chat connection warning:", readableFirebaseError(error));
+      if (!sources.size) {
+        list.innerHTML = `<div class="adnn-chat-empty">${escapeHtml(readableFirebaseError(error))}</div>`;
+        renderPassiveRoom(roomId, "Chats unavailable", "Chats are not available right now.", "Waiting for chat");
+      }
     }
+    renderMergedThreads();
   }, owner);
 
   if (scope === "admin") {
     listen("support", query(collection(db, COLLECTIONS.chats), where("type", "==", "support")));
     listen("admin-participant", query(collection(db, COLLECTIONS.chats), where("participantUids", "array-contains", ADMIN_ALIAS_UID)));
+    selfEmailKeyList().forEach((mail, index) => {
+      listen(`admin-email-${index}`, query(collection(db, COLLECTIONS.chats), where("participantEmailKeys", "array-contains", mail)));
+    });
   } else {
-    // Single, mathematically perfect query that Firebase Rules will 100% allow
-    listen("participant-uid", query(collection(db, COLLECTIONS.chats), where("participantUids", "array-contains", activeUser.uid)));
+    // SAFE QUERIES ONLY - absolutely mathematically valid for Firestore Rules
+    listen("safe-uid", query(collection(db, COLLECTIONS.chats), where("participantUids", "array-contains", activeUser.uid)));
+    
+    if (activeUser.email) {
+      const safeMail = String(activeUser.email).trim().toLowerCase();
+      listen("safe-email", query(collection(db, COLLECTIONS.chats), where("participantEmailKeys", "array-contains", safeMail)), true);
+    }
   }
 
   listWatchers.set(listId, () => {
@@ -714,9 +684,7 @@ function isChatVisibleForCurrentUser(chat) {
     const adminOnly = [ADMIN_ALIAS_UID, ADMIN_EMAIL].includes(String(chat.id || "").toLowerCase());
     if (adminOnly) return false;
   }
-  return chatBelongsToCurrentUser(chat);
-}
-  if (chat.type === "designer-room") return activeProfile?.role === "designer";
+  if (chat.type === "designer-room" && activeProfile?.role === "designer") return true;
   return chatBelongsToCurrentUser(chat);
 }
 
@@ -1594,7 +1562,6 @@ function toggleReactionPalette(menu) {
   if (palette) palette.hidden = !palette.hidden;
 }
 
-
 function openReactionSheet(anchor, state, message) {
   if (!anchor || !state || !message) return;
   closeFloatingReactionSheet();
@@ -1781,7 +1748,6 @@ function renderReactions(message) {
   return `<button type="button" class="adnn-reactions" data-action="open-react">${Object.entries(counts).map(([emoji, count]) => `${escapeHtml(emoji)}${count > 1 ? `<small>${count}</small>` : ""}`).join(" ")}</button>`;
 }
 
-
 function isCallEventMessage(message) {
   return !!(message?.callEvent || message?.system === "call" || message?.type === "call");
 }
@@ -1928,7 +1894,6 @@ async function sendCurrentMessage(state) {
     state.localPendingIds.delete(localId);
   }
 }
-
 
 function getUnreadTargetUids(chat) {
   const participants = Array.isArray(chat?.participantUids) ? chat.participantUids : [];
@@ -4357,330 +4322,4 @@ function injectChatStyles() {
     .adnn-call-btn:active, .adnn-attach-btn:active, .adnn-voice-btn:active, .adnn-plus-btn:active, .adnn-emoji-btn:active, .adnn-send-btn:active, .adnn-room-menu button:active, .adnn-message-actions button:active { transform:scale(.88); transition:.08s cubic-bezier(.2,.9,.2,1.25); }
     .adnn-back-btn svg, .adnn-call-btn svg, .adnn-attach-btn svg, .adnn-voice-btn svg, .adnn-send-btn svg, .adnn-plus-btn svg, .adnn-emoji-btn svg { width:19px; height:19px; }
     .adnn-room-title { flex:1; min-width:0; display:grid; gap:2px; }
-    .adnn-room-title strong, .adnn-room-title small { overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
-    .adnn-room-title strong { font-size:15px; font-weight:650; }
-    .adnn-room-title small { font-size:12px; color:rgba(255,255,255,.5); }
-    .adnn-room-title small.is-online { color:var(--adnn-success); }
-    .adnn-room-actions { display:flex; align-items:center; gap:7px; flex:0 0 auto; }
-    .adnn-room-searchbar { position:absolute; top:var(--head); left:0; right:0; height:52px; padding:8px 14px; display:flex; gap:8px; background:rgba(6,6,9,.96); border-bottom:1px solid rgba(255,255,255,.08); z-index:90; }
-    .adnn-room-searchbar input { flex:1; border:1px solid rgba(255,255,255,.1); border-radius:14px; background:#020203; color:#fff; padding:0 12px; outline:0; }
-    .adnn-room-searchbar button { width:36px; border:0; border-radius:12px; background:rgba(255,255,255,.08); color:#fff; display:grid; place-items:center; }
-    .adnn-message-scroll { position:absolute !important; top:var(--head) !important; left:0 !important; right:0 !important; bottom:var(--composer) !important; min-height:0 !important; overflow-y:auto !important; overflow-x:hidden !important; padding:18px; display:flex !important; flex-direction:column; gap:10px; scroll-behavior:smooth; z-index:1; }
-    .adnn-room-searchbar:not([hidden]) + .adnn-message-scroll { top:calc(var(--head) + 52px) !important; }
-    .adnn-date-separator { align-self:center; position:relative; z-index:1; padding:5px 10px; border-radius:999px; background:rgba(255,255,255,.08); color:rgba(255,255,255,.62); font-size:11px; backdrop-filter:blur(10px); flex:0 0 auto; }
-    .adnn-date-track { position:sticky; top:8px; align-self:center; z-index:35; padding:6px 12px; border-radius:999px; background:rgba(18,18,22,.78); color:#fff; font-size:11px; backdrop-filter:blur(18px); box-shadow:0 12px 35px rgba(0,0,0,.28); pointer-events:none; }
-    .adnn-message-row { display:flex; width:100%; }
-    .adnn-message-row.is-mine { justify-content:flex-end; }
-    .adnn-message-row.is-peer { justify-content:flex-start; }
-    .adnn-message { max-width:min(70%, 600px); position:relative; padding:10px 12px 8px; border-radius:18px; color:#fff; background:rgba(255,255,255,.075); border:1px solid rgba(255,255,255,.06); box-shadow:0 12px 28px rgba(0,0,0,.16); outline:0; }
-    .adnn-message.is-reply-jump { animation:adnnReplyJump 1.25s ease; }
-    @keyframes adnnReplyJump { 0%,100%{ box-shadow:0 12px 28px rgba(0,0,0,.16); } 35%{ box-shadow:0 0 0 3px rgba(141,150,255,.42), 0 16px 45px rgba(39,45,207,.28); } }
-    .adnn-message.is-search-hit { box-shadow:0 0 0 2px rgba(255,255,255,.28), 0 12px 28px rgba(0,0,0,.2); }
-    .is-mine .adnn-message { background:linear-gradient(145deg,var(--adnn-primary),var(--adnn-primary2)); border-color:rgba(255,255,255,.12); border-bottom-right-radius:5px; }
-    .is-peer .adnn-message { border-bottom-left-radius:5px; }
-    .adnn-message p { margin:0; line-height:1.45; font-size:14px; word-break:break-word; white-space:pre-wrap; }
-    .adnn-message p a { color:#fff; text-decoration:underline; text-decoration-thickness:1px; text-underline-offset:3px; }
-    .adnn-deleted-message { color:rgba(255,255,255,.56); font-style:italic; }
-    .adnn-message-name { display:block; margin-bottom:4px; color:#b5baff; font-size:12px; font-weight:600; }
-    .adnn-message-meta { display:flex; align-items:center; justify-content:flex-end; gap:5px; margin-top:5px; color:rgba(255,255,255,.46); font-size:10px; }
-    .adnn-ticks { width:18px; height:14px; display:inline-grid; place-items:center; color:rgba(255,255,255,.55); }
-    .adnn-ticks svg { width:16px; height:16px; }
-    .adnn-ticks.is-read { color:#63c6ff; }
-    .adnn-ticks.is-pending { color:rgba(255,255,255,.45); }
-    .adnn-message-actions { position:absolute; top:50%; display:flex; align-items:center; gap:4px; padding:5px; border-radius:15px; border:1px solid rgba(255,255,255,.12); background:rgba(9,9,12,.97); opacity:0; pointer-events:none; transform:translateY(-50%) scale(.96); transition:.18s ease; z-index:35; box-shadow:0 18px 50px rgba(0,0,0,.35); }
-    .is-mine .adnn-message-actions { right:calc(100% + 8px); }
-    .is-peer .adnn-message-actions { left:calc(100% + 8px); }
-    .adnn-message::before { content:""; position:absolute; top:-8px; bottom:-8px; width:22px; pointer-events:auto; }
-    .is-mine .adnn-message::before { right:100%; }
-    .is-peer .adnn-message::before { left:100%; }
-    .adnn-message .adnn-message-actions { transition:opacity .18s ease .32s, transform .18s ease .32s; }
-    .adnn-message:hover .adnn-message-actions, .adnn-message:focus-within .adnn-message-actions, .adnn-message.is-menu-open .adnn-message-actions { opacity:1; pointer-events:auto; transform:translateY(-50%) scale(1); transition-delay:0s; }
-    .adnn-message-actions button { min-width:36px; min-height:34px; border:0; border-radius:12px; background:rgba(255,255,255,.07); color:#fff; padding:7px 8px; font-size:12px; cursor:pointer; display:grid; place-items:center; gap:2px; }
-    .adnn-message-actions button svg { width:16px; height:16px; }
-    .adnn-message-actions button span { font-size:9px; line-height:1; }
-    .adnn-message-actions .is-danger { color:#ff6b5c; }
-    .adnn-message-actions .is-warn { color:#ffc66d; }
-    .adnn-message-action-trigger { display:none; }
-    .adnn-reaction-palette { display:none !important; }
-    .adnn-floating-reaction-sheet { position:fixed; z-index:2147483620; display:flex; gap:5px; max-width:calc(100vw - 16px); overflow-x:auto; padding:7px; border-radius:999px; background:rgba(8,8,12,.98); border:1px solid rgba(255,255,255,.14); box-shadow:0 18px 50px rgba(0,0,0,.42); backdrop-filter:blur(18px); }
-    .adnn-floating-reaction-sheet button { width:36px; height:36px; border:0; border-radius:50%; background:rgba(255,255,255,.08); font-size:19px; cursor:pointer; flex:0 0 auto; }
-    .adnn-reactions { position:absolute; right:10px; bottom:-15px; border:1px solid rgba(255,255,255,.1); border-radius:999px; background:#09090c; color:#fff; padding:2px 7px; font-size:12px; cursor:pointer; display:flex; gap:4px; align-items:center; }
-    .adnn-reactions small { font-size:9px; opacity:.7; }
-    .adnn-reply-preview, .adnn-reply-bar { display:grid; grid-template-columns:3px minmax(0,1fr) auto; gap:8px; align-items:center; margin-bottom:7px; border-radius:12px; background:rgba(0,0,0,.24); padding:8px; border:0; color:#fff; text-align:left; width:100%; }
-    .adnn-reply-preview:before, .adnn-reply-bar:before { content:""; width:3px; height:100%; border-radius:4px; background:#8d96ff; }
-    .adnn-reply-preview strong, .adnn-reply-bar strong { display:block; font-size:12px; color:#c1c5ff; }
-    .adnn-reply-preview small, .adnn-reply-bar small { display:block; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; color:rgba(255,255,255,.55); font-size:11px; }
-    .adnn-attachment-img img { display:block; width:min(340px, 100%); max-height:290px; object-fit:cover; border-radius:14px; margin-bottom:7px; }
-    .adnn-video-bubble { margin-bottom:7px; display:grid; gap:5px; }
-    .adnn-video-bubble video { width:min(360px, 100%); max-height:320px; border-radius:14px; background:#000; display:block; }
-    .adnn-video-bubble small { color:rgba(255,255,255,.55); font-size:11px; }
-    .adnn-doc-bubble { display:grid; grid-template-columns:42px minmax(0,1fr) auto; align-items:center; gap:10px; min-width:min(280px, 72vw); text-decoration:none; color:#fff; padding:10px; border-radius:14px; background:rgba(0,0,0,.22); margin-bottom:7px; }
-    .adnn-doc-bubble span { width:42px; height:42px; border-radius:12px; display:grid; place-items:center; background:var(--adnn-primary); font-size:11px; }
-    .adnn-doc-bubble strong, .adnn-doc-bubble small { overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
-    .adnn-doc-bubble small { color:rgba(255,255,255,.52); font-size:11px; }
-    .adnn-doc-bubble svg { width:16px; height:16px; opacity:.75; }
-    .adnn-voice-bubble { min-width:min(285px, 76vw); display:flex; align-items:center; gap:9px; padding:8px 10px; border-radius:999px; background:rgba(0,0,0,.22); margin-bottom:7px; }
-    .adnn-voice-bubble button { width:30px; height:30px; border:0; border-radius:50%; display:grid; place-items:center; background:rgba(255,255,255,.12); color:#fff; flex:0 0 auto; cursor:pointer; }
-    .adnn-voice-bubble button svg { width:15px; height:15px; }
-    .adnn-voice-wave { flex:1; min-width:110px; height:34px; display:flex; align-items:center; gap:2px; }
-    .adnn-voice-wave span { width:3px; height:var(--h); min-height:5px; max-height:24px; border-radius:999px; background:linear-gradient(180deg, rgba(255,255,255,.95), rgba(141,150,255,.6)); opacity:.95; }
-    .adnn-voice-bubble audio { width:0; max-width:0; height:0; }
-    .adnn-voice-bubble small { color:rgba(255,255,255,.55); font-size:11px; }
-    .adnn-composer-wrap { position:absolute !important; left:0 !important; right:0 !important; bottom:0 !important; min-height:var(--composer) !important; z-index:92 !important; border-top:1px solid rgba(255,255,255,.08); background:rgba(8,8,12,.97); padding:10px; box-shadow:0 -18px 45px rgba(0,0,0,.24); visibility:visible !important; opacity:1 !important; transform:none !important; }
-    .adnn-connection-strip { display:none !important; }
-    .adnn-composer { position:relative; display:flex; align-items:flex-end; gap:8px; }
-    .adnn-composer textarea { flex:1; min-height:42px; max-height:128px; resize:none; border:1px solid rgba(255,255,255,.09); border-radius:22px; background:#020203; color:#fff; outline:0; padding:12px 15px; font:inherit; font-size:14px; line-height:1.35; }
-    .adnn-attach-btn input, .adnn-composer-panel input { display:none; }
-    .adnn-send-btn { background:var(--adnn-primary); }
-    .adnn-voice-btn.is-recording { width:auto; padding:0 14px; border-radius:22px; background:var(--adnn-danger); display:flex; gap:8px; }
-    .adnn-rec-dot { width:8px; height:8px; border-radius:50%; background:#fff; animation:adnnPulse 1s infinite; }
-    @keyframes adnnPulse { 50% { opacity:.3; transform:scale(.72); } }
-    .adnn-typing-line { min-height:24px; display:flex; align-items:center; gap:4px; color:#8d96ff; font-size:12px; padding:0 4px 5px; }
-    .adnn-typing-line span { width:5px; height:5px; border-radius:50%; background:#8d96ff; animation:adnnTyping 1.1s infinite; }
-    .adnn-typing-line span:nth-child(2) { animation-delay:.15s; }
-    .adnn-typing-line span:nth-child(3) { animation-delay:.3s; margin-right:5px; }
-    @keyframes adnnTyping { 50% { transform:translateY(-4px); opacity:.45; } }
-    .adnn-file-preview { display:flex; gap:8px; overflow:auto; padding:0 0 8px; scrollbar-width:thin; }
-    .adnn-file-chip { min-width:205px; max-width:270px; display:grid; grid-template-columns:46px minmax(0,1fr) 28px; align-items:center; gap:8px; border:1px solid rgba(255,255,255,.08); border-radius:16px; padding:8px; background:rgba(255,255,255,.045); }
-    .adnn-file-chip img, .adnn-file-chip video, .adnn-file-chip > span { width:46px; height:46px; border-radius:12px; object-fit:cover; background:var(--adnn-primary); display:grid; place-items:center; font-size:10px; color:#fff; }
-    .adnn-file-chip strong, .adnn-file-chip small { display:block; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
-    .adnn-file-chip strong { font-size:12px; }
-    .adnn-file-chip small { color:rgba(255,255,255,.5); font-size:11px; }
-    .adnn-file-chip i, .adnn-voice-preview i { display:block; height:3px; width:100%; border-radius:999px; background:rgba(255,255,255,.12); margin-top:5px; overflow:hidden; position:relative; }
-    .adnn-file-chip i:before, .adnn-voice-preview i:before { content:""; position:absolute; inset:0 auto 0 0; width:var(--p); background:var(--adnn-success); border-radius:inherit; }
-    .adnn-file-chip button, .adnn-reply-bar button, .adnn-voice-preview button { width:28px; height:28px; border-radius:50%; border:0; background:rgba(255,255,255,.08); color:#fff; display:grid; place-items:center; cursor:pointer; }
-    .adnn-file-chip button svg, .adnn-reply-bar button svg, .adnn-voice-preview button svg { width:14px; height:14px; }
-    .adnn-voice-preview { display:flex; align-items:center; gap:10px; padding:0 0 8px; color:#fff; }
-    .adnn-voice-preview .adnn-voice-wave { max-width:260px; }
-    .adnn-voice-preview-icon { width:34px; height:34px; border:0; border-radius:50%; display:grid; place-items:center; background:var(--adnn-primary); color:#fff; flex:0 0 auto; cursor:pointer; }
-    .adnn-voice-preview-icon svg { width:16px; height:16px; }
-    .adnn-voice-preview audio { height:34px; max-width:260px; }
-    .adnn-composer-panel, .adnn-emoji-panel { position:absolute; left:10px; right:10px; bottom:calc(100% - 3px); padding:10px; border:1px solid rgba(255,255,255,.1); border-radius:20px; background:rgba(8,8,12,.98); box-shadow:0 -20px 65px rgba(0,0,0,.38); backdrop-filter:blur(18px); z-index:130; }
-    .adnn-composer-panel { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:8px; }
-    .adnn-composer-panel label { min-height:74px; display:grid; place-items:center; gap:6px; border:1px solid rgba(255,255,255,.08); border-radius:16px; background:rgba(255,255,255,.05); color:#fff; cursor:pointer; }
-    .adnn-composer-panel label span { width:32px; height:32px; border-radius:12px; display:grid; place-items:center; background:var(--adnn-primary); }
-    .adnn-composer-panel label svg { width:17px; height:17px; }
-    .adnn-composer-panel label b { font-size:11px; font-weight:600; }
-    .adnn-emoji-panel { display:flex; flex-wrap:wrap; gap:6px; right:auto; max-width:320px; }
-    .adnn-emoji-panel button { width:36px; height:36px; border:0; border-radius:12px; background:rgba(255,255,255,.07); font-size:18px; cursor:pointer; }
-    .adnn-drop-layer { position:absolute; inset:calc(var(--head) + 12px) 12px calc(var(--composer) + 12px); display:none; place-items:center; border:1px dashed rgba(141,150,255,.5); border-radius:24px; background:rgba(39,45,207,.16); color:#fff; z-index:8; backdrop-filter:blur(12px); }
-    .adnn-room-shell.is-dragging .adnn-drop-layer { display:grid; }
-    .adnn-scroll-bottom { position:absolute; right:18px; bottom:calc(var(--composer) + 18px); width:42px; height:42px; border:0; border-radius:50%; display:grid; place-items:center; background:rgba(255,255,255,.12); color:#fff; z-index:10; transform:rotate(-90deg); cursor:pointer; }
-    .adnn-scroll-bottom svg { width:18px; height:18px; }
-    .adnn-call-popout { position:fixed; z-index:2147483600; width:min(430px, calc(100vw - 20px)); max-height:calc(100svh - 20px); overflow:auto; touch-action:none; }
-    .adnn-incoming-call, .adnn-call-card { width:100%; border:1px solid rgba(255,255,255,.12); border-radius:28px; background:linear-gradient(145deg, rgba(20,20,26,.97), rgba(5,5,8,.99)); color:#fff; padding:14px; text-align:center; box-shadow:0 30px 100px rgba(0,0,0,.5); backdrop-filter:blur(20px); }
-    .adnn-call-drag-handle { height:34px; margin:-4px -2px 10px; padding:0 10px; border-radius:16px; display:flex; align-items:center; justify-content:space-between; color:rgba(255,255,255,.58); background:rgba(255,255,255,.055); cursor:grab; user-select:none; font-size:11px; }
-    .adnn-call-drag-handle:active { cursor:grabbing; }
-    .adnn-incoming-call .adnn-avatar { margin:0 auto; width:64px; height:64px; border-radius:22px; }
-    .adnn-incoming-call h3 { margin:14px 0 4px; }
-    .adnn-incoming-call p { color:rgba(255,255,255,.58); margin:0 0 20px; }
-    .adnn-incoming-call > div:last-child, .adnn-call-controls { display:flex; justify-content:center; gap:12px; }
-    .adnn-incoming-call button, .adnn-call-controls button { width:52px; height:52px; border:0; border-radius:50%; display:grid; place-items:center; color:#fff; background:rgba(255,255,255,.08); cursor:pointer; }
-    .adnn-incoming-call button svg, .adnn-call-controls button svg { width:21px; height:21px; }
-    .adnn-incoming-call .is-accept { background:var(--adnn-success); }
-    .adnn-incoming-call .is-end, .adnn-call-controls .is-end { background:#ff3b30; }
-    .adnn-call-controls .is-off { background:rgba(255,255,255,.18); color:#ffcabf; }
-    .adnn-call-stage { position:relative; aspect-ratio:16/10; border-radius:20px; background:#000; overflow:hidden; margin-bottom:14px; display:grid; grid-template-columns:1fr 1fr; gap:1px; }
-    .adnn-call-card.is-audio .adnn-call-stage { aspect-ratio:16/9; }
-    .adnn-video-tile { min-width:0; min-height:0; position:relative; background:#000; }
-    .adnn-video-tile video { width:100%; height:100%; object-fit:cover; display:block; }
-    .adnn-video-tile.is-local video { transform:scaleX(-1); }
-    .adnn-video-tile span { position:absolute; left:10px; bottom:10px; padding:5px 8px; border-radius:999px; background:rgba(0,0,0,.48); font-size:11px; }
-    .adnn-audio-call-face { grid-column:1 / -1; display:grid; place-items:center; min-height:220px; }
-    .adnn-audio-call-face .adnn-avatar { width:96px; height:96px; border-radius:30px; font-size:24px; }
-    .adnn-call-meta { text-align:left; margin:0 0 14px; }
-    .adnn-call-meta strong, .adnn-call-meta small { display:block; }
-    .adnn-call-meta small { color:rgba(255,255,255,.55); margin-top:3px; }
-    .adnn-call-hold-badge { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); padding:8px 12px; border-radius:999px; background:rgba(0,0,0,.62); color:#fff; font-size:12px; backdrop-filter:blur(10px); z-index:3; }
-    .adnn-message-row.is-call { justify-content:center; }
-    .adnn-message-row.is-call .adnn-message { max-width:min(92%, 360px); background:rgba(255,255,255,.06); border-radius:18px; }
-    .adnn-call-message { display:flex; align-items:center; gap:10px; text-align:left; }
-    .adnn-call-message > span { width:36px; height:36px; border-radius:50%; display:grid; place-items:center; background:rgba(39,45,207,.25); color:#fff; flex:0 0 auto; }
-    .adnn-call-message svg { width:18px; height:18px; }
-    .adnn-call-message strong { display:block; font-size:13px; }
-    .adnn-call-message small { display:block; color:rgba(255,255,255,.55); margin-top:2px; font-size:11px; }
-    .adnn-call-message.is-missed > span { background:rgba(255,38,2,.18); color:#ff9588; }
-    .adnn-confirm-backdrop { position:fixed; inset:0; z-index:2147483630; display:grid; place-items:center; padding:18px; background:rgba(0,0,0,.56); backdrop-filter:blur(14px); }
-    .adnn-confirm-card { width:min(390px, 100%); border:1px solid rgba(255,255,255,.12); border-radius:24px; background:linear-gradient(145deg, rgba(22,22,28,.98), rgba(5,5,8,.99)); color:#fff; padding:20px; box-shadow:0 30px 100px rgba(0,0,0,.5); }
-    .adnn-confirm-card h3 { margin:0 0 8px; font-size:18px; }
-    .adnn-confirm-card p { margin:0 0 18px; color:rgba(255,255,255,.62); line-height:1.45; }
-    .adnn-confirm-card div { display:flex; justify-content:flex-end; gap:10px; }
-    .adnn-confirm-card button { border:0; border-radius:14px; padding:11px 14px; background:rgba(255,255,255,.08); color:#fff; cursor:pointer; }
-    .adnn-confirm-card button.is-danger { background:var(--adnn-danger); }
-    .adnn-chat-toast { position:fixed; left:50%; bottom:28px; transform:translateX(-50%); z-index:2147483640; padding:10px 14px; border-radius:999px; background:#111; color:#fff; border:1px solid rgba(255,255,255,.1); box-shadow:0 16px 50px rgba(0,0,0,.3); max-width:min(92vw, 560px); text-align:center; }
-    .adnn-chat-toast.is-bad { border-color:rgba(255,80,70,.35); background:#25100f; }
-    .adnn-chat-toast.is-warn { border-color:rgba(255,198,109,.35); background:#211909; }
-    .adnn-chat-toast.is-ok { border-color:rgba(83,215,105,.25); }
-
-
-    /* ADNN hard layout guard: keep the room header, messages, and composer inside the chat room on every screen. */
-    .adnn-chat-app .adnn-chat-layout { width:100% !important; max-width:100% !important; align-self:stretch !important; justify-self:stretch !important; }
-    .adnn-chat-app .adnn-chat-room { contain:layout paint !important; transform:none !important; }
-    .adnn-chat-app .adnn-room-shell {
-      position:absolute !important; inset:0 !important; width:100% !important; max-width:100% !important; height:100% !important;
-      display:grid !important; grid-template-rows:var(--head) minmax(0,1fr) auto !important; grid-template-columns:minmax(0,1fr) !important;
-      overflow:hidden !important; transform:none !important; isolation:isolate !important;
-    }
-    .adnn-chat-app .adnn-room-shell > .adnn-room-head {
-      position:relative !important; inset:auto !important; grid-row:1 !important; grid-column:1 / -1 !important; width:100% !important; max-width:none !important;
-      min-width:0 !important; height:var(--head) !important; min-height:var(--head) !important; flex:0 0 auto !important;
-      display:flex !important; align-items:center !important; justify-content:flex-start !important; overflow:visible !important; transform:none !important;
-      padding:12px 14px !important; z-index:95 !important;
-    }
-    .adnn-chat-app .adnn-room-shell > .adnn-room-head .adnn-room-title { flex:1 1 auto !important; min-width:0 !important; max-width:100% !important; }
-    .adnn-chat-app .adnn-room-shell > .adnn-room-head .adnn-room-actions { margin-left:auto !important; flex:0 0 auto !important; position:relative !important; right:auto !important; top:auto !important; transform:none !important; }
-    .adnn-chat-app .adnn-room-shell > .adnn-room-searchbar { top:var(--head) !important; left:0 !important; right:0 !important; width:auto !important; }
-    .adnn-chat-app .adnn-room-shell > .adnn-message-scroll {
-      position:relative !important; top:auto !important; left:auto !important; right:auto !important; bottom:auto !important; grid-row:2 !important; grid-column:1 / -1 !important;
-      width:100% !important; min-width:0 !important; height:100% !important; min-height:0 !important; max-height:none !important; overflow-y:auto !important; padding:18px !important;
-    }
-    .adnn-chat-app .adnn-room-shell > .adnn-room-searchbar:not([hidden]) ~ .adnn-message-scroll { padding-top:70px !important; }
-    .adnn-chat-app .adnn-room-shell > .adnn-composer-wrap {
-      position:relative !important; left:auto !important; right:auto !important; bottom:auto !important; grid-row:3 !important; grid-column:1 / -1 !important;
-      width:100% !important; min-width:0 !important; min-height:var(--composer) !important; flex:0 0 auto !important; transform:none !important;
-    }
-    .adnn-chat-app .adnn-room-shell > .adnn-scroll-bottom { bottom:calc(var(--composer) + 18px) !important; }
-
-    @media (max-width:900px) {
-      .adnn-room-actions { gap:5px; }
-      .adnn-call-btn { width:39px; height:39px; }
-      .adnn-message { max-width:78%; }
-    }
-
-
-    .adnn-inapp-stack { position:fixed; right:18px; top:18px; z-index:2147483500; display:grid; gap:10px; width:min(360px, calc(100vw - 28px)); pointer-events:none; }
-    .adnn-inapp-card { pointer-events:auto; width:100%; min-height:70px; border:1px solid rgba(255,255,255,.14); border-radius:22px; display:grid; grid-template-columns:46px minmax(0,1fr) auto; align-items:center; gap:12px; padding:12px; background:linear-gradient(145deg, rgba(22,22,28,.96), rgba(4,4,7,.98)); color:#fff; text-align:left; box-shadow:0 24px 80px rgba(0,0,0,.38); backdrop-filter:blur(18px); animation:adnnNotifyIn .32s cubic-bezier(.16,1,.3,1); cursor:pointer; }
-    .adnn-inapp-card strong, .adnn-inapp-card small { display:block; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
-    .adnn-inapp-card strong { font-size:13px; font-weight:650; }
-    .adnn-inapp-card small { color:rgba(255,255,255,.58); font-size:12px; margin-top:3px; }
-    .adnn-inapp-card b { min-width:22px; height:22px; padding:0 6px; border-radius:999px; display:grid; place-items:center; background:var(--adnn-danger); color:#fff; font-size:11px; }
-    .adnn-inapp-card.is-missed { border-color:rgba(255,38,2,.36); }
-    @keyframes adnnNotifyIn { from { opacity:0; transform:translateY(-10px) scale(.96); } to { opacity:1; transform:translateY(0) scale(1); } }
-    :root.adnn-chat-light .adnn-chat-app { --adnn-bg:#f6f7fb; --adnn-panel:#ffffff; --adnn-soft:rgba(7,10,25,.065); --adnn-line:rgba(7,10,25,.11); --adnn-text:#12131a; --adnn-muted:rgba(18,19,26,.56); color:#12131a; }
-    :root.adnn-chat-light .adnn-chat-layout { background:linear-gradient(145deg, rgba(255,255,255,.98), rgba(237,239,250,.98)); box-shadow:0 24px 90px rgba(14,18,48,.16); }
-    :root.adnn-chat-light .adnn-chat-thread-panel { background:rgba(255,255,255,.72); border-right-color:rgba(7,10,25,.08); }
-    :root.adnn-chat-light .adnn-chat-thread-head, :root.adnn-chat-light .adnn-room-head, :root.adnn-chat-light .adnn-composer-wrap, :root.adnn-chat-light .adnn-room-searchbar { background:rgba(255,255,255,.92); border-color:rgba(7,10,25,.1); color:#12131a; }
-    :root.adnn-chat-light .adnn-room-shell { background:radial-gradient(circle at 92% 6%, rgba(39,45,207,.12), transparent 32%), #f8f9ff; }
-    :root.adnn-chat-light .adnn-thread, :root.adnn-chat-light .adnn-call-btn, :root.adnn-chat-light .adnn-back-btn, :root.adnn-chat-light .adnn-attach-btn, :root.adnn-chat-light .adnn-voice-btn, :root.adnn-chat-light .adnn-plus-btn, :root.adnn-chat-light .adnn-emoji-btn, :root.adnn-chat-light .adnn-room-menu button, :root.adnn-chat-light .adnn-outer-menu button { color:#11131b; }
-    :root.adnn-chat-light .adnn-call-btn, :root.adnn-chat-light .adnn-back-btn, :root.adnn-chat-light .adnn-attach-btn, :root.adnn-chat-light .adnn-voice-btn, :root.adnn-chat-light .adnn-plus-btn, :root.adnn-chat-light .adnn-emoji-btn, :root.adnn-chat-light .adnn-room-menu, :root.adnn-chat-light .adnn-outer-menu { background:rgba(10,14,30,.07); border-color:rgba(7,10,25,.1); }
-    :root.adnn-chat-light .adnn-thread:hover, :root.adnn-chat-light .adnn-thread.is-active { background:rgba(39,45,207,.12); }
-    :root.adnn-chat-light .adnn-thread-copy small, :root.adnn-chat-light .adnn-thread-side time, :root.adnn-chat-light .adnn-room-title small, :root.adnn-chat-light .adnn-chat-empty, :root.adnn-chat-light .adnn-chat-welcome { color:rgba(18,19,26,.55); }
-    :root.adnn-chat-light .adnn-chat-search, :root.adnn-chat-light .adnn-composer textarea, :root.adnn-chat-light .adnn-room-searchbar input { background:#fff; color:#11131b; border-color:rgba(7,10,25,.1); }
-    :root.adnn-chat-light .adnn-chat-search input { color:#11131b; }
-    :root.adnn-chat-light .adnn-message { background:#ffffff; color:#11131b; border-color:rgba(7,10,25,.08); box-shadow:0 12px 28px rgba(12,16,46,.08); }
-    :root.adnn-chat-light .is-mine .adnn-message { color:#fff; background:linear-gradient(145deg,var(--adnn-primary),var(--adnn-primary2)); }
-    :root.adnn-chat-light .adnn-date-separator, :root.adnn-chat-light .adnn-reply-preview, :root.adnn-chat-light .adnn-doc-bubble, :root.adnn-chat-light .adnn-voice-bubble { background:rgba(7,10,25,.06); color:#11131b; }
-    :root.adnn-chat-light .adnn-message-meta, :root.adnn-chat-light .adnn-voice-bubble small, :root.adnn-chat-light .adnn-doc-bubble small { color:rgba(18,19,26,.5); }
-    :root.adnn-chat-light .adnn-chat-layout, :root.adnn-chat-light .adnn-room-head, :root.adnn-chat-light .adnn-composer-wrap, :root.adnn-chat-light .adnn-message, :root.adnn-chat-light .adnn-thread, :root.adnn-chat-light .adnn-message-actions, :root.adnn-chat-light .adnn-composer-panel, :root.adnn-chat-light .adnn-emoji-panel, :root.adnn-chat-light .adnn-floating-reaction-sheet { box-shadow:none !important; }
-    :root.adnn-chat-light .adnn-message-actions, :root.adnn-chat-light .adnn-composer-panel, :root.adnn-chat-light .adnn-emoji-panel, :root.adnn-chat-light .adnn-floating-reaction-sheet { background:#fff; border-color:rgba(7,10,25,.1); }
-    :root.adnn-chat-light .adnn-message-actions button, :root.adnn-chat-light .adnn-floating-reaction-sheet button, :root.adnn-chat-light .adnn-emoji-panel button { background:rgba(7,10,25,.055); color:#11131b; }
-    :root.adnn-chat-light .adnn-room-shell { box-shadow:none !important; }
-    :root.adnn-chat-light .adnn-thread.is-pinned { background:rgba(39,45,207,.09); }
-    :root.adnn-chat-light .adnn-thread.is-pinned .adnn-pin-chat { box-shadow:none; }
-    :root.adnn-chat-light .adnn-inapp-card { background:linear-gradient(145deg, rgba(255,255,255,.98), rgba(238,240,250,.98)); color:#11131b; border-color:rgba(7,10,25,.1); box-shadow:0 24px 80px rgba(14,18,48,.16); }
-    :root.adnn-chat-light .adnn-inapp-card small { color:rgba(18,19,26,.56); }
-    :root.adnn-reduce-motion .adnn-chat-app *, :root.adnn-reduce-motion .adnn-call-popout, :root.adnn-reduce-motion .adnn-inapp-card { transition:none !important; animation:none !important; scroll-behavior:auto !important; transform:none !important; filter:none !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important; }
-
-    .side-notification-badge { min-width:18px; height:18px; padding:0 5px; border-radius:999px; display:grid; place-items:center; background:#ff2602; color:#fff; font-size:10px; line-height:1; box-shadow:0 0 0 2px rgba(0,0,0,.18), 0 8px 22px rgba(255,38,2,.38); }
-    .side-notification-badge[hidden] { display:none !important; }
-    .side-nav a.can-drag, .side-nav button.can-drag, .sidebar-link-item.can-drag { cursor:grab; }
-    .side-nav a.is-dragging, .side-nav button.is-dragging, .sidebar-link-item.is-dragging { opacity:.45; transform:scale(.98); }
-    .side-nav a::before, .side-nav button::before, .sidebar-link-item::before { content:""; position:absolute; left:5px; top:50%; width:4px; height:18px; border-radius:999px; opacity:0; transform:translateY(-50%); background:linear-gradient(#fff8,#fff2); transition:.18s ease; }
-    .side-nav a.can-drag::before, .side-nav button.can-drag::before, .sidebar-link-item.can-drag::before { opacity:.62; }
-    .adnn-pin-chat { width:22px; height:22px; border:0; border-radius:999px; display:grid; place-items:center; color:rgba(255,255,255,.42); background:rgba(255,255,255,.05); font-size:10px; cursor:pointer; }
-    .adnn-thread.is-pinned .adnn-pin-chat { color:#fff; background:rgba(39,45,207,.72); box-shadow:0 0 18px rgba(39,45,207,.34); }
-    .adnn-thread.is-pinned { background:linear-gradient(135deg, rgba(39,45,207,.18), rgba(255,255,255,.035)); }
-    .settings-grid { display:grid !important; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:12px !important; align-items:stretch; }
-    .settings-card.adnn-setting-card, .settings-card.adnn-os-card { min-height:68px !important; border-radius:20px !important; padding:14px 16px !important; border:1px solid rgba(255,255,255,.1) !important; background:linear-gradient(145deg, rgba(255,255,255,.075), rgba(255,255,255,.025)) !important; box-shadow:0 16px 45px rgba(0,0,0,.14), inset 0 1px 0 rgba(255,255,255,.1) !important; display:grid !important; grid-template-columns:minmax(0,1fr) auto !important; gap:12px !important; align-items:center !important; transition:transform .18s ease, border-color .18s ease, background .18s ease !important; }
-    .settings-card.adnn-setting-card:hover, .settings-card.adnn-os-card:hover { transform:translateY(-2px); border-color:rgba(39,45,207,.34) !important; background:linear-gradient(145deg, rgba(39,45,207,.13), rgba(255,255,255,.035)) !important; }
-    .settings-card.adnn-setting-card strong, .settings-card.adnn-os-card strong { margin:0 0 2px !important; font-size:13px !important; line-height:1.2 !important; letter-spacing:0 !important; font-weight:560 !important; }
-    .settings-card.adnn-setting-card span, .settings-card.adnn-os-card span { font-size:11px !important; line-height:1.35 !important; opacity:.68; }
-    .settings-card .settings-inline-btn, .settings-card .apple-home-btn { width:40px !important; height:40px !important; min-width:40px !important; border-radius:14px !important; }
-    .adnn-client-status-btn { min-height:32px; border:1px solid rgba(255,255,255,.12); border-radius:999px; padding:0 12px; background:rgba(255,255,255,.07); color:#fff; font-size:11px; cursor:pointer; transition:.18s ease; }
-    .adnn-client-status-btn:hover { background:rgba(39,45,207,.22); border-color:rgba(39,45,207,.38); }
-    .adnn-client-status-btn:disabled { opacity:.5; cursor:wait; }
-    .adnn-name-confirm-row { display:grid !important; grid-template-columns:minmax(0,1fr) 32px !important; gap:8px !important; align-items:center !important; }
-    .adnn-name-confirm-btn { width:30px; height:30px; border:0; border-radius:12px; display:grid; place-items:center; color:#fff; background:linear-gradient(145deg,var(--adnn-primary),var(--adnn-primary2)); box-shadow:0 10px 25px rgba(39,45,207,.22); cursor:pointer; transition:.18s ease; }
-    .adnn-name-confirm-btn svg { width:16px; height:16px; }
-    .adnn-name-confirm-btn[hidden] { display:none !important; }
-    .adnn-name-confirm-btn:hover { transform:translateY(-1px) scale(1.04); }
-    .adnn-name-confirm-btn:disabled { opacity:.55; cursor:wait; transform:none; }
-    .adnn-os-card { grid-template-columns:36px minmax(0,1fr) 36px !important; cursor:pointer !important; }
-    .adnn-os-card::after { display:block !important; content:""; position:absolute; inset:-30%; z-index:-1; opacity:0; transform:scale(.8); background:radial-gradient(circle at var(--tap-x,50%) var(--tap-y,50%), rgba(255,255,255,.34), rgba(39,45,207,.24) 18%, transparent 42%); pointer-events:none; }
-    .adnn-os-card.is-playing::after { animation:adnnOsWave .75s cubic-bezier(.16,1,.3,1); }
-    .adnn-os-dots { width:34px !important; height:34px !important; border-radius:14px !important; opacity:.9; }
-    .adnn-os-meta { min-width:0; }
-    @keyframes adnnOsWave { 0%{opacity:0;transform:scale(.6)} 34%{opacity:1} 100%{opacity:0;transform:scale(1.15)} }
-
-    @media (max-width:760px) {
-      .adnn-chat-app { display:block !important; min-height:0 !important; }
-      html, body { max-width:100vw !important; overflow-x:hidden !important; overscroll-behavior-x:none !important; }
-      .adnn-chat-layout { grid-template-columns:1fr; height:100svh !important; min-height:0 !important; overflow:hidden !important; border-radius:0; border-left:0; border-right:0; }
-      .adnn-chat-resizer { display:none !important; }
-      .adnn-chat-layout > .adnn-chat-thread-panel, .adnn-chat-layout > .adnn-chat-room { grid-column:1 / -1; grid-row:1; }
-      .adnn-chat-thread-panel { border-right:0; }
-      .adnn-chat-layout .adnn-chat-room { display:none; }
-      .adnn-chat-layout.is-single .adnn-chat-room { display:block; height:100%; }
-      .adnn-chat-layout.is-room-open { position:fixed !important; inset:0 !important; z-index:2147483200 !important; height:100svh !important; width:100vw !important; border:0 !important; border-radius:0 !important; }
-      .adnn-chat-layout.is-room-open .adnn-chat-thread-panel { display:none; }
-      .adnn-chat-layout.is-room-open .adnn-chat-room, body.adnn-chat-mobile-lock .adnn-chat-room { display:block; height:100svh !important; min-height:0 !important; overflow:hidden !important; }
-      .adnn-room-shell { height:100svh !important; --head:64px; --composer:74px; }
-      .adnn-back-btn { display:grid; }
-      .adnn-room-head { padding:10px 8px; gap:7px; }
-      .adnn-room-head .adnn-avatar { width:38px; height:38px; border-radius:14px; }
-      .adnn-room-title strong { font-size:14px; }
-      .adnn-room-title small { font-size:11px; }
-      .adnn-room-actions .adnn-call-btn { width:36px; height:36px; }
-      .adnn-room-actions .adnn-call-btn[data-room-search] { display:none; }
-      .adnn-message-scroll { padding:12px 10px !important; }
-      .adnn-message { max-width:87%; }
-      .adnn-message-action-trigger { position:absolute; top:7px; width:30px; height:30px; border:0; border-radius:50%; display:grid; place-items:center; color:#fff; background:rgba(255,255,255,.12); backdrop-filter:blur(12px); box-shadow:0 10px 28px rgba(0,0,0,.2); z-index:30; opacity:.86; }
-      .adnn-message-action-trigger svg { width:15px; height:15px; }
-      .is-mine .adnn-message { padding-right:44px; }
-      .is-peer .adnn-message { padding-left:44px; }
-      .is-mine .adnn-message-action-trigger { right:8px; }
-      .is-peer .adnn-message-action-trigger { left:8px; }
-      .is-mine .adnn-message-actions, .is-peer .adnn-message-actions { position:absolute !important; top:42px !important; bottom:auto !important; width:max-content !important; max-width:calc(100vw - 34px) !important; overflow-x:auto; transform:translateY(-4px) scale(.96) !important; border-radius:18px; padding:6px; }
-      .is-mine .adnn-message-actions { right:8px !important; left:auto !important; }
-      .is-peer .adnn-message-actions { left:8px !important; right:auto !important; }
-      .adnn-message:hover .adnn-message-actions, .adnn-message:focus-within .adnn-message-actions { opacity:0; pointer-events:none; }
-      .adnn-message.is-menu-open .adnn-message-actions { opacity:1; pointer-events:auto; transform:translateY(0) scale(1) !important; }
-      .adnn-composer-wrap { padding:6px 8px max(8px, env(safe-area-inset-bottom)); }
-      .adnn-composer { gap:6px; }
-      .adnn-composer textarea { font-size:16px; min-height:41px; padding:11px 13px; }
-      .adnn-plus-btn, .adnn-attach-btn, .adnn-emoji-btn, .adnn-voice-btn, .adnn-send-btn { width:39px; height:39px; }
-      .adnn-emoji-btn { display:none; }
-      .adnn-composer-panel { grid-template-columns:repeat(2, minmax(0, 1fr)); }
-      .adnn-call-stage { grid-template-columns:1fr; aspect-ratio:9/12; }
-      .adnn-call-card.is-audio .adnn-call-stage { aspect-ratio:1/1; }
-      .adnn-call-popout { width:calc(100vw - 16px); max-height:calc(100svh - 16px); }
-      .adnn-floating-reaction-sheet { left:8px !important; right:8px !important; width:auto !important; max-width:calc(100vw - 16px) !important; justify-content:center; border-radius:22px; bottom:calc(8px + env(safe-area-inset-bottom)) !important; top:auto !important; }
-      .adnn-chat-app .adnn-room-shell { grid-template-rows:64px minmax(0,1fr) auto !important; --head:64px; --composer:74px; }
-      .adnn-chat-app .adnn-room-shell > .adnn-room-head { padding:9px 8px !important; gap:7px !important; min-width:0 !important; overflow:visible !important; }
-      .adnn-chat-app .adnn-room-shell > .adnn-room-head .adnn-room-title { min-width:0 !important; }
-      .adnn-chat-app .adnn-room-shell > .adnn-room-head .adnn-room-actions { gap:5px !important; margin-left:auto !important; }
-      .adnn-chat-app .adnn-room-shell > .adnn-message-scroll { padding:12px 10px !important; }
-      .adnn-chat-app .adnn-room-shell > .adnn-composer-wrap { padding:7px 8px max(8px, env(safe-area-inset-bottom)) !important; }
-    }
-
-    @media (max-width:420px) {
-      .adnn-room-head .adnn-avatar { width:34px !important; height:34px !important; border-radius:12px !important; }
-      .adnn-room-actions .adnn-call-btn { width:32px !important; height:32px !important; }
-      .adnn-room-actions .adnn-call-btn svg { width:15px !important; height:15px !important; }
-      .adnn-room-title small { display:none !important; }
-      .adnn-message { max-width:91%; }
-      .adnn-attach-btn { display:none; }
-      .adnn-doc-bubble { min-width:min(240px, 74vw); }
-    }
-  `;
-  document.head.appendChild(style);
-}
-
-// Expose a tiny debug surface without coupling the site to internals.
-window.ADNN_CHAT_RUNTIME = Object.freeze({
-  version: "2.3.0-message-card-settings-sheet",
-  refresh: refreshAllConnections,
-  get activeUser() { return activeUser ? { uid: activeUser.uid, email: activeUser.email } : null; },
-  get activeCall() { return activeCall ? { callId: activeCall.callId, kind: activeCall.kind, role: activeCall.role } : null; },
-  get offlinePersistenceState() { return offlinePersistenceState; }
-});
+    .adnn-room-title strong, .ad

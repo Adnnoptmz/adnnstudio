@@ -281,7 +281,7 @@ async function handleAuthState(user) {
     name: activeUser.displayName || emailKey(activeUser.email).split("@")[0] || "User",
     photoURL: activeUser.photoURL || ""
   }));
-  const localDesignerProfile = readLocalDesignerProfile();
+  const localDesignerProfile = location.pathname.includes("designer-account.html") ? readLocalDesignerProfile() : null;
   if (localDesignerProfile) {
     activeProfile = {
       ...(activeProfile || {}),
@@ -564,20 +564,22 @@ function watchChatThreads(scope, listId, roomId, options = {}) {
       listen(`admin-email-${index}`, query(collection(db, COLLECTIONS.chats), where("participantEmailKeys", "array-contains", mail)));
     });
   } else {
-    const primaryUids = new Set(uniqueClean([activeUser.uid, ownCallUid()]));
-    const primaryEmail = emailKey(activeUser.email);
-    Array.from(selfUidSet()).forEach((uid, index) => {
-      if (!uid || !String(uid).trim()) return;
-      listen(`participant-${index}`, query(collection(db, COLLECTIONS.chats), where("participantUids", "array-contains", uid)), !primaryUids.has(uid));
-    });
-    selfEmailKeyList().forEach((mail, index) => {
-      if (!mail || !String(mail).trim()) return;
-      listen(`participant-email-${index}`, query(collection(db, COLLECTIONS.chats), where("participantEmailKeys", "array-contains", mail)), mail !== primaryEmail);
-    });
     if (activeProfile?.role === "designer") {
+      const primaryUids = new Set(uniqueClean([activeUser.uid, ownCallUid()]));
+      const primaryEmail = emailKey(activeUser.email);
+      Array.from(selfUidSet()).forEach((uid, index) => {
+        if (!uid || !String(uid).trim()) return;
+        listen(`participant-${index}`, query(collection(db, COLLECTIONS.chats), where("participantUids", "array-contains", uid)), !primaryUids.has(uid));
+      });
+      selfEmailKeyList().forEach((mail, index) => {
+        if (!mail || !String(mail).trim()) return;
+        listen(`participant-email-${index}`, query(collection(db, COLLECTIONS.chats), where("participantEmailKeys", "array-contains", mail)), mail !== primaryEmail);
+      });
       listen("designer-room", query(collection(db, COLLECTIONS.chats), where("type", "==", "designer-room")));
       listen("designer-direct-scan", query(collection(db, COLLECTIONS.chats), where("type", "==", "direct")), true);
       listen("designer-group-scan", query(collection(db, COLLECTIONS.chats), where("type", "==", "group")), true);
+    } else {
+      listen("participant", query(collection(db, COLLECTIONS.chats), where("participantUids", "array-contains", activeUser.uid)));
     }
   }
 
@@ -3164,11 +3166,22 @@ function designerEmailVariants() {
 }
 
 function selfUidSet() {
+  if (activeProfile?.role !== "designer") {
+    return new Set(uniqueClean([activeUser?.uid, ownCallUid()]));
+  }
   const designerIds = designerIdVariants();
   return new Set(uniqueClean([activeUser?.uid, activeProfile?.uid, activeProfile?.id, ownCallUid(), ...designerIds]));
 }
 
 function selfEmailKeyList() {
+  if (activeProfile?.role !== "designer") {
+    return uniqueClean([
+      activeUser?.email,
+      activeProfile?.email,
+      activeProfile?.clientEmail,
+      activeProfile?.authEmail
+    ].map(emailKey));
+  }
   return uniqueClean([
     activeUser?.email,
     activeProfile?.email,

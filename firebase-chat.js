@@ -75,8 +75,6 @@ import {
   deleteObject
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
-
-
 const DEFAULT_CONFIG = {
   adminEmail: "getavcollab@gmail.com",
   adminAliasUid: "adnn-admin",
@@ -96,8 +94,8 @@ const DEFAULT_CONFIG = {
   uploadChunkLabelEveryPct: 5,
   deleteStorageOnDeleteForAll: false,
   messageToneFile: "Message Notification.wav",
-  outgoingCallToneFile: "",
-  incomingCallToneFile: "",
+  outgoingCallToneFile: "call ringer_01.mp3",
+  incomingCallToneFile: "ring-app.mp3",
   iceServers: [
     { urls: "stun:stun.l.google.com:19302" },
     { urls: "stun:stun1.l.google.com:19302" }
@@ -136,7 +134,7 @@ const COLLECTIONS = Object.freeze({
   offerCandidates: "offerCandidates",
   answerCandidates: "answerCandidates"
 });
-const REACTION_SET = ["\u{1F44D}", "\u{2764}\u{FE0F}", "\u{1F602}", "\u{1F62E}", "\u{1F622}", "\u{1F64F}", "\u{1F525}", "\u{1F389}", "\u{2705}", "\u{1F4AF}", "\u{1F440}", "\u{1F680}"];
+const REACTION_SET = ["👍", "❤️", "😂", "🔥", "👏", "😍", "😮", "😢", "🙏", "✅"];
 
 let app = null;
 let auth = null;
@@ -153,8 +151,6 @@ let globalThreadBadgeUnsub = null;
 let outgoingDialAudio = null;
 let incomingRingAudio = null;
 let lastSoundAtMs = 0;
-let chatAudioUnlockedThisSession = false;
-let chatAudioReadyAtMs = Number.POSITIVE_INFINITY;
 let sessionStarted = false;
 let notificationsReadyAtMs = Date.now() + 2600;
 let offlinePersistenceState = "unknown";
@@ -174,10 +170,7 @@ const CHAT_THEME_STORAGE_KEY = "adnn_chat_light_mode";
 const CHAT_INAPP_NOTIFICATION_KEY = "adnn_inapp_notifications";
 const CHAT_BROWSER_NOTIFICATION_KEY = "adnn_browser_notifications";
 const CHAT_SOUND_KEY = "adnn_message_sounds";
-const CHAT_SOUND_CONFIRMED_KEY = "adnn_sound_user_confirmed";
 const CHAT_REDUCE_MOTION_KEY = "adnn_reduce_motion";
-const CHAT_PAGE_LOAD_AT_MS = Date.now();
-const CHAT_REFRESH_AUDIO_MUTE_MS = 18000;
 const CHAT_TOTAL_UNREAD_STORAGE_KEY = "adnn_chat_unread_total";
 const PINNED_CHAT_STORAGE_KEY = "adnn_pinned_chat_ids";
 const NAV_ORDER_STORAGE_KEY = "adnn_sidebar_nav_order";
@@ -187,8 +180,6 @@ const ICON = {
   home: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10.5V21h13V10.5"/><path d="M9.5 21v-6h5v6"/></svg>`,
   menu: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>`,
   more: `<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>`,
-  pin: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m14 3 7 7-3 1-4 4v5l-2 2-3-7-7-3 2-2h5l4-4 1-3Z"/></svg>`,
-  pinFilled: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="m14 2.8 7.2 7.2-3.28 1.1-3.62 3.62v5.17l-2.32 2.32-3.28-7.65-7.65-3.28 2.32-2.32h5.17l3.62-3.62L14 2.8Z"/></svg>`,
   search: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>`,
   phone: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v2.4a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.12 3.63 2 2 0 0 1 4.11 1.5h2.4a2 2 0 0 1 2 1.72c.13.96.35 1.9.67 2.8a2 2 0 0 1-.45 2.1L7.7 9.16a16 16 0 0 0 7.14 7.14l1.04-1.03a2 2 0 0 1 2.1-.45c.9.32 1.84.54 2.8.67A2 2 0 0 1 22 16.92Z"/></svg>`,
   video: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="13" height="14" rx="3"/><path d="m16 10 5-3v10l-5-3"/></svg>`,
@@ -218,8 +209,6 @@ const ICON = {
 bootChatRuntime();
 
 async function bootChatRuntime() {
-  enforceSilentSoundMigration();
-  installSilentAudioGuard();
   injectChatStyles();
   syncChatSettingsFromStorage();
   bindChatSettingsEvents();
@@ -281,23 +270,9 @@ async function handleAuthState(user) {
     name: activeUser.displayName || emailKey(activeUser.email).split("@")[0] || "User",
     photoURL: activeUser.photoURL || ""
   }));
-  const localDesignerProfile = location.pathname.includes("designer-account.html") ? readLocalDesignerProfile() : null;
-  if (localDesignerProfile) {
-    activeProfile = {
-      ...(activeProfile || {}),
-      ...localDesignerProfile,
-      uid: activeUser.uid,
-      email: localDesignerProfile.email || localDesignerProfile.authEmail || activeUser.email || activeProfile?.email,
-      authEmail: localDesignerProfile.authEmail || localDesignerProfile.email || activeUser.email || activeProfile?.authEmail,
-      designerid: localDesignerProfile.designerid || localDesignerProfile.designerId || activeProfile?.designerid || activeProfile?.designerId,
-      designerId: localDesignerProfile.designerId || localDesignerProfile.designerid || activeProfile?.designerId || activeProfile?.designerid,
-      role: "designer"
-    };
-  }
 
   sessionStarted = true;
-  notificationsReadyAtMs = Date.now() + 12000;
-  chatAudioReadyAtMs = Date.now() + 12000;
+  notificationsReadyAtMs = Date.now() + 2600;
   threadUnreadCache.clear();
   threadNotifyState.clear();
   startPresence(activeUser);
@@ -419,7 +394,6 @@ function appFrameMarkup({ title, subtitle, listId, roomId, searchable = false, s
     <div class="adnn-chat-shell" data-chat-shell>
       <div class="adnn-chat-layout ${single ? "is-single" : ""} ${admin ? "is-admin" : ""}" data-chat-layout>
         ${listMarkup}
-        ${single ? "" : `<button type="button" class="adnn-chat-resizer" data-chat-resizer aria-label="Resize chat panels"></button>`}
         <section class="adnn-chat-room" id="${escapeAttr(roomId)}"></section>
       </div>
     </div>
@@ -427,7 +401,6 @@ function appFrameMarkup({ title, subtitle, listId, roomId, searchable = false, s
 }
 
 function bindFrameChrome(root, listId, roomId) {
-  bindChatResizer(root);
   root.querySelector("[data-chat-home]")?.addEventListener("click", goHome);
   root.querySelector("[data-chat-refresh]")?.addEventListener("click", refreshAllConnections);
   root.querySelector("[data-chat-menu]")?.addEventListener("click", (event) => {
@@ -446,43 +419,6 @@ function bindFrameChrome(root, listId, roomId) {
 
   const search = document.getElementById(`${listId}Search`);
   search?.addEventListener("input", () => filterThreadList(listId, search.value));
-}
-
-function bindChatResizer(root) {
-  const layout = root.querySelector("[data-chat-layout]");
-  const handle = root.querySelector("[data-chat-resizer]");
-  if (!layout || !handle || layout.classList.contains("is-single")) return;
-  const storageKey = "adnn_chat_thread_width";
-  try {
-    const saved = Number(localStorage.getItem(storageKey));
-    if (saved) layout.style.setProperty("--thread-w", `${clamp(saved, 260, 620)}px`);
-  } catch (_) {}
-  let dragging = false;
-  const onMove = (event) => {
-    if (!dragging) return;
-    const rect = layout.getBoundingClientRect();
-    const width = clamp(event.clientX - rect.left, 260, Math.min(620, rect.width - 360));
-    layout.style.setProperty("--thread-w", `${width}px`);
-    try { localStorage.setItem(storageKey, String(Math.round(width))); } catch (_) {}
-  };
-  const stop = () => {
-    if (!dragging) return;
-    dragging = false;
-    document.body.classList.remove("adnn-resizing-chat");
-    window.removeEventListener("pointermove", onMove);
-    window.removeEventListener("pointerup", stop);
-    window.removeEventListener("pointercancel", stop);
-  };
-  handle.addEventListener("pointerdown", (event) => {
-    if (window.matchMedia("(max-width: 760px)").matches) return;
-    dragging = true;
-    document.body.classList.add("adnn-resizing-chat");
-    handle.setPointerCapture?.(event.pointerId);
-    window.addEventListener("pointermove", onMove);
-    window.addEventListener("pointerup", stop);
-    window.addEventListener("pointercancel", stop);
-    event.preventDefault();
-  });
 }
 
 async function ensureSupportChat() {
@@ -541,14 +477,10 @@ function watchChatThreads(scope, listId, roomId, options = {}) {
     renderThreadList(chats, list, roomId, scope);
   };
 
-  const listen = (key, refOrQuery, quiet = false) => resilientSnapshot(`threads:${listId}:${key}`, refOrQuery, (snapshot) => {
+  const listen = (key, refOrQuery) => resilientSnapshot(`threads:${listId}:${key}`, refOrQuery, (snapshot) => {
     sources.set(key, new Map(snapshot.docs.map((item) => [item.id, { id: item.id, ...item.data(), __pending: item.metadata.hasPendingWrites }])));
     renderMergedThreads();
   }, (error) => {
-    if (quiet) {
-      renderMergedThreads();
-      return;
-    }
     if (!sources.size) {
       list.innerHTML = `<div class="adnn-chat-empty">${escapeHtml(readableFirebaseError(error))}</div>`;
       renderPassiveRoom(roomId, "Chats unavailable", "Chats are not available right now.", "Waiting for chat");
@@ -560,26 +492,10 @@ function watchChatThreads(scope, listId, roomId, options = {}) {
   if (scope === "admin") {
     listen("support", query(collection(db, COLLECTIONS.chats), where("type", "==", "support")));
     listen("admin-participant", query(collection(db, COLLECTIONS.chats), where("participantUids", "array-contains", ADMIN_ALIAS_UID)));
-    selfEmailKeyList().forEach((mail, index) => {
-      listen(`admin-email-${index}`, query(collection(db, COLLECTIONS.chats), where("participantEmailKeys", "array-contains", mail)));
-    });
   } else {
+    listen("participant", query(collection(db, COLLECTIONS.chats), where("participantUids", "array-contains", activeUser.uid)));
     if (activeProfile?.role === "designer") {
-      const primaryUids = new Set(uniqueClean([activeUser.uid, ownCallUid()]));
-      const primaryEmail = emailKey(activeUser.email);
-      Array.from(selfUidSet()).forEach((uid, index) => {
-        if (!uid || !String(uid).trim()) return;
-        listen(`participant-${index}`, query(collection(db, COLLECTIONS.chats), where("participantUids", "array-contains", uid)), !primaryUids.has(uid));
-      });
-      selfEmailKeyList().forEach((mail, index) => {
-        if (!mail || !String(mail).trim()) return;
-        listen(`participant-email-${index}`, query(collection(db, COLLECTIONS.chats), where("participantEmailKeys", "array-contains", mail)), mail !== primaryEmail);
-      });
       listen("designer-room", query(collection(db, COLLECTIONS.chats), where("type", "==", "designer-room")));
-      listen("designer-direct-scan", query(collection(db, COLLECTIONS.chats), where("type", "==", "direct")), true);
-      listen("designer-group-scan", query(collection(db, COLLECTIONS.chats), where("type", "==", "group")), true);
-    } else {
-      listen("participant", query(collection(db, COLLECTIONS.chats), where("participantUids", "array-contains", activeUser.uid)));
     }
   }
 
@@ -603,47 +519,13 @@ function isVisibleToAdminInbox(chat) {
   if (!chat) return false;
   if (chat.type === "support") return true;
   const participants = Array.isArray(chat.participantUids) ? chat.participantUids : [];
-  const emails = Array.isArray(chat.participantEmailKeys) ? chat.participantEmailKeys.map(emailKey) : [];
-  const mine = selfEmailKeySet();
-  return participants.includes(ADMIN_ALIAS_UID) || participants.includes(activeUser?.uid) || emails.some((mail) => mine.has(mail));
+  return participants.includes(ADMIN_ALIAS_UID) || participants.includes(activeUser?.uid);
 }
 
 function isChatVisibleForCurrentUser(chat) {
   if (!chat) return false;
   const deletedFor = Array.isArray(chat.deletedFor) ? chat.deletedFor : [];
-  if (deletedFor.some((uid) => selfUidSet().has(uid))) return false;
-  if (isAdminEmail(activeUser?.email)) return true;
-  if (chat.type === "support") {
-    const adminOnly = [ADMIN_ALIAS_UID, ADMIN_EMAIL].includes(String(chat.id || "").toLowerCase());
-    if (adminOnly) return false;
-    return chatBelongsToCurrentUser(chat);
-  }
-  if (chat.type === "designer-room") return activeProfile?.role === "designer";
-  return chatBelongsToCurrentUser(chat);
-}
-
-function chatBelongsToCurrentUser(chat) {
-  const uids = selfUidSet();
-  const emails = selfEmailKeySet();
-  const participantUids = Array.isArray(chat?.participantUids) ? chat.participantUids.map(String) : [];
-  if (participantUids.some((uid) => uids.has(uid))) return true;
-
-  const participantEmailKeys = Array.isArray(chat?.participantEmailKeys)
-    ? chat.participantEmailKeys.map(emailKey)
-    : [];
-  if (participantEmailKeys.some((mail) => emails.has(mail))) return true;
-
-  const maps = [chat?.participantEmailMap, chat?.participantEmails, chat?.participants, chat?.participantNames];
-  return maps.some((map) => Object.entries(map || {}).some(([key, value]) => {
-    if (uids.has(String(key))) return true;
-    if (emails.has(emailKey(key))) return true;
-    if (typeof value === "string" && emails.has(emailKey(value))) return true;
-    if (value && typeof value === "object") {
-      return uids.has(String(value.uid || value.id || "")) ||
-        emails.has(emailKey(value.email || value.authEmail || value.displayEmail || ""));
-    }
-    return false;
-  }));
+  return !deletedFor.some((uid) => selfUidSet().has(uid));
 }
 
 function isChatBlockedForMe(chat) {
@@ -704,7 +586,6 @@ function renderThreadList(chats, list, roomId, scope) {
   if (!chats.length) {
     list.innerHTML = `<div class="adnn-chat-empty">No conversations yet.</div>`;
     renderPassiveRoom(roomId, scope === "admin" ? "No client chats yet" : "No direct chats yet", "Conversations will appear here as soon as they are created.", "Waiting for chat");
-    if (scope !== "admin") renderStartableUserDirectory(list, roomId);
     return;
   }
 
@@ -723,6 +604,7 @@ function renderThreadList(chats, list, roomId, scope) {
     const title = getChatTitle(chat, scope);
     const unread = getUnreadCount(chat, scope);
     const pinned = pinnedChats.has(chat.id);
+    notifyThreadUnread(chat, title, unread);
     const row = document.createElement("button");
     row.type = "button";
     row.className = `adnn-thread ${pinned ? "is-pinned" : ""}`;
@@ -739,7 +621,7 @@ function renderThreadList(chats, list, roomId, scope) {
         <small>${escapeHtml(preview)}</small>
       </span>
       <span class="adnn-thread-side">
-        <button type="button" class="adnn-pin-chat" data-pin-chat="${escapeAttr(chat.id)}" title="${pinned ? "Unpin chat" : "Pin chat"}" aria-label="${pinned ? "Unpin chat" : "Pin chat"}">${pinned ? ICON.pinFilled : ICON.pin}</button>
+        <button type="button" class="adnn-pin-chat" data-pin-chat="${escapeAttr(chat.id)}" title="${pinned ? "Unpin chat" : "Pin chat"}" aria-label="${pinned ? "Unpin chat" : "Pin chat"}">${pinned ? "●" : "○"}</button>
         <time>${escapeHtml(stamp)}</time>
         ${unread > 0 ? `<b>${unread > 99 ? "99+" : unread}</b>` : ""}
       </span>
@@ -772,104 +654,6 @@ function renderThreadList(chats, list, roomId, scope) {
     firstRow?.classList.add("is-active");
     openRoom(sortedChats[0].id, sortedChats[0], roomId);
   }
-}
-
-async function renderStartableUserDirectory(list, roomId) {
-  if (!db || !activeUser || !list || list.dataset.directoryLoading === "1") return;
-  list.dataset.directoryLoading = "1";
-  try {
-    const rows = [];
-    const collections = ["clients", "designers"];
-    for (const name of collections) {
-      const snap = await getDocs(collection(db, name)).catch(() => null);
-      snap?.forEach((item) => {
-        const data = item.data() || {};
-        const email = emailKey(data.email || data.authEmail || data.clientEmail || data.designerEmail || "");
-        const ids = uniqueClean([item.id, data.uid, data.designerid, data.designerId]);
-        const isSelf = ids.some((id) => selfUidSet().has(id)) || selfEmailKeySet().has(email);
-        if (!isSelf && (email || ids.length)) {
-          rows.push({
-            uid: ids[0] || email,
-            email,
-            name: data.name || data.displayName || data.clientName || data.designerName || email || "User",
-            role: name === "designers" ? "designer" : "client",
-            photoURL: data.photoURL || data.avatarURL || data.picture || ""
-          });
-        }
-      });
-    }
-    const unique = new Map();
-    rows.forEach((row) => unique.set(row.email || row.uid, row));
-    const users = Array.from(unique.values()).sort((a, b) => String(a.name).localeCompare(String(b.name))).slice(0, 80);
-    if (!users.length || !list.isConnected || list.querySelector(".adnn-thread")) return;
-    list.innerHTML = `<div class="adnn-chat-empty is-compact">Start a conversation</div>`;
-    users.forEach((user) => {
-      const row = document.createElement("button");
-      row.type = "button";
-      row.className = "adnn-thread adnn-thread-suggestion";
-      row.dataset.filterText = `${user.name} ${user.email} ${user.role}`.toLowerCase();
-      row.innerHTML = `
-        ${avatarMarkup(user.name, user.photoURL)}
-        <span class="adnn-thread-copy">
-          <strong>${escapeHtml(user.name)}</strong>
-          <small>${escapeHtml(user.email || user.role)}</small>
-        </span>
-        <span class="adnn-thread-side"><b>+</b></span>
-      `;
-      row.addEventListener("click", () => createOrOpenDirectChat(user, roomId, row));
-      list.appendChild(row);
-    });
-  } finally {
-    delete list.dataset.directoryLoading;
-  }
-}
-
-async function createOrOpenDirectChat(other, roomId, row = null) {
-  if (!db || !activeUser || !other?.uid) return;
-  row?.setAttribute("disabled", "true");
-  const ownPrimary = activeUser.uid;
-  const otherUid = String(other.uid);
-  const keyParts = uniqueClean([ownPrimary, otherUid].sort()).join("_");
-  const chatId = `direct_${keyParts.replace(/[^a-z0-9_-]/gi, "_").slice(0, 120)}`;
-  const participantUids = uniqueClean([ownPrimary, ownCallUid(), ...designerIdVariants(), otherUid]);
-  const participantEmailKeys = uniqueClean([...selfEmailKeyList(), other.email].map(emailKey));
-  const payload = {
-    type: "direct",
-    createdBy: activeUser.uid,
-    createdByEmail: emailKey(activeUser.email),
-    participantUids,
-    participantEmailKeys,
-    participantNames: {
-      [ownPrimary]: ownDisplayName(),
-      [ownCallUid()]: ownDisplayName(),
-      [otherUid]: other.name || other.email || "User"
-    },
-    participantPhotos: {
-      [ownPrimary]: ownPhotoUrl(),
-      [ownCallUid()]: ownPhotoUrl(),
-      [otherUid]: other.photoURL || ""
-    },
-    participantEmailMap: {
-      [ownPrimary]: emailKey(activeUser.email),
-      [ownCallUid()]: emailKey(activeUser.email),
-      [otherUid]: other.email || ""
-    },
-    lastMessage: "Channel connected.",
-    lastMessageKind: "system",
-    unreadBy: {},
-    updatedAt: serverTimestamp(),
-    updatedAtMs: Date.now(),
-    createdAt: serverTimestamp(),
-    createdAtMs: Date.now()
-  };
-  await withRetry(() => setDoc(doc(db, COLLECTIONS.chats, chatId), payload, { merge: true }), { label: "create direct chat" })
-    .then(() => {
-      openRoom(chatId, { id: chatId, ...payload }, roomId);
-      row?.closest(".adnn-chat-layout")?.classList.add("is-room-open");
-      document.body.classList.toggle("adnn-chat-mobile-lock", window.matchMedia("(max-width: 760px)").matches);
-    })
-    .catch((error) => showToast(readableFirebaseError(error), "bad"))
-    .finally(() => row?.removeAttribute("disabled"));
 }
 
 function filterThreadList(listId, rawValue) {
@@ -1397,7 +1181,6 @@ function renderMessageBubble(message, mine) {
       ${!mine ? `<strong class="adnn-message-name">${escapeHtml(message.senderName || "User")}</strong>` : ""}
       <p class="adnn-deleted-message">This message was deleted.</p>
       <div class="adnn-message-meta"><time>${formatTime(message.createdAt || message.createdAtMs)}</time>${mine ? renderTicks(message) : ""}</div>
-      <button type="button" class="adnn-message-action-trigger" data-action="toggle-actions" aria-label="Message actions">${ICON.more}</button>
       ${renderMessageMenu(message, mine, true)}
     `;
   }
@@ -1412,7 +1195,6 @@ function renderMessageBubble(message, mine) {
       <time>${formatTime(message.createdAt || message.createdAtMs)}</time>
       ${mine ? renderTicks(message) : ""}
     </div>
-    <button type="button" class="adnn-message-action-trigger" data-action="toggle-actions" aria-label="Message actions">${ICON.more}</button>
     ${renderMessageMenu(message, mine, false)}
   `;
 }
@@ -1457,7 +1239,7 @@ function openMessageMenu(bubble, state, message) {
   closeMessageMenus();
   state.menuMessageId = message.id;
   bubble.classList.add("is-menu-open");
-  /* vibration disabled */
+  if (navigator.vibrate) navigator.vibrate(18);
 }
 
 function handleMessageAction(event, state, message) {
@@ -1470,12 +1252,6 @@ function handleMessageAction(event, state, message) {
 
   event.stopPropagation();
   const action = actionBtn.dataset.action;
-  if (action === "toggle-actions") {
-    const bubble = event.currentTarget;
-    if (bubble.classList.contains("is-menu-open")) bubble.classList.remove("is-menu-open");
-    else openMessageMenu(bubble, state, message);
-    return;
-  }
   if (action === "reply") startReply(state, message);
   if (action === "open-react") openReactionSheet(actionBtn, state, message);
   if (action === "react") toggleReaction(state.chatId, message, actionBtn.dataset.emoji);
@@ -1698,7 +1474,7 @@ function renderCallMessageBubble(message) {
     : declined
       ? (outgoing ? `Declined ${kind} call` : `Call declined`)
       : `${outgoing ? "Outgoing" : "Incoming"} ${kind} call`;
-  const detail = `${duration ? formatDuration(duration) + "  " : ""}${formatTime(message.createdAt || message.createdAtMs)}`;
+  const detail = `${duration ? formatDuration(duration) + " · " : ""}${formatTime(message.createdAt || message.createdAtMs)}`;
   return `
     <div class="adnn-call-message ${missed ? "is-missed" : ""}">
       <span>${kind === "video" ? ICON.video : ICON.phone}</span>
@@ -1947,7 +1723,7 @@ function renderFilePreview(state) {
     return `
       <div class="adnn-file-chip" data-file-id="${escapeAttr(item.id)}">
         ${media}
-        <div><strong>${escapeHtml(item.file.name)}</strong><small>${escapeHtml(item.kind)}  ${formatBytes(item.file.size)}</small>${progress ? `<i style="--p:${Math.max(0, Math.min(100, progress.pct))}%"></i>` : ""}</div>
+        <div><strong>${escapeHtml(item.file.name)}</strong><small>${escapeHtml(item.kind)} • ${formatBytes(item.file.size)}</small>${progress ? `<i style="--p:${Math.max(0, Math.min(100, progress.pct))}%"></i>` : ""}</div>
         <button type="button" data-remove-file="${escapeAttr(item.id)}">${ICON.x}</button>
       </div>
     `;
@@ -2248,7 +2024,7 @@ async function startCall(kind, chatId, chatData) {
   const remoteStatus = await getPresenceInfo(receiverUid);
   if (!remoteStatus.online) {
     await writeOfflineMissedCallMessage(chatId, chatData, kind, receiverUid).catch(() => {});
-    showInAppNotification(getChatTitle(chatData, "user"), `Missed ${kind === "video" ? "video" : "audio"} call  user offline`, { tone: "missed", icon: getChatPhoto(chatData, "user") });
+    showInAppNotification(getChatTitle(chatData, "user"), `Missed ${kind === "video" ? "video" : "audio"} call · user offline`, { tone: "missed", icon: getChatPhoto(chatData, "user") });
     return showToast(`${getChatTitle(chatData, "user")} is offline. Missed call saved.`, "warn");
   }
 
@@ -2339,7 +2115,7 @@ function showIncomingCall(callId, call) {
   makeDraggable(overlay, overlay.querySelector("[data-call-drag]"));
   startIncomingRingtone();
   notifyBrowser(`${call.callerName || "Incoming call"}`, `${call.kind === "video" ? "Video" : "Audio"} call`, call.callerPhotoURL);
-  /* vibration disabled */
+  if (navigator.vibrate) navigator.vibrate([80, 40, 80]);
 
   const timeout = setTimeout(() => {
     callWatch?.();
@@ -2869,7 +2645,7 @@ function callSummaryLastMessage(message) {
   const kind = message.kind === "video" ? "video" : "audio";
   if (message.callStatus === "missed" || message.endedReason === "timeout" || message.endedReason === "offline") return `Missed ${kind} call`;
   if (message.endedReason === "rejected") return `Declined ${kind} call`;
-  return `${kind[0].toUpperCase()}${kind.slice(1)} call  ${formatDuration(Math.round((message.durationMs || 0) / 1000))}`;
+  return `${kind[0].toUpperCase()}${kind.slice(1)} call · ${formatDuration(Math.round((message.durationMs || 0) / 1000))}`;
 }
 
 async function getProfile(uid, email) {
@@ -3077,124 +2853,8 @@ function safeImageUrl(value) {
   return "";
 }
 
-function readLocalDesignerProfile() {
-  if (!location.pathname.includes("designer-account.html")) return null;
-  try {
-    const data = JSON.parse(localStorage.getItem("adnnDesignerUser") || "null");
-    const directory = readDesignerDirectoryProfile(data);
-    if (!data && !directory) return null;
-    const merged = { ...(directory || {}), ...(data || {}) };
-    const id = String(merged.designerid || merged.designerId || merged.id || "").trim();
-    return {
-      ...merged,
-      designerid: id || merged.designerid,
-      designerId: id || merged.designerId,
-      role: "designer",
-      name: merged.name || merged.displayName || (id ? `Designer ${id}` : "Designer"),
-      email: merged.email || merged.authEmail || activeUser?.email || "",
-      authEmail: merged.authEmail || activeUser?.email || merged.email || ""
-    };
-  } catch (_) {
-    const directory = readDesignerDirectoryProfile();
-    return directory ? { ...directory, role: "designer" } : null;
-  }
-}
-
-function readDesignerDirectoryProfile(local = null) {
-  const users = Array.isArray(window.ADNN_DESIGNER_USERS) ? window.ADNN_DESIGNER_USERS : [];
-  if (!users.length) return null;
-  const activeMail = emailKey(activeUser?.email);
-  const localId = String(local?.designerid || local?.designerId || local?.id || "").trim().toLowerCase();
-  const profileIds = uniqueClean([
-    localId,
-    activeProfile?.designerid,
-    activeProfile?.designerId
-  ].map((value) => String(value || "").trim().toLowerCase()));
-  const found = users.find((item) => {
-    const mails = [item.authEmail, item.email, item.displayEmail].map(emailKey);
-    const id = String(item.designerid || item.designerId || item.id || "").trim().toLowerCase();
-    return (activeMail && mails.includes(activeMail)) || (id && profileIds.includes(id));
-  });
-  if (!found) return null;
-  const id = String(found.designerid || found.designerId || found.id || "").trim();
-  return {
-    ...found,
-    designerid: id || found.designerid,
-    designerId: id || found.designerId,
-    role: "designer",
-    name: found.name || found.displayName || (id ? `Designer ${id}` : "Designer"),
-    email: found.email || found.authEmail || activeUser?.email || "",
-    authEmail: found.authEmail || activeUser?.email || found.email || ""
-  };
-}
-
-function designerDirectoryEmailVariants() {
-  const local = readLocalDesignerProfile();
-  return uniqueClean([
-    local?.email,
-    local?.authEmail,
-    ...(Array.isArray(window.ADNN_DESIGNER_USERS) ? window.ADNN_DESIGNER_USERS.flatMap((item) => {
-      const id = String(item.designerid || item.designerId || item.id || "").trim().toLowerCase();
-      const matchesSelf = [item.email, item.authEmail].map(emailKey).includes(emailKey(activeUser?.email)) ||
-        (id && designerIdVariants().map((value) => String(value).toLowerCase()).includes(id));
-      return matchesSelf ? [item.email, item.authEmail] : [];
-    }) : [])
-  ]);
-}
-
-function designerIdVariants() {
-  const local = readLocalDesignerProfile();
-  const ids = uniqueClean([
-    activeProfile?.designerid,
-    activeProfile?.designerId,
-    local?.designerid,
-    local?.designerId
-  ]);
-  return uniqueClean(ids.flatMap((id) => {
-    const raw = String(id || "").trim();
-    if (!raw) return [];
-    return [raw, raw.toUpperCase(), raw.toLowerCase()];
-  }));
-}
-
-function designerEmailVariants() {
-  const ids = designerIdVariants();
-  return uniqueClean([
-    ...ids.map((id) => `${String(id).toLowerCase()}@adnnstudio.design`),
-    ...ids.map((id) => `designer${String(id).replace(/^d/i, "").toLowerCase()}@adnnstudio.com`)
-  ]);
-}
-
 function selfUidSet() {
-  if (activeProfile?.role !== "designer") {
-    return new Set(uniqueClean([activeUser?.uid, ownCallUid()]));
-  }
-  const designerIds = designerIdVariants();
-  return new Set(uniqueClean([activeUser?.uid, activeProfile?.uid, activeProfile?.id, ownCallUid(), ...designerIds]));
-}
-
-function selfEmailKeyList() {
-  if (activeProfile?.role !== "designer") {
-    return uniqueClean([
-      activeUser?.email,
-      activeProfile?.email,
-      activeProfile?.clientEmail,
-      activeProfile?.authEmail
-    ].map(emailKey));
-  }
-  return uniqueClean([
-    activeUser?.email,
-    activeProfile?.email,
-    activeProfile?.designerEmail,
-    activeProfile?.clientEmail,
-    activeProfile?.authEmail,
-    ...designerDirectoryEmailVariants(),
-    ...designerEmailVariants()
-  ].map(emailKey));
-}
-
-function selfEmailKeySet() {
-  return new Set(selfEmailKeyList());
+  return new Set(uniqueClean([activeUser?.uid, ownCallUid()]));
 }
 
 function getUnreadCount(chat, scope) {
@@ -3801,16 +3461,7 @@ function watchGlobalThreadBadges() {
 
   const owner = [];
   const sources = new Map();
-  let initialSourceCount = 0;
-  const hydratedSources = new Set();
-  let initialHydrationDone = false;
-  const markHydrated = (key) => {
-    hydratedSources.add(key);
-    if (!initialHydrationDone && hydratedSources.size >= Math.max(1, initialSourceCount)) {
-      initialHydrationDone = true;
-    }
-  };
-  const render = (allowNotify = initialHydrationDone) => {
+  const render = () => {
     let chats = Array.from(sources.values()).flatMap((items) => Array.from(items.values()));
     const unique = new Map();
     chats.forEach((chat) => unique.set(chat.id, { ...(unique.get(chat.id) || {}), ...chat }));
@@ -3818,45 +3469,18 @@ function watchGlobalThreadBadges() {
     const scope = isAdminEmail(activeUser?.email) ? 'admin' : 'user';
     if (scope === 'admin') chats = chats.filter(isVisibleToAdminInbox);
     updateChatNavigationBadges(chats, scope);
-    if (allowNotify) {
-      chats.forEach((chat) => notifyThreadUnread(chat, getChatTitle(chat, scope), getUnreadCount(chat, scope)));
-    } else {
-      chats.forEach((chat) => {
-        const key = `thread:${chat.id}`;
-        threadUnreadCache.set(key, getUnreadCount(chat, scope) || 0);
-        const lastMs = toMillis(chat.updatedAt || chat.updatedAtMs || chat.createdAt || chat.createdAtMs);
-        threadNotifyState.set(key, `${lastMs}:${chat.lastMessage || ""}:${chat.lastSenderUid || ""}:${chat.lastMessageKind || ""}`);
-      });
-    }
+    chats.forEach((chat) => notifyThreadUnread(chat, getChatTitle(chat, scope), getUnreadCount(chat, scope)));
   };
   const listen = (key, refOrQuery) => resilientSnapshot(`globalThreads:${key}`, refOrQuery, (snapshot) => {
     sources.set(key, new Map(snapshot.docs.map((item) => [item.id, { id: item.id, ...item.data(), __pending: item.metadata.hasPendingWrites }])));
-    const allowNotify = initialHydrationDone;
-    render(allowNotify);
-    markHydrated(key);
-  }, () => {
-    const allowNotify = initialHydrationDone;
-    render(allowNotify);
-    markHydrated(key);
-  }, owner);
+    render();
+  }, () => render(), owner);
 
-  const listenSource = (key, refOrQuery) => {
-    initialSourceCount += 1;
-    listen(key, refOrQuery);
-  };
   if (isAdminEmail(activeUser.email)) {
-    listenSource('support', query(collection(db, COLLECTIONS.chats), where('type', '==', 'support')));
-    listenSource('admin-alias', query(collection(db, COLLECTIONS.chats), where('participantUids', 'array-contains', ADMIN_ALIAS_UID)));
-    selfEmailKeyList().forEach((mail, index) => {
-      listenSource(`admin-email-${index}`, query(collection(db, COLLECTIONS.chats), where('participantEmailKeys', 'array-contains', mail)));
-    });
+    listen('support', query(collection(db, COLLECTIONS.chats), where('type', '==', 'support')));
+    listen('admin-alias', query(collection(db, COLLECTIONS.chats), where('participantUids', 'array-contains', ADMIN_ALIAS_UID)));
   } else {
-    Array.from(selfUidSet()).forEach((uid, index) => {
-      listenSource(`participant-${index}`, query(collection(db, COLLECTIONS.chats), where('participantUids', 'array-contains', uid)));
-    });
-    selfEmailKeyList().forEach((mail, index) => {
-      listenSource(`participant-email-${index}`, query(collection(db, COLLECTIONS.chats), where('participantEmailKeys', 'array-contains', mail)));
-    });
+    listen('participant', query(collection(db, COLLECTIONS.chats), where('participantUids', 'array-contains', activeUser.uid)));
   }
   globalThreadBadgeUnsub = () => owner.forEach((fn) => fn?.());
   globalUnsubs.push(() => globalThreadBadgeUnsub?.());
@@ -3868,77 +3492,87 @@ function assetUrl(fileName) {
   try { return new URL(clean, location.href).href; } catch (_) { return clean; }
 }
 
-
-function enforceSilentSoundMigration() {
-  try {
-    if (localStorage.getItem(CHAT_SOUND_KEY) === null) localStorage.setItem(CHAT_SOUND_KEY, "true");
-  } catch (_) {}
-}
-
-function installSilentAudioGuard() {
-  return;
-}
-
-function hasConfirmedSoundOptIn() {
-  return chatSettingBool(CHAT_SOUND_KEY, true);
-}
-
-function isRefreshAudioMuteWindow() {
-  return Date.now() < notificationsReadyAtMs;
-}
-
-function canPlayChatSound() {
-  return hasConfirmedSoundOptIn() && !isRefreshAudioMuteWindow() && !chatReduceMotionEnabled();
-}
-
-function hasFreshUserActivation() {
-  return !!(navigator.userActivation?.hasBeenActive || document.hasFocus());
-}
-
-function unlockChatAudioForSession() {
-  chatAudioUnlockedThisSession = true;
-}
-
 function createLoopingAudio(fileName, volume = 0.62) {
-  return null;
+  const url = assetUrl(fileName);
+  if (!url) return null;
+  const audio = new Audio(url);
+  audio.loop = true;
+  audio.preload = 'auto';
+  audio.volume = volume;
+  return audio;
 }
 
-function playOneShotAudio(fileName, fallbackTone = "message") {
-  if (!canPlayChatSound() || !fileName) return;
+function playOneShotAudio(fileName, fallbackTone = 'message') {
+  if (!chatSettingBool(CHAT_SOUND_KEY, true)) return;
+  const now = Date.now();
+  if (now - lastSoundAtMs < 220) return;
+  lastSoundAtMs = now;
+  const url = assetUrl(fileName);
+  if (!url) return playSynthTone(fallbackTone);
   try {
-    const audio = new Audio(assetUrl(fileName));
-    audio.preload = "auto";
-    audio.volume = fallbackTone === "missed" ? 0.72 : 0.56;
-    audio.play().catch(() => {});
-  } catch (_) {}
+    const audio = new Audio(url);
+    audio.volume = fallbackTone === 'missed' ? 0.72 : 0.58;
+    const play = audio.play();
+    if (play?.catch) play.catch(() => playSynthTone(fallbackTone));
+  } catch (_) {
+    playSynthTone(fallbackTone);
+  }
 }
 
 function startOutgoingDialTone() {
-  return;
+  if (!chatSettingBool(CHAT_SOUND_KEY, true)) return;
+  stopOutgoingDialTone();
+  outgoingDialAudio = createLoopingAudio(CHAT_CONFIG.outgoingCallToneFile, 0.58);
+  outgoingDialAudio?.play?.().catch(() => {});
 }
 
 function stopOutgoingDialTone() {
+  try { outgoingDialAudio?.pause?.(); if (outgoingDialAudio) outgoingDialAudio.currentTime = 0; } catch (_) {}
   outgoingDialAudio = null;
 }
 
 function startIncomingRingtone() {
-  return;
+  if (!chatSettingBool(CHAT_SOUND_KEY, true)) return;
+  stopIncomingRingtone();
+  incomingRingAudio = createLoopingAudio(CHAT_CONFIG.incomingCallToneFile, 0.72);
+  incomingRingAudio?.play?.().catch(() => {});
 }
 
 function stopIncomingRingtone() {
+  try { incomingRingAudio?.pause?.(); if (incomingRingAudio) incomingRingAudio.currentTime = 0; } catch (_) {}
   incomingRingAudio = null;
 }
 
-function playSynthTone(tone = "message") {
-  return;
+function playSynthTone(tone = 'message') {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.frequency.value = tone === 'missed' ? 330 : 540;
+    osc.type = 'sine';
+    gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.045, ctx.currentTime + 0.018);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.16);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.18);
+    setTimeout(() => ctx.close?.(), 260);
+  } catch (_) {}
 }
 
 function bindNotificationPermissionPrimer() {
-  notificationPermissionAsked = true;
-}
-
-function chatReduceMotionEnabled() {
-  return chatSettingBool(CHAT_REDUCE_MOTION_KEY, false) || document.documentElement.classList.contains("adnn-reduce-motion");
+  if (!("Notification" in window)) return;
+  const ask = () => {
+    if (notificationPermissionAsked || Notification.permission !== "default" || !chatSettingBool(CHAT_BROWSER_NOTIFICATION_KEY, true)) return;
+    notificationPermissionAsked = true;
+    Notification.requestPermission().catch(() => {});
+    window.removeEventListener("click", ask);
+    window.removeEventListener("keydown", ask);
+  };
+  window.addEventListener("click", ask, { passive: true });
+  window.addEventListener("keydown", ask, { passive: true });
 }
 
 function chatSettingBool(key, fallback = false) {
@@ -3955,7 +3589,6 @@ function syncChatSettingsFromStorage() {
   const root = document.documentElement;
   root.classList.toggle("adnn-chat-light", chatSettingBool(CHAT_THEME_STORAGE_KEY, false));
   root.classList.toggle("adnn-reduce-motion", chatSettingBool(CHAT_REDUCE_MOTION_KEY, false));
-  root.classList.toggle("adnn-silent-mode", !chatSettingBool(CHAT_SOUND_KEY, true));
 }
 
 function bindChatSettingsEvents() {
@@ -3967,12 +3600,16 @@ function bindChatSettingsEvents() {
 }
 
 function notifyBrowser(title, body, icon = "") {
-  return;
+  if (!chatSettingBool(CHAT_BROWSER_NOTIFICATION_KEY, true)) return;
+  if (!("Notification" in window) || Notification.permission !== "granted") return;
+  try {
+    const note = new Notification(title, { body, icon: safeImageUrl(icon) || undefined, tag: `adnn-${title}-${body}`.slice(0, 64) });
+    setTimeout(() => note.close?.(), 6500);
+  } catch (_) {}
 }
 
 function showInAppNotification(title, body, options = {}) {
   if (!chatSettingBool(CHAT_INAPP_NOTIFICATION_KEY, true)) return;
-  playNotificationTone(options.tone || "message");
   let stack = document.getElementById("adnnInAppNotificationStack");
   if (!stack) {
     stack = document.createElement("div");
@@ -3980,22 +3617,21 @@ function showInAppNotification(title, body, options = {}) {
     stack.className = "adnn-inapp-stack";
     document.body.appendChild(stack);
   }
-  const card = document.createElement(options.href ? "button" : "div");
-  card.type = options.href ? "button" : undefined;
-  card.className = `adnn-inapp-card${options.tone === "missed" ? " is-missed" : ""}`;
+  const card = document.createElement("button");
+  card.type = "button";
+  card.className = `adnn-inapp-card ${options.tone === "missed" ? "is-missed" : ""}`;
   card.innerHTML = `
-    <span class="adnn-avatar">${options.icon ? `<img src="${escapeAttr(options.icon)}" alt="">` : initials(title)}</span>
-    <span><strong>${escapeHtml(title || "New message")}</strong><small>${escapeHtml(body || "You have a new message.")}</small></span>
-    ${options.count ? `<b>${escapeHtml(String(options.count > 99 ? "99+" : options.count))}</b>` : ""}
+    ${avatarMarkup(title || "AD", options.icon || "")}
+    <span><strong>${escapeHtml(title || "New update")}</strong><small>${escapeHtml(body || "New message")}</small></span>
+    ${options.count ? `<b>${options.count > 99 ? "99+" : options.count}</b>` : ""}
   `;
-  if (options.href) card.addEventListener("click", () => { location.href = options.href; });
+  card.addEventListener("click", () => {
+    card.remove();
+    if (options.href) location.href = options.href;
+  });
   stack.prepend(card);
-  while (stack.children.length > 3) stack.lastElementChild?.remove();
-  setTimeout(() => {
-    card.style.opacity = "0";
-    card.style.transform = "translateY(-8px) scale(.98)";
-    setTimeout(() => card.remove(), 260);
-  }, 5200);
+  playNotificationTone(options.tone);
+  setTimeout(() => card.remove(), options.timeout || 6200);
 }
 
 function playNotificationTone(tone = "message") {
@@ -4191,13 +3827,8 @@ function injectChatStyles() {
     :root { --adnn-primary:${t.primary}; --adnn-primary2:${t.primary2}; --adnn-danger:${t.danger}; --adnn-success:${t.success}; }
     .adnn-chat-app, .adnn-chat-app * { box-sizing:border-box; }
     .adnn-chat-app [hidden], .adnn-call-popout [hidden], .adnn-confirm-backdrop [hidden] { display:none !important; }
-    #directChatMount, #clientChatMount, #adminChatMount { width:100% !important; height:100% !important; min-height:0 !important; max-height:none !important; margin:0 !important; overflow:hidden !important; background:transparent !important; box-shadow:none !important; }
-    #clientChatMount.adnn-designer-chat-panel { display:block !important; height:100% !important; min-height:0 !important; border:0 !important; border-radius:0 !important; background:transparent !important; box-shadow:none !important; }
-    .adnn-chat-app { --adnn-primary:${t.primary}; --adnn-primary2:${t.primary2}; --adnn-danger:${t.danger}; --adnn-success:${t.success}; --adnn-bg:${t.bg}; --adnn-panel:${t.panel}; --adnn-soft:${t.soft}; --adnn-line:${t.line}; --adnn-text:${t.text}; --adnn-muted:${t.muted}; width:100%; height:100%; min-height:0; color:var(--adnn-text); font:inherit; display:block; overflow:hidden; }
-    .adnn-chat-app, .adnn-chat-app * { min-width:0; box-sizing:border-box; }
-    .adnn-chat-app img, .adnn-chat-app video, .adnn-chat-app canvas, .adnn-chat-app svg { max-width:100%; }
-    body.chat-view-active, body.adnn-chat-mobile-lock { max-width:100vw !important; overflow-x:hidden !important; overscroll-behavior-x:none !important; }
-    .adnn-chat-shell { width:100%; height:100%; min-width:0; min-height:0; display:grid; gap:0; overflow:hidden; }
+    .adnn-chat-app { --adnn-primary:${t.primary}; --adnn-primary2:${t.primary2}; --adnn-danger:${t.danger}; --adnn-success:${t.success}; --adnn-bg:${t.bg}; --adnn-panel:${t.panel}; --adnn-soft:${t.soft}; --adnn-line:${t.line}; --adnn-text:${t.text}; --adnn-muted:${t.muted}; width:100%; height:100%; min-height:0; color:var(--adnn-text); font:inherit; }
+    .adnn-chat-shell { width:100%; height:100%; min-width:0; min-height:0; display:grid; gap:0; }
     body.chat-view-active .adnn-chat-app, body.chat-view-active .adnn-chat-shell, body.chat-view-active .adnn-chat-layout { height:100% !important; min-height:0 !important; }
     .adnn-chat-outerbar { min-height:52px; display:flex; align-items:center; gap:10px; padding:8px 10px; border:1px solid var(--adnn-line); border-radius:20px; background:linear-gradient(145deg, rgba(22,22,28,.88), rgba(4,4,7,.92)); position:relative; box-shadow:0 16px 50px rgba(0,0,0,.22); }
     .adnn-outer-title { flex:1; min-width:0; display:grid; gap:2px; }
@@ -4216,15 +3847,11 @@ function injectChatStyles() {
     .adnn-room-shell.is-blocked-by-me .adnn-composer textarea::placeholder { color:#ffc66d; }
     .adnn-room-shell.is-blocked-by-me .adnn-composer::after, .adnn-room-shell.is-blocked-by-remote .adnn-composer::after { content:"Chat blocked"; position:absolute; left:72px; bottom:100%; margin-bottom:6px; padding:5px 9px; border-radius:999px; background:rgba(255,198,109,.12); color:#ffc66d; font-size:11px; pointer-events:none; }
     .adnn-outer-menu small { display:block; padding:8px 10px 4px; color:var(--adnn-muted); }
-    .adnn-chat-layout { --thread-w:390px; width:100%; height:100%; min-height:0; display:grid; grid-template-columns:minmax(260px, var(--thread-w)) 10px minmax(0,1fr); grid-template-rows:minmax(0,1fr); overflow:hidden; border:1px solid var(--adnn-line); border-radius:26px; background:linear-gradient(145deg, rgba(22,22,28,.94), rgba(4,4,7,.98)); box-shadow:0 24px 90px rgba(0,0,0,.34); }
+    .adnn-chat-layout { height:clamp(620px, calc(100svh - 42px), 920px); min-height:0; display:grid; grid-template-columns:minmax(300px, 390px) minmax(0,1fr); grid-template-rows:minmax(0,1fr); overflow:hidden; border:1px solid var(--adnn-line); border-radius:26px; background:linear-gradient(145deg, rgba(22,22,28,.94), rgba(4,4,7,.98)); box-shadow:0 24px 90px rgba(0,0,0,.34); }
     .adnn-chat-layout.is-single { grid-template-columns:1fr; }
     .adnn-chat-layout > .adnn-chat-thread-panel { grid-column:1; grid-row:1; }
-    .adnn-chat-layout > .adnn-chat-room { grid-column:3; grid-row:1; }
+    .adnn-chat-layout > .adnn-chat-room { grid-column:2; grid-row:1; }
     .adnn-chat-layout.is-single > .adnn-chat-room { grid-column:1 / -1; }
-    .adnn-chat-resizer { grid-column:2; grid-row:1; width:10px; min-width:10px; border:0; border-left:1px solid rgba(255,255,255,.05); border-right:1px solid rgba(255,255,255,.04); background:linear-gradient(90deg, transparent, rgba(255,255,255,.035), transparent); cursor:col-resize; position:relative; z-index:8; }
-    .adnn-chat-resizer:before { content:""; position:absolute; top:50%; left:50%; width:3px; height:44px; border-radius:999px; transform:translate(-50%,-50%); background:rgba(255,255,255,.18); transition:.18s ease; }
-    .adnn-chat-resizer:hover:before, body.adnn-resizing-chat .adnn-chat-resizer:before { background:var(--adnn-primary); box-shadow:0 0 18px rgba(39,45,207,.45); }
-    body.adnn-resizing-chat { cursor:col-resize !important; user-select:none !important; }
     .adnn-chat-thread-panel { min-width:0; min-height:0; display:grid; grid-template-rows:auto minmax(0,1fr); border-right:1px solid rgba(255,255,255,.08); background:rgba(255,255,255,.025); overflow:hidden; }
     .adnn-chat-thread-head { min-height:82px; padding:14px; display:grid; gap:10px; align-content:center; border-bottom:1px solid rgba(255,255,255,.07); }
     .adnn-chat-thread-head strong { display:block; font-size:16px; font-weight:650; letter-spacing:-.02em; }
@@ -4299,7 +3926,6 @@ function injectChatStyles() {
     .adnn-message-actions button span { font-size:9px; line-height:1; }
     .adnn-message-actions .is-danger { color:#ff6b5c; }
     .adnn-message-actions .is-warn { color:#ffc66d; }
-    .adnn-message-action-trigger { display:none; }
     .adnn-reaction-palette { display:none !important; }
     .adnn-floating-reaction-sheet { position:fixed; z-index:2147483620; display:flex; gap:5px; max-width:calc(100vw - 16px); overflow-x:auto; padding:7px; border-radius:999px; background:rgba(8,8,12,.98); border:1px solid rgba(255,255,255,.14); box-shadow:0 18px 50px rgba(0,0,0,.42); backdrop-filter:blur(18px); }
     .adnn-floating-reaction-sheet button { width:36px; height:36px; border:0; border-radius:50%; background:rgba(255,255,255,.08); font-size:19px; cursor:pointer; flex:0 0 auto; }
@@ -4478,7 +4104,7 @@ function injectChatStyles() {
     :root.adnn-chat-light .adnn-thread.is-pinned .adnn-pin-chat { box-shadow:none; }
     :root.adnn-chat-light .adnn-inapp-card { background:linear-gradient(145deg, rgba(255,255,255,.98), rgba(238,240,250,.98)); color:#11131b; border-color:rgba(7,10,25,.1); box-shadow:0 24px 80px rgba(14,18,48,.16); }
     :root.adnn-chat-light .adnn-inapp-card small { color:rgba(18,19,26,.56); }
-    :root.adnn-reduce-motion .adnn-chat-app *, :root.adnn-reduce-motion .adnn-call-popout, :root.adnn-reduce-motion .adnn-inapp-card { transition:none !important; animation:none !important; scroll-behavior:auto !important; transform:none !important; filter:none !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important; }
+    :root.adnn-reduce-motion .adnn-chat-app *, :root.adnn-reduce-motion .adnn-call-popout, :root.adnn-reduce-motion .adnn-inapp-card { transition:none !important; animation:none !important; scroll-behavior:auto !important; }
 
     .side-notification-badge { min-width:18px; height:18px; padding:0 5px; border-radius:999px; display:grid; place-items:center; background:#ff2602; color:#fff; font-size:10px; line-height:1; box-shadow:0 0 0 2px rgba(0,0,0,.18), 0 8px 22px rgba(255,38,2,.38); }
     .side-notification-badge[hidden] { display:none !important; }
@@ -4513,9 +4139,7 @@ function injectChatStyles() {
 
     @media (max-width:760px) {
       .adnn-chat-app { display:block !important; min-height:0 !important; }
-      html, body { max-width:100vw !important; overflow-x:hidden !important; overscroll-behavior-x:none !important; }
       .adnn-chat-layout { grid-template-columns:1fr; height:100svh !important; min-height:0 !important; overflow:hidden !important; border-radius:0; border-left:0; border-right:0; }
-      .adnn-chat-resizer { display:none !important; }
       .adnn-chat-layout > .adnn-chat-thread-panel, .adnn-chat-layout > .adnn-chat-room { grid-column:1 / -1; grid-row:1; }
       .adnn-chat-thread-panel { border-right:0; }
       .adnn-chat-layout .adnn-chat-room { display:none; }
@@ -4533,17 +4157,8 @@ function injectChatStyles() {
       .adnn-room-actions .adnn-call-btn[data-room-search] { display:none; }
       .adnn-message-scroll { padding:12px 10px !important; }
       .adnn-message { max-width:87%; }
-      .adnn-message-action-trigger { position:absolute; top:7px; width:30px; height:30px; border:0; border-radius:50%; display:grid; place-items:center; color:#fff; background:rgba(255,255,255,.12); backdrop-filter:blur(12px); box-shadow:0 10px 28px rgba(0,0,0,.2); z-index:30; opacity:.86; }
-      .adnn-message-action-trigger svg { width:15px; height:15px; }
-      .is-mine .adnn-message { padding-right:44px; }
-      .is-peer .adnn-message { padding-left:44px; }
-      .is-mine .adnn-message-action-trigger { right:8px; }
-      .is-peer .adnn-message-action-trigger { left:8px; }
-      .is-mine .adnn-message-actions, .is-peer .adnn-message-actions { position:absolute !important; top:42px !important; bottom:auto !important; width:max-content !important; max-width:calc(100vw - 34px) !important; overflow-x:auto; transform:translateY(-4px) scale(.96) !important; border-radius:18px; padding:6px; }
-      .is-mine .adnn-message-actions { right:8px !important; left:auto !important; }
-      .is-peer .adnn-message-actions { left:8px !important; right:auto !important; }
-      .adnn-message:hover .adnn-message-actions, .adnn-message:focus-within .adnn-message-actions { opacity:0; pointer-events:none; }
-      .adnn-message.is-menu-open .adnn-message-actions { opacity:1; pointer-events:auto; transform:translateY(0) scale(1) !important; }
+      .is-mine .adnn-message-actions, .is-peer .adnn-message-actions { position:fixed !important; left:10px !important; right:10px !important; top:auto !important; bottom:calc(82px + env(safe-area-inset-bottom)) !important; width:auto !important; max-width:none !important; justify-content:center; overflow-x:auto; transform:translateY(12px) scale(.98); border-radius:20px; padding:7px; }
+      .adnn-message:hover .adnn-message-actions, .adnn-message:focus-within .adnn-message-actions, .adnn-message.is-menu-open .adnn-message-actions { transform:translateY(0) scale(1); }
       .adnn-composer-wrap { padding:6px 8px max(8px, env(safe-area-inset-bottom)); }
       .adnn-composer { gap:6px; }
       .adnn-composer textarea { font-size:16px; min-height:41px; padding:11px 13px; }

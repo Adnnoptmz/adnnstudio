@@ -131,15 +131,40 @@
       text-overflow:ellipsis;
       white-space:nowrap;
     }
+    .profile .profile-info,
     .profile > div {
       min-width:0;
       display:grid;
+      grid-template-columns:1fr;
       grid-template-rows:auto auto;
       align-content:center;
       gap:3px;
+      line-height:1.15;
+    }
+    .profile .profile-info > div,
+    .profile .profile-info > small,
+    #accountName,
+    #accountEmail,
+    .userName,
+    .userEmail {
+      display:block !important;
+      width:100% !important;
+      min-width:0 !important;
+      max-width:100% !important;
+      overflow:hidden !important;
+      text-overflow:ellipsis !important;
+      white-space:nowrap !important;
+      grid-column:1 !important;
     }
     .profile strong { font-size:15px; font-weight:500; }
-    .profile small { margin-top:3px; color:var(--muted); font-family:var(--font-mono); font-size:11px; }
+    .profile small,
+    #accountEmail,
+    .userEmail {
+      margin-top:0 !important;
+      color:var(--muted) !important;
+      font-family:var(--font-mono) !important;
+      font-size:11px !important;
+    }
     .side-nav { display:grid; gap:6px; }
     .side-nav a, .side-nav button {
       position:relative;
@@ -1663,7 +1688,7 @@
 	      </div>
 	      <div class="profile">
 	        <span class="avatar" id="accountAvatar">AN</span>
-	        <div style="min-width: 0; flex: 1;">
+	        <div class="profile-info">
           <div id="accountName" contenteditable="true" style="font-size: 15px; font-weight: 500; color: var(--ink); outline: none; border-bottom: 1px dashed rgba(0,0,0,0.15); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer;" title="Click text directly to edit name">Account</div>
           <small id="accountEmail">Signed in</small>
         </div>
@@ -1683,6 +1708,11 @@
 	          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5h16v10.2H8.5L4 19.2V5.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M8 9h8M8 12.5h5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
 	          <span>Chat</span>
               <span class="side-notification-badge" data-account-badge="chat" hidden>0</span>
+	        </a>
+	        <a href="#admin-support" data-view-link="admin-support">
+	          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 19 7v5.2c0 4.1-2.8 7.4-7 8.3-4.2-.9-7-4.2-7-8.3V7l7-3.5Z" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linejoin="round"/><path d="M9 12h6M12 9v6" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round"/></svg>
+	          <span>Admin Support</span>
+	          <span class="side-notification-badge" data-account-badge="admin-support" hidden>0</span>
 	        </a>
 	        <a href="#calendar" data-view-link="calendar">
 	          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4" width="17" height="17" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M8 2.5v4M16 2.5v4M3.5 10h9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
@@ -1746,6 +1776,10 @@
 
 	      <section id="chat" class="view">
         <div id="directChatMount"></div>
+      </section>
+
+	      <section id="admin-support" class="view">
+        <div id="clientChatMount"></div>
       </section>
 
 	      <section id="calendar" class="view">
@@ -2596,15 +2630,16 @@
       }
     }
 	    function setView(view) {
-	      const selected = ["notifications", "tasks", "chat", "calendar", "notes", "invoice", "settings", "terms"].includes(view) ? view : "tasks";
+	      const selected = ["notifications", "tasks", "chat", "admin-support", "calendar", "notes", "invoice", "settings", "terms"].includes(view) ? view : "tasks";
 	      document.querySelectorAll(".view").forEach((section) => section.classList.toggle("active", section.id === selected));
 	      document.querySelectorAll("[data-view-link]").forEach((link) => link.classList.toggle("active", link.dataset.viewLink === selected));
-	      document.body.classList.toggle("chat-view-active", selected === "chat");
+	      document.body.classList.toggle("chat-view-active", selected === "chat" || selected === "admin-support");
 	      if (location.hash.replace("#", "") !== selected) history.replaceState(null, "", `#${selected}`);
 	      const headingMap = {
 	        notifications: ["Private Account", "Notifications"],
 	        tasks: ["Project Workspace", "Tasks"],
 	        chat: ["", ""],
+	        "admin-support": ["", ""],
 	        calendar: ["Personal Schedule", "Reminder Calendar"],
 	        notes: ["Personal Notes", "Notes"],
 	        invoice: ["Billing", "Invoice"],

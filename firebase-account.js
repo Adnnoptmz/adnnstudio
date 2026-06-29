@@ -124,6 +124,17 @@ async function firebaseLogout(event) {
 
 window.startGoogleLogin = firebaseGoogleLogin;
 window.logoutGoogleAccount = firebaseLogout;
+
+// FORCE all login buttons to use the native Firebase Popup (fixes the chat connection)
+window.setTimeout(() => {
+  document.querySelectorAll(".google-login-button, [onclick='startGoogleLogin()']").forEach(btn => {
+    btn.onclick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      firebaseGoogleLogin();
+    };
+  });
+}, 500);
 document.getElementById("headerLogoutButton")?.addEventListener("click", firebaseLogout);
 document.getElementById("refreshAccountDataButton")?.addEventListener("click", async () => {
   await runRefreshAnimation(async () => {
@@ -158,10 +169,13 @@ if (auth) {
       startAccountDeletesListener(user);
       startAccountItemsListener(user);
     } else {
-      if (user && !isGoogleUser(user)) {
-        localStorage.removeItem("adhnanPortfolioUser");
-        if (typeof window.renderGoogleUser === "function") window.renderGoogleUser();
-      }
+      // FIREBASE IS SIGNED OUT: Wipe any old "ghost" sessions so the user can log in properly.
+      localStorage.removeItem("adhnanPortfolioUser");
+      sessionStorage.removeItem("adnnGoogleAccessToken");
+      
+      if (typeof window.renderGoogleUser === "function") window.renderGoogleUser();
+      if (typeof window.hydrateUser === "function") window.hydrateUser();
+      
       stopFirebaseListeners();
       updateBadges({});
     }

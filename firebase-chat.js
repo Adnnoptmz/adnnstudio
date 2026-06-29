@@ -2422,7 +2422,6 @@ async function startCall(kind, chatId, chatData) {
     activeCall.ringTimer = setTimeout(() => markCallMissed(callId), CHAT_CONFIG.callRingTimeoutMs + 1200);
     watchActiveCall(callId);
   } catch (error) {
-    console.error("Call Engine Error:", error);
     endCall(false);
     showToast("Camera or microphone permission is needed.", "bad");
   }
@@ -2591,10 +2590,10 @@ async function setupPeerConnection(call, caller) {
     addDoc(collection(db, COLLECTIONS.calls, call.callId, path), event.candidate.toJSON()).catch(() => {});
   };
 
-  pc.ontrackpc.ontrack = (event) => {
-    const stream = event.streams?.[0] || new MediaStream([event.track]);
-    stream.getTracks().forEach((track) => {
-      if (!call.remoteStream.getTracks().includes(track)) {
+  pc.ontrack = (event) => {
+    const streams = event.streams?.length ? event.streams : [new MediaStream([event.track])];
+    streams[0].getTracks().forEach((track) => {
+      if (!call.remoteStream.getTracks().some((existing) => existing.id === track.id)) {
         call.remoteStream.addTrack(track);
         track.onunmute = () => attachCallMedia();
       }
@@ -2718,22 +2717,12 @@ function attachCallMedia() {
 
   if (localVideo && localVideo.srcObject !== activeCall.localStream) localVideo.srcObject = activeCall.localStream;
   if (remoteVideo && remoteVideo.srcObject !== activeCall.remoteStream) remoteVideo.srcObject = activeCall.remoteStream;
-  
-  // Safely play WebRTC video elements without crashing on strict browser states
-  try {
-    const p1 = localVideo?.play?.();
-    if (p1 && typeof p1.catch === "function") p1.catch(() => {});
-  } catch (e) {}
-  
-  try {
-    const p2 = remoteVideo?.play?.();
-    if (p2 && typeof p2.catch === "function") p2.catch(() => {});
-  } catch (e) {}
+  localVideo?.play?.().catch(() => {});
+  remoteVideo?.play?.().catch(() => {});
 
-  // Simplify validation to guarantee tiles render when upgraded to video
-  const localOn = activeCall.kind === "video" && !activeCall.onHold && activeCall.cameraOn;
-  const remoteOn = activeCall.kind === "video" && !activeCall.remoteOnHold;
-  
+  const localOn = activeCall.kind === "video" && !activeCall.onHold && activeCall.cameraOn && activeCall.localStream.getVideoTracks().some((track) => track.readyState !== "ended" && track.enabled !== false);
+  const remoteHasVideo = activeCall.remoteStream.getVideoTracks().some((track) => track.readyState !== "ended");
+  const remoteOn = activeCall.kind === "video" && !activeCall.remoteOnHold && (activeCall.remoteCameraOn || remoteHasVideo) && remoteHasVideo;
   if (localTile) localTile.hidden = !localOn;
   if (remoteTile) remoteTile.hidden = !remoteOn;
   if (audioFace) audioFace.hidden = localOn || remoteOn;

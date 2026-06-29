@@ -662,7 +662,7 @@ function watchChatThreads(scope, listId, roomId, options = {}) {
   const listen = (key, refOrQuery, quiet = false) => resilientSnapshot(`threads:${listId}:${key}`, refOrQuery, (snapshot) => {
     sources.set(key, new Map(snapshot.docs.map((item) => [item.id, { id: item.id, ...item.data(), __pending: item.metadata.hasPendingWrites }])));
     
-    // CLIENT-SIDE AUTO-HEAL: If we found a broken chat via the email fallback, fix it permanently!
+    // CLIENT AUTO-HEAL: If we found a broken chat via the email fallback, fix it permanently!
     snapshot.docs.forEach(docSnap => {
       const data = docSnap.data();
       if (activeUser && activeUser.uid && !(data.participantUids || []).includes(activeUser.uid)) {
@@ -691,20 +691,16 @@ function watchChatThreads(scope, listId, roomId, options = {}) {
       listen(`admin-email-${index}`, query(collection(db, COLLECTIONS.chats), where("participantEmailKeys", "array-contains", mail)));
     });
   } else {
-    // 1. Primary Query: True Firebase UID
-    listen("participant-uid", query(collection(db, COLLECTIONS.chats), where("participantUids", "array-contains", activeUser.uid)));
-    
-    // 2. Safe Fallback Query: Exact Auth Token Email
-    if (activeUser?.email) {
-      listen("participant-auth-email", query(collection(db, COLLECTIONS.chats), where("participantEmailKeys", "array-contains", activeUser.email)), true);
-      listen("participant-auth-email-lower", query(collection(db, COLLECTIONS.chats), where("participantEmailKeys", "array-contains", emailKey(activeUser.email))), true);
-    }
+    // UNIFIED APPROACH: Safely query EVERY possible UID and Email associated with this user.
+    Array.from(selfUidSet()).forEach((uid, index) => {
+      if (!uid || !String(uid).trim()) return;
+      listen(`participant-uid-${index}`, query(collection(db, COLLECTIONS.chats), where("participantUids", "array-contains", uid)), true);
+    });
 
-    if (activeProfile?.role === "designer") {
-      listen("designer-room", query(collection(db, COLLECTIONS.chats), where("type", "==", "designer-room")), true);
-      listen("designer-direct-scan", query(collection(db, COLLECTIONS.chats), where("type", "==", "direct")), true);
-      listen("designer-group-scan", query(collection(db, COLLECTIONS.chats), where("type", "==", "group")), true);
-    }
+    selfEmailKeyList().forEach((mail, index) => {
+      if (!mail || !String(mail).trim()) return;
+      listen(`participant-email-${index}`, query(collection(db, COLLECTIONS.chats), where("participantEmailKeys", "array-contains", mail)), true);
+    });
   }
 
   listWatchers.set(listId, () => {
@@ -742,6 +738,9 @@ function isChatVisibleForCurrentUser(chat) {
     if (adminOnly) return false;
     return chatBelongsToCurrentUser(chat);
   }
+  // Let chatBelongsToCurrentUser handle validation mathematically
+  return chatBelongsToCurrentUser(chat);
+}
   if (chat.type === "designer-room") return activeProfile?.role === "designer";
   return chatBelongsToCurrentUser(chat);
 }
@@ -3985,11 +3984,14 @@ function watchGlobalThreadBadges() {
       listenSource(`admin-email-${index}`, query(collection(db, COLLECTIONS.chats), where('participantEmailKeys', 'array-contains', mail)));
     });
   } else {
-    listenSource('participant-uid', query(collection(db, COLLECTIONS.chats), where('participantUids', 'array-contains', activeUser.uid)));
-    if (activeUser?.email) {
-      listenSource('participant-auth-email', query(collection(db, COLLECTIONS.chats), where('participantEmailKeys', 'array-contains', activeUser.email)));
-      listenSource('participant-auth-email-lower', query(collection(db, COLLECTIONS.chats), where('participantEmailKeys', 'array-contains', emailKey(activeUser.email))));
-    }
+    Array.from(selfUidSet()).forEach((uid, index) => {
+      if (!uid || !String(uid).trim()) return;
+      listenSource(`participant-${index}`, query(collection(db, COLLECTIONS.chats), where('participantUids', 'array-contains', uid)));
+    });
+    selfEmailKeyList().forEach((mail, index) => {
+      if (!mail || !String(mail).trim()) return;
+      listenSource(`participant-email-${index}`, query(collection(db, COLLECTIONS.chats), where('participantEmailKeys', 'array-contains', mail)));
+    });
   }
   
   globalThreadBadgeUnsub = () => owner.forEach((fn) => fn?.());

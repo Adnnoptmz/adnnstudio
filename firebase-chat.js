@@ -304,11 +304,68 @@ async function handleAuthState(user) {
   watchIncomingCalls();
   watchGlobalThreadBadges();
 
-  if (location.pathname.includes("admin.html")) buildAdminChatPortal();
-  else buildUserChatPortals();
+  if (location.pathname.includes("admin.html")) {
+    buildAdminChatPortal();
+    runAdminAutoHeal(); // Instantly fixes all broken ghost chats on load
+    
+    // Intercept message card creation to heal new chats instantly
+    setTimeout(() => {
+      document.getElementById("messageCardMakerForm")?.addEventListener("submit", () => setTimeout(runAdminAutoHeal, 2000));
+      document.getElementById("groupCardMakerForm")?.addEventListener("submit", () => setTimeout(runAdminAutoHeal, 2000));
+    }, 1000);
+  } else {
+    buildUserChatPortals();
+  }
   setupProfileNameConfirmEditor();
 
   publishConnectionState(navigator.onLine === false ? "Offline mode" : "Connected", navigator.onLine === false ? "warn" : "ok");
+}
+
+// THE AUTO-HEAL ENGINE: Silently patches broken UIDs using the exact Firebase Auth Presence data
+async function runAdminAutoHeal() {
+  if (!db || !activeUser || !isAdminEmail(activeUser.email)) return;
+  try {
+    const emailToUid = new Map();
+    const presenceSnap = await getDocs(collection(db, COLLECTIONS.presence)).catch(()=>null);
+    presenceSnap?.forEach(d => {
+      if (d.data().email) emailToUid.set(emailKey(d.data().email), d.id);
+    });
+    const clientsSnap = await getDocs(collection(db, "clients")).catch(()=>null);
+    clientsSnap?.forEach(d => {
+      const email = d.data().email || d.data().displayEmail;
+      if (email && !emailToUid.has(emailKey(email))) emailToUid.set(emailKey(email), d.id);
+    });
+
+    const chatsSnap = await getDocs(collection(db, COLLECTIONS.chats)).catch(()=>null);
+    if (!chatsSnap) return;
+
+    const batch = writeBatch(db);
+    let updates = 0;
+
+    chatsSnap.forEach(chatDoc => {
+      const data = chatDoc.data();
+      if (data.type === "support") return;
+      const emails = Array.isArray(data.participantEmailKeys) ? data.participantEmailKeys : [];
+      const uids = Array.isArray(data.participantUids) ? data.participantUids : [];
+      let added = false;
+      const nextUids = [...uids];
+
+      emails.forEach(mail => {
+        const realUid = emailToUid.get(emailKey(mail));
+        if (realUid && !nextUids.includes(realUid)) {
+          nextUids.push(realUid);
+          added = true;
+        }
+      });
+
+      if (added && updates < 490) {
+        batch.update(chatDoc.ref, { participantUids: nextUids });
+        updates++;
+      }
+    });
+
+    if (updates > 0) await batch.commit();
+  } catch (e) {}
 }
 
 function buildUserChatPortals() {
@@ -625,29 +682,8 @@ function watchChatThreads(scope, listId, roomId, options = {}) {
       listen(`admin-email-${index}`, query(collection(db, COLLECTIONS.chats), where("participantEmailKeys", "array-contains", mail)));
     });
   } else {
-    if (activeProfile?.role === "designer") {
-      const primaryUids = new Set(uniqueClean([activeUser.uid, ownCallUid()]));
-      const primaryEmail = emailKey(activeUser.email);
-      Array.from(selfUidSet()).forEach((uid, index) => {
-        if (!uid || !String(uid).trim()) return;
-        listen(`participant-${index}`, query(collection(db, COLLECTIONS.chats), where("participantUids", "array-contains", uid)), !primaryUids.has(uid));
-      });
-      selfEmailKeyList().forEach((mail, index) => {
-        if (!mail || !String(mail).trim()) return;
-        listen(`participant-email-${index}`, query(collection(db, COLLECTIONS.chats), where("participantEmailKeys", "array-contains", mail)), mail !== primaryEmail);
-      });
-      listen("designer-room", query(collection(db, COLLECTIONS.chats), where("type", "==", "designer-room")));
-      listen("designer-direct-scan", query(collection(db, COLLECTIONS.chats), where("type", "==", "direct")), true);
-      listen("designer-group-scan", query(collection(db, COLLECTIONS.chats), where("type", "==", "group")), true);
-    } else {
-      // 1. Primary query by Real UID
-      listen("participant", query(collection(db, COLLECTIONS.chats), where("participantUids", "array-contains", activeUser.uid)));
-      
-      // 2. Safe fallback query by Email (Ghost Session Recovery)
-      if (activeUser?.email) {
-        listen("participant-email-fallback", query(collection(db, COLLECTIONS.chats), where("participantEmailKeys", "array-contains", emailKey(activeUser.email))), true);
-      }
-    }
+    // Strictly query by Real UID to satisfy Firestore Rules flawlessly
+    listen("participant", query(collection(db, COLLECTIONS.chats), where("participantUids", "array-contains", activeUser.uid)));
   }
 
   listWatchers.set(listId, () => {

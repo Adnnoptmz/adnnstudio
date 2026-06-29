@@ -136,6 +136,8 @@ const COLLECTIONS = Object.freeze({
   offerCandidates: "offerCandidates",
   answerCandidates: "answerCandidates"
 });
+const CHAT_UID_ARRAY_FIELDS = ["participantUids", "memberUids", "visibleToUids", "allowedUids", "designerUids", "assignedDesignerUids"];
+const CHAT_EMAIL_ARRAY_FIELDS = ["participantEmailKeys", "participantEmails", "memberEmails", "visibleToEmails", "allowedEmails", "designerEmails", "assignedDesignerEmails"];
 const REACTION_SET = ["\u{1F44D}", "\u{2764}\u{FE0F}", "\u{1F602}", "\u{1F62E}", "\u{1F622}", "\u{1F64F}", "\u{1F525}", "\u{1F389}", "\u{2705}", "\u{1F4AF}", "\u{1F440}", "\u{1F680}"];
 
 let app = null;
@@ -631,25 +633,34 @@ function watchChatThreads(scope, listId, roomId, options = {}) {
       const primaryEmail = emailKey(activeUser.email);
       Array.from(selfUidSet()).forEach((uid, index) => {
         if (!uid || !String(uid).trim()) return;
-        listen(`participant-${index}`, query(collection(db, COLLECTIONS.chats), where("participantUids", "array-contains", uid)), !primaryUids.has(uid));
+        CHAT_UID_ARRAY_FIELDS.forEach((field) => {
+          listen(`participant-${field}-${index}`, query(collection(db, COLLECTIONS.chats), where(field, "array-contains", uid)), field !== "participantUids" || !primaryUids.has(uid));
+        });
       });
       selfEmailKeyList().forEach((mail, index) => {
         if (!mail || !String(mail).trim()) return;
-        listen(`participant-email-${index}`, query(collection(db, COLLECTIONS.chats), where("participantEmailKeys", "array-contains", mail)), mail !== primaryEmail);
-        listen(`participant-legacy-email-${index}`, query(collection(db, COLLECTIONS.chats), where("participantEmails", "array-contains", mail)), true);
+        CHAT_EMAIL_ARRAY_FIELDS.forEach((field) => {
+          listen(`participant-${field}-${index}`, query(collection(db, COLLECTIONS.chats), where(field, "array-contains", mail)), field !== "participantEmailKeys" || mail !== primaryEmail);
+        });
       });
       listen("designer-room", query(collection(db, COLLECTIONS.chats), where("type", "==", "designer-room")));
       listen("designer-direct-scan", query(collection(db, COLLECTIONS.chats), where("type", "==", "direct")), true);
       listen("designer-group-scan", query(collection(db, COLLECTIONS.chats), where("type", "==", "group")), true);
     } else {
         // Primary query by Firebase UID
-        listen("participant", query(collection(db, COLLECTIONS.chats), where("participantUids", "array-contains", activeUser.uid)));
+        Array.from(selfUidSet()).forEach((uid, index) => {
+          if (!uid || !String(uid).trim()) return;
+          CHAT_UID_ARRAY_FIELDS.forEach((field) => {
+            listen(`participant-${field}-${index}`, query(collection(db, COLLECTIONS.chats), where(field, "array-contains", uid)), field !== "participantUids");
+          });
+        });
         
         // Fallback query by Email Address (Recovers chats made during the ghost sessions)
         selfEmailKeyList().forEach((mail, index) => {
           if (!mail || !String(mail).trim()) return;
-          listen(`participant-email-${index}`, query(collection(db, COLLECTIONS.chats), where("participantEmailKeys", "array-contains", mail)));
-          listen(`participant-legacy-email-${index}`, query(collection(db, COLLECTIONS.chats), where("participantEmails", "array-contains", mail)), true);
+          CHAT_EMAIL_ARRAY_FIELDS.forEach((field) => {
+            listen(`participant-${field}-${index}`, query(collection(db, COLLECTIONS.chats), where(field, "array-contains", mail)), field !== "participantEmailKeys");
+          });
         });
       }
   }
@@ -697,19 +708,19 @@ function isChatVisibleForCurrentUser(chat) {
 function chatBelongsToCurrentUser(chat) {
   const uids = selfUidSet();
   const emails = selfEmailKeySet();
-  const participantUids = Array.isArray(chat?.participantUids) ? chat.participantUids.map(String) : [];
-  if (participantUids.some((uid) => uids.has(uid))) return true;
+  const hasUidField = CHAT_UID_ARRAY_FIELDS.some((field) => {
+    const values = Array.isArray(chat?.[field]) ? chat[field].map(String) : [];
+    return values.some((uid) => uids.has(uid));
+  });
+  if (hasUidField) return true;
 
-  const participantEmailKeys = Array.isArray(chat?.participantEmailKeys)
-    ? chat.participantEmailKeys.map(emailKey)
-    : [];
-  if (participantEmailKeys.some((mail) => emails.has(mail))) return true;
-  const participantEmails = Array.isArray(chat?.participantEmails)
-    ? chat.participantEmails.map(emailKey)
-    : [];
-  if (participantEmails.some((mail) => emails.has(mail))) return true;
+  const hasEmailField = CHAT_EMAIL_ARRAY_FIELDS.some((field) => {
+    const values = Array.isArray(chat?.[field]) ? chat[field].map(emailKey) : [];
+    return values.some((mail) => emails.has(mail));
+  });
+  if (hasEmailField) return true;
 
-  const maps = [chat?.participantEmailMap, chat?.participantEmails, chat?.participants, chat?.participantNames];
+  const maps = [chat?.participantEmailMap, chat?.participantEmails, chat?.participants, chat?.participantNames, chat?.members, chat?.visibleTo, chat?.allowedUsers];
   return maps.some((map) => Object.entries(map || {}).some(([key, value]) => {
     if (uids.has(String(key))) return true;
     if (emails.has(emailKey(key))) return true;
@@ -3930,11 +3941,14 @@ function watchGlobalThreadBadges() {
     });
   } else {
     Array.from(selfUidSet()).forEach((uid, index) => {
-      listenSource(`participant-${index}`, query(collection(db, COLLECTIONS.chats), where('participantUids', 'array-contains', uid)));
+      CHAT_UID_ARRAY_FIELDS.forEach((field) => {
+        listenSource(`participant-${field}-${index}`, query(collection(db, COLLECTIONS.chats), where(field, 'array-contains', uid)));
+      });
     });
     selfEmailKeyList().forEach((mail, index) => {
-      listenSource(`participant-email-${index}`, query(collection(db, COLLECTIONS.chats), where('participantEmailKeys', 'array-contains', mail)));
-      listenSource(`participant-legacy-email-${index}`, query(collection(db, COLLECTIONS.chats), where('participantEmails', 'array-contains', mail)));
+      CHAT_EMAIL_ARRAY_FIELDS.forEach((field) => {
+        listenSource(`participant-${field}-${index}`, query(collection(db, COLLECTIONS.chats), where(field, 'array-contains', mail)));
+      });
     });
   }
   globalThreadBadgeUnsub = () => owner.forEach((fn) => fn?.());

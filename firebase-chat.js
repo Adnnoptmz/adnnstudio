@@ -640,8 +640,15 @@ function watchChatThreads(scope, listId, roomId, options = {}) {
       listen("designer-direct-scan", query(collection(db, COLLECTIONS.chats), where("type", "==", "direct")), true);
       listen("designer-group-scan", query(collection(db, COLLECTIONS.chats), where("type", "==", "group")), true);
     } else {
-      listen("participant", query(collection(db, COLLECTIONS.chats), where("participantUids", "array-contains", activeUser.uid)));
-    }
+        // Primary query by Firebase UID
+        listen("participant", query(collection(db, COLLECTIONS.chats), where("participantUids", "array-contains", activeUser.uid)));
+        
+        // Fallback query by Email Address (Recovers chats made during the ghost sessions)
+        selfEmailKeyList().forEach((mail, index) => {
+          if (!mail || !String(mail).trim()) return;
+          listen(`participant-email-${index}`, query(collection(db, COLLECTIONS.chats), where("participantEmailKeys", "array-contains", mail)));
+        });
+      }
   }
 
   listWatchers.set(listId, () => {

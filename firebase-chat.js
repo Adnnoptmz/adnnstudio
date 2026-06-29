@@ -640,15 +640,14 @@ function watchChatThreads(scope, listId, roomId, options = {}) {
       listen("designer-direct-scan", query(collection(db, COLLECTIONS.chats), where("type", "==", "direct")), true);
       listen("designer-group-scan", query(collection(db, COLLECTIONS.chats), where("type", "==", "group")), true);
     } else {
-        // Primary query by Firebase UID
-        listen("participant", query(collection(db, COLLECTIONS.chats), where("participantUids", "array-contains", activeUser.uid)));
-        
-        // Fallback query by Email Address (Recovers chats made during the ghost sessions)
-        selfEmailKeyList().forEach((mail, index) => {
-          if (!mail || !String(mail).trim()) return;
-          listen(`participant-email-${index}`, query(collection(db, COLLECTIONS.chats), where("participantEmailKeys", "array-contains", mail)));
-        });
+      // 1. Primary query by Real UID
+      listen("participant", query(collection(db, COLLECTIONS.chats), where("participantUids", "array-contains", activeUser.uid)));
+      
+      // 2. Safe fallback query by Email (Ghost Session Recovery)
+      if (activeUser?.email) {
+        listen("participant-email-fallback", query(collection(db, COLLECTIONS.chats), where("participantEmailKeys", "array-contains", emailKey(activeUser.email))), true);
       }
+    }
   }
 
   listWatchers.set(listId, () => {
@@ -1270,6 +1269,14 @@ function watchRoomMeta(state) {
   resilientSnapshot(`room:${state.roomId}:${state.chatId}`, ref, (snapshot) => {
     if (!snapshot.exists()) return;
     state.chatData = { id: state.chatId, ...snapshot.data(), __pending: snapshot.metadata.hasPendingWrites };
+    
+    // AUTO-HEAL: Fix ghost sessions by silently injecting the new real UID
+    if (activeUser?.uid && !(state.chatData.participantUids || []).includes(activeUser.uid)) {
+      if ((state.chatData.participantEmailKeys || []).map(emailKey).includes(emailKey(activeUser.email))) {
+        updateDoc(ref, { participantUids: arrayUnion(activeUser.uid), updatedAt: serverTimestamp() }).catch(()=>{});
+      }
+    }
+    
     const shell = roomShell(state);
     if (!shell) return;
     const scope = isAdminEmail(activeUser?.email) ? "admin" : "user";
@@ -3919,12 +3926,10 @@ function watchGlobalThreadBadges() {
       listenSource(`admin-email-${index}`, query(collection(db, COLLECTIONS.chats), where('participantEmailKeys', 'array-contains', mail)));
     });
   } else {
-    Array.from(selfUidSet()).forEach((uid, index) => {
-      listenSource(`participant-${index}`, query(collection(db, COLLECTIONS.chats), where('participantUids', 'array-contains', uid)));
-    });
-    selfEmailKeyList().forEach((mail, index) => {
-      listenSource(`participant-email-${index}`, query(collection(db, COLLECTIONS.chats), where('participantEmailKeys', 'array-contains', mail)));
-    });
+    listenSource('participant-uid', query(collection(db, COLLECTIONS.chats), where('participantUids', 'array-contains', activeUser.uid)));
+    if (activeUser?.email) {
+      listenSource('participant-email', query(collection(db, COLLECTIONS.chats), where('participantEmailKeys', 'array-contains', emailKey(activeUser.email))));
+    }
   }
   globalThreadBadgeUnsub = () => owner.forEach((fn) => fn?.());
   globalUnsubs.push(() => globalThreadBadgeUnsub?.());

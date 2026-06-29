@@ -40,7 +40,7 @@
     callInbox/{uid}
 
   Existing mount IDs kept:
-    #directChatMount, #adminChatMount
+    #directChatMount, #clientChatMount, #adminChatMount, #chats_view
 */
 
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
@@ -104,6 +104,7 @@ const DEFAULT_CONFIG = {
   ],
   mounts: {
     direct: "directChatMount",
+    support: "clientChatMount",
     admin: "adminChatMount",
     adminFallback: "chats_view"
   },
@@ -312,6 +313,7 @@ async function handleAuthState(user) {
 
 function buildUserChatPortals() {
   const directMount = document.getElementById(CHAT_CONFIG.mounts.direct);
+  const supportMount = document.getElementById(CHAT_CONFIG.mounts.support);
 
   if (directMount) {
     directMount.className = "adnn-chat-app";
@@ -325,6 +327,33 @@ function buildUserChatPortals() {
     });
     bindFrameChrome(directMount, "directThreads", "directRoom");
     watchChatThreads("user", "directThreads", "directRoom", { excludeSupport: true });
+  }
+
+  if (supportMount) {
+    supportMount.className = "adnn-chat-app";
+    supportMount.innerHTML = appFrameMarkup({
+      title: "Admin Support",
+      subtitle: "Messages, calls, files, replies, and voice notes",
+      listId: "supportThreads",
+      roomId: "supportRoom",
+      searchable: false,
+      single: false
+    });
+    bindFrameChrome(supportMount, "supportThreads", "supportRoom");
+    ensureSupportChat()
+      .then((chat) => {
+        const list = document.getElementById("supportThreads");
+        if (list) {
+          renderThreadList([chat], list, "supportRoom", "support");
+          list.querySelector(".adnn-thread")?.classList.add("is-active");
+        }
+        openRoom(chat.id, chat, "supportRoom");
+      })
+      .catch(() => {
+        const list = document.getElementById("supportThreads");
+        if (list) list.innerHTML = `<div class="adnn-chat-empty">Support chat is being prepared.</div>`;
+        renderPassiveRoom("supportRoom", CHAT_CONFIG.supportTitle, "Support chat is being prepared.", "Message support");
+      });
   }
 }
 
@@ -354,6 +383,7 @@ function buildAdminChatPortal() {
 function renderSignedOutShell(message) {
   const mounts = [
     document.getElementById(CHAT_CONFIG.mounts.direct),
+    document.getElementById(CHAT_CONFIG.mounts.support),
     document.getElementById(CHAT_CONFIG.mounts.admin) || document.getElementById(CHAT_CONFIG.mounts.adminFallback)
   ].filter(Boolean);
   mounts.forEach((target, index) => {
@@ -3991,7 +4021,7 @@ function updateChatNavigationBadges(chats = [], scope = "user") {
   document.querySelectorAll('[data-account-badge="chat"]').forEach((node) => updateBadgeNode(node, counts.chat));
   document.querySelectorAll('[data-account-badge="support"]').forEach((node) => updateBadgeNode(node, counts.support));
   document.querySelectorAll('[data-admin-chat-badge]').forEach((node) => updateBadgeNode(node, counts.admin));
-  document.querySelectorAll('[data-target-view="chats_view"] .side-notification-badge, [data-view-link="chat"] .side-notification-badge').forEach((node) => updateBadgeNode(node, total));
+  document.querySelectorAll('[data-target-view="chats_view"] .side-notification-badge, [data-view-link="chat"] .side-notification-badge, [data-view-link="admin-support"] .side-notification-badge').forEach((node) => updateBadgeNode(node, total));
   document.querySelectorAll('.adnn-chat-count').forEach((node) => updateBadgeNode(node, total));
   ensureSidebarBadges();
   document.querySelectorAll('[data-section="chat"] .side-notification-badge, [data-view="chat"] .side-notification-badge, a[href*="chat"] .side-notification-badge').forEach((node) => updateBadgeNode(node, total));
@@ -4148,7 +4178,8 @@ function injectChatStyles() {
     :root { --adnn-primary:${t.primary}; --adnn-primary2:${t.primary2}; --adnn-danger:${t.danger}; --adnn-success:${t.success}; }
     .adnn-chat-app, .adnn-chat-app * { box-sizing:border-box; }
     .adnn-chat-app [hidden], .adnn-call-popout [hidden], .adnn-confirm-backdrop [hidden] { display:none !important; }
-    #directChatMount, #adminChatMount { width:100% !important; height:100% !important; min-height:0 !important; max-height:none !important; margin:0 !important; overflow:hidden !important; background:transparent !important; box-shadow:none !important; }
+    #directChatMount, #clientChatMount, #adminChatMount { width:100% !important; height:100% !important; min-height:0 !important; max-height:none !important; margin:0 !important; overflow:hidden !important; background:transparent !important; box-shadow:none !important; }
+    #clientChatMount.adnn-designer-chat-panel { display:block !important; height:100% !important; min-height:0 !important; border:0 !important; border-radius:0 !important; background:transparent !important; box-shadow:none !important; }
     .adnn-chat-app { --adnn-primary:${t.primary}; --adnn-primary2:${t.primary2}; --adnn-danger:${t.danger}; --adnn-success:${t.success}; --adnn-bg:${t.bg}; --adnn-panel:${t.panel}; --adnn-soft:${t.soft}; --adnn-line:${t.line}; --adnn-text:${t.text}; --adnn-muted:${t.muted}; width:100%; height:100%; min-height:0; color:var(--adnn-text); font:inherit; display:block; overflow:hidden; }
     .adnn-chat-app, .adnn-chat-app * { min-width:0; box-sizing:border-box; }
     .adnn-chat-app img, .adnn-chat-app video, .adnn-chat-app canvas, .adnn-chat-app svg { max-width:100%; }

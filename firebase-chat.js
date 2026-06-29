@@ -659,26 +659,14 @@ function watchChatThreads(scope, listId, roomId, options = {}) {
     renderThreadList(chats, list, roomId, scope);
   };
 
-  const listen = (key, refOrQuery, quiet = false) => resilientSnapshot(`threads:${listId}:${key}`, refOrQuery, (snapshot) => {
+  const listen = (key, refOrQuery) => resilientSnapshot(`threads:${listId}:${key}`, refOrQuery, (snapshot) => {
     sources.set(key, new Map(snapshot.docs.map((item) => [item.id, { id: item.id, ...item.data(), __pending: item.metadata.hasPendingWrites }])));
-    
-    // CLIENT AUTO-HEAL: If we found a broken chat via the email fallback, fix it permanently!
-    snapshot.docs.forEach(docSnap => {
-      const data = docSnap.data();
-      if (activeUser && activeUser.uid && !(data.participantUids || []).includes(activeUser.uid)) {
-         updateDoc(docSnap.ref, { participantUids: arrayUnion(activeUser.uid) }).catch(()=>{});
-      }
-    });
-
     renderMergedThreads();
   }, (error) => {
-    if (quiet) {
-      renderMergedThreads();
-      return;
-    }
+    console.error("Chat Thread Error:", key, error);
     if (!sources.size) {
-      list.innerHTML = `<div class="adnn-chat-empty">${escapeHtml(readableFirebaseError(error))}</div>`;
-      renderPassiveRoom(roomId, "Chats unavailable", "Chats are not available right now.", "Waiting for chat");
+      list.innerHTML = `<div class="adnn-chat-empty">Error: ${escapeHtml(readableFirebaseError(error))}</div>`;
+      renderPassiveRoom(roomId, "Chats unavailable", readableFirebaseError(error), "Waiting for chat");
     } else {
       renderMergedThreads();
     }
@@ -687,20 +675,9 @@ function watchChatThreads(scope, listId, roomId, options = {}) {
   if (scope === "admin") {
     listen("support", query(collection(db, COLLECTIONS.chats), where("type", "==", "support")));
     listen("admin-participant", query(collection(db, COLLECTIONS.chats), where("participantUids", "array-contains", ADMIN_ALIAS_UID)));
-    selfEmailKeyList().forEach((mail, index) => {
-      listen(`admin-email-${index}`, query(collection(db, COLLECTIONS.chats), where("participantEmailKeys", "array-contains", mail)));
-    });
   } else {
-    // UNIFIED APPROACH: Safely query EVERY possible UID and Email associated with this user.
-    Array.from(selfUidSet()).forEach((uid, index) => {
-      if (!uid || !String(uid).trim()) return;
-      listen(`participant-uid-${index}`, query(collection(db, COLLECTIONS.chats), where("participantUids", "array-contains", uid)), true);
-    });
-
-    selfEmailKeyList().forEach((mail, index) => {
-      if (!mail || !String(mail).trim()) return;
-      listen(`participant-email-${index}`, query(collection(db, COLLECTIONS.chats), where("participantEmailKeys", "array-contains", mail)), true);
-    });
+    // Single, mathematically perfect query that Firebase Rules will 100% allow
+    listen("participant-uid", query(collection(db, COLLECTIONS.chats), where("participantUids", "array-contains", activeUser.uid)));
   }
 
   listWatchers.set(listId, () => {
@@ -736,9 +713,7 @@ function isChatVisibleForCurrentUser(chat) {
   if (chat.type === "support") {
     const adminOnly = [ADMIN_ALIAS_UID, ADMIN_EMAIL].includes(String(chat.id || "").toLowerCase());
     if (adminOnly) return false;
-    return chatBelongsToCurrentUser(chat);
   }
-  // Let chatBelongsToCurrentUser handle validation mathematically
   return chatBelongsToCurrentUser(chat);
 }
   if (chat.type === "designer-room") return activeProfile?.role === "designer";
@@ -3980,18 +3955,9 @@ function watchGlobalThreadBadges() {
   if (isAdminEmail(activeUser.email)) {
     listenSource('support', query(collection(db, COLLECTIONS.chats), where('type', '==', 'support')));
     listenSource('admin-alias', query(collection(db, COLLECTIONS.chats), where('participantUids', 'array-contains', ADMIN_ALIAS_UID)));
-    selfEmailKeyList().forEach((mail, index) => {
-      listenSource(`admin-email-${index}`, query(collection(db, COLLECTIONS.chats), where('participantEmailKeys', 'array-contains', mail)));
-    });
   } else {
-    Array.from(selfUidSet()).forEach((uid, index) => {
-      if (!uid || !String(uid).trim()) return;
-      listenSource(`participant-${index}`, query(collection(db, COLLECTIONS.chats), where('participantUids', 'array-contains', uid)));
-    });
-    selfEmailKeyList().forEach((mail, index) => {
-      if (!mail || !String(mail).trim()) return;
-      listenSource(`participant-email-${index}`, query(collection(db, COLLECTIONS.chats), where('participantEmailKeys', 'array-contains', mail)));
-    });
+    // Single secure background query
+    listenSource('participant-uid', query(collection(db, COLLECTIONS.chats), where('participantUids', 'array-contains', activeUser.uid)));
   }
   
   globalThreadBadgeUnsub = () => owner.forEach((fn) => fn?.());

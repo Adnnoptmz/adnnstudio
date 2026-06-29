@@ -661,6 +661,15 @@ function watchChatThreads(scope, listId, roomId, options = {}) {
 
   const listen = (key, refOrQuery, quiet = false) => resilientSnapshot(`threads:${listId}:${key}`, refOrQuery, (snapshot) => {
     sources.set(key, new Map(snapshot.docs.map((item) => [item.id, { id: item.id, ...item.data(), __pending: item.metadata.hasPendingWrites }])));
+    
+    // CLIENT-SIDE AUTO-HEAL: If we found a broken chat via the email fallback, fix it permanently!
+    snapshot.docs.forEach(docSnap => {
+      const data = docSnap.data();
+      if (activeUser && activeUser.uid && !(data.participantUids || []).includes(activeUser.uid)) {
+         updateDoc(docSnap.ref, { participantUids: arrayUnion(activeUser.uid) }).catch(()=>{});
+      }
+    });
+
     renderMergedThreads();
   }, (error) => {
     if (quiet) {
@@ -682,8 +691,20 @@ function watchChatThreads(scope, listId, roomId, options = {}) {
       listen(`admin-email-${index}`, query(collection(db, COLLECTIONS.chats), where("participantEmailKeys", "array-contains", mail)));
     });
   } else {
-    // Strictly query by Real UID to satisfy Firestore Rules flawlessly
-    listen("participant", query(collection(db, COLLECTIONS.chats), where("participantUids", "array-contains", activeUser.uid)));
+    // 1. Primary Query: True Firebase UID
+    listen("participant-uid", query(collection(db, COLLECTIONS.chats), where("participantUids", "array-contains", activeUser.uid)));
+    
+    // 2. Safe Fallback Query: Exact Auth Token Email
+    if (activeUser?.email) {
+      listen("participant-auth-email", query(collection(db, COLLECTIONS.chats), where("participantEmailKeys", "array-contains", activeUser.email)), true);
+      listen("participant-auth-email-lower", query(collection(db, COLLECTIONS.chats), where("participantEmailKeys", "array-contains", emailKey(activeUser.email))), true);
+    }
+
+    if (activeProfile?.role === "designer") {
+      listen("designer-room", query(collection(db, COLLECTIONS.chats), where("type", "==", "designer-room")), true);
+      listen("designer-direct-scan", query(collection(db, COLLECTIONS.chats), where("type", "==", "direct")), true);
+      listen("designer-group-scan", query(collection(db, COLLECTIONS.chats), where("type", "==", "group")), true);
+    }
   }
 
   listWatchers.set(listId, () => {
@@ -1306,13 +1327,11 @@ function watchRoomMeta(state) {
     if (!snapshot.exists()) return;
     state.chatData = { id: state.chatId, ...snapshot.data(), __pending: snapshot.metadata.hasPendingWrites };
     
-    // AUTO-HEAL: Fix ghost sessions by silently injecting the new real UID
-    if (activeUser?.uid && !(state.chatData.participantUids || []).includes(activeUser.uid)) {
-      if ((state.chatData.participantEmailKeys || []).map(emailKey).includes(emailKey(activeUser.email))) {
-        updateDoc(ref, { participantUids: arrayUnion(activeUser.uid), updatedAt: serverTimestamp() }).catch(()=>{});
-      }
+    // ROOM AUTO-HEAL: If the user opens the room and their UID is missing, add it!
+    if (activeUser && activeUser.uid && !(state.chatData.participantUids || []).includes(activeUser.uid)) {
+       updateDoc(ref, { participantUids: arrayUnion(activeUser.uid) }).catch(()=>{});
     }
-    
+
     const shell = roomShell(state);
     if (!shell) return;
     const scope = isAdminEmail(activeUser?.email) ? "admin" : "user";
@@ -3915,12 +3934,14 @@ function watchGlobalThreadBadges() {
   let initialSourceCount = 0;
   const hydratedSources = new Set();
   let initialHydrationDone = false;
+  
   const markHydrated = (key) => {
     hydratedSources.add(key);
     if (!initialHydrationDone && hydratedSources.size >= Math.max(1, initialSourceCount)) {
       initialHydrationDone = true;
     }
   };
+  
   const render = (allowNotify = initialHydrationDone) => {
     let chats = Array.from(sources.values()).flatMap((items) => Array.from(items.values()));
     const unique = new Map();
@@ -3940,6 +3961,7 @@ function watchGlobalThreadBadges() {
       });
     }
   };
+  
   const listen = (key, refOrQuery) => resilientSnapshot(`globalThreads:${key}`, refOrQuery, (snapshot) => {
     sources.set(key, new Map(snapshot.docs.map((item) => [item.id, { id: item.id, ...item.data(), __pending: item.metadata.hasPendingWrites }])));
     const allowNotify = initialHydrationDone;
@@ -3955,6 +3977,7 @@ function watchGlobalThreadBadges() {
     initialSourceCount += 1;
     listen(key, refOrQuery);
   };
+  
   if (isAdminEmail(activeUser.email)) {
     listenSource('support', query(collection(db, COLLECTIONS.chats), where('type', '==', 'support')));
     listenSource('admin-alias', query(collection(db, COLLECTIONS.chats), where('participantUids', 'array-contains', ADMIN_ALIAS_UID)));
@@ -3964,13 +3987,14 @@ function watchGlobalThreadBadges() {
   } else {
     listenSource('participant-uid', query(collection(db, COLLECTIONS.chats), where('participantUids', 'array-contains', activeUser.uid)));
     if (activeUser?.email) {
-      listenSource('participant-email', query(collection(db, COLLECTIONS.chats), where('participantEmailKeys', 'array-contains', emailKey(activeUser.email))));
+      listenSource('participant-auth-email', query(collection(db, COLLECTIONS.chats), where('participantEmailKeys', 'array-contains', activeUser.email)));
+      listenSource('participant-auth-email-lower', query(collection(db, COLLECTIONS.chats), where('participantEmailKeys', 'array-contains', emailKey(activeUser.email))));
     }
   }
+  
   globalThreadBadgeUnsub = () => owner.forEach((fn) => fn?.());
   globalUnsubs.push(() => globalThreadBadgeUnsub?.());
 }
-
 function assetUrl(fileName) {
   const clean = String(fileName || '').trim();
   if (!clean) return '';

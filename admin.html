@@ -2958,6 +2958,7 @@
             createdByEmail: currentUser.email,
             participantUids: [userA.uid, userB.uid],
             participantEmailKeys: [userA.email, userB.email],
+            participantEmails: [userA.email, userB.email],
             participantNames: { [userA.uid]: userA.name, [userB.uid]: userB.name },
             participantPhotos: { [userA.uid]: userA.photoURL || "", [userB.uid]: userB.photoURL || "" },
             participantEmailMap: { [userA.uid]: userA.email, [userB.uid]: userB.email },
@@ -3031,6 +3032,7 @@
             createdByEmail: currentUser.email,
             participantUids: users.map((user) => user.uid),
             participantEmailKeys: users.map((user) => user.email),
+            participantEmails: users.map((user) => user.email),
             participantNames: names,
             participantPhotos: photos,
             participantEmailMap: emailMap,
@@ -3192,7 +3194,7 @@
       }
     });
   </script>
-  <script type="module" src="firebase-chat.js?v=20260615-standard-account-chat"></script>
+  <script type="module" src="firebase-chat.js?v=20260629-user-direct-legacy-email"></script>
 
 <script id="adnn-settings-upgrade-js">
 (function setupAdnnSettingsUpgrade(){

@@ -680,6 +680,8 @@ function watchChatThreads(scope, listId, roomId, options = {}) {
             listen(`participant-${field}-${index}`, query(collection(db, COLLECTIONS.chats), where(field, "array-contains", mail)), field !== "participantEmailKeys");
           });
         });
+        listen("account-direct-scan", query(collection(db, COLLECTIONS.chats), where("type", "==", "direct")), true);
+        listen("account-group-scan", query(collection(db, COLLECTIONS.chats), where("type", "==", "group")), true);
       }
   }
 

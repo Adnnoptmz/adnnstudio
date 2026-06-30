@@ -3194,6 +3194,7 @@
 	    let activePortfolioIndex = 3;
 	    let dragStartX = null;
 	    let portfolioRenderQueued = false;
+      let portfolioTweenFrame = null;
 
     portfolioCards.forEach((_, index) => {
       const dot = document.createElement("button");
@@ -3205,10 +3206,22 @@
 
     function signedOffset(index) {
       let offset = index - activePortfolioIndex;
-      if (offset > portfolioCards.length / 2) offset -= portfolioCards.length;
-      if (offset < -portfolioCards.length / 2) offset += portfolioCards.length;
-      if (portfolioCards.length % 2 === 0 && offset === portfolioCards.length / 2) offset = -portfolioCards.length / 2;
+      const half = portfolioCards.length / 2;
+      while (offset >= half) offset -= portfolioCards.length;
+      while (offset < -half) offset += portfolioCards.length;
       return offset;
+    }
+
+    function normalizedPortfolioIndex(value) {
+      return ((Math.round(value) % portfolioCards.length) + portfolioCards.length) % portfolioCards.length;
+    }
+
+    function closestPortfolioTarget(index) {
+      const total = portfolioCards.length;
+      const current = activePortfolioIndex;
+      const base = Math.round((current - index) / total) * total + index;
+      const candidates = [base - total, base, base + total];
+      return candidates.reduce((best, item) => Math.abs(item - current) < Math.abs(best - current) ? item : best, candidates[0]);
     }
 
 	    function renderPortfolioCylinder() {
@@ -3231,7 +3244,7 @@
           card.style.zIndex = String(60 - Math.round(abs * 8));
         }
       });
-	      dots.forEach((dot, index) => dot.classList.toggle("is-active", index === activePortfolioIndex));
+	      dots.forEach((dot, index) => dot.classList.toggle("is-active", index === normalizedPortfolioIndex(activePortfolioIndex)));
 	    }
 
 	    function requestPortfolioRender() {
@@ -3243,15 +3256,46 @@
 	      });
 	    }
 
-    function setPortfolioIndex(index) {
-      activePortfolioIndex = (index + portfolioCards.length) % portfolioCards.length;
-      renderPortfolioCylinder();
+    function animatePortfolioIndex(targetIndex) {
+      if (portfolioTweenFrame) window.cancelAnimationFrame(portfolioTweenFrame);
+      const startIndex = activePortfolioIndex;
+      const delta = targetIndex - startIndex;
+      const startedAt = performance.now();
+      const duration = Math.min(820, Math.max(520, Math.abs(delta) * 520));
+      const ease = (t) => 1 - Math.pow(1 - t, 3);
+
+      const step = (now) => {
+        const progress = Math.min(1, (now - startedAt) / duration);
+        activePortfolioIndex = startIndex + delta * ease(progress);
+        renderPortfolioCylinder();
+        if (progress < 1) {
+          portfolioTweenFrame = window.requestAnimationFrame(step);
+        } else {
+          activePortfolioIndex = targetIndex;
+          portfolioTweenFrame = null;
+          renderPortfolioCylinder();
+        }
+      };
+
+      portfolioTweenFrame = window.requestAnimationFrame(step);
+    }
+
+    function setPortfolioIndex(index, animate = false) {
+      const targetIndex = closestPortfolioTarget(index);
+      if (animate && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        animatePortfolioIndex(targetIndex);
+      } else {
+        if (portfolioTweenFrame) window.cancelAnimationFrame(portfolioTweenFrame);
+        portfolioTweenFrame = null;
+        activePortfolioIndex = targetIndex;
+        renderPortfolioCylinder();
+      }
     }
 
     window.portfolioControls.setIndex = setPortfolioIndex;
 
     function setPortfolioIndexUser(index) {
-      setPortfolioIndex(index);
+      setPortfolioIndex(index, true);
       restartPortfolioAutoLoop();
     }
 
@@ -3374,6 +3418,10 @@
     
 	    portfolioCylinder.addEventListener("pointerdown", (event) => {
 	      if (event.button !== undefined && event.button !== 0) return;
+        if (portfolioTweenFrame) {
+          window.cancelAnimationFrame(portfolioTweenFrame);
+          portfolioTweenFrame = null;
+        }
 	      if (event.target.tagName.toLowerCase() === 'img') {
 	        event.preventDefault();
 	      }
@@ -3440,7 +3488,7 @@
       if (window.adnnstudio_website_locked) return;
       if (window.portfolioControls.loopInterval) window.clearInterval(window.portfolioControls.loopInterval);
       window.portfolioControls.loopInterval = window.setInterval(() => {
-        setPortfolioIndex(activePortfolioIndex + 1);
+        setPortfolioIndex(activePortfolioIndex + 1, true);
       }, 4000);
     }
 
@@ -4964,6 +5012,208 @@
     }
   }
 	</style>
+<style id="adnn-browser-smoothness-and-reveal-pass">
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    overscroll-behavior-x: none;
+  }
+
+  body {
+    max-width: 100%;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  img,
+  video,
+  canvas,
+  svg {
+    max-width: 100%;
+    -webkit-user-drag: none;
+  }
+
+  .glass,
+  .nav-wrap,
+  .portfolio-card-ref,
+  .studio-video-panel,
+  .about-video-box,
+  .client-stat-panel {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+  }
+
+  #about .about-video-box > #aboutSeamlessVideo {
+    width: calc(100% - 4px) !important;
+    height: calc(100% - 4px) !important;
+    margin: 2px auto !important;
+  }
+
+  #portfolio .reference-slider-shell {
+    touch-action: pan-y !important;
+    overscroll-behavior: contain;
+    -webkit-user-select: none !important;
+    user-select: none !important;
+    -webkit-tap-highlight-color: transparent !important;
+  }
+
+  #portfolio .reference-card-row {
+    will-change: transform;
+    transform: translateZ(0);
+  }
+
+  #portfolio .portfolio-card-ref,
+  #portfolio.portfolio-revealed .portfolio-card-ref {
+    transition:
+      transform .72s cubic-bezier(.22, 1, .36, 1),
+      opacity .72s cubic-bezier(.22, 1, .36, 1),
+      filter .72s cubic-bezier(.22, 1, .36, 1) !important;
+    backface-visibility: hidden !important;
+    -webkit-backface-visibility: hidden !important;
+    will-change: transform, opacity, filter;
+  }
+
+  #portfolio .reference-card-row.is-dragging .portfolio-card-ref {
+    transition: opacity .12s linear, filter .12s linear !important;
+  }
+
+  #portfolio .portfolio-card-ref.is-far {
+    visibility: visible !important;
+    opacity: .16 !important;
+  }
+
+  #portfolio .portfolio-card-ref img {
+    transform: translateZ(0);
+  }
+
+  .adnn-scroll-reveal {
+    opacity: 0;
+    transform: translate3d(0, 28px, 0) scale(.985);
+    filter: blur(8px);
+    transition:
+      opacity .86s cubic-bezier(.16, 1, .3, 1),
+      transform .86s cubic-bezier(.16, 1, .3, 1),
+      filter .86s cubic-bezier(.16, 1, .3, 1);
+    transition-delay: var(--reveal-delay, 0ms);
+    will-change: opacity, transform, filter;
+  }
+
+  .adnn-scroll-reveal.is-visible {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+    filter: blur(0);
+  }
+
+  @supports (-webkit-touch-callout: none) {
+    html,
+    body {
+      min-height: -webkit-fill-available;
+    }
+
+    .glass,
+    .nav-wrap,
+    .studio-video-panel,
+    .account-popover,
+    .login-choice-popover {
+      -webkit-backdrop-filter: blur(18px) saturate(145%);
+      backdrop-filter: blur(18px) saturate(145%);
+    }
+
+    #portfolio .portfolio-card-ref {
+      transform-style: flat !important;
+    }
+  }
+
+  @media (max-width: 760px) {
+    html,
+    body {
+      width: 100%;
+      max-width: 100%;
+      overflow-x: hidden !important;
+      overscroll-behavior-x: none;
+      touch-action: pan-y;
+    }
+
+    body {
+      position: relative;
+    }
+
+    #portfolio .reference-slider-shell {
+      -webkit-overflow-scrolling: touch;
+    }
+
+    #portfolio .portfolio-card-ref,
+    #portfolio.portfolio-revealed .portfolio-card-ref {
+      transition:
+        transform .64s cubic-bezier(.22, 1, .36, 1),
+        opacity .64s cubic-bezier(.22, 1, .36, 1),
+        filter .64s cubic-bezier(.22, 1, .36, 1) !important;
+    }
+
+    .adnn-scroll-reveal {
+      transform: translate3d(0, 20px, 0) scale(.992);
+      filter: blur(5px);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto !important;
+    }
+
+    .adnn-scroll-reveal {
+      opacity: 1 !important;
+      transform: none;
+      filter: none;
+      transition: none !important;
+    }
+
+    #portfolio .portfolio-card-ref,
+    #portfolio.portfolio-revealed .portfolio-card-ref {
+      transition: none !important;
+    }
+  }
+</style>
+<script id="adnn-scroll-reveal-pass">
+(function(){
+  const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const targets = Array.from(document.querySelectorAll([
+    "main section:not(#home) > *",
+    "#about .subcard",
+    "#projects .tile",
+    "#client-report .client-stat-item",
+    "#connect form",
+    "footer .foot"
+  ].join(","))).filter((node) => {
+    return node && !node.closest("#portfolioCylinder") && !node.matches("script, style");
+  });
+
+  targets.forEach((node, index) => {
+    node.classList.add("adnn-scroll-reveal");
+    node.style.setProperty("--reveal-delay", `${Math.min((index % 5) * 55, 220)}ms`);
+  });
+
+  if (reduceMotion || !("IntersectionObserver" in window)) {
+    targets.forEach((node) => node.classList.add("is-visible"));
+    return;
+  }
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (!entry.isIntersecting) return;
+      entry.target.classList.add("is-visible");
+      observer.unobserve(entry.target);
+    });
+  }, {
+    threshold: 0.12,
+    rootMargin: "0px 0px -8% 0px"
+  });
+
+  targets.forEach((node) => observer.observe(node));
+})();
+</script>
 <script src="firebase-config.js"></script>
 <script type="module" src="firebase-account.js"></script>
 <script type="module" src="firebase-chat.js?v=20260612-sidebar-settings-pin-fix"></script>

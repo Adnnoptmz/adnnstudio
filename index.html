@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <title>adnnstudio.com</title>
   <link rel="preconnect" href="https://fonts.cdnfonts.com" crossorigin>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -2574,6 +2574,45 @@
   body { width: 100%; position: relative; }
   main, section, header, footer { max-width: 100%; }
   img, video, canvas, svg { max-width: 100%; }
+</style>
+<style id="adnn-mobile-app-fit-guard">
+  @media (max-width: 760px) {
+    html,
+    body {
+      width: 100%;
+      max-width: 100%;
+      overflow-x: hidden;
+      overscroll-behavior-x: none;
+      touch-action: pan-y;
+      -webkit-text-size-adjust: 100%;
+    }
+
+    button,
+    a,
+    label,
+    [role="button"],
+    .nav-wrap,
+    .account-popover,
+    .account-chip,
+    .scroll-to-home,
+    .ai-assistant-orb {
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    input,
+    textarea,
+    p,
+    h1,
+    h2,
+    h3,
+    .typed,
+    .card-copy {
+      user-select: text;
+      -webkit-user-select: text;
+    }
+  }
 </style>
 </head>
 	<body class="auth-state-pending">

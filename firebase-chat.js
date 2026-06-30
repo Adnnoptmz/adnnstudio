@@ -169,6 +169,7 @@ const objectUrls = new Set();
 const globalUnsubs = [];
 const liveSnapshotKeys = new Map();
 const pendingToastKeys = new Map();
+const inAppNotificationDedupe = new Map();
 const threadUnreadCache = new Map();
 const threadNotifyState = new Map();
 let notificationPermissionAsked = false;
@@ -233,8 +234,8 @@ async function bootChatRuntime() {
   ensureSidebarBadges();
 
   if (!FIREBASE_CONFIG) {
-    renderSignedOutShell("Firebase config is missing. Define window.ADNN_FIREBASE_CONFIG before loading firebase-chat.js.");
-    publishConnectionState("Firebase config missing", "bad");
+    renderSignedOutShell("Chat is not available right now.");
+    publishConnectionState("Chat unavailable", "bad");
     return;
   }
 
@@ -249,8 +250,8 @@ async function bootChatRuntime() {
       showToast(error?.message || "Auth connection failed.", "bad");
     });
   } catch (error) {
-    renderSignedOutShell("Firebase failed to initialize. Check your Firebase web config and allowed domains.");
-    showToast(error?.message || "Firebase failed to initialize.", "bad");
+    renderSignedOutShell("Chat is not available right now.");
+    showToast("Chat is not available right now.", "bad");
   }
 }
 
@@ -588,7 +589,7 @@ async function ensureSupportChat() {
   if (!snap?.exists()) {
     await withRetry(() => setDoc(chatRef, {
       ...payload,
-      lastMessage: "Support channel ready.",
+      lastMessage: "Support chat ready.",
       lastMessageKind: "system",
       unreadForAdmin: 0,
       unreadForClient: 0,
@@ -633,7 +634,7 @@ function watchChatThreads(scope, listId, roomId, options = {}) {
     }
     if (!sources.size) {
       list.innerHTML = `<div class="adnn-chat-empty">${escapeHtml(readableFirebaseError(error))}</div>`;
-      renderPassiveRoom(roomId, "Chats unavailable", "Chats are not available right now.", "Waiting for chat");
+      renderPassiveRoom(roomId, "Welcome to AdnnStudio chats", "", "");
     } else {
       renderMergedThreads();
     }
@@ -811,7 +812,7 @@ function renderThreadList(chats, list, roomId, scope) {
   updateChatNavigationBadges(chats, scope);
   if (!chats.length) {
     list.innerHTML = `<div class="adnn-chat-empty">No conversations yet.</div>`;
-    renderPassiveRoom(roomId, scope === "admin" ? "No client chats yet" : "No direct chats yet", "Conversations will appear here as soon as they are created.", "Waiting for chat");
+    renderPassiveRoom(roomId, "Welcome to AdnnStudio chats", "", "");
     if (scope !== "admin") renderStartableUserDirectory(list, roomId);
     return;
   }
@@ -1045,24 +1046,9 @@ function renderPassiveRoom(roomId, title, message, placeholder) {
 function passiveRoomMarkup(roomId, title, message, placeholder) {
   return `
     <div class="adnn-room-shell is-passive" data-room="${escapeAttr(roomId)}">
-      <header class="adnn-room-head" role="toolbar" aria-label="Chat status">
-        <button type="button" class="adnn-back-btn" data-chat-back>${ICON.back}</button>
-        ${avatarMarkup(title)}
-        <div class="adnn-room-title">
-          <strong>${escapeHtml(title)}</strong>
-          <small>${escapeHtml(message)}</small>
-        </div>
-      </header>
       <main class="adnn-message-scroll" data-message-scroll>
-        <div class="adnn-chat-empty">${escapeHtml(message)}</div>
+        <div class="adnn-chat-empty"><strong>Welcome to AdnnStudio chats</strong></div>
       </main>
-      <footer class="adnn-composer-wrap">
-        <form class="adnn-composer" data-composer>
-          <button type="button" class="adnn-attach-btn" disabled>${ICON.clip}</button>
-          <textarea data-text rows="1" maxlength="1800" placeholder="${escapeAttr(placeholder)}" disabled></textarea>
-          <button type="button" class="adnn-voice-btn" disabled>${ICON.mic}</button>
-        </form>
-      </footer>
     </div>
   `;
 }
@@ -1078,7 +1064,8 @@ function openRoom(chatId, chatData, roomId) {
   state.suppressNotifyUntilMs = Date.now() + 1400;
   rooms.set(roomId, state);
   target.innerHTML = roomMarkup(roomId);
-  document.body.classList.toggle("adnn-chat-mobile-lock", window.matchMedia("(max-width: 760px)").matches);
+  const layout = target.closest(".adnn-chat-layout");
+  document.body.classList.toggle("adnn-chat-mobile-lock", window.matchMedia("(max-width: 760px)").matches && !!layout?.classList.contains("is-room-open"));
 
   bindRoomControls(state);
   watchRoomMeta(state);
@@ -3583,7 +3570,7 @@ function closeOpenChatThreadPanels() {
   
   rooms.forEach((state) => {
     if (!state.chatId.startsWith("passive_")) {
-      renderPassiveRoom(state.roomId, "Chat closed", "Select a conversation to resume.", "Waiting for chat");
+      renderPassiveRoom(state.roomId, "Welcome to AdnnStudio chats", "", "");
     }
   });
   document.body.classList.remove("adnn-chat-mobile-lock");
@@ -4171,6 +4158,14 @@ function notifyBrowser(title, body, icon = "") {
 
 function showInAppNotification(title, body, options = {}) {
   if (!chatSettingBool(CHAT_INAPP_NOTIFICATION_KEY, true)) return;
+  const normalizedTitle = String(title || "New message").trim();
+  const normalizedBody = String(body || "You have a new message.").trim();
+  const dedupeKey = `${options.chatId || normalizedTitle}:${options.tone || "message"}:${normalizedBody}`;
+  const now = Date.now();
+  const lastShownAt = inAppNotificationDedupe.get(dedupeKey) || 0;
+  if (now - lastShownAt < 3500) return;
+  inAppNotificationDedupe.set(dedupeKey, now);
+  setTimeout(() => inAppNotificationDedupe.delete(dedupeKey), 6000);
   playNotificationTone(options.tone || "message");
   let stack = document.getElementById("adnnInAppNotificationStack");
   if (!stack) {
@@ -4184,8 +4179,8 @@ function showInAppNotification(title, body, options = {}) {
   card.className = `adnn-inapp-card${options.tone === "missed" ? " is-missed" : ""}`;
   if (options.chatId) card.dataset.chatId = options.chatId;
   card.innerHTML = `
-    <span class="adnn-avatar">${options.icon ? `<img src="${escapeAttr(options.icon)}" alt="">` : initials(title)}</span>
-    <span><strong>${escapeHtml(title || "New message")}</strong><small>${escapeHtml(body || "You have a new message.")}</small></span>
+    <span class="adnn-avatar">${options.icon ? `<img src="${escapeAttr(options.icon)}" alt="">` : initials(normalizedTitle)}</span>
+    <span><strong>${escapeHtml(normalizedTitle)}</strong><small>${escapeHtml(normalizedBody)}</small></span>
     ${options.count ? `<b>${escapeHtml(String(options.count > 99 ? "99+" : options.count))}</b>` : ""}
   `;
   if (options.href || options.chatId) card.addEventListener("click", () => {
@@ -4481,6 +4476,7 @@ function injectChatStyles() {
     .adnn-chat-welcome { display:none !important; }
     .adnn-chat-empty { height:100%; min-height:140px; display:grid; place-items:center; align-content:center; gap:8px; text-align:center; color:rgba(255,255,255,.48); padding:24px; }
     .adnn-room-shell { position:absolute !important; inset:0 !important; height:100% !important; min-height:0 !important; max-height:100% !important; overflow:hidden !important; background:radial-gradient(circle at 92% 6%, rgba(39,45,207,.17), transparent 32%), var(--adnn-bg); --head:72px; --composer:76px; }
+    .adnn-room-shell.is-passive { --head:0px; --composer:0px; display:grid !important; grid-template-rows:minmax(0,1fr) !important; }
     .adnn-room-head { position:absolute !important; top:0 !important; left:0 !important; right:0 !important; width:100% !important; height:var(--head) !important; min-height:var(--head) !important; display:flex !important; align-items:center !important; gap:10px; padding:12px 14px; border-bottom:1px solid rgba(255,255,255,.08); background:rgba(10,10,14,.95); backdrop-filter:blur(18px); z-index:95 !important; }
     .adnn-back-btn, .adnn-call-btn, .adnn-attach-btn, .adnn-voice-btn, .adnn-send-btn, .adnn-plus-btn, .adnn-emoji-btn { width:42px; height:42px; border:0; border-radius:50%; display:grid; place-items:center; color:#fff; background:rgba(255,255,255,.07); cursor:pointer; transition:.18s ease; flex:0 0 auto; }
     .adnn-back-btn { display:none; }
@@ -4665,6 +4661,7 @@ function injectChatStyles() {
       position:relative !important; top:auto !important; left:auto !important; right:auto !important; bottom:auto !important; grid-row:2 !important; grid-column:1 / -1 !important;
       width:100% !important; min-width:0 !important; height:100% !important; min-height:0 !important; max-height:none !important; overflow-y:auto !important; padding:18px !important;
     }
+    .adnn-chat-app .adnn-room-shell.is-passive > .adnn-message-scroll { grid-row:1 !important; padding:18px !important; }
     .adnn-chat-app .adnn-room-shell > .adnn-room-searchbar:not([hidden]) ~ .adnn-message-scroll { padding-top:70px !important; }
     .adnn-chat-app .adnn-room-shell > .adnn-composer-wrap {
       position:relative !important; left:auto !important; right:auto !important; bottom:auto !important; grid-row:3 !important; grid-column:1 / -1 !important;

@@ -1634,6 +1634,27 @@
     .shell, main, .view, .admin-view-panel-container { overflow-x: hidden; }
   }
 </style>
+<style id="adnn-mobile-header-stability">
+  @media (max-width: 760px) {
+    body:not(.locked):not(.auth-pending) .mobile-header-bar {
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      right: 0 !important;
+      z-index: 2147482500 !important;
+      display: flex !important;
+      transform: none !important;
+      will-change: auto !important;
+      backface-visibility: hidden;
+    }
+    body:not(.locked):not(.auth-pending):not(.adnn-chat-mobile-lock) > .shell {
+      padding-top: 64px !important;
+    }
+    body.adnn-chat-mobile-lock .mobile-header-bar {
+      display: none !important;
+    }
+  }
+</style>
 </head>
 <body class="auth-pending locked">
 	<script>
@@ -1830,7 +1851,7 @@
               <div class="adnn-clock-copy">
                 <span data-clock-label>Device time</span>
                 <strong data-clock-time>--:--</strong>
-                <small data-clock-date>Syncing local clock</small>
+                <small data-clock-date>Local time</small>
               </div>
               <div class="adnn-weather-copy">
                 <strong data-weather-temp>--</strong>
@@ -2762,7 +2783,7 @@
     function loadPrivateAccountData() {
       const accessToken = getGoogleAccessToken();
       if (!accessToken) {
-        renderEmpty("notificationsList", "Account updates waiting", "Log out and log in again with Google to load private account updates.");
+        renderEmpty("notificationsList", "No notifications yet", "Refresh your account to check for updates.");
         renderEmpty("tasksList", "No ongoing task", "Nothing has been assigned yet.");
         renderEmpty("invoiceList", "Nothing here", "No invoice has been added yet.");
         return;
@@ -3488,8 +3509,8 @@
 	      return weeks === 1 ? "1 week ago" : `${weeks} weeks ago`;
 	    }
 	  </script>
-  <script type="module" src="firebase-account.js" onerror="window.adnnAccountModuleFallback && window.adnnAccountModuleFallback()"></script>
-  <script type="module" src="firebase-chat.js?v=20260629-account-chat-rules"></script>
+  <script type="module" src="firebase-account.js?v=20260630-mobile-admin-cleanup" onerror="window.adnnAccountModuleFallback && window.adnnAccountModuleFallback()"></script>
+  <script type="module" src="firebase-chat.js?v=20260630-mobile-admin-cleanup"></script>
 
 <script id="adnn-settings-upgrade-js">
 (function setupAdnnSettingsUpgrade(){

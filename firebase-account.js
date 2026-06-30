@@ -44,6 +44,7 @@ let knownLiveItemIds = new Set();
 let hasSeenFirstItemsSnapshot = false;
 let notificationAudio = null;
 let notificationAudioPrimed = false;
+let clientStatusUnsubscribe = null;
 
 function emailKey(email) {
   return String(email || "").trim().toLowerCase();
@@ -69,29 +70,65 @@ function isGoogleUser(user) {
   return Boolean(user?.providerData?.some((providerData) => providerData.providerId === "google.com"));
 }
 
+function isInactiveClient(data = {}) {
+  return data.active === false || String(data.status || "").toLowerCase().trim() === "inactive";
+}
+
+function inactiveAccountError() {
+  const error = new Error("ACCOUNT_DEACTIVATED");
+  error.code = "adnn/account-deactivated";
+  return error;
+}
+
+function showInactiveAccountMessage() {
+  const message = "This account is currently inactive. Please contact AdnnStudio.";
+  const errorNode = document.getElementById("googleLoginError");
+  if (errorNode) errorNode.textContent = message;
+  else alert(message);
+}
+
 async function syncClientDoc(user) {
   if (!db || !user?.email) return;
   const ref = doc(db, "clients", user.uid);
-  await setDoc(ref, {
+  const existingSnap = await getDoc(ref).catch(() => null);
+  const existingData = existingSnap?.exists() ? existingSnap.data() : {};
+  if (emailKey(user.email) !== ADMIN_EMAIL && isInactiveClient(existingData)) {
+    throw inactiveAccountError();
+  }
+  const profile = {
     uid: user.uid,
     email: emailKey(user.email),
     displayEmail: user.email,
     name: user.displayName || "",
     picture: user.photoURL || "",
+    photoURL: user.photoURL || "",
+    role: emailKey(user.email) === ADMIN_EMAIL ? "admin" : "client",
     lastActiveAt: serverTimestamp()
-  }, { merge: true });
+  };
+  await setDoc(ref, profile, { merge: true });
+  if (profile.role !== "admin") {
+    await setDoc(doc(db, "chatUsers", user.uid), {
+      uid: user.uid,
+      email: profile.email,
+      displayEmail: profile.displayEmail,
+      name: profile.name || profile.email,
+      photoURL: profile.photoURL || "",
+      role: profile.role,
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+  }
 }
 
 async function firebaseGoogleLogin() {
   if (!auth) {
-    alert("Firebase is not connected yet. Upload firebase-config.js and enable Firebase Authentication.");
+    alert("Login is not available right now. Please try again soon.");
     return;
   }
 
   try {
     const result = await signInWithPopup(auth, provider);
+    await syncClientDoc(result.user);
     saveUser(result.user);
-    await syncClientDoc(result.user).catch(() => {});
     await recordGoogleLoginToSheet(result).catch(() => {});
     if (typeof window.renderGoogleUser === "function") window.renderGoogleUser();
     if (typeof window.hydrateUser === "function") window.hydrateUser();
@@ -100,9 +137,16 @@ async function firebaseGoogleLogin() {
       location.href = emailKey(result.user.email) === ADMIN_EMAIL ? "admin.html" : "account.html#notifications";
     }
   } catch (error) {
+    if (error?.code === "adnn/account-deactivated") {
+      await signOut(auth).catch(() => {});
+      localStorage.removeItem("adhnanPortfolioUser");
+      sessionStorage.removeItem("adnnGoogleAccessToken");
+      showInactiveAccountMessage();
+      return;
+    }
     const message = error?.code === "auth/unauthorized-domain"
-      ? "Add this website domain in Firebase Authentication settings, then try again."
-      : "Google login could not start. Check Firebase Authentication and try again.";
+      ? "This website is not allowed to start Google login yet."
+      : "Google login could not start. Please try again.";
     const errorNode = document.getElementById("googleLoginError");
     if (errorNode) errorNode.textContent = message;
     else alert(message);
@@ -158,13 +202,23 @@ if (auth) {
     });
   }
 
-  onAuthStateChanged(auth, (user) => {
+  onAuthStateChanged(auth, async (user) => {
     if (user && isGoogleUser(user)) {
+      try {
+        await syncClientDoc(user);
+      } catch (error) {
+        if (error?.code === "adnn/account-deactivated") {
+          await firebaseLogout();
+          showInactiveAccountMessage();
+          return;
+        }
+        console.warn("AdnnStudio account sync error", error);
+      }
       saveUser(user);
-      syncClientDoc(user).catch(() => {});
       if (typeof window.renderGoogleUser === "function") window.renderGoogleUser();
       if (typeof window.hydrateUser === "function") window.hydrateUser();
       activeAccountUser = user;
+      startClientStatusListener(user);
       startAccountReadsListener(user);
       startAccountDeletesListener(user);
       startAccountItemsListener(user);
@@ -210,16 +264,29 @@ function stopFirebaseListeners() {
   if (accountReadsUnsubscribe) accountReadsUnsubscribe();
   if (accountDeletesUnsubscribe) accountDeletesUnsubscribe();
   if (navBadgeUnsubscribe) navBadgeUnsubscribe();
+  if (clientStatusUnsubscribe) clientStatusUnsubscribe();
   accountItemsUnsubscribe = null;
   accountReadsUnsubscribe = null;
   accountDeletesUnsubscribe = null;
   navBadgeUnsubscribe = null;
+  clientStatusUnsubscribe = null;
   navBadgeEmail = "";
   activeAccountUser = null;
   lastReadIds = new Set();
   lastDeletedIds = new Set();
   knownLiveItemIds = new Set();
   hasSeenFirstItemsSnapshot = false;
+}
+
+function startClientStatusListener(user) {
+  if (!db || !user?.uid || emailKey(user.email) === ADMIN_EMAIL) return;
+  if (clientStatusUnsubscribe) clientStatusUnsubscribe();
+  clientStatusUnsubscribe = onSnapshot(doc(db, "clients", user.uid), async (snapshot) => {
+    if (snapshot.exists() && isInactiveClient(snapshot.data())) {
+      showInactiveAccountMessage();
+      await firebaseLogout();
+    }
+  }, () => {});
 }
 
 ["pointerdown", "keydown", "touchstart"].forEach((eventName) => {
@@ -292,7 +359,7 @@ function startAccountItemsListener(user) {
     updateBadgeCounts();
   }, (error) => {
     setAccountStatus("");
-    renderEmpty("notificationsList", "Private sync unavailable", "Check Firebase rules and admin setup, then refresh.");
+    renderEmpty("notificationsList", "Updates unavailable", "Refresh this page and try again.");
     console.warn("AdnnStudio account data error", error);
     updateBadges({});
   });

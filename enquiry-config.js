@@ -1,5 +1,7 @@
-/*
-  Paste the deployed Google Apps Script Web App URL here.
-  The website enquiry form will send each submission to that URL.
-*/
-window.ADNN_ENQUIRY_ENDPOINT = "https://script.google.com/macros/s/AKfycbzhjeUCm5Q8UXgdalKS7D-YATQm4oghNzDKzL6dui54hvcpSmpCj8D4x3oeNmtxB8WtoQ/exec";
+module.exports = function handler(req, res) {
+  res.setHeader("Content-Type", "application/javascript; charset=utf-8");
+  res.setHeader("Cache-Control", "no-store");
+  res.status(200).send(
+    `window.ADNN_ENQUIRY_ENDPOINT = ${JSON.stringify(process.env.ADNN_ENQUIRY_ENDPOINT || "")};\n`
+  );
+};

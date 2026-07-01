@@ -3000,7 +3000,7 @@
 	          <div style="flex: 1; min-width: 260px;">
 	            <p style="font-weight:500; margin: 0 0 12px 0;">Studio Links</p>
 	            <div class="links" style="display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-start;">
-	              <a href="mailto:getavcollab@gmail.com">Email</a>
+	              <a href="#connect">Enquiry</a>
 	              <a href="https://www.instagram.com/artifstudio.co/" target="_blank" rel="noopener">Instagram</a>
 	              <a href="https://www.linkedin.com/in/adhnan-nv-5aa4011b5/" target="_blank" rel="noopener">LinkedIn</a>
 	              <a href="https://www.behance.net/" target="_blank" rel="noopener">Behance</a>
@@ -3043,17 +3043,10 @@
   </button>
 		  <script>
 		    (function initFirebaseWhenIdle() {
-		      const firebaseConfig = {
-		        apiKey: "AIzaSyChrcjNZdMZ1QehOSDsyWO2jeArnZ1AgCk",
-		        authDomain: "adnnstudio-ffdc7.firebaseapp.com",
-		        projectId: "adnnstudio-ffdc7",
-		        storageBucket: "adnnstudio-ffdc7.firebasestorage.app",
-		        messagingSenderId: "525462599967",
-		        appId: "1:525462599967:web:51bfcb3cf5f1af629ad82a",
-		        measurementId: "G-D6HWQB9V0M"
-		      };
+		      const firebaseConfig = window.ADNN_FIREBASE_CONFIG || null;
 
 		      const startAnalytics = () => {
+		        if (!firebaseConfig) return;
 		        Promise.all([
 		          import("https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js"),
 		          import("https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js")
@@ -3072,9 +3065,9 @@
 		    })();
 		  </script>
 
-		  <script src="auth-config.js"></script>
-		  <script src="account-data-config.js"></script>
-		  <script src="enquiry-config.js"></script>
+		  <script src="/api/auth-config.js"></script>
+		  <script src="/api/account-data-config.js"></script>
+		  <script src="/api/enquiry-config.js"></script>
 		  <script>
 	    (function() {
 	      const backToTopBtn = document.getElementById("backToTopBtn");
@@ -3794,7 +3787,7 @@
     const dashboardLink = document.getElementById("universalDashboardLink");
     const chatLink = document.getElementById("adnnChatTrigger");
     const settingsLink = document.getElementById("universalSettingsLink");
-    const isAdmin = !isDesigner && String(activeUser?.email || "").trim().toLowerCase() === "getavcollab@gmail.com";
+    const isAdmin = !isDesigner && Boolean(window.ADNN_IS_ADMIN_EMAIL?.(activeUser?.email));
     const dashboardHref = isAdmin ? "admin.html#dashboard_view" : isDesigner ? "designer-account.html" : "account.html";
     const chatHref = isAdmin ? "admin.html#chats_view" : isDesigner ? "designer-account.html#chat" : "account.html#chat";
     const settingsHref = isAdmin ? "admin.html#settings_view" : isDesigner ? "designer-account.html#settings" : "account.html#settings";
@@ -3893,13 +3886,13 @@
       name: profile.name,
       email: profile.email,
       picture: profile.picture,
-      role: profile.email.trim().toLowerCase() === "getavcollab@gmail.com" ? "admin" : "client",
+      role: window.ADNN_IS_ADMIN_EMAIL?.(profile.email) ? "admin" : "client",
     }));
     recordGoogleSignIn(accessToken, profile);
     
     renderGoogleUser();
     
-    if (profile.email.trim().toLowerCase() === "getavcollab@gmail.com") {
+    if (window.ADNN_IS_ADMIN_EMAIL?.(profile.email)) {
       location.href = "admin.html";
     } else {
       location.href = "#home";
@@ -3931,7 +3924,7 @@
   }
 
   let accountSyncTimer = null;
-  const ADNN_ACCOUNT_ENDPOINT_FALLBACK = "https://script.google.com/macros/s/AKfycbyNYpnnZNDHrvY1E2FgJ8jwcqjt0OkfFlYcHlLPhP3birFb3OBDbIGtgS1M6khnmfljLw/exec";
+  const ADNN_ACCOUNT_ENDPOINT_FALLBACK = "";
 
   function getGoogleAccessToken() {
     try { return sessionStorage.getItem("adnnGoogleAccessToken") || ""; } catch { return ""; }
@@ -5214,9 +5207,9 @@
   targets.forEach((node) => observer.observe(node));
 })();
 </script>
-<script src="firebase-config.js"></script>
-<script type="module" src="firebase-account.js"></script>
-<script type="module" src="firebase-chat.js?v=20260612-sidebar-settings-pin-fix"></script>
+<script src="/api/firebase-config.js"></script>
+<script type="module" src="firebase-account.js?v=20260630-mobile-admin-cleanup"></script>
+<script type="module" src="firebase-chat.js?v=20260630-chat-mobile-reactions-swipe"></script>
 
 <script id="adnnFinalRoundGuards">
 (function(){

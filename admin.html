@@ -1082,16 +1082,8 @@
       <p class="kicker">Security Gateway</p>
       <h2>Admin Access</h2>
       <form id="localGateForm">
-        <div class="lock-group">
-          <input type="text" id="gateUser" placeholder="Admin ID" required autocomplete="username">
-          <div class="password-wrap">
-            <input type="password" id="gatePass" placeholder="Password" required autocomplete="current-password">
-            <button type="button" class="password-toggle" id="gatePasswordToggle" aria-label="Show password" title="Show password">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6|M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.8"/></svg>
-            </button>
-          </div>
-        </div>
-        <button type="submit">Unlock Workspace</button>
+        <p class="lead">Only the approved Google admin account can unlock this workspace.</p>
+        <button type="submit">Verify Admin Account</button>
         <p class="gate-error" id="gateError"></p>
       </form>
     </div>
@@ -1299,7 +1291,7 @@
           <label>Designer Display Name <input id="newDesignerName" type="text" placeholder="Alex Carter" required></label>
           <label>Designer ID <input id="newDesignerId" type="text" placeholder="D0002" required></label>
           <label>Designer email <input id="newDesignerAuthEmail" type="email" placeholder="d0002@adnnstudio.design" required></label>
-          <label>Temporary Password <input id="newDesignerPassword" type="text" placeholder="ADNNdesigner02" required></label>
+          <label>Temporary Password <input id="newDesignerPassword" type="text" placeholder="Temporary password" required></label>
           <div class="actions" style="margin-top:4px;"><button type="submit">Generate Setup</button></div>
         </form>
         <div id="designerSetupOutput" style="display:none; margin-top:22px; border:1px solid var(--line); border-radius:22px; padding:18px; background:rgba(255,255,255,.04);">
@@ -2179,6 +2171,7 @@
       activateTabPanel(location.hash.replace("#", "") || defaultActiveTab);
 
       passwordToggle?.addEventListener("click", function() {
+        if (!gatePass) return;
         const isVisible = gatePass.type === "text";
         gatePass.type = isVisible ? "password" : "text";
         passwordToggle.setAttribute("aria-label", isVisible ? "Show password" : "Hide password");
@@ -2195,21 +2188,13 @@
 
       localGateForm?.addEventListener("submit", function(e) {
         e.preventDefault();
-        const user = String(gateUser?.value || "").trim().toLowerCase();
-        const pass = String(gatePass?.value || "");
-
         if (!hasAdminSession()) {
-          if (errorMsg) errorMsg.textContent = "Admin Access Needed";
+          if (errorMsg) errorMsg.textContent = "Sign in with the approved Google admin account first.";
           return;
         }
-
-        if (user === "adhnannv" && pass === "adhnan#77.as") {
-          sessionStorage.setItem(storageSessionKey, "true");
-          document.body.classList.add("portal-unlocked");
-          if (errorMsg) errorMsg.textContent = "";
-        } else {
-          if (errorMsg) errorMsg.textContent = "Invalid administrator credentials.";
-        }
+        sessionStorage.setItem(storageSessionKey, "true");
+        document.body.classList.add("portal-unlocked");
+        if (errorMsg) errorMsg.textContent = "";
       });
 
       function executeLogoutAction() {
@@ -2226,7 +2211,7 @@
       function hasAdminSession() {
         try {
           const user = JSON.parse(localStorage.getItem("adhnanPortfolioUser") || "null");
-          return String(user?.email || "").trim().toLowerCase() === "getavcollab@gmail.com";
+          return Boolean(window.ADNN_IS_ADMIN_EMAIL?.(user?.email));
         } catch {
           return false;
         }
@@ -2485,8 +2470,9 @@
     })();
   </script>
 
-  <script src="firebase-config.js"></script>
-  <script src="account-data-config.js"></script>
+  <script src="/api/auth-config.js"></script>
+  <script src="/api/firebase-config.js"></script>
+  <script src="/api/account-data-config.js"></script>
   <script type="module">
     import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
@@ -2613,7 +2599,7 @@
           return;
         }
         currentUser = user;
-        if (emailKey(user.email) !== "getavcollab@gmail.com") {
+        if (!window.ADNN_IS_ADMIN_EMAIL?.(user.email)) {
           isAdmin = false;
           lockPortal("This Google account is not allowed to open the admin portal.");
           return;
@@ -3201,7 +3187,7 @@
       }
     });
   </script>
-  <script type="module" src="firebase-chat.js?v=20260630-mobile-admin-cleanup"></script>
+  <script type="module" src="firebase-chat.js?v=20260630-chat-mobile-reactions-swipe"></script>
 
 <script id="adnn-settings-upgrade-js">
 (function setupAdnnSettingsUpgrade(){

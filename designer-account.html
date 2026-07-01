@@ -1833,11 +1833,11 @@
     </main>
   </div>
 
-  <script src="firebase-config.js"></script>
-  <script src="designer-users.js"></script>
+  <script src="/api/firebase-config.js"></script>
+  <script src="/api/designer-users.js"></script>
   <script type="module" src="firebase-designer-auth.js"></script>
   <script type="module" src="firebase-designer-items.js"></script>
-  <script type="module" src="firebase-chat.js?v=20260630-mobile-admin-cleanup"></script>
+  <script type="module" src="firebase-chat.js?v=20260630-chat-mobile-reactions-swipe"></script>
   <script>
     const userKey = "adnnDesignerUser";
     const themeStorageKey = "adnn_designer_light_mode";
@@ -1956,21 +1956,7 @@
         }
       }
 
-      if (String(designer.password || "") !== password) {
-        if (error) error.textContent = "Designer ID or password is incorrect.";
-        return;
-      }
-      
-      localStorage.setItem(userKey, JSON.stringify({
-        name: designer.name || `Designer ${designer.designerid}`,
-        email: designer.email || `designer${designer.designerid}@adnnstudio.com`,
-        role: "designer",
-        designerid: designer.designerid
-      }));
-      
-      if (error) error.textContent = "";
-      hydrateUser();
-      setView(location.hash.replace("#", "") || "tasks");
+      if (error) error.textContent = "Designer Firebase account is not configured.";
     }
 
     function setupNotes(storageKey, inputId, buttonId, listId) {

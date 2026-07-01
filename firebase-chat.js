@@ -138,7 +138,22 @@ const COLLECTIONS = Object.freeze({
 });
 const CHAT_UID_ARRAY_FIELDS = ["participantUids", "memberUids", "visibleToUids", "allowedUids", "designerUids", "assignedDesignerUids"];
 const CHAT_EMAIL_ARRAY_FIELDS = ["participantEmailKeys", "participantEmails", "memberEmails", "visibleToEmails", "allowedEmails", "designerEmails", "assignedDesignerEmails"];
-const REACTION_SET = ["\u{1F44D}", "\u{2764}\u{FE0F}", "\u{1F602}", "\u{1F62E}", "\u{1F622}", "\u{1F64F}", "\u{1F525}", "\u{1F389}", "\u{2705}", "\u{1F4AF}", "\u{1F440}", "\u{1F680}"];
+const REACTION_SET = [
+  "\u{1F44D}", "\u{2764}\u{FE0F}", "\u{1F602}", "\u{1F62E}", "\u{1F622}", "\u{1F64F}",
+  "\u{1F525}", "\u{1F389}", "\u{2705}", "\u{1F4AF}", "\u{1F440}", "\u{1F680}",
+  "\u{1F600}", "\u{1F603}", "\u{1F604}", "\u{1F601}", "\u{1F606}", "\u{1F605}",
+  "\u{1F923}", "\u{1F642}", "\u{1F643}", "\u{1FAE0}", "\u{1F609}", "\u{1F60A}",
+  "\u{1F607}", "\u{1F970}", "\u{1F60D}", "\u{1F929}", "\u{1F618}", "\u{1F617}",
+  "\u{263A}\u{FE0F}", "\u{1F60C}", "\u{1F61C}", "\u{1F914}", "\u{1FAE1}", "\u{1F910}",
+  "\u{1F928}", "\u{1F610}", "\u{1F611}", "\u{1F636}", "\u{1F60F}", "\u{1F612}",
+  "\u{1F644}", "\u{1F62C}", "\u{1F62E}\u{200D}\u{1F4A8}", "\u{1F925}", "\u{1F60A}",
+  "\u{1F634}", "\u{1F637}", "\u{1F912}", "\u{1F915}", "\u{1F922}", "\u{1F92E}",
+  "\u{1F975}", "\u{1F976}", "\u{1F974}", "\u{1F635}", "\u{1F92F}", "\u{1F920}",
+  "\u{1F973}", "\u{1F60E}", "\u{1F97A}", "\u{1F62D}", "\u{1F631}", "\u{1F621}",
+  "\u{1F44F}", "\u{1F64C}", "\u{1F91D}", "\u{1F44A}", "\u{1F91F}", "\u{1F48E}",
+  "\u{1F4AA}", "\u{1F4AB}", "\u{2B50}", "\u{2728}", "\u{26A1}", "\u{1F3C6}",
+  "\u{1F381}", "\u{1F4A1}", "\u{1F4CC}", "\u{1F4DD}", "\u{1F4E6}", "\u{1F4E2}"
+];
 const QUICK_REACTION_SET = REACTION_SET.slice(0, 6);
 
 let app = null;
@@ -723,8 +738,22 @@ function isChatVisibleForCurrentUser(chat) {
     if (adminOnly) return false;
     return chatBelongsToCurrentUser(chat);
   }
+  if (chatHasAdminParticipant(chat)) return false;
   if (chat.type === "designer-room") return activeProfile?.role === "designer";
   return chatBelongsToCurrentUser(chat);
+}
+
+function chatHasAdminParticipant(chat) {
+  const uids = CHAT_UID_ARRAY_FIELDS.flatMap((field) => Array.isArray(chat?.[field]) ? chat[field].map(String) : []);
+  const emails = CHAT_EMAIL_ARRAY_FIELDS.flatMap((field) => Array.isArray(chat?.[field]) ? chat[field].map(emailKey) : []);
+  const maps = [chat?.participantEmailMap, chat?.participants, chat?.members, chat?.visibleTo, chat?.allowedUsers];
+  const mappedEmails = maps.flatMap((map) => Object.entries(map || {}).flatMap(([key, value]) => {
+    const values = [key];
+    if (typeof value === "string") values.push(value);
+    if (value && typeof value === "object") values.push(value.uid, value.id, value.email, value.authEmail, value.displayEmail);
+    return values.map(emailKey);
+  }));
+  return uids.includes(ADMIN_ALIAS_UID) || emails.includes(ADMIN_EMAIL) || mappedEmails.includes(ADMIN_EMAIL) || mappedEmails.includes(emailKey(ADMIN_ALIAS_UID));
 }
 
 function chatBelongsToCurrentUser(chat) {
@@ -807,6 +836,59 @@ async function deleteChatForMe(state) {
     .catch((error) => showToast(readableFirebaseError(error), 'bad'));
 }
 
+async function deleteChatForMeById(chatId, roomId = "") {
+  if (!chatId || String(chatId).startsWith("passive_")) return;
+  const ok = await confirmDanger("Delete chat?", "This removes this conversation from your chat list. The other user keeps their copy.", "Delete chat");
+  if (!ok) return;
+  await withRetry(() => updateDoc(doc(db, COLLECTIONS.chats, chatId), {
+    deletedFor: arrayUnion(...Array.from(selfUidSet())),
+    updatedAt: serverTimestamp(),
+    updatedAtMs: Date.now()
+  }), { label: "delete chat" })
+    .then(() => {
+      showToast("Chat deleted.", "ok");
+      closeRoomOnMobile(roomId);
+      document.querySelectorAll(`.adnn-thread[data-chat-id="${cssAttr(chatId)}"]`).forEach((row) => row.remove());
+    })
+    .catch((error) => showToast(readableFirebaseError(error), "bad"));
+}
+
+function bindThreadSwipeActions(row) {
+  if (!row || row.dataset.swipeReady === "true") return;
+  row.dataset.swipeReady = "true";
+  let startX = 0;
+  let startY = 0;
+  let moved = false;
+  let holdTimer = null;
+  const clearHold = () => {
+    if (holdTimer) clearTimeout(holdTimer);
+    holdTimer = null;
+  };
+  row.addEventListener("pointerdown", (event) => {
+    if (event.target.closest("button,a,input,textarea")) return;
+    startX = event.clientX;
+    startY = event.clientY;
+    moved = false;
+    clearHold();
+    holdTimer = setTimeout(() => row.classList.add("is-swiped"), 520);
+  }, { passive: true });
+  row.addEventListener("pointermove", (event) => {
+    const dx = event.clientX - startX;
+    const dy = event.clientY - startY;
+    if (Math.abs(dx) > 8 || Math.abs(dy) > 8) {
+      moved = true;
+      clearHold();
+    }
+    if (Math.abs(dx) > 42 && Math.abs(dx) > Math.abs(dy) * 1.4) {
+      row.classList.toggle("is-swiped", dx < 0);
+    }
+  }, { passive: true });
+  ["pointerup", "pointercancel", "pointerleave"].forEach((type) => row.addEventListener(type, () => {
+    clearHold();
+    if (!moved) return;
+  }, { passive: true }));
+}
+
 function renderThreadList(chats, list, roomId, scope) {
   list.innerHTML = "";
   updateChatNavigationBadges(chats, scope);
@@ -832,8 +914,9 @@ function renderThreadList(chats, list, roomId, scope) {
     const title = getChatTitle(chat, scope);
     const unread = getUnreadCount(chat, scope);
     const pinned = pinnedChats.has(chat.id);
-    const row = document.createElement("button");
-    row.type = "button";
+    const row = document.createElement("div");
+    row.setAttribute("role", "button");
+    row.tabIndex = 0;
     row.className = `adnn-thread ${pinned ? "is-pinned" : ""}`;
     row.dataset.chatId = chat.id;
     row.dataset.filterText = `${title} ${chat.clientEmail || ""} ${chat.lastMessage || ""}`.toLowerCase();
@@ -842,15 +925,21 @@ function renderThreadList(chats, list, roomId, scope) {
     const preview = normalizeLastMessage(chat);
     const stamp = formatCompactDate(chat.updatedAt || chat.createdAt || chat.updatedAtMs);
     row.innerHTML = `
-      ${avatarMarkup(title, getChatPhoto(chat, scope), presenceDot)}
-      <span class="adnn-thread-copy">
-        <strong>${escapeHtml(title)}</strong>
-        <small>${escapeHtml(preview)}</small>
+      <span class="adnn-thread-content">
+        ${avatarMarkup(title, getChatPhoto(chat, scope), presenceDot)}
+        <span class="adnn-thread-copy">
+          <strong>${escapeHtml(title)}</strong>
+          <small>${escapeHtml(preview)}</small>
+        </span>
+        <span class="adnn-thread-side">
+          ${pinned ? `<i class="adnn-pin-state" aria-label="Pinned">${ICON.pinFilled}</i>` : ""}
+          <time>${escapeHtml(stamp)}</time>
+          ${unread > 0 ? `<b>${unread > 99 ? "99+" : unread}</b>` : ""}
+        </span>
       </span>
-      <span class="adnn-thread-side">
-        <button type="button" class="adnn-pin-chat" data-pin-chat="${escapeAttr(chat.id)}" title="${pinned ? "Unpin chat" : "Pin chat"}" aria-label="${pinned ? "Unpin chat" : "Pin chat"}">${pinned ? ICON.pinFilled : ICON.pin}</button>
-        <time>${escapeHtml(stamp)}</time>
-        ${unread > 0 ? `<b>${unread > 99 ? "99+" : unread}</b>` : ""}
+      <span class="adnn-thread-swipe-actions" aria-hidden="true">
+        <button type="button" class="adnn-thread-action-pin" data-pin-chat="${escapeAttr(chat.id)}">${pinned ? "Unpin" : "Pin"}</button>
+        <button type="button" class="adnn-thread-action-delete" data-delete-chat="${escapeAttr(chat.id)}">Delete</button>
       </span>
     `;
     hydrateThreadAvatar(row, chat, scope, title);
@@ -860,12 +949,27 @@ function renderThreadList(chats, list, roomId, scope) {
       togglePinnedChat(chat.id);
       renderThreadList(chats, list, roomId, scope);
     });
+    row.querySelector("[data-delete-chat]")?.addEventListener("click", async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      await deleteChatForMeById(chat.id, roomId);
+    });
+    bindThreadSwipeActions(row);
     row.addEventListener("click", () => {
+      if (row.classList.contains("is-swiped")) {
+        row.classList.remove("is-swiped");
+        return;
+      }
       list.querySelectorAll(".adnn-thread").forEach((item) => item.classList.remove("is-active"));
       row.classList.add("is-active");
       openRoom(chat.id, chat, roomId);
       row.closest(".adnn-chat-layout")?.classList.add("is-room-open");
       document.body.classList.toggle("adnn-chat-mobile-lock", window.matchMedia("(max-width: 760px)").matches);
+    });
+    row.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      row.click();
     });
 
     if (currentState?.chatId === chat.id) {
@@ -1605,7 +1709,7 @@ function openReactionSheet(anchor, state, message, expanded = false) {
   if (!anchor || !state || !message) return;
   closeFloatingReactionSheet();
   const sheet = document.createElement("div");
-  sheet.className = "adnn-floating-reaction-sheet";
+  sheet.className = `adnn-floating-reaction-sheet${expanded ? " is-expanded" : ""}`;
   sheet.dataset.floatingReaction = "1";
   const emojis = expanded ? REACTION_SET : QUICK_REACTION_SET;
   sheet.innerHTML = `
@@ -1620,11 +1724,22 @@ function openReactionSheet(anchor, state, message, expanded = false) {
   sheet.style.maxWidth = `${Math.max(220, viewportW - gap * 2)}px`;
 
   if (viewportW <= 760) {
-    sheet.style.left = `${gap}px`;
-    sheet.style.right = `${gap}px`;
-    sheet.style.bottom = `calc(${gap}px + env(safe-area-inset-bottom))`;
-    sheet.style.top = "auto";
-    sheet.style.justifyContent = "center";
+    const message = anchor.closest(".adnn-message") || anchor.closest(".adnn-message-row") || anchor;
+    const rect = message.getBoundingClientRect();
+    const sheetRect = sheet.getBoundingClientRect();
+    const height = Math.min(sheetRect.height || (expanded ? 210 : 54), viewportH - gap * 2);
+    const width = Math.min(sheetRect.width || viewportW - gap * 2, viewportW - gap * 2);
+    const preferredLeft = rect.left + rect.width / 2 - width / 2;
+    const left = clamp(preferredLeft, gap, viewportW - width - gap);
+    const above = rect.top - height - 10;
+    const below = rect.bottom + 10;
+    const top = above > gap ? above : clamp(below, gap, viewportH - height - gap);
+    sheet.style.left = `${left}px`;
+    sheet.style.right = "auto";
+    sheet.style.top = `${top}px`;
+    sheet.style.bottom = "auto";
+    sheet.style.width = expanded ? `${width}px` : "auto";
+    sheet.style.justifyContent = expanded ? "flex-start" : "center";
   } else {
     const rect = anchor.getBoundingClientRect();
     const sheetRect = sheet.getBoundingClientRect();
@@ -2432,8 +2547,16 @@ async function startCall(kind, chatId, chatData) {
     watchActiveCall(callId);
   } catch (error) {
     endCall(false);
-    showToast("Camera or microphone permission is needed.", "bad");
+    showToast(isMediaPermissionError(error) ? "Allow microphone and camera access in your browser, then try again." : "Call could not connect. Please try again.", "bad");
+    console.warn("AdnnStudio call start failed", error);
   }
+}
+
+function isMediaPermissionError(error) {
+  const name = String(error?.name || "");
+  const code = String(error?.code || "");
+  const message = String(error?.message || "");
+  return /NotAllowedError|PermissionDeniedError|SecurityError|NotFoundError|NotReadableError|OverconstrainedError/i.test(`${name} ${code} ${message}`);
 }
 
 function showIncomingCall(callId, call) {
@@ -2529,7 +2652,8 @@ async function acceptCall(callId, call) {
     await setDoc(doc(db, COLLECTIONS.callInbox, ownCallUid()), { status: "accepted", callId, updatedAt: serverTimestamp() }, { merge: true });
     watchActiveCall(callId);
   } catch (error) {
-    showToast("Could not answer the call.", "bad");
+    showToast(isMediaPermissionError(error) ? "Allow microphone and camera access in your browser, then answer again." : "Could not answer the call.", "bad");
+    console.warn("AdnnStudio call answer failed", error);
     updateDoc(doc(db, COLLECTIONS.calls, callId), { status: "ended", endedReason: "answer_failed", updatedAt: serverTimestamp(), updatedAtMs: Date.now() }).catch(() => {});
   }
 }
@@ -3121,11 +3245,11 @@ async function isDisplayNameAvailable(name) {
   const collections = ["clients", "designers"];
   for (const collectionName of collections) {
     const snap = await getDocs(collection(db, collectionName)).catch(() => null);
-    if (!snap) continue;
+    if (!snap) return false;
     const duplicate = snap.docs.some((item) => {
       if (item.id === activeUser?.uid) return false;
       const data = item.data() || {};
-      const other = normalizeNameKey(data.name || data.displayName || data.designerName || data.clientName);
+      const other = normalizeNameKey(data.nameKey || data.name || data.displayName || data.designerName || data.clientName);
       return other && other === key;
     });
     if (duplicate) return false;
@@ -3142,9 +3266,7 @@ async function syncChatParticipantName(name) {
   snap.docs.forEach((item) => {
     const data = item.data() || {};
     batch.set(item.ref, {
-      participantNames: { ...(data.participantNames || {}), [self]: name },
-      updatedAt: serverTimestamp(),
-      updatedAtMs: Date.now()
+      participantNames: { ...(data.participantNames || {}), [self]: name }
     }, { merge: true });
   });
   await batch.commit().catch(() => {});
@@ -3505,14 +3627,6 @@ function bindGlobalDismissers() {
     if (!event.target.closest("[data-emoji-trigger], [data-emoji-panel]")) document.querySelectorAll("[data-emoji-panel]").forEach((panel) => { panel.hidden = true; });
     if (!event.target.closest(".adnn-message")) closeMessageMenus();
   });
-  document.addEventListener("click", (event) => {
-    const logout = event.target.closest(".logout, .sidebar-logout-item, .account-logout, #headerLogoutButton, #sidebarLogoutButton, #sidebarLogoutActionBtn");
-    if (!logout) return;
-    if (!window.confirm("Log out of this ADNN account?")) {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-    }
-  }, true);
   const escapeCloser = (event) => {
     if (event.key !== "Escape") return;
     closeFloatingReactionSheet();
@@ -4460,8 +4574,15 @@ function injectChatStyles() {
     .adnn-chat-search svg { width:16px; height:16px; flex:0 0 auto; }
     .adnn-chat-search input { flex:1; min-width:0; border:0; outline:0; color:#fff; background:transparent; font:inherit; font-size:13px; }
     .adnn-chat-thread-list { min-height:0; overflow:auto; padding:10px; scrollbar-width:thin; }
-    .adnn-thread { width:100%; min-width:0; border:0; border-radius:18px; padding:12px; display:grid; grid-template-columns:46px minmax(0,1fr) auto; align-items:center; gap:12px; background:transparent; color:#fff; text-align:left; cursor:pointer; transition:.2s ease; }
+    .adnn-thread { width:100%; min-width:0; border:0; border-radius:18px; padding:0; display:block; position:relative; overflow:hidden; background:transparent; color:#fff; text-align:left; cursor:pointer; transition:.2s ease; touch-action:pan-y; }
+    .adnn-thread-content { position:relative; z-index:2; min-height:68px; padding:12px; display:grid; grid-template-columns:46px minmax(0,1fr) auto; align-items:center; gap:12px; border-radius:18px; background:transparent; transition:transform .24s cubic-bezier(.16,1,.3,1), background .2s ease; }
     .adnn-thread:hover, .adnn-thread.is-active { background:rgba(39,45,207,.18); }
+    .adnn-thread:hover .adnn-thread-content, .adnn-thread.is-active .adnn-thread-content { background:rgba(39,45,207,.18); }
+    .adnn-thread.is-swiped .adnn-thread-content { transform:translateX(-132px); }
+    .adnn-thread-swipe-actions { position:absolute; z-index:1; inset:8px 6px 8px auto; display:flex; gap:7px; align-items:center; justify-content:flex-end; }
+    .adnn-thread-swipe-actions button { min-width:58px; height:44px; border:0; border-radius:15px; color:#fff; font-size:12px; cursor:pointer; }
+    .adnn-thread-action-pin { background:rgba(39,45,207,.92); }
+    .adnn-thread-action-delete { background:rgba(255,38,2,.92); }
     .adnn-thread-copy { min-width:0; display:grid; gap:4px; }
     .adnn-thread-copy strong, .adnn-thread-copy small { overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
     .adnn-thread-copy strong { font-size:14px; font-weight:550; }
@@ -4469,6 +4590,8 @@ function injectChatStyles() {
     .adnn-thread-side { display:grid; gap:6px; justify-items:end; align-items:center; }
     .adnn-thread-side time { color:rgba(255,255,255,.38); font-size:10px; }
     .adnn-thread-side b { min-width:19px; height:19px; padding:0 5px; border-radius:999px; display:grid; place-items:center; background:var(--adnn-danger); color:#fff; font-size:10px; }
+    .adnn-pin-state { width:17px; height:17px; color:#8d96ff; display:grid; place-items:center; }
+    .adnn-pin-state svg { width:15px; height:15px; }
     .adnn-avatar { width:44px; height:44px; border-radius:16px; display:grid; place-items:center; background:linear-gradient(145deg,var(--adnn-primary),var(--adnn-primary2)); color:#fff; font-size:12px; font-weight:700; flex:0 0 auto; box-shadow:inset 0 1px 0 rgba(255,255,255,.18); position:relative; overflow:hidden; }
     .adnn-avatar img { width:100%; height:100%; object-fit:cover; display:block; border-radius:inherit; }
     .adnn-avatar.is-pending:after { content:""; position:absolute; right:-1px; bottom:-1px; width:12px; height:12px; border:2px solid #0b0b10; border-radius:50%; background:#f1c40f; }
@@ -4500,6 +4623,7 @@ function injectChatStyles() {
     .adnn-message-row.is-mine { justify-content:flex-end; }
     .adnn-message-row.is-peer { justify-content:flex-start; }
     .adnn-message { max-width:min(70%, 600px); position:relative; padding:10px 12px 8px; border-radius:18px; color:#fff; background:rgba(255,255,255,.075); border:1px solid rgba(255,255,255,.06); box-shadow:0 12px 28px rgba(0,0,0,.16); outline:0; }
+    .adnn-message:has(.adnn-reactions) { margin-bottom:13px; }
     .adnn-message.is-reply-jump { animation:adnnReplyJump 1.25s ease; }
     @keyframes adnnReplyJump { 0%,100%{ box-shadow:0 12px 28px rgba(0,0,0,.16); } 35%{ box-shadow:0 0 0 3px rgba(141,150,255,.42), 0 16px 45px rgba(39,45,207,.28); } }
     .adnn-message.is-search-hit { box-shadow:0 0 0 2px rgba(255,255,255,.28), 0 12px 28px rgba(0,0,0,.2); }
@@ -4529,7 +4653,9 @@ function injectChatStyles() {
     .adnn-message-actions .is-warn { color:#ffc66d; }
     .adnn-message-action-trigger { display:none; }
     .adnn-reaction-palette { display:none !important; }
-    .adnn-floating-reaction-sheet { position:fixed; z-index:2147483620; display:flex; gap:5px; max-width:calc(100vw - 16px); overflow-x:auto; padding:7px; border-radius:999px; background:rgba(8,8,12,.98); border:1px solid rgba(255,255,255,.14); box-shadow:0 18px 50px rgba(0,0,0,.42); backdrop-filter:blur(18px); }
+    .adnn-floating-reaction-sheet { position:fixed; z-index:2147483620; display:flex; gap:5px; max-width:calc(100vw - 16px); overflow-x:auto; padding:7px; border-radius:999px; background:rgba(8,8,12,.98); border:1px solid rgba(255,255,255,.14); box-shadow:0 18px 50px rgba(0,0,0,.42); backdrop-filter:blur(18px); animation:adnnReactionPop .22s cubic-bezier(.16,1,.3,1); transform-origin:center bottom; }
+    @keyframes adnnReactionPop { from { opacity:0; transform:translateY(8px) scale(.88); } to { opacity:1; transform:translateY(0) scale(1); } }
+    .adnn-floating-reaction-sheet.is-expanded { display:grid; grid-template-columns:repeat(auto-fill, minmax(36px, 1fr)); max-height:min(42svh, 260px); overflow:auto; border-radius:24px; align-content:start; }
     .adnn-floating-reaction-sheet button { width:36px; height:36px; border:0; border-radius:50%; background:rgba(255,255,255,.08); font-size:19px; cursor:pointer; flex:0 0 auto; }
     .adnn-reactions { position:absolute; right:10px; bottom:-15px; border:1px solid rgba(255,255,255,.1); border-radius:999px; background:#09090c; color:#fff; padding:2px 7px; font-size:12px; cursor:pointer; display:flex; gap:4px; align-items:center; }
     .adnn-reactions small { font-size:9px; opacity:.7; }
@@ -4705,7 +4831,7 @@ function injectChatStyles() {
     :root.adnn-chat-light .adnn-message-actions button, :root.adnn-chat-light .adnn-floating-reaction-sheet button, :root.adnn-chat-light .adnn-emoji-panel button { background:rgba(7,10,25,.055); color:#11131b; }
     :root.adnn-chat-light .adnn-room-shell { box-shadow:none !important; }
     :root.adnn-chat-light .adnn-thread.is-pinned { background:rgba(39,45,207,.09); }
-    :root.adnn-chat-light .adnn-thread.is-pinned .adnn-pin-chat { box-shadow:none; }
+    :root.adnn-chat-light .adnn-thread-swipe-actions button { box-shadow:none; }
     :root.adnn-chat-light .adnn-inapp-card { background:linear-gradient(145deg, rgba(255,255,255,.98), rgba(238,240,250,.98)); color:#11131b; border-color:rgba(7,10,25,.1); box-shadow:0 24px 80px rgba(14,18,48,.16); }
     :root.adnn-chat-light .adnn-inapp-card small { color:rgba(18,19,26,.56); }
     :root.adnn-reduce-motion .adnn-chat-app *, :root.adnn-reduce-motion .adnn-call-popout, :root.adnn-reduce-motion .adnn-inapp-card { transition:none !important; animation:none !important; scroll-behavior:auto !important; transform:none !important; filter:none !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important; }
@@ -4716,14 +4842,14 @@ function injectChatStyles() {
     .side-nav a.is-dragging, .side-nav button.is-dragging, .sidebar-link-item.is-dragging { opacity:.45; transform:scale(.98); }
     .side-nav a::before, .side-nav button::before, .sidebar-link-item::before { content:""; position:absolute; left:5px; top:50%; width:4px; height:18px; border-radius:999px; opacity:0; transform:translateY(-50%); background:linear-gradient(#fff8,#fff2); transition:.18s ease; }
     .side-nav a.can-drag::before, .side-nav button.can-drag::before, .sidebar-link-item.can-drag::before { opacity:.62; }
-    .adnn-pin-chat { width:22px; height:22px; border:0; border-radius:999px; display:grid; place-items:center; color:rgba(255,255,255,.42); background:rgba(255,255,255,.05); font-size:10px; cursor:pointer; }
-    .adnn-thread.is-pinned .adnn-pin-chat { color:#fff; background:rgba(39,45,207,.72); box-shadow:0 0 18px rgba(39,45,207,.34); }
     .adnn-thread.is-pinned { background:linear-gradient(135deg, rgba(39,45,207,.18), rgba(255,255,255,.035)); }
     .settings-grid { display:grid !important; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:12px !important; align-items:stretch; }
     .settings-card.adnn-setting-card, .settings-card.adnn-os-card { min-height:68px !important; border-radius:20px !important; padding:14px 16px !important; border:1px solid rgba(255,255,255,.1) !important; background:linear-gradient(145deg, rgba(255,255,255,.075), rgba(255,255,255,.025)) !important; box-shadow:0 16px 45px rgba(0,0,0,.14), inset 0 1px 0 rgba(255,255,255,.1) !important; display:grid !important; grid-template-columns:minmax(0,1fr) auto !important; gap:12px !important; align-items:center !important; transition:transform .18s ease, border-color .18s ease, background .18s ease !important; }
     .settings-card.adnn-setting-card:hover, .settings-card.adnn-os-card:hover { transform:translateY(-2px); border-color:rgba(39,45,207,.34) !important; background:linear-gradient(145deg, rgba(39,45,207,.13), rgba(255,255,255,.035)) !important; }
+    .settings-card.adnn-setting-card > div, .settings-card.adnn-os-card > div { min-width:0 !important; display:grid !important; gap:5px !important; }
     .settings-card.adnn-setting-card strong, .settings-card.adnn-os-card strong { margin:0 0 2px !important; font-size:13px !important; line-height:1.2 !important; letter-spacing:0 !important; font-weight:560 !important; }
-    .settings-card.adnn-setting-card span, .settings-card.adnn-os-card span { font-size:11px !important; line-height:1.35 !important; opacity:.68; }
+    .settings-card.adnn-setting-card span:not(.adnn-switch), .settings-card.adnn-os-card span:not(.adnn-switch) { display:block !important; font-size:11px !important; line-height:1.35 !important; opacity:.68; max-width:34ch; }
+    .settings-card.adnn-setting-card .adnn-switch { justify-self:end !important; }
     .settings-card .settings-inline-btn, .settings-card .apple-home-btn { width:40px !important; height:40px !important; min-width:40px !important; border-radius:14px !important; }
     .adnn-client-status-btn { min-height:32px; border:1px solid rgba(255,255,255,.12); border-radius:999px; padding:0 12px; background:rgba(255,255,255,.07); color:#fff; font-size:11px; cursor:pointer; transition:.18s ease; }
     .adnn-client-status-btn:hover { background:rgba(39,45,207,.22); border-color:rgba(39,45,207,.38); }
@@ -4744,6 +4870,18 @@ function injectChatStyles() {
     @media (max-width:760px) {
       .adnn-chat-app { display:block !important; min-height:0 !important; }
       html, body { max-width:100vw !important; overflow-x:hidden !important; overscroll-behavior-x:none !important; touch-action:pan-y; }
+      body:not(.chat-view-active) > .shell > main > .view.active:not(#chat):not(#admin-support):not(#chats_view) { border:0 !important; border-radius:0 !important; background:transparent !important; box-shadow:none !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important; }
+      body:not(.chat-view-active) .admin-view-panel-container:not(#chats_view) > .panel.glass,
+      body:not(.chat-view-active) > .shell > main > .view.active:not(#chat):not(#admin-support):not(#chats_view) > .glass:first-child { border:0 !important; border-radius:0 !important; background:transparent !important; box-shadow:none !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important; padding-left:0 !important; padding-right:0 !important; }
+      .adnn-clock-weather-card { width:100% !important; max-width:360px !important; min-height:138px !important; grid-template-columns:64px minmax(0,1fr) !important; padding:12px !important; gap:10px !important; overflow:hidden !important; }
+      .adnn-weather-scene { width:64px !important; height:64px !important; border-radius:20px !important; grid-row:1 / 3 !important; }
+      .adnn-weather-scene .element-sun { width:32px !important; height:32px !important; left:16px !important; top:16px !important; }
+      .adnn-weather-scene .element-moon { width:31px !important; height:31px !important; left:17px !important; top:17px !important; }
+      .adnn-weather-scene .element-cloud { width:50px !important; height:20px !important; left:7px !important; bottom:13px !important; }
+      .adnn-weather-scene .element-cloud:before { width:27px !important; height:27px !important; top:-13px !important; }
+      .adnn-weather-scene .element-cloud:after { width:31px !important; height:31px !important; top:-17px !important; }
+      .adnn-clock-copy strong { font-size:clamp(28px, 9vw, 36px) !important; }
+      .adnn-weather-copy strong { font-size:18px !important; }
       .adnn-chat-app, .adnn-chat-app button, .adnn-chat-app label, .adnn-chat-app .adnn-thread, .adnn-chat-app .adnn-message-actions, .adnn-chat-app .adnn-floating-reaction-sheet { -webkit-tap-highlight-color:transparent; user-select:none; -webkit-user-select:none; }
       .adnn-chat-app input, .adnn-chat-app textarea, .adnn-chat-app [contenteditable="true"], .adnn-message p, .adnn-message-name { user-select:text; -webkit-user-select:text; }
       .adnn-chat-layout { grid-template-columns:1fr; height:100svh !important; min-height:0 !important; overflow:hidden !important; border-radius:0; border-left:0; border-right:0; }
@@ -4785,7 +4923,8 @@ function injectChatStyles() {
       .adnn-call-stage { grid-template-columns:1fr; aspect-ratio:9/12; }
       .adnn-call-card.is-audio .adnn-call-stage { aspect-ratio:1/1; }
       .adnn-call-popout { width:calc(100vw - 16px); max-height:calc(100svh - 16px); }
-      .adnn-floating-reaction-sheet { left:8px !important; right:8px !important; width:auto !important; max-width:calc(100vw - 16px) !important; justify-content:center; border-radius:22px; bottom:calc(8px + env(safe-area-inset-bottom)) !important; top:auto !important; }
+      .adnn-floating-reaction-sheet { max-width:calc(100vw - 16px) !important; justify-content:center; border-radius:22px; }
+      .adnn-floating-reaction-sheet.is-expanded { grid-template-columns:repeat(7, minmax(0, 1fr)); max-height:min(38svh, 248px); }
       .adnn-chat-app .adnn-room-shell { grid-template-rows:64px minmax(0,1fr) auto !important; --head:64px; --composer:74px; }
       .adnn-chat-app .adnn-room-shell > .adnn-room-head { padding:9px 8px !important; gap:7px !important; min-width:0 !important; overflow:visible !important; }
       .adnn-chat-app .adnn-room-shell > .adnn-room-head .adnn-room-title { min-width:0 !important; }

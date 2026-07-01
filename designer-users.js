@@ -1,24 +1,20 @@
-/*
-  Designer directory for the designer login screen.
-  Add more designers by copying the object format below, then create the
-  same authEmail + password in Firebase Authentication > Users.
-
-  Example:
-  {
-    designerid: "D0002",
-    authEmail: "d0002@adnnstudio.design",
-    name: "Designer 0002",
-    email: "designer0002@adnnstudio.com"
+function safeDesignerUsers() {
+  try {
+    const parsed = JSON.parse(process.env.ADNN_DESIGNER_USERS_JSON || "[]");
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map((item) => ({
+      designerid: String(item.designerid || item.designerId || "").trim(),
+      authEmail: String(item.authEmail || item.email || "").trim().toLowerCase(),
+      name: String(item.name || "").trim(),
+      email: String(item.email || item.authEmail || "").trim().toLowerCase()
+    })).filter((item) => item.designerid && item.authEmail);
+  } catch (_) {
+    return [];
   }
+}
 
-  Do not put real production passwords here. The password should be created in
-  Firebase Authentication, so the website file only stores the friendly ID map.
-*/
-window.ADNN_DESIGNER_USERS = [
-  {
-    designerid: "D0001",
-    authEmail: "d0001@adnnstudio.design",
-    name: "Adhnan NV",
-    email: "d0001@adnnstudio.design"
-  }
-];
+module.exports = function handler(req, res) {
+  res.setHeader("Content-Type", "application/javascript; charset=utf-8");
+  res.setHeader("Cache-Control", "no-store");
+  res.status(200).send(`window.ADNN_DESIGNER_USERS = ${JSON.stringify(safeDesignerUsers())};\n`);
+};

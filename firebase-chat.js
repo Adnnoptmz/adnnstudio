@@ -162,29 +162,29 @@ const REACTION_SET = [
 const QUICK_REACTION_SET = REACTION_SET.slice(0, 6);
 const EMOJI_PICKER_ITEMS = (() => {
   const items = [
-    ["ðŸ‘", "thumbs up like yes approve"], ["â¤ï¸", "heart love"], ["ðŸ˜‚", "laugh funny"], ["ðŸ˜®", "wow surprise"], ["ðŸ˜¢", "sad cry"], ["ðŸ™", "pray thanks please"],
-    ["ðŸ”¥", "fire hot"], ["ðŸŽ‰", "party celebrate"], ["âœ…", "done check"], ["ðŸ’¯", "hundred perfect"], ["ðŸ‘€", "eyes seen"], ["ðŸš€", "rocket launch"],
-    ["ðŸ˜€", "grin smile"], ["ðŸ˜ƒ", "smile happy"], ["ðŸ˜„", "happy joy"], ["ðŸ˜", "grin"], ["ðŸ˜†", "laugh"], ["ðŸ˜…", "sweat smile"], ["ðŸ¤£", "rolling laugh"],
-    ["ðŸ™‚", "slight smile"], ["ðŸ™ƒ", "upside down"], ["ðŸ˜‰", "wink"], ["ðŸ˜Š", "blush"], ["ðŸ˜‡", "angel"], ["ðŸ¥°", "love hearts"], ["ðŸ˜", "heart eyes"],
-    ["ðŸ¤©", "star eyes"], ["ðŸ˜˜", "kiss"], ["ðŸ˜—", "kiss face"], ["â˜ºï¸", "smile classic"], ["ðŸ˜š", "kiss closed"], ["ðŸ˜‹", "yum"], ["ðŸ˜›", "tongue"],
-    ["ðŸ˜œ", "wink tongue"], ["ðŸ¤ª", "crazy"], ["ðŸ˜", "tongue closed"], ["ðŸ¤‘", "money"], ["ðŸ¤—", "hug"], ["ðŸ¤­", "oops"], ["ðŸ«¢", "gasp"],
-    ["ðŸ«£", "peek"], ["ðŸ¤«", "shush"], ["ðŸ¤”", "thinking"], ["ðŸ«¡", "salute"], ["ðŸ¤", "zip"], ["ðŸ¤¨", "raised eyebrow"], ["ðŸ˜", "neutral"],
-    ["ðŸ˜‘", "expressionless"], ["ðŸ˜¶", "silent"], ["ðŸ˜", "smirk"], ["ðŸ˜’", "unamused"], ["ðŸ™„", "eyeroll"], ["ðŸ˜¬", "grimace"], ["ðŸ˜®â€ðŸ’¨", "relief sigh"],
-    ["ðŸ¤¥", "lie"], ["ðŸ˜Œ", "relieved"], ["ðŸ˜”", "pensive"], ["ðŸ˜ª", "sleepy"], ["ðŸ¤¤", "drool"], ["ðŸ˜´", "sleep"], ["ðŸ˜·", "mask"],
-    ["ðŸ¤’", "sick"], ["ðŸ¤•", "hurt"], ["ðŸ¤¢", "nausea"], ["ðŸ¤®", "vomit"], ["ðŸ¤§", "sneeze"], ["ðŸ¥µ", "hot"], ["ðŸ¥¶", "cold"],
-    ["ðŸ¥´", "woozy"], ["ðŸ˜µ", "dizzy"], ["ðŸ¤¯", "mind blown"], ["ðŸ¤ ", "cowboy"], ["ðŸ¥³", "party"], ["ðŸ¥¸", "disguise"], ["ðŸ˜Ž", "cool"],
-    ["ðŸ¤“", "nerd"], ["ðŸ§", "monocle"], ["ðŸ˜•", "confused"], ["ðŸ«¤", "unsure"], ["ðŸ˜Ÿ", "worried"], ["ðŸ™", "frown"], ["â˜¹ï¸", "sad"],
-    ["ðŸ˜²", "astonished"], ["ðŸ˜³", "flushed"], ["ðŸ¥º", "pleading"], ["ðŸ¥¹", "tears happy"], ["ðŸ˜¦", "frown open"], ["ðŸ˜§", "anguished"], ["ðŸ˜¨", "fear"],
-    ["ðŸ˜°", "anxious"], ["ðŸ˜¥", "sad sweat"], ["ðŸ˜­", "cry sob"], ["ðŸ˜±", "scream"], ["ðŸ˜–", "confounded"], ["ðŸ˜£", "persevere"], ["ðŸ˜ž", "disappointed"],
-    ["ðŸ˜“", "sweat"], ["ðŸ˜©", "weary"], ["ðŸ˜«", "tired"], ["ðŸ¥±", "yawn"], ["ðŸ˜¤", "steam"], ["ðŸ˜¡", "angry"], ["ðŸ¤¬", "swear"],
-    ["ðŸ˜ˆ", "devil"], ["ðŸ’€", "skull"], ["â˜ ï¸", "danger skull"], ["ðŸ’©", "poop"], ["ðŸ¤¡", "clown"], ["ðŸ‘»", "ghost"], ["ðŸ‘½", "alien"],
-    ["ðŸ™Œ", "raise hands"], ["ðŸ‘", "clap"], ["ðŸ¤", "handshake"], ["ðŸ‘Š", "fist"], ["âœŠ", "raised fist"], ["ðŸ¤ž", "fingers crossed"], ["âœŒï¸", "peace"],
-    ["ðŸ¤Ÿ", "love hand"], ["ðŸ¤˜", "rock"], ["ðŸ‘Œ", "ok"], ["ðŸ¤Œ", "pinched"], ["ðŸ‘ˆ", "left"], ["ðŸ‘‰", "right"], ["ðŸ‘†", "up"], ["ðŸ‘‡", "down"],
-    ["ðŸ’ª", "strong muscle"], ["ðŸ«¶", "heart hands"], ["ðŸ’…", "nails"], ["ðŸ§ ", "brain"], ["ðŸ‘‘", "crown"], ["ðŸ’Ž", "diamond"], ["âœ¨", "sparkles"],
-    ["â­", "star"], ["ðŸŒŸ", "glowing star"], ["ðŸ’«", "dizzy star"], ["âš¡", "lightning"], ["â˜€ï¸", "sun"], ["ðŸŒ™", "moon"], ["ðŸŒˆ", "rainbow"],
-    ["ðŸŽ¯", "target"], ["ðŸ†", "trophy"], ["ðŸŽ", "gift"], ["ðŸ’¡", "idea"], ["ðŸ“Œ", "pin"], ["ðŸ“", "note"], ["ðŸ“¦", "package"], ["ðŸ“£", "announcement"],
-    ["ðŸ“Ž", "clip"], ["ðŸ”—", "link"], ["ðŸ”’", "lock"], ["ðŸ”“", "unlock"], ["â°", "alarm"], ["â³", "hourglass"], ["ðŸ’¬", "message"], ["ðŸ“ž", "call"],
-    ["ðŸŽ¨", "art design"], ["ðŸ–Œï¸", "paint brush"], ["âœï¸", "pencil"], ["ðŸ’»", "laptop"], ["ðŸ“±", "phone"], ["ðŸŽ¬", "movie video"], ["ðŸ“·", "camera"], ["ðŸŽ§", "audio"]
+    ["👍", "thumbs up like yes approve"], ["❤️", "heart love"], ["😂", "laugh funny"], ["😮", "wow surprise"], ["😢", "sad cry"], ["🙏", "pray thanks please"],
+    ["🔥", "fire hot"], ["🎉", "party celebrate"], ["✅", "done check"], ["💯", "hundred perfect"], ["👀", "eyes seen"], ["🚀", "rocket launch"],
+    ["😀", "grin smile"], ["😃", "smile happy"], ["😄", "happy joy"], ["😁", "grin"], ["😆", "laugh"], ["😅", "sweat smile"], ["🤣", "rolling laugh"],
+    ["🙂", "slight smile"], ["🙃", "upside down"], ["😉", "wink"], ["😊", "blush"], ["😇", "angel"], ["🥰", "love hearts"], ["😍", "heart eyes"],
+    ["🤩", "star eyes"], ["😘", "kiss"], ["😗", "kiss face"], ["☺️", "smile classic"], ["😚", "kiss closed"], ["😋", "yum"], ["😛", "tongue"],
+    ["😜", "wink tongue"], ["🤪", "crazy"], ["😝", "tongue closed"], ["🤑", "money"], ["🤗", "hug"], ["🤭", "oops"], ["🫢", "gasp"],
+    ["🫣", "peek"], ["🤫", "shush"], ["🤔", "thinking"], ["🫡", "salute"], ["🤐", "zip"], ["🤨", "raised eyebrow"], ["😐", "neutral"],
+    ["😑", "expressionless"], ["😶", "silent"], ["😏", "smirk"], ["😒", "unamused"], ["🙄", "eyeroll"], ["😬", "grimace"], ["😮‍💨", "relief sigh"],
+    ["🤥", "lie"], ["😌", "relieved"], ["😔", "pensive"], ["😪", "sleepy"], ["🤤", "drool"], ["😴", "sleep"], ["😷", "mask"],
+    ["🤒", "sick"], ["🤕", "hurt"], ["🤢", "nausea"], ["🤮", "vomit"], ["🤧", "sneeze"], ["🥵", "hot"], ["🥶", "cold"],
+    ["🥴", "woozy"], ["😵", "dizzy"], ["🤯", "mind blown"], ["🤠", "cowboy"], ["🥳", "party"], ["🥸", "disguise"], ["😎", "cool"],
+    ["🤓", "nerd"], ["🧐", "monocle"], ["😕", "confused"], ["🫤", "unsure"], ["😟", "worried"], ["🙁", "frown"], ["☹️", "sad"],
+    ["😲", "astonished"], ["😳", "flushed"], ["🥺", "pleading"], ["🥹", "tears happy"], ["😦", "frown open"], ["😧", "anguished"], ["😨", "fear"],
+    ["😰", "anxious"], ["😥", "sad sweat"], ["😭", "cry sob"], ["😱", "scream"], ["😖", "confounded"], ["😣", "persevere"], ["😞", "disappointed"],
+    ["😓", "sweat"], ["😩", "weary"], ["😫", "tired"], ["🥱", "yawn"], ["😤", "steam"], ["😡", "angry"], ["🤬", "swear"],
+    ["😈", "devil"], ["💀", "skull"], ["☠️", "danger skull"], ["💩", "poop"], ["🤡", "clown"], ["👻", "ghost"], ["👽", "alien"],
+    ["🙌", "raise hands"], ["👏", "clap"], ["🤝", "handshake"], ["👊", "fist"], ["✊", "raised fist"], ["🤞", "fingers crossed"], ["✌️", "peace"],
+    ["🤟", "love hand"], ["🤘", "rock"], ["👌", "ok"], ["🤌", "pinched"], ["👈", "left"], ["👉", "right"], ["👆", "up"], ["👇", "down"],
+    ["💪", "strong muscle"], ["🫶", "heart hands"], ["💅", "nails"], ["🧠", "brain"], ["👑", "crown"], ["💎", "diamond"], ["✨", "sparkles"],
+    ["⭐", "star"], ["🌟", "glowing star"], ["💫", "dizzy star"], ["⚡", "lightning"], ["☀️", "sun"], ["🌙", "moon"], ["🌈", "rainbow"],
+    ["🎯", "target"], ["🏆", "trophy"], ["🎁", "gift"], ["💡", "idea"], ["📌", "pin"], ["📝", "note"], ["📦", "package"], ["📣", "announcement"],
+    ["📎", "clip"], ["🔗", "link"], ["🔒", "lock"], ["🔓", "unlock"], ["⏰", "alarm"], ["⏳", "hourglass"], ["💬", "message"], ["📞", "call"],
+    ["🎨", "art design"], ["🖌️", "paint brush"], ["✏️", "pencil"], ["💻", "laptop"], ["📱", "phone"], ["🎬", "movie video"], ["📷", "camera"], ["🎧", "audio"]
   ];
   const seen = new Set();
   return items.filter(([emoji]) => {
@@ -1754,6 +1754,8 @@ function openReactionSheet(anchor, state, message, expanded = false) {
   const sheet = document.createElement("div");
   sheet.className = `adnn-floating-reaction-sheet${expanded ? " is-expanded" : ""}`;
   sheet.dataset.floatingReaction = "1";
+  sheet.addEventListener("click", (event) => event.stopPropagation());
+  sheet.addEventListener("pointerdown", (event) => event.stopPropagation());
   const quickItems = QUICK_REACTION_SET.map((emoji) => ({ emoji, keywords: emoji }));
   const reactionItems = expanded ? EMOJI_PICKER_ITEMS : quickItems;
   sheet.innerHTML = expanded
@@ -1815,6 +1817,7 @@ function openReactionSheet(anchor, state, message, expanded = false) {
   });
 
   const searchInput = sheet.querySelector("[data-emoji-search]");
+  if (searchInput) requestAnimationFrame(() => searchInput.focus({ preventScroll: true }));
   searchInput?.addEventListener("input", () => {
     const term = searchInput.value.trim().toLowerCase();
     sheet.querySelectorAll("button[data-emoji]").forEach((btn) => {
@@ -1841,11 +1844,13 @@ function openReactionDetails(anchor, state, message) {
   const sheet = document.createElement("div");
   sheet.className = "adnn-floating-reaction-sheet is-details";
   sheet.dataset.floatingReaction = "1";
+  sheet.addEventListener("click", (event) => event.stopPropagation());
+  sheet.addEventListener("pointerdown", (event) => event.stopPropagation());
   sheet.innerHTML = `
     <strong>Reactions</strong>
     ${entries.map(([uid, emoji]) => {
       const mine = selfKeys.has(uid) || uid === activeUser?.uid || uid === fieldKey(ownCallUid());
-      return `<button type="button" data-reaction-detail="${escapeAttr(uid)}" ${mine ? "data-remove-my-reaction" : ""}><span>${escapeHtml(emoji)}</span><small>${mine ? "You Â· tap to remove" : "Someone"}</small></button>`;
+      return `<button type="button" data-reaction-detail="${escapeAttr(uid)}" ${mine ? "data-remove-my-reaction" : ""}><span>${escapeHtml(emoji)}</span><small>${mine ? "You · tap to remove" : "Someone"}</small></button>`;
     }).join("")}
   `;
   document.body.appendChild(sheet);
@@ -3753,7 +3758,8 @@ function bindGlobalDismissers() {
     if (!event.target.closest("[data-chat-menu], [data-outer-menu]")) document.querySelectorAll("[data-outer-menu]").forEach((menu) => { menu.hidden = true; });
     if (!event.target.closest("[data-toggle-panel], [data-composer-panel]")) document.querySelectorAll("[data-composer-panel]").forEach((panel) => { panel.hidden = true; });
     if (!event.target.closest("[data-emoji-trigger], [data-emoji-panel]")) document.querySelectorAll("[data-emoji-panel]").forEach((panel) => { panel.hidden = true; });
-    if (!event.target.closest(".adnn-message")) closeMessageMenus();
+    if (!event.target.closest("[data-floating-reaction], .adnn-message")) closeMessageMenus();
+    if (!event.target.closest("[data-floating-reaction], .adnn-message [data-action='open-react']")) closeFloatingReactionSheet();
   });
   const escapeCloser = (event) => {
     if (event.key !== "Escape") return;
@@ -4794,6 +4800,11 @@ function injectChatStyles() {
     .adnn-emoji-search input { flex:1; min-width:0; border:0; outline:0; background:transparent; color:#fff; font:inherit; font-size:13px; }
     .adnn-reaction-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(38px, 1fr)); gap:6px; overflow:auto; padding-right:2px; -webkit-overflow-scrolling:touch; }
     .adnn-floating-reaction-sheet button { width:36px; height:36px; border:0; border-radius:50%; background:rgba(255,255,255,.08); font-size:19px; cursor:pointer; flex:0 0 auto; }
+    .adnn-floating-reaction-sheet button[data-emoji],
+    .adnn-reactions {
+      font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",system-ui,sans-serif !important;
+      line-height:1 !important;
+    }
     .adnn-floating-reaction-sheet.is-expanded button { width:38px; height:38px; }
     .adnn-floating-reaction-sheet button[hidden] { display:none !important; }
     .adnn-floating-reaction-sheet.is-details { display:grid; grid-template-columns:1fr; gap:6px; min-width:min(260px, calc(100vw - 16px)); border-radius:22px; padding:10px; }

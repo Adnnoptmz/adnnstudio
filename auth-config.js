@@ -1,4 +1,3 @@
-*/
 window.GOOGLE_CLIENT_ID = "";
 window.GOOGLE_REDIRECT_URI = window.location.origin;
 window.ADNN_OWNER_EMAIL = "adnnoptmz@gmail.com";

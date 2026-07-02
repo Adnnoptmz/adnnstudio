@@ -3214,30 +3214,30 @@
 		      }
 
       let aiOrbFrame = 0;
-      let lastAiOrbBottom = 0;
+      let aiOrbPinned = false;
 		      function updateAiOrbPin() {
   const aiOrb = document.getElementById("aiComingSoonOrb");
   const connectSection = document.getElementById("connect");
   if (!aiOrb || !connectSection) return;
 
-  const baseBottom = window.innerWidth <= 560 ? 30 : 34;
-  const safeGap = window.innerWidth <= 560 ? 26 : 34;
-  const orbHeight = aiOrb.offsetHeight || 38;
-  const connectTop = connectSection.offsetTop - window.scrollY;
+  const pinAt = connectSection.offsetTop - window.innerHeight + 120;
+  const shouldPin = window.scrollY >= pinAt;
+  if (shouldPin === aiOrbPinned && shouldPin) return;
+  aiOrbPinned = shouldPin;
 
-  const normalOrbTop = window.innerHeight - baseBottom - orbHeight;
-  const limitTop = connectTop - safeGap - orbHeight;
-
-  let nextBottom = baseBottom;
-
-  if (normalOrbTop > limitTop) {
-    nextBottom = window.innerHeight - connectTop + safeGap;
+  if (shouldPin) {
+    aiOrb.style.position = "absolute";
+    aiOrb.style.top = `${connectSection.offsetTop + 24}px`;
+    aiOrb.style.right = `clamp(20px, 3.5vw, 48px)`;
+    aiOrb.style.bottom = "auto";
+    aiOrb.style.setProperty("--ai-orb-bottom", "auto");
+  } else {
+    aiOrb.style.position = "fixed";
+    aiOrb.style.top = "auto";
+    aiOrb.style.right = `clamp(24px, 3.5vw, 48px)`;
+    aiOrb.style.bottom = "clamp(24px, 3.5vw, 48px)";
+    aiOrb.style.setProperty("--ai-orb-bottom", "clamp(24px, 3.5vw, 48px)");
   }
-
-  const roundedBottom = Math.round(Math.max(baseBottom, nextBottom));
-  if (Math.abs(roundedBottom - lastAiOrbBottom) < 5) return;
-  lastAiOrbBottom = roundedBottom;
-  aiOrb.style.setProperty("--ai-orb-bottom", `${roundedBottom}px`);
 }
 
 	      backToTopBtn.addEventListener("click", function(event) {
@@ -5310,8 +5310,15 @@
   });
 
   targets.forEach((node, index) => {
+    const rect = node.getBoundingClientRect();
+    const alreadyVisible = rect.top < window.innerHeight * 0.92 && rect.bottom > 0;
     node.classList.add("adnn-scroll-reveal");
-    node.style.setProperty("--reveal-delay", `${Math.min((index % 5) * 55, 220)}ms`);
+    if (alreadyVisible) {
+      node.classList.add("is-visible");
+      node.style.setProperty("--reveal-delay", "0ms");
+      return;
+    }
+    node.style.setProperty("--reveal-delay", `${Math.min((index % 5) * 45, 160)}ms`);
   });
 
   if (reduceMotion || !("IntersectionObserver" in window)) {

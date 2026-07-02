@@ -503,7 +503,7 @@
         <img src="adnn icon.svg" alt="Adnn Studio Icon Logo" class="brand-logo-img">
       </a>
       <div class="topnav" aria-label="Legal navigation processing actions">
-        <a href="mailto:adnnoptmz@gmail.com?subject=Project%20Enquiry" class="cta-mail-icon" title="Contact via Email" aria-label="Contact via Email">
+        <a href="index.html#connect" class="cta-mail-icon" title="Open enquiry form" aria-label="Open enquiry form">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px; display: block;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
         </a>
       </div>
@@ -627,7 +627,7 @@
       <section id="contact">
         <h2>Contact</h2>
         <p>For questions about these terms, privacy, project enquiries or client communication, contact Adnn Studio:</p>
-        <p><strong>Email:</strong> adnnoptmz@gmail.com<br><strong>Phone:</strong> +91 8129616839<br><strong>Location:</strong> India</p>
+        <p><strong>Contact:</strong> Use the website enquiry form.<br><strong>Location:</strong> India</p>
       </section>
     </main>
 
@@ -666,8 +666,7 @@
       <button class="ai-chat-close" id="closeChatBtn" type="button">&times;</button>
     </div>
     <div class="ai-chat-body" id="chatMessageFlow">
-      <div class="ai-bubble system">
-        Hey! I am Lavio, your Adnn Studio assistant. Ask me anything about our terms, creative services, design revisions, or pricing policies!
+      <div class="ai-bubble system">Hey! I am Lavio, your Adnn Studio assistant. Ask me anything about our terms, creative services, design revisions, or pricing policies!
       </div>
     </div>
     <div class="ai-chat-footer">
@@ -694,7 +693,7 @@
       <div class="foot-links">
         <a href="#intro">Terms</a>
         <a href="#privacy">Privacy</a>
-        <a href="mailto:adnnoptmz@gmail.com">Email</a>
+        <a href="index.html#connect">Enquiry</a>
       </div>
       <p><span>© Adnn Studio 2026</span></p>
     </div>
@@ -775,7 +774,7 @@
 
       // 2. Project Enquiries Intent (Fixes your current bug)
       if (query.includes("enquire") || query.includes("how to start") || query.includes("hire") || query.includes("start a project") || query.includes("submit")) {
-        return "To enquire for a project with us, you can simply click the mail icon up in the navigation bar or email us directly at **adnnoptmz@gmail.com**! \n\nWhen you submit an enquiry, you invite us to review your requirements. We'll chat about your project scope, timeline, and pricing parameters to get everything confirmed before any creative tasks officially kick off!";
+        return "To enquire for a project with us, use the website enquiry form. \n\nWhen you submit an enquiry, you invite us to review your requirements. We'll chat about your project scope, timeline, and pricing parameters to get everything confirmed before any creative tasks officially kick off!";
       }
 
       // 3. Studio Services & 3D Deliverables Intent
@@ -806,7 +805,7 @@
 
       // 7. Direct Contact Matrix Intent
       if (query.includes("contact") || query.includes("email") || query.includes("phone") || query.includes("call") || query.includes("location") || query.includes("where") || query.includes("india")) {
-        return "You can ping Adnn Studio directly through our studio coordinates:\n\n• **Email:** adnnoptmz@gmail.com\n• **Phone:** +91 8129616839\n• **Location:** India\n\nDrop us an enquiry message to get a tailored pricing brief setup!";
+        return "You can contact Adnn Studio through the website enquiry form.\n\nDrop us an enquiry message to get a tailored pricing brief setup!";
       }
 
       // 8. Data Privacy, Encryption and Cookie Controls Intent
@@ -841,7 +840,7 @@
         return `Based on our page records regarding "${bestSection.querySelector('h2').innerText}":\n\n${textResult}`;
       }
 
-      return "I can confirm that all Adnn Studio collaborative timelines run on individual project arrangements. Advance retainers are typical, full delivery ownership applies post-invoice clearing, and flexible visual iteration steps are provided. Reach out to **adnnoptmz@gmail.com** for direct consultation help!";
+      return "I can confirm that all Adnn Studio collaborative timelines run on individual project arrangements. Advance retainers are typical, full delivery ownership applies post-invoice clearing, and flexible visual iteration steps are provided. Use the website enquiry form for direct consultation help!";
     }
 
     async function handleIncomingUserQuery() {
@@ -873,5 +872,6 @@
     sendBtn.addEventListener('click', handleIncomingUserQuery);
     userInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleIncomingUserQuery(); });
   </script>
+  <script src="page-transition.js" defer></script>
 </body>
 </html>

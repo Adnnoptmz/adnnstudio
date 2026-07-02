@@ -1661,7 +1661,7 @@
   (function() {
     try {
       const userSession = JSON.parse(localStorage.getItem("adhnanPortfolioUser"));
-      const adminEmails = ["adnnoptmz@gmail.com", "getavcollab@gmail.com"];
+      const adminEmails = ["getavcollab@gmail.com"];
       if (userSession && userSession.email && adminEmails.includes(userSession.email.trim().toLowerCase())) {
         window.location.replace("admin.html");
       }

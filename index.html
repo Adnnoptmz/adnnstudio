@@ -2614,6 +2614,77 @@
     }
   }
 </style>
+<style id="adnn-final-safari-mobile-polish">
+  .floating-services-container,
+  .orbit-track,
+  .orbit-item,
+  #aiComingSoonOrb,
+  .gemini-orb-aura,
+  .gemini-orb-core {
+    -webkit-transform-style: preserve-3d;
+    transform-style: preserve-3d;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+  }
+
+  .floating-services-container {
+    overflow: visible !important;
+    contain: layout;
+    transform: translate3d(-50%, -50%, 0) !important;
+    -webkit-transform: translate3d(-50%, -50%, 0) !important;
+  }
+
+  .orbit-track {
+    transform: translate3d(-50%, -50%, 0) !important;
+    -webkit-transform: translate3d(-50%, -50%, 0) !important;
+    will-change: transform;
+  }
+
+  #aiComingSoonOrb {
+    overflow: visible !important;
+    transform: translate3d(0, 0, 0);
+    -webkit-transform: translate3d(0, 0, 0);
+    transition: bottom .32s cubic-bezier(.16,1,.3,1), transform .4s cubic-bezier(.16,1,.3,1) !important;
+  }
+
+  .gemini-orb-aura {
+    inset: -14px !important;
+    transform: translate3d(0, 0, 0) scale(1);
+    -webkit-transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  html {
+    overflow-x: clip;
+    overscroll-behavior-x: none;
+  }
+
+  @media (max-width: 760px) {
+    body {
+      min-width: 0 !important;
+      max-width: 100vw !important;
+      overflow-x: hidden !important;
+      overscroll-behavior-x: none !important;
+    }
+
+    .nav-menu {
+      max-width: calc(100vw - 28px) !important;
+    }
+
+    .inner-track {
+      width: min(760px, 112vw) !important;
+      height: min(760px, 112vw) !important;
+    }
+
+    .outer-track {
+      width: min(1040px, 152vw) !important;
+      height: min(1040px, 152vw) !important;
+    }
+
+    #aiComingSoonOrb {
+      bottom: var(--ai-orb-bottom, max(34px, env(safe-area-inset-bottom))) !important;
+    }
+  }
+</style>
 </head>
 	<body class="auth-state-pending">
 	  <img src="bg1.jpg" fetchpriority="high" loading="eager" width="2048" height="1365" alt="" style="position:absolute; width:1px; height:1px; opacity:0.01; pointer-events:none; z-index:-9999; top:0; left:0;" aria-hidden="true" decoding="sync">
@@ -2637,7 +2708,7 @@
         <img src="adnn icon.svg" alt="Adnn Studio Icon Logo" class="brand-logo-img" decoding="async" fetchpriority="high">
       </a>
       <nav id="nav-menu" class="nav-menu glass edge" aria-label="Main navigation">
-        <a href="#home" class="active">home</a><a href="#about">about</a><a href="#portfolio">projects</a><a href="#projects">services</a><a href="#connect">connect</a>
+        <a href="#home" class="active">home</a><a href="#about">about</a><a href="#studio-film">portfolio</a><a href="#portfolio">projects</a><a href="#projects">services</a><a href="#connect">connect</a>
       </nav>
       <div class="nav-actions">
         <button class="menu-toggle glass edge" type="button" aria-label="Open navigation" aria-expanded="false">
@@ -2733,7 +2804,7 @@
             <span class="line-mask"><span class="animate-line">Thoughtful design. Clear direction. Lasting impressions.</span></span>
             <span class="line-mask"><span class="animate-line">Let's create something remarkable together.</span></span>
           </p>
-          <div class="cta"><a class="white" href="#portfolio">View work</a><a class="dark glass edge" href="#connect">Start a project</a></div>
+          <div class="cta"><a class="white" href="#studio-film">View work</a><a class="dark glass edge" href="#connect">Start a project</a></div>
         </div>
 
         <div class="floating-services-container" aria-hidden="true">
@@ -3097,12 +3168,14 @@
 		        }
 		      }
 
+      let aiOrbFrame = 0;
+      let lastAiOrbBottom = 0;
 		      function updateAiOrbPin() {
   const aiOrb = document.getElementById("aiComingSoonOrb");
   const connectSection = document.getElementById("connect");
   if (!aiOrb || !connectSection) return;
 
-  const baseBottom = window.innerWidth <= 560 ? 20 : 34;
+  const baseBottom = window.innerWidth <= 560 ? 34 : 34;
   const safeGap = window.innerWidth <= 560 ? 18 : 28;
   const orbHeight = aiOrb.offsetHeight || 38;
   const connectTop = connectSection.getBoundingClientRect().top;
@@ -3116,7 +3189,10 @@
     nextBottom = window.innerHeight - connectTop + safeGap;
   }
 
-  aiOrb.style.setProperty("--ai-orb-bottom", `${Math.round(Math.max(baseBottom, nextBottom))}px`);
+  const roundedBottom = Math.round(Math.max(baseBottom, nextBottom));
+  if (Math.abs(roundedBottom - lastAiOrbBottom) < 2) return;
+  lastAiOrbBottom = roundedBottom;
+  aiOrb.style.setProperty("--ai-orb-bottom", `${roundedBottom}px`);
 }
 
 	      backToTopBtn.addEventListener("click", function(event) {
@@ -3126,7 +3202,12 @@
 
 		      window.addEventListener("scroll", () => {
 		        updateBackToHomeButton();
-		        updateAiOrbPin();
+          if (!aiOrbFrame) {
+            aiOrbFrame = requestAnimationFrame(() => {
+              aiOrbFrame = 0;
+              updateAiOrbPin();
+            });
+          }
 		      }, { passive: true });
 		      window.addEventListener("resize", () => {
 		        updateBackToHomeButton();

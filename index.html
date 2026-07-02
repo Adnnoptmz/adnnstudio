@@ -2685,6 +2685,51 @@
     }
   }
 </style>
+<style id="adnn-subcard-stability-and-transitions">
+  .subcards {
+    align-items: stretch !important;
+    grid-auto-rows: 1fr !important;
+  }
+
+  .subcard.glass.edge {
+    height: 100% !important;
+    min-height: clamp(172px, 13vw, 205px) !important;
+    max-width: 100% !important;
+    display: grid !important;
+    grid-template-rows: auto 1fr !important;
+    align-content: start !important;
+    overflow: hidden !important;
+    contain: layout paint;
+  }
+
+  .subcard.glass.edge p {
+    align-self: end !important;
+    margin-top: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .subcard.adnn-scroll-reveal {
+    transform: translate3d(0, 16px, 0) !important;
+    filter: blur(4px);
+  }
+
+  .subcard.adnn-scroll-reveal.is-visible {
+    transform: translate3d(0, 0, 0) !important;
+    filter: blur(0);
+  }
+
+  .subcard.adnn-scroll-reveal.is-visible:hover {
+    transform: translate3d(0, -6px, 0) !important;
+  }
+
+  @media (max-width: 560px) {
+    .subcard.glass.edge {
+      min-height: 150px !important;
+      padding: 16px !important;
+      border-radius: 18px !important;
+    }
+  }
+</style>
 </head>
 	<body class="auth-state-pending">
 	  <img src="bg1.jpg" fetchpriority="high" loading="eager" width="2048" height="1365" alt="" style="position:absolute; width:1px; height:1px; opacity:0.01; pointer-events:none; z-index:-9999; top:0; left:0;" aria-hidden="true" decoding="sync">
@@ -3175,10 +3220,10 @@
   const connectSection = document.getElementById("connect");
   if (!aiOrb || !connectSection) return;
 
-  const baseBottom = window.innerWidth <= 560 ? 34 : 34;
-  const safeGap = window.innerWidth <= 560 ? 18 : 28;
+  const baseBottom = window.innerWidth <= 560 ? 30 : 34;
+  const safeGap = window.innerWidth <= 560 ? 26 : 34;
   const orbHeight = aiOrb.offsetHeight || 38;
-  const connectTop = connectSection.getBoundingClientRect().top;
+  const connectTop = connectSection.offsetTop - window.scrollY;
 
   const normalOrbTop = window.innerHeight - baseBottom - orbHeight;
   const limitTop = connectTop - safeGap - orbHeight;
@@ -3190,7 +3235,7 @@
   }
 
   const roundedBottom = Math.round(Math.max(baseBottom, nextBottom));
-  if (Math.abs(roundedBottom - lastAiOrbBottom) < 2) return;
+  if (Math.abs(roundedBottom - lastAiOrbBottom) < 5) return;
   lastAiOrbBottom = roundedBottom;
   aiOrb.style.setProperty("--ai-orb-bottom", `${roundedBottom}px`);
 }
@@ -5289,6 +5334,7 @@
 })();
 </script>
 <script src="/api/firebase-config.js"></script>
+<script src="page-transition.js" defer></script>
 <script type="module" src="firebase-account.js?v=20260630-mobile-admin-cleanup"></script>
 <script type="module" src="firebase-chat.js?v=20260630-chat-mobile-reactions-swipe"></script>
 

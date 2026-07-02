@@ -1,48 +1,3 @@
-/*
-  firebase-chat.js
-  New ADNN chat runtime. Drop-in replacement for the older firebase-chat file.
-
-  Required before this module loads:
-    window.ADNN_FIREBASE_CONFIG = { ...firebase web config... }
-
-  Optional overrides:
-    window.ADNN_CHAT_CONFIG = {
-      adminEmail: "getavcollab@gmail.com",
-      adminAliasUid: "adnn-admin",
-      homeUrl: "/",
-      firebaseVersion: "10.8.0",
-      msgLimit: 180,
-      maxFiles: 10,
-      maxFileSizeMb: 40,
-      iceServers: [
-        { urls: "stun:stun.l.google.com:19302" },
-        { urls: "stun:stun1.l.google.com:19302" }
-        // Add your TURN servers here for production-grade calls.
-      ],
-      theme: {
-        primary: "#272dcf",
-        primary2: "#161bba",
-        danger: "#ff2602",
-        success: "#25d366",
-        bg: "#050506",
-        panel: "#0b0b10"
-      }
-    }
-
-  Expected Firestore structure used by this runtime:
-    chats/{chatId}
-    chats/{chatId}/messages/{messageId}
-    chats/{chatId}/typing/{uid}
-    presence/{uid}
-    calls/{callId}
-    calls/{callId}/offerCandidates/{candidateId}
-    calls/{callId}/answerCandidates/{candidateId}
-    callInbox/{uid}
-
-  Existing mount IDs kept:
-    #directChatMount, #clientChatMount, #adminChatMount, #chats_view
-*/
-
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import {
@@ -78,7 +33,7 @@ import {
 
 
 const DEFAULT_CONFIG = {
-  adminEmail: "getavcollab@gmail.com",
+  adminEmail: "",
   adminAliasUid: "adnn-admin",
   brandName: "AdnnStudio",
   supportTitle: "AdnnStudio Support",
@@ -123,7 +78,12 @@ const DEFAULT_CONFIG = {
 };
 
 const CHAT_CONFIG = deepMerge(DEFAULT_CONFIG, window.ADNN_CHAT_CONFIG || {});
-const ADMIN_EMAIL = emailKey(CHAT_CONFIG.adminEmail);
+const ADMIN_EMAILS = new Set([
+  window.ADNN_ADMIN_EMAIL,
+  CHAT_CONFIG.adminEmail,
+  ...(Array.isArray(window.ADNN_ADMIN_EMAILS) ? window.ADNN_ADMIN_EMAILS : [])
+].map(emailKey).filter(Boolean));
+const ADMIN_EMAIL = emailKey(CHAT_CONFIG.adminEmail || window.ADNN_ADMIN_EMAIL || Array.from(ADMIN_EMAILS)[0] || "");
 const ADMIN_ALIAS_UID = CHAT_CONFIG.adminAliasUid;
 const FIREBASE_CONFIG = window.ADNN_FIREBASE_CONFIG || window.firebaseConfig || null;
 const COLLECTIONS = Object.freeze({
@@ -679,8 +639,6 @@ function watchChatThreads(scope, listId, roomId, options = {}) {
         });
       });
       listen("designer-room", query(collection(db, COLLECTIONS.chats), where("type", "==", "designer-room")));
-      listen("designer-direct-scan", query(collection(db, COLLECTIONS.chats), where("type", "==", "direct")), true);
-      listen("designer-group-scan", query(collection(db, COLLECTIONS.chats), where("type", "==", "group")), true);
     } else {
         // Primary query by Firebase UID
         Array.from(selfUidSet()).forEach((uid, index) => {
@@ -697,8 +655,6 @@ function watchChatThreads(scope, listId, roomId, options = {}) {
             listen(`participant-${field}-${index}`, query(collection(db, COLLECTIONS.chats), where(field, "array-contains", mail)), field !== "participantEmailKeys");
           });
         });
-        listen("account-direct-scan", query(collection(db, COLLECTIONS.chats), where("type", "==", "direct")), true);
-        listen("account-group-scan", query(collection(db, COLLECTIONS.chats), where("type", "==", "group")), true);
       }
   }
 
@@ -3969,7 +3925,8 @@ function emailKey(value) {
 }
 
 function isAdminEmail(email) {
-  return emailKey(email) === ADMIN_EMAIL;
+  const key = emailKey(email);
+  return ADMIN_EMAILS.has(key) || Boolean(ADMIN_EMAIL && key === ADMIN_EMAIL);
 }
 
 function initials(value) {

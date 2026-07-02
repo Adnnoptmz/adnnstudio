@@ -160,6 +160,39 @@ const REACTION_SET = [
   "\u{1F381}", "\u{1F4A1}", "\u{1F4CC}", "\u{1F4DD}", "\u{1F4E6}", "\u{1F4E2}"
 ];
 const QUICK_REACTION_SET = REACTION_SET.slice(0, 6);
+const EMOJI_PICKER_ITEMS = (() => {
+  const items = [
+    ["ðŸ‘", "thumbs up like yes approve"], ["â¤ï¸", "heart love"], ["ðŸ˜‚", "laugh funny"], ["ðŸ˜®", "wow surprise"], ["ðŸ˜¢", "sad cry"], ["ðŸ™", "pray thanks please"],
+    ["ðŸ”¥", "fire hot"], ["ðŸŽ‰", "party celebrate"], ["âœ…", "done check"], ["ðŸ’¯", "hundred perfect"], ["ðŸ‘€", "eyes seen"], ["ðŸš€", "rocket launch"],
+    ["ðŸ˜€", "grin smile"], ["ðŸ˜ƒ", "smile happy"], ["ðŸ˜„", "happy joy"], ["ðŸ˜", "grin"], ["ðŸ˜†", "laugh"], ["ðŸ˜…", "sweat smile"], ["ðŸ¤£", "rolling laugh"],
+    ["ðŸ™‚", "slight smile"], ["ðŸ™ƒ", "upside down"], ["ðŸ˜‰", "wink"], ["ðŸ˜Š", "blush"], ["ðŸ˜‡", "angel"], ["ðŸ¥°", "love hearts"], ["ðŸ˜", "heart eyes"],
+    ["ðŸ¤©", "star eyes"], ["ðŸ˜˜", "kiss"], ["ðŸ˜—", "kiss face"], ["â˜ºï¸", "smile classic"], ["ðŸ˜š", "kiss closed"], ["ðŸ˜‹", "yum"], ["ðŸ˜›", "tongue"],
+    ["ðŸ˜œ", "wink tongue"], ["ðŸ¤ª", "crazy"], ["ðŸ˜", "tongue closed"], ["ðŸ¤‘", "money"], ["ðŸ¤—", "hug"], ["ðŸ¤­", "oops"], ["ðŸ«¢", "gasp"],
+    ["ðŸ«£", "peek"], ["ðŸ¤«", "shush"], ["ðŸ¤”", "thinking"], ["ðŸ«¡", "salute"], ["ðŸ¤", "zip"], ["ðŸ¤¨", "raised eyebrow"], ["ðŸ˜", "neutral"],
+    ["ðŸ˜‘", "expressionless"], ["ðŸ˜¶", "silent"], ["ðŸ˜", "smirk"], ["ðŸ˜’", "unamused"], ["ðŸ™„", "eyeroll"], ["ðŸ˜¬", "grimace"], ["ðŸ˜®â€ðŸ’¨", "relief sigh"],
+    ["ðŸ¤¥", "lie"], ["ðŸ˜Œ", "relieved"], ["ðŸ˜”", "pensive"], ["ðŸ˜ª", "sleepy"], ["ðŸ¤¤", "drool"], ["ðŸ˜´", "sleep"], ["ðŸ˜·", "mask"],
+    ["ðŸ¤’", "sick"], ["ðŸ¤•", "hurt"], ["ðŸ¤¢", "nausea"], ["ðŸ¤®", "vomit"], ["ðŸ¤§", "sneeze"], ["ðŸ¥µ", "hot"], ["ðŸ¥¶", "cold"],
+    ["ðŸ¥´", "woozy"], ["ðŸ˜µ", "dizzy"], ["ðŸ¤¯", "mind blown"], ["ðŸ¤ ", "cowboy"], ["ðŸ¥³", "party"], ["ðŸ¥¸", "disguise"], ["ðŸ˜Ž", "cool"],
+    ["ðŸ¤“", "nerd"], ["ðŸ§", "monocle"], ["ðŸ˜•", "confused"], ["ðŸ«¤", "unsure"], ["ðŸ˜Ÿ", "worried"], ["ðŸ™", "frown"], ["â˜¹ï¸", "sad"],
+    ["ðŸ˜²", "astonished"], ["ðŸ˜³", "flushed"], ["ðŸ¥º", "pleading"], ["ðŸ¥¹", "tears happy"], ["ðŸ˜¦", "frown open"], ["ðŸ˜§", "anguished"], ["ðŸ˜¨", "fear"],
+    ["ðŸ˜°", "anxious"], ["ðŸ˜¥", "sad sweat"], ["ðŸ˜­", "cry sob"], ["ðŸ˜±", "scream"], ["ðŸ˜–", "confounded"], ["ðŸ˜£", "persevere"], ["ðŸ˜ž", "disappointed"],
+    ["ðŸ˜“", "sweat"], ["ðŸ˜©", "weary"], ["ðŸ˜«", "tired"], ["ðŸ¥±", "yawn"], ["ðŸ˜¤", "steam"], ["ðŸ˜¡", "angry"], ["ðŸ¤¬", "swear"],
+    ["ðŸ˜ˆ", "devil"], ["ðŸ’€", "skull"], ["â˜ ï¸", "danger skull"], ["ðŸ’©", "poop"], ["ðŸ¤¡", "clown"], ["ðŸ‘»", "ghost"], ["ðŸ‘½", "alien"],
+    ["ðŸ™Œ", "raise hands"], ["ðŸ‘", "clap"], ["ðŸ¤", "handshake"], ["ðŸ‘Š", "fist"], ["âœŠ", "raised fist"], ["ðŸ¤ž", "fingers crossed"], ["âœŒï¸", "peace"],
+    ["ðŸ¤Ÿ", "love hand"], ["ðŸ¤˜", "rock"], ["ðŸ‘Œ", "ok"], ["ðŸ¤Œ", "pinched"], ["ðŸ‘ˆ", "left"], ["ðŸ‘‰", "right"], ["ðŸ‘†", "up"], ["ðŸ‘‡", "down"],
+    ["ðŸ’ª", "strong muscle"], ["ðŸ«¶", "heart hands"], ["ðŸ’…", "nails"], ["ðŸ§ ", "brain"], ["ðŸ‘‘", "crown"], ["ðŸ’Ž", "diamond"], ["âœ¨", "sparkles"],
+    ["â­", "star"], ["ðŸŒŸ", "glowing star"], ["ðŸ’«", "dizzy star"], ["âš¡", "lightning"], ["â˜€ï¸", "sun"], ["ðŸŒ™", "moon"], ["ðŸŒˆ", "rainbow"],
+    ["ðŸŽ¯", "target"], ["ðŸ†", "trophy"], ["ðŸŽ", "gift"], ["ðŸ’¡", "idea"], ["ðŸ“Œ", "pin"], ["ðŸ“", "note"], ["ðŸ“¦", "package"], ["ðŸ“£", "announcement"],
+    ["ðŸ“Ž", "clip"], ["ðŸ”—", "link"], ["ðŸ”’", "lock"], ["ðŸ”“", "unlock"], ["â°", "alarm"], ["â³", "hourglass"], ["ðŸ’¬", "message"], ["ðŸ“ž", "call"],
+    ["ðŸŽ¨", "art design"], ["ðŸ–Œï¸", "paint brush"], ["âœï¸", "pencil"], ["ðŸ’»", "laptop"], ["ðŸ“±", "phone"], ["ðŸŽ¬", "movie video"], ["ðŸ“·", "camera"], ["ðŸŽ§", "audio"]
+  ];
+  const seen = new Set();
+  return items.filter(([emoji]) => {
+    if (seen.has(emoji)) return false;
+    seen.add(emoji);
+    return true;
+  }).map(([emoji, keywords]) => ({ emoji, keywords }));
+})();
 
 let app = null;
 let auth = null;
@@ -1198,6 +1231,7 @@ function createRoomState(roomId, chatId, chatData) {
     uploadProgress: new Map(),
     lastRenderSignature: "",
     messages: [],
+    renderFrame: 0,
     unsubs: [],
     localPendingIds: new Set(),
     menuMessageId: "",
@@ -1214,6 +1248,7 @@ function cleanupRoomState(state) {
   state.unsubs = [];
   if (state.typingTimer) clearTimeout(state.typingTimer);
   if (state.recordTimer) clearInterval(state.recordTimer);
+  if (state.renderFrame) cancelAnimationFrame(state.renderFrame);
   try { state.recorder?.state !== "inactive" && state.recorder?.stop?.(); } catch (_) {}
   state.recordStream?.getTracks?.().forEach((track) => track.stop());
   state.files?.forEach((item) => revokeObjectUrl(item.url));
@@ -1483,7 +1518,7 @@ function watchTyping(state) {
 function watchMessages(state) {
   const q = query(
     collection(db, COLLECTIONS.chats, state.chatId, COLLECTIONS.messages),
-    orderBy("createdAt", "asc"),
+    orderBy("createdAt", "desc"),
     limit(CHAT_CONFIG.msgLimit)
   );
   resilientSnapshot(`messages:${state.roomId}:${state.chatId}`, q, (snapshot) => {
@@ -1491,10 +1526,14 @@ function watchMessages(state) {
       id: item.id,
       ...item.data(),
       __pending: item.metadata.hasPendingWrites
-    }));
-    renderMessages(state, state.messages);
-    markMessagesRead(state, state.messages);
-    notifyIncomingMessages(state, state.messages);
+    })).reverse();
+    if (state.renderFrame) cancelAnimationFrame(state.renderFrame);
+    state.renderFrame = requestAnimationFrame(() => {
+      state.renderFrame = 0;
+      renderMessages(state, state.messages);
+      markMessagesRead(state, state.messages);
+      notifyIncomingMessages(state, state.messages);
+    });
   }, (error) => {
     const shell = roomShell(state);
     if (shell) shell.querySelector("[data-message-scroll]").innerHTML = `<div class="adnn-chat-empty">${escapeHtml(readableFirebaseError(error))}</div>`;
@@ -1692,7 +1731,10 @@ function handleMessageAction(event, state, message) {
     return;
   }
   if (action === "reply") startReply(state, message);
-  if (action === "open-react") openReactionSheet(actionBtn, state, message);
+  if (action === "open-react") {
+    if (actionBtn.classList.contains("adnn-reactions")) openReactionDetails(actionBtn, state, message);
+    else openReactionSheet(actionBtn, state, message);
+  }
   if (action === "react") toggleReaction(state.chatId, message, actionBtn.dataset.emoji);
   if (action === "copy") copyMessageText(message);
   if (action === "delete-me") deleteMessageForMe(state, message);
@@ -1712,11 +1754,22 @@ function openReactionSheet(anchor, state, message, expanded = false) {
   const sheet = document.createElement("div");
   sheet.className = `adnn-floating-reaction-sheet${expanded ? " is-expanded" : ""}`;
   sheet.dataset.floatingReaction = "1";
-  const emojis = expanded ? REACTION_SET : QUICK_REACTION_SET;
-  sheet.innerHTML = `
-    ${emojis.map((emoji) => `<button type="button" data-emoji="${escapeAttr(emoji)}">${escapeHtml(emoji)}</button>`).join("")}
-    ${expanded ? "" : `<button type="button" class="adnn-reaction-more" data-more-emoji aria-label="More reactions">+</button>`}
-  `;
+  const quickItems = QUICK_REACTION_SET.map((emoji) => ({ emoji, keywords: emoji }));
+  const reactionItems = expanded ? EMOJI_PICKER_ITEMS : quickItems;
+  sheet.innerHTML = expanded
+    ? `
+      <label class="adnn-emoji-search">
+        ${ICON.search}
+        <input type="search" data-emoji-search placeholder="Search emoji">
+      </label>
+      <div class="adnn-reaction-grid" data-reaction-grid>
+        ${reactionItems.map((item) => `<button type="button" data-emoji="${escapeAttr(item.emoji)}" data-keywords="${escapeAttr(`${item.emoji} ${item.keywords}`)}">${escapeHtml(item.emoji)}</button>`).join("")}
+      </div>
+    `
+    : `
+      ${reactionItems.map((item) => `<button type="button" data-emoji="${escapeAttr(item.emoji)}">${escapeHtml(item.emoji)}</button>`).join("")}
+      <button type="button" class="adnn-reaction-more" data-more-emoji aria-label="More reactions">+</button>
+    `;
   document.body.appendChild(sheet);
 
   const gap = 8;
@@ -1761,12 +1814,86 @@ function openReactionSheet(anchor, state, message, expanded = false) {
     openReactionSheet(anchor, state, message, true);
   });
 
+  const searchInput = sheet.querySelector("[data-emoji-search]");
+  searchInput?.addEventListener("input", () => {
+    const term = searchInput.value.trim().toLowerCase();
+    sheet.querySelectorAll("button[data-emoji]").forEach((btn) => {
+      const haystack = String(btn.dataset.keywords || btn.dataset.emoji || "").toLowerCase();
+      btn.hidden = !!term && !haystack.includes(term);
+    });
+  });
+
   sheet.querySelectorAll("button[data-emoji]").forEach((btn) => {
     btn.addEventListener("click", (event) => {
       event.stopPropagation();
       toggleReaction(state.chatId, message, btn.dataset.emoji);
     });
   });
+}
+
+function openReactionDetails(anchor, state, message) {
+  if (!anchor || !state || !message) return;
+  closeFloatingReactionSheet();
+  const reactions = message.reactions || {};
+  const entries = Object.entries(reactions).filter(([, emoji]) => !!emoji);
+  if (!entries.length) return openReactionSheet(anchor, state, message);
+  const selfKeys = selfUidSet();
+  const sheet = document.createElement("div");
+  sheet.className = "adnn-floating-reaction-sheet is-details";
+  sheet.dataset.floatingReaction = "1";
+  sheet.innerHTML = `
+    <strong>Reactions</strong>
+    ${entries.map(([uid, emoji]) => {
+      const mine = selfKeys.has(uid) || uid === activeUser?.uid || uid === fieldKey(ownCallUid());
+      return `<button type="button" data-reaction-detail="${escapeAttr(uid)}" ${mine ? "data-remove-my-reaction" : ""}><span>${escapeHtml(emoji)}</span><small>${mine ? "You Â· tap to remove" : "Someone"}</small></button>`;
+    }).join("")}
+  `;
+  document.body.appendChild(sheet);
+  positionFloatingSheet(sheet, anchor, false);
+  sheet.querySelector("[data-remove-my-reaction]")?.addEventListener("click", (event) => {
+    event.stopPropagation();
+    const uidKey = fieldKey(ownCallUid());
+    const current = reactions[uidKey] || reactions[activeUser?.uid];
+    if (current) toggleReaction(state.chatId, message, current);
+  });
+}
+
+function positionFloatingSheet(sheet, anchor, expanded = false) {
+  const gap = 8;
+  const viewportW = Math.max(280, window.innerWidth || document.documentElement.clientWidth || 320);
+  const viewportH = Math.max(360, window.innerHeight || document.documentElement.clientHeight || 480);
+  sheet.style.maxWidth = `${Math.max(220, viewportW - gap * 2)}px`;
+
+  if (viewportW <= 760) {
+    const messageNode = anchor.closest(".adnn-message") || anchor.closest(".adnn-message-row") || anchor;
+    const rect = messageNode.getBoundingClientRect();
+    const sheetRect = sheet.getBoundingClientRect();
+    const height = Math.min(sheetRect.height || (expanded ? 240 : 54), viewportH - gap * 2);
+    const width = Math.min(sheetRect.width || viewportW - gap * 2, viewportW - gap * 2);
+    const left = clamp(rect.left + rect.width / 2 - width / 2, gap, viewportW - width - gap);
+    const above = rect.top - height - 10;
+    const below = rect.bottom + 10;
+    const top = above > gap ? above : clamp(below, gap, viewportH - height - gap);
+    sheet.style.left = `${left}px`;
+    sheet.style.right = "auto";
+    sheet.style.top = `${top}px`;
+    sheet.style.bottom = "auto";
+    sheet.style.width = expanded ? `${width}px` : "auto";
+    sheet.style.justifyContent = expanded ? "flex-start" : "center";
+    return;
+  }
+
+  const rect = anchor.getBoundingClientRect();
+  const sheetRect = sheet.getBoundingClientRect();
+  const width = Math.min(sheetRect.width || 360, viewportW - gap * 2);
+  const height = Math.min(sheetRect.height || 54, viewportH - gap * 2);
+  const left = clamp(rect.left + rect.width / 2 - width / 2, gap, viewportW - width - gap);
+  const above = rect.top - height - gap;
+  const top = above > gap ? above : clamp(rect.bottom + gap, gap, viewportH - height - gap);
+  sheet.style.left = `${left}px`;
+  sheet.style.right = "auto";
+  sheet.style.top = `${top}px`;
+  sheet.style.bottom = "auto";
 }
 
 function closeFloatingReactionSheet() {
@@ -4661,8 +4788,19 @@ function injectChatStyles() {
     .adnn-reaction-palette { display:none !important; }
     .adnn-floating-reaction-sheet { position:fixed; z-index:2147483620; display:flex; gap:5px; max-width:calc(100vw - 16px); overflow-x:auto; padding:7px; border-radius:999px; background:rgba(8,8,12,.98); border:1px solid rgba(255,255,255,.14); box-shadow:0 18px 50px rgba(0,0,0,.42); backdrop-filter:blur(18px); animation:adnnReactionPop .22s cubic-bezier(.16,1,.3,1); transform-origin:center bottom; }
     @keyframes adnnReactionPop { from { opacity:0; transform:translateY(8px) scale(.88); } to { opacity:1; transform:translateY(0) scale(1); } }
-    .adnn-floating-reaction-sheet.is-expanded { display:grid; grid-template-columns:repeat(auto-fill, minmax(36px, 1fr)); max-height:min(42svh, 260px); overflow:auto; border-radius:24px; align-content:start; }
+    .adnn-floating-reaction-sheet.is-expanded { display:grid; grid-template-columns:1fr; gap:8px; width:min(390px, calc(100vw - 16px)); max-height:min(46svh, 340px); overflow:hidden; border-radius:24px; align-content:start; padding:10px; }
+    .adnn-emoji-search { height:38px; display:flex; align-items:center; gap:8px; padding:0 12px; border-radius:16px; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.1); color:rgba(255,255,255,.65); }
+    .adnn-emoji-search svg { width:15px; height:15px; flex:0 0 auto; }
+    .adnn-emoji-search input { flex:1; min-width:0; border:0; outline:0; background:transparent; color:#fff; font:inherit; font-size:13px; }
+    .adnn-reaction-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(38px, 1fr)); gap:6px; overflow:auto; padding-right:2px; -webkit-overflow-scrolling:touch; }
     .adnn-floating-reaction-sheet button { width:36px; height:36px; border:0; border-radius:50%; background:rgba(255,255,255,.08); font-size:19px; cursor:pointer; flex:0 0 auto; }
+    .adnn-floating-reaction-sheet.is-expanded button { width:38px; height:38px; }
+    .adnn-floating-reaction-sheet button[hidden] { display:none !important; }
+    .adnn-floating-reaction-sheet.is-details { display:grid; grid-template-columns:1fr; gap:6px; min-width:min(260px, calc(100vw - 16px)); border-radius:22px; padding:10px; }
+    .adnn-floating-reaction-sheet.is-details strong { padding:2px 4px 6px; font-size:12px; color:rgba(255,255,255,.7); }
+    .adnn-floating-reaction-sheet.is-details button { width:100%; height:42px; border-radius:14px; grid-template-columns:28px 1fr; display:grid; align-items:center; text-align:left; gap:8px; padding:0 10px; }
+    .adnn-floating-reaction-sheet.is-details button span { font-size:20px; }
+    .adnn-floating-reaction-sheet.is-details button small { overflow:hidden; white-space:nowrap; text-overflow:ellipsis; color:rgba(255,255,255,.62); font-size:12px; }
     .adnn-reactions { position:absolute; right:10px; bottom:-15px; border:1px solid rgba(255,255,255,.1); border-radius:999px; background:#09090c; color:#fff; padding:2px 7px; font-size:12px; cursor:pointer; display:flex; gap:4px; align-items:center; }
     .adnn-reactions small { font-size:9px; opacity:.7; }
     .adnn-reply-preview, .adnn-reply-bar { display:grid; grid-template-columns:3px minmax(0,1fr) auto; gap:8px; align-items:center; margin-bottom:7px; border-radius:12px; background:rgba(0,0,0,.24); padding:8px; border:0; color:#fff; text-align:left; width:100%; }
@@ -4963,7 +5101,8 @@ function injectChatStyles() {
       .adnn-call-card.is-audio .adnn-call-stage { aspect-ratio:1/1; }
       .adnn-call-popout { width:calc(100vw - 16px); max-height:calc(100svh - 16px); }
       .adnn-floating-reaction-sheet { max-width:calc(100vw - 16px) !important; justify-content:center; border-radius:22px; }
-      .adnn-floating-reaction-sheet.is-expanded { grid-template-columns:repeat(7, minmax(0, 1fr)); max-height:min(38svh, 248px); }
+      .adnn-floating-reaction-sheet.is-expanded { grid-template-columns:1fr !important; max-height:min(46svh, 320px) !important; width:calc(100vw - 16px) !important; }
+      .adnn-floating-reaction-sheet.is-expanded .adnn-reaction-grid { grid-template-columns:repeat(7, minmax(0, 1fr)); }
       .adnn-chat-app .adnn-room-shell { grid-template-rows:64px minmax(0,1fr) auto !important; --head:64px; --composer:74px; }
       .adnn-chat-app .adnn-room-shell > .adnn-room-head { padding:9px 8px !important; gap:7px !important; min-width:0 !important; overflow:visible !important; }
       .adnn-chat-app .adnn-room-shell > .adnn-room-head .adnn-room-title { min-width:0 !important; }

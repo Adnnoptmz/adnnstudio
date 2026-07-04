@@ -9,26 +9,15 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://images.unsplash.com">
   <link rel="dns-prefetch" href="https://www.gstatic.com">
-  <!-- Main Browser Tab Favicon Asset Definition -->
+  
   <link rel="icon" type="image/svg+xml" href="adnn icon.svg" />
-  <!-- Touch Device Homescreen Bookmark Icon Shortcut (Handles your crisp 180x180px footprint perfectly) -->
+  
   <link rel="apple-touch-icon" sizes="180x180" href="adnn icon.svg" />
-  <!-- Premium Vector Safe Pin Mask Accent -->
+  
   <link rel="mask-icon" href="adnn icon.svg" color="#272dcf" />
 	<link rel="preload" href="bg1.jpg" as="image" type="image/jpeg" fetchpriority="high" />
   <style>
-    /*
-      CSS EDIT MAP - change these values later if needed:
-      - Main colors: change --accent, --red, --bg, and --text inside :root.
-      - Main fonts: change --font-display, --font-body, and --font-mono inside :root.
-      - Header/nav styling: change .site-header, .nav-wrap, .nav-menu, .brand, .search, .login, and .menu-toggle.
-      - Home section styling: change #home, #home h1, .floating-services-container, and .service-pill.
-      - Projects slider styling: change #portfolio, .reference-slider-shell, .portfolio-card-ref, and .portfolio-slider-controls.
-      - Service card styling: change #projects, .tiles, .tile, .thumb, and .marquee-box.
-      - Client report styling: change #client-report, .client-stat-panel, .client-stat-item, .stat-icon, and .stat-copy.
-      - Contact/footer styling: change #connect, form, input, textarea, footer, .foot, and .links.
-      - Responsive layouts: change only the @media blocks matching the screen size you want to adjust.
-    */
+    
     @import url("https://fonts.cdnfonts.com/css/aileron");
     @import url("https://fonts.cdnfonts.com/css/bureau-serif");
     @import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap");
@@ -44,9 +33,32 @@
 	    body.auth-state-pending .login-choice-popover {
 	      display: none !important;
 	    }
+	    body.auth-state-pending .account-menu-wrap {
+	      opacity: 0 !important;
+	      visibility: hidden !important;
+	      pointer-events: none !important;
+	    }
+	    body.is-booting .site-header .nav-wrap,
+	    body.is-booting .site-header .nav-wrap.edge::before {
+	      background: transparent !important;
+	      border-color: transparent !important;
+	      box-shadow: none !important;
+	      backdrop-filter: none !important;
+	      -webkit-backdrop-filter: none !important;
+	    }
+	    body.is-booting .site-header,
+	    body.is-booting .site-header *,
+	    body.is-booting .mobile-nav-backdrop,
+	    body.is-booting .mobile-scroll-veil,
+	    body.is-booting .site-search-panel {
+	      transition: none !important;
+	      animation: none !important;
+	    }
+	    .mobile-nav-terms {
+	      display: none;
+	    }
 	    @media (max-width: 760px) {
 	      .mobile-nav-search-row,
-	      .mobile-nav-account-row,
 	      .mobile-nav-backdrop,
 	      .mobile-scroll-veil,
 	      .site-search-panel,
@@ -108,11 +120,17 @@
 	        display: none !important;
 	      }
 
+	      body.auth-state-pending .account-menu-wrap {
+	        opacity: 0 !important;
+	        visibility: hidden !important;
+	        pointer-events: none !important;
+	      }
+
 	      .site-header .login {
 	        height: 36px !important;
 	        min-height: 36px !important;
 	        padding: 0 13px !important;
-	        border-radius: 999px !important;
+	        border-radius: 16px !important;
 	        font-size: 10px !important;
 	        line-height: 1 !important;
 	        background: rgba(10,10,16,.22) !important;
@@ -128,7 +146,7 @@
 	        height: 36px !important;
 	        min-width: 36px !important;
 	        min-height: 36px !important;
-	        border-radius: 999px !important;
+	        border-radius: 16px !important;
 	        background: rgba(10,10,16,.22) !important;
 	        border: 1px solid rgba(255,255,255,.18) !important;
 	        box-shadow: none !important;
@@ -143,7 +161,7 @@
       color:var(--text); overflow-x:hidden;
     }
     
-    /* Interactive Mouse Cursor Dot Matrix Overlay */
+    
     .cursor-dots {
       --cursor-x: 50vw;
       --cursor-y: 50vh;
@@ -156,7 +174,7 @@
     }
     .cursor-dots.is-active { opacity: 1; }
     
-    /* White glowing dots for Dark Sections */
+    
     .cursor-dots::before {
       content: "";
       position: absolute;
@@ -167,7 +185,7 @@
       mask-image: radial-gradient(circle 110px at var(--cursor-x) var(--cursor-y), #000 20%, rgba(0,0,0,0.35) 60%, transparent 100%);
     }
     
-    /* Subtle non-glowing grey dots for White Sections */
+    
 	    .cursor-dots::after {
 	      content: "";
 	      position: absolute;
@@ -226,24 +244,24 @@
       border-radius:28px; 
       padding:10px; 
       display:grid; 
-      grid-template-columns: auto 1fr auto !important; /* Retains desktop structural columns */
+      grid-template-columns: auto 1fr auto !important; 
       gap:12px; 
       align-items:center; 
       transition:background .42s ease, border-color .42s ease, box-shadow .42s ease, backdrop-filter .42s ease, transform .42s ease; 
     }
     
-    /* Pushes desktop actions and buttons to the edges of the navigation capsule */
+    
     @media (min-width: 761px) {
       .brand-logo-wrap {
-        grid-column: 1; /* Locks the logo container to the left boundary */
+        grid-column: 1; 
         justify-self: start;
       }
       nav.nav-menu {
-        grid-column: 2; /* Keeps the middle navigation options perfectly centered */
+        grid-column: 2; 
         justify-self: center;
       }
       .nav-actions {
-        grid-column: 3; /* Snaps the login and search icons to the far right boundary[cite: 6] */
+        grid-column: 3; 
         justify-self: end;
       }
     }
@@ -252,7 +270,7 @@
     button, a { font:inherit; }
     .login, .search, .menu { height:44px; border-radius:18px; color:#fff; border:0; padding:0 16px; display:inline-flex; align-items:center; gap:10px; cursor:pointer; text-decoration:none; font-size:14px; line-height:1; }
     
-    /* New Custom Vector Logo Engine Constraints - Expanded Presentation */
+    
     .brand-logo-wrap {
       display: inline-flex;
       align-items: center;
@@ -262,7 +280,7 @@
       cursor: pointer;
     }
     .brand-logo-img {
-      height: 46px; /* Modestly reduced from 54px for a clean, premium fit */
+      height: 46px; 
       width: auto;
       display: block;
       object-fit: contain;
@@ -287,7 +305,7 @@
     section { padding-left:clamp(16px,5vw,64px); padding-right:clamp(16px,5vw,64px); position: relative; z-index: 3; }
     .hero { min-height:88vh; display:grid; place-items:center; padding-top:132px; }
     .hero-grid { max-width:1280px; width:100%; display:grid; grid-template-columns:1.1fr .9fr; gap:48px; align-items:center; }
-    /* Premium Gemini Drop-to-Capsule Morphing Engine */
+    
     .badge.gemini-intro-capsule {
       display: inline-flex !important;
       align-items: center !important;
@@ -299,17 +317,17 @@
       border-radius: 999px !important;
       font-size: 12px !important;
       line-height: 1 !important;
-      padding: 0 !important; /* Managed dynamically during the animation */
+      padding: 0 !important; 
       white-space: nowrap !important;
       overflow: hidden !important;
       
-      /* Hardware-accelerated property setup */
+      
       transform-origin: center top !important;
       will-change: transform, width, height, background-color, box-shadow;
       animation: geminiDropAndExpand 1.6s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
     }
 
-    /* Staggered text fade-in triggered precisely as the capsule expansion completes */
+    
     .gemini-content-fade {
       display: inline-flex !important;
       align-items: center !important;
@@ -320,7 +338,7 @@
     }
 
     @keyframes geminiDropAndExpand {
-      /* Stage 1: Dropping into the canvas view viewport as a concentrated, high-energy glowing particle ball */
+      
       0% {
         width: 14px !important;
         height: 14px !important;
@@ -329,7 +347,7 @@
         border-color: rgba(83, 96, 255, 0.6) !important;
         box-shadow: 0 0 20px #272dcf, 0 0 40px rgba(39, 45, 207, 0.8), inset 0 0 4px #fff !important;
       }
-      /* Stage 2: Hitting vertical center impact point — creating a brilliant lens-flare visual pulse */
+      
       35% {
         width: 14px !important;
         height: 14px !important;
@@ -338,7 +356,7 @@
         border-color: #ffffff !important;
         box-shadow: 0 0 35px #ffffff, 0 0 70px #272dcf, 0 0 110px rgba(39, 45, 207, 0.9) !important;
       }
-      /* Stage 3: Burst energy diffuses into a soft theme color as the width container unlocks */
+      
       55% {
         width: 16px !important;
         height: 28px !important;
@@ -347,10 +365,10 @@
         border-color: rgba(83, 96, 255, 0.4) !important;
         box-shadow: 0 0 25px rgba(39, 45, 207, 0.4) !important;
       }
-      /* Stage 4: Telescoping sideways seamlessly out to full structural layout box metrics */
+      
       100% {
         width: 100% !important;
-        max-width: 494px !important; /* Perfect pixel length boundary layout footprint for this string length */
+        max-width: 494px !important; 
         height: 28px !important;
         transform: translateY(0) scale(1);
         background-color: rgba(255, 255, 255, 0.05) !important;
@@ -372,7 +390,7 @@
       }
     }
 
-    /* Keep mobile view bounds balanced when track widths break parameters */
+    
     @media (max-width: 560px) {
       .badge.gemini-intro-capsule {
         animation: geminiDropAndExpandMobile 1.6s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
@@ -478,16 +496,16 @@
     .projects-head { max-width:1280px; margin:auto; display:flex; justify-content:space-between; align-items:end; gap:24px; }
     .projects h2 { font-size:72px; line-height:1.04; letter-spacing:0; font-weight:520; margin:0; }
     .tiles { max-width:1280px; margin:40px auto 0; display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
-  /* Optimized Compact Grid Engine */
+  
   .shell { width: min(1320px, calc(100vw - 40px)); margin: auto; }
   .service-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: clamp(42px, 5vw, 68px); }
   
   .service-card { 
     background: #fff !important; 
     border: 1px solid rgba(0,0,0,.07) !important; 
-    border-radius: 20px !important; /* Shaved down corner radius for tight look */
-    padding: 14px !important; /* Reduced internal cell travel space */
-    min-height: 160px !important; /* Shaved down layout height to prevent blockiness */
+    border-radius: 20px !important; 
+    padding: 14px !important; 
+    min-height: 160px !important; 
     display: flex !important; 
     flex-direction: column !important; 
     justify-content: space-between !important; 
@@ -503,7 +521,7 @@
   .service-card h3 { font-size: clamp(20px, 2.2vw, 32px) !important; line-height: .95 !important; letter-spacing: -.05em !important; font-weight: 400 !important; margin: 24px 0 0 !important; color: #0b0b0d !important; font-family: "Aileron", sans-serif !important; transition: color .34s ease; }
   .service-card p { color: rgba(10,10,13,.58) !important; line-height: 1.38 !important; margin: 8px 0 0 !important; font-size: 13px !important; transition: color .34s ease; }
   
-  /* Hover Overrides keeping core actions unified */
+  
   .service-card:hover { transform: translateY(-4px) !important; background: #272dcf !important; color: white !important; box-shadow: 0 20px 60px rgba(39,45,207,.24) !important; border-color: #272dcf !important; }
   .service-card:hover h3, .service-card:hover b { color: white !important; }
   .service-card:hover p { color: rgba(255,255,255,.72) !important; }
@@ -515,7 +533,7 @@
     .service-card h3 { margin: 18px 0 0 !important; }
   }
   @media(max-width: 560px) {
-    /* Locks mobile track presentation strictly to a 2-column inline row layout */
+    
     .service-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 8px !important; }
     .service-card { min-height: 135px !important; border-radius: 14px !important; padding: 10px !important; }
     .thumb { width: 60px !important; height: 46px !important; border-radius: 8px !important; }
@@ -601,7 +619,7 @@
       .case { width:92%; }
     }
 
-    /* Projects cards: horizontal 3D cylindrical slider, editable HTML/CSS/JS */
+    
     .portfolio.reference-style {
       position:relative;
       min-height:980px;
@@ -639,7 +657,7 @@
     }
     .portfolio-reference-head {
       width:min(760px,92vw);
-      /* Reduced bottom spacing to pull the slider platform up */
+      
       margin-bottom:12px;
     }
     .portfolio-reference-head .portfolio-title {
@@ -656,7 +674,7 @@
       position:relative;
       z-index:2;
       height:620px;
-      /* Trimmed top footprint to eliminate the remaining visual desktop layout gap gap */
+      
       margin-top:10px;
       perspective:2100px;
       transform-style:preserve-3d;
@@ -682,7 +700,7 @@
       overflow:hidden;
       border:1px solid rgba(255,255,255,.16);
       background:#0b0b0d;
-      /* Removed card drop shadow and inner reflection layers cleanly */
+      
       box-shadow: none !important;
       transform-style:preserve-3d;
       transform:
@@ -697,7 +715,7 @@
       opacity:calc(1 - var(--abs) * .075);
       filter:saturate(calc(1.08 - var(--abs) * .105)) brightness(calc(1 - var(--abs) * .055));
       z-index:calc(70 - var(--abs) * 7);
-      /* Fluid transition settings optimized for continuous scrolling feedback */
+      
       transition:transform 0.35s cubic-bezier(.16,1,.3,1), opacity 0.35s ease, filter 0.35s ease;
       will-change:transform, opacity, filter;
       cursor:pointer;
@@ -720,7 +738,7 @@
       filter:grayscale(.76) contrast(1.16) brightness(.86);
       transition:filter .45s ease, transform .7s cubic-bezier(.16,1,.3,1);
       
-      /* Prevents mobile touch engines from lifting the sharp image out of its curved mask container */
+      
       pointer-events: none !important; 
       user-select: none !important;
       -webkit-user-drag: none !important;
@@ -814,7 +832,7 @@
       .portfolio-card-ref { width:68vw; height:400px; transform:translate(-50%,-50%) translateX(calc(var(--offset) * 132px)) translateY(var(--lift)) rotateY(calc(var(--offset) * -16deg)) scale(calc(1 - var(--abs) * .16)); }
     }
 
-    /* Premium fine-art studio typography pass */
+    
     :root {
       --font-display:"Aileron", ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial, sans-serif;
       --font-body:"Aileron", ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial, sans-serif;
@@ -858,7 +876,7 @@
       color: rgba(255, 255, 255, 0.64) !important;
       margin: 0 !important;
     }
-    /* Enforce dark-text compatibility for off-white Apple lifestyle sections */
+    
     #portfolio .kicker, 
     #projects .kicker, 
     #client-report .kicker { 
@@ -891,7 +909,7 @@
       .portfolio-title, h2.big, .projects h2 { letter-spacing:-0.055em; }
     }
 
-    /* Responsive icon navigation: search + Google remain locked to the right */
+    
     .nav-wrap {
       grid-template-columns:auto 44px auto;
       justify-content:space-between;
@@ -973,7 +991,7 @@
       .nav-actions { gap:6px; }
     }
 
-    /* Final responsive nav behavior: desktop keeps full nav; small screens use one icon */
+    
     .menu-toggle { display:none; }
     .nav-wrap {
       grid-template-columns:auto 1fr auto;
@@ -1004,7 +1022,7 @@
       .login .login-text { display:none !important; }
     }
 
-    /* Final nav polish: menu icon sits with right actions; no active blue/underline until hover */
+    
     .nav-wrap { grid-template-columns:auto 1fr auto !important; justify-content:stretch !important; }
     nav.nav-menu a, nav.nav-menu a.active, .site-header.home-top nav.nav-menu a, .site-header.home-top nav.nav-menu a.active { background:transparent !important; box-shadow:none !important; border-color:transparent !important; color:rgba(255,255,255,.72) !important; }
     nav.nav-menu a:after, nav.nav-menu a.active:after, .site-header.home-top nav.nav-menu a:after, .site-header.home-top nav.nav-menu a.active:after { opacity:0 !important; transform:scaleX(0) !important; }
@@ -1021,7 +1039,7 @@
       nav.nav-menu a:hover, nav.nav-menu a:focus-visible { background:rgba(255,255,255,.085) !important; color:#fff !important; }
     }
 
-    /* High-End Split-Line Entrance Animation Engine */
+    
   .line-mask {
     display: block !important;
     overflow: hidden !important;
@@ -1051,7 +1069,7 @@
     }
   }
 
-  /* Finely tuned cinematic timeline delays for each row */
+  
   .staggered-heading .line-mask:nth-child(1) .animate-line {
     animation-delay: 0.15s;
   }
@@ -1065,7 +1083,7 @@
     animation-delay: 0.64s;
   }
   
-  /* Retain cta button fade-in to anchor the completion of the intro sequence */
+  
   #home .cta {
     opacity: 0;
     animation: premiumBtnFade 1s cubic-bezier(0.16, 1, 0.3, 1) 0.85s forwards;
@@ -1074,30 +1092,30 @@
     to { opacity: 1; }
   }
 
-  /* Force Home hero title smaller */
+  
     #home h1 { font-size: clamp(28px, 4.8vw, 52px) !important; line-height: 0.98 !important; letter-spacing: -0.035em !important; }
     #home .typed { font-size: inherit !important; }
     @media (max-width: 900px) { #home h1 { font-size: clamp(30px, 8vw, 48px) !important; } }
     @media (max-width: 560px) { #home h1 { font-size: clamp(30px, 11vw, 42px) !important; } }
 
-    /* Home page title scale: 50% reduced */
+    
     #home h1 { font-size: clamp(24px, 3.9vw, 44px) !important; line-height: 1.02 !important; letter-spacing: -0.025em !important; }
     #home h1 span, #home .typed { font-size: inherit !important; line-height: inherit !important; }
     #home .visual h2 { font-size: clamp(18px, 2.2vw, 31px) !important; line-height: 1.05 !important; }
     @media (max-width: 900px) { #home h1 { font-size: clamp(24px, 6vw, 38px) !important; } #home .visual h2 { font-size: clamp(20px, 5vw, 28px) !important; } }
     @media (max-width: 560px) { #home h1 { font-size: clamp(24px, 8vw, 34px) !important; } }
 
-    /* Increase Home hero title size */
+    
     #home h1{ font-size: clamp(64px, 8vw, 100px) !important; line-height: 0.98 !important; }
 
-    /* Home title + animated word font: Aileron */
+    
     #home h1, #home h1 span, #home .typed { font-family: "Aileron", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif !important; font-style: normal !important; }
 
-    /* Apple-inspired solid section backgrounds */
+    
     body { background: #0b0b0d !important; }
     body::before, body::after { display: none !important; }
 
-    /* Home + About: solid soft black */
+    
     #about { background: #0b0b0d !important; color: #f5f5f7 !important; }
     #home { 
       background-color: #0b0b0d !important;
@@ -1109,33 +1127,33 @@
       color: #f5f5f7 !important; 
     }
 
-    /* Remove gradient/glow feel from hero visual */
+    
     #home .visual { background: #111114 !important; box-shadow: 0 30px 90px rgba(0,0,0,.34) !important; border-color: rgba(255,255,255,.10) !important; }
 
-    /* Projects and everything after About: solid Apple-style off-white */
+    
     #portfolio, #projects, #projects + section, #connect, footer { background: #f5f5f7 !important; color: #0b0b0d !important; }
 
-    /* Make the white page feel separated, not gradient blended */
+    
     #portfolio { margin-top: 0 !important; border-radius: 0 !important; }
 
-    /* Remove strong colored glow from portfolio white section */
+    
     #portfolio .kicker, #portfolio .portfolio-title, #portfolio .portfolio-copy, #projects, #projects h2, #projects p, #projects .projects-head p, #projects + section, #connect, #connect h2, #connect .kicker, footer, footer p { color: #0b0b0d !important; }
     #portfolio .portfolio-copy, #projects .projects-head p, footer p { color: rgba(11,11,13,.68) !important; }
 
-    /* White-section glass becomes Apple frosted light panels */
+    
     #portfolio .glass, #projects .glass, #projects + section .glass, #connect .glass, footer .glass { background: rgba(255,255,255,.72) !important; border-color: rgba(0,0,0,.08) !important; box-shadow: inset 0 1px 0 rgba(255,255,255,.75), 0 24px 70px rgba(0,0,0,.08) !important; }
 
-    /* Project cards on white page */
+    
     #projects .tile { background: #ffffff !important; border-color: rgba(0,0,0,.08) !important; color: #0b0b0d !important; box-shadow: 0 18px 50px rgba(0,0,0,.045) !important; }
     #projects .tile:hover { color: #ffffff !important; }
     #projects .marquee-box { background: rgba(255,255,255,.72) !important; border-color: rgba(0,0,0,.08) !important; color: rgba(11,11,13,.58) !important; }
 
-    /* Report card light style */
+    
     #projects + section .report { background: #ffffff !important; border-color: rgba(0,0,0,.08) !important; box-shadow: 0 24px 70px rgba(0,0,0,.07) !important; }
     #projects + section .graph { background: #f5f5f7 !important; border-color: rgba(0,0,0,.08) !important; }
     #projects + section .metrics span { color: rgba(11,11,13,.52) !important; }
 
-    /* High-Visibility Crisp White Content Box Framework */
+    
     #connect { background: #0b0b0d !important; color: #f5f5f7 !important; }
     #connect .kicker { color: rgba(255, 255, 255, 0.72) !important; }
     #connect h2.big { color: #f5f5f7 !important; }
@@ -1148,18 +1166,18 @@
     #connect form button:hover { background: #272dcf !important; color: #ffffff !important; box-shadow: 0 14px 36px rgba(39, 45, 207, 0.35) !important; }
     #connect form button span, #connect form button svg { color: #ffffff !important; }
 
-    /* Footer links on white */
+    
     footer .foot { border-top-color: rgba(0,0,0,.10) !important; }
     footer .links a { color: rgba(11,11,13,.72) !important; border-color: rgba(0,0,0,.12) !important; }
 
-    /* Keep project cards cinematic against the clean white page */
+    
     #portfolio .portfolio-card-ref { box-shadow: none !important; }
 
-    /* Orange selection */
+    
     ::selection { background: #ff6b35; color: #ffffff; }
     ::-moz-selection { background: #ff6b35; color: #ffffff; }
 
-    /* Apple-inspired full-width video section before Projects */
+    
     .studio-film { background:#0b0b0d !important; color:#f5f5f7 !important; padding: clamp(64px, 8vw, 120px) 0 !important; }
     .studio-film-wrap { width:100%; margin:0 auto; }
     .studio-film-header { width: 100% !important; max-width: 100% !important; margin: 0 0 18px !important; display: flex; justify-content: space-between; align-items: center; gap: 18px; color: rgba(245,245,247,.72); }
@@ -1168,7 +1186,7 @@
     .studio-video-panel video, .studio-video-panel iframe { width:100%; height:100%; display:block; object-fit:cover; background:#111114; }
     .studio-video-overlay { position:absolute; left:clamp(16px, 4vw, 56px); right:clamp(16px, 4vw, 56px); bottom:clamp(16px, 3vw, 44px); display:flex; justify-content:space-between; align-items:center; gap:16px; pointer-events:none; }
     .studio-video-overlay span { padding:10px 14px; border-radius:999px; color:#f5f5f7; font-size:12px; background:rgba(0,0,0,.32); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px); border:1px solid rgba(255,255,255,.14); }
-    /* Unified Video Controls Framework */
+    
     .studio-video-controls-group {
       display: flex !important;
       align-items: center !important;
@@ -1202,7 +1220,7 @@
 
     .control-icon { width: 18px; height: 18px; display: block; }
     
-    /* State Filtering Matrices */
+    
     #videoPlayToggle .play-icon { display: block; }
     #videoPlayToggle .pause-icon { display: none; }
     #videoPlayToggle.is-playing .play-icon { display: none; }
@@ -1213,7 +1231,7 @@
     #videoMuteToggle.is-unmuted .sound-on { display: block; }
     #videoMuteToggle.is-unmuted .sound-off { display: none; }
 
-    /* Keep icons and small text visible on the off-white Apple section */
+    
     #portfolio .portfolio-slider-controls button, #portfolio .portfolio-dots button, #portfolio .portfolio-cta-mini a { color:#ffffff !important; }
     #portfolio .portfolio-cta-mini { color:rgba(11,11,13,.64) !important; }
     #portfolio .portfolio-cta-mini .pixel-plus span { background:rgba(11,11,13,.42) !important; }
@@ -1224,7 +1242,7 @@
     #connect .form-label, #connect form span, #connect form svg { color:#f5f5f7 !important; }
     #connect form button:hover span, #connect form button:hover svg { color:#ffffff !important; }
 
-    /* Copyright/footer end returns to soft black for contrast */
+    
     footer { background:#0b0b0d !important; color:#f5f5f7 !important; }
     footer p, footer .foot p, footer span { color:rgba(245,245,247,.72) !important; }
     footer .foot { border-top-color:rgba(255,255,255,.12) !important; }
@@ -1236,16 +1254,16 @@
       .studio-film-header { align-items:flex-start; flex-direction:column; }
       .studio-video-overlay { align-items:flex-end; }
       
-      /* Shrinks the text description badge container smoothly for small viewports */
+      
       .studio-video-overlay span { 
         max-width:52vw !important; 
         line-height:1.35 !important; 
-        font-size: 10px !important; /* Scaled down from 12px */
-        padding: 6px 11px !important; /* Shaved off edge padding */
+        font-size: 10px !important; 
+        padding: 6px 11px !important; 
       }
     }
 
-    /* Global Monospace font override for the Studio Video Description Label */
+    
     .studio-video-overlay span {
       font-family: var(--font-mono) !important;
       letter-spacing: -0.025em !important;
@@ -1253,7 +1271,7 @@
     }
       
       
-      /* Scale buttons smaller on mobile screens */
+      
       #videoPlayToggle, #videoMuteToggle {
         width: 36px !important;
         height: 36px !important;
@@ -1261,7 +1279,7 @@
       .control-icon { width: 15px; height: 15px; }
     }
 
-    /* Requested final interaction pass */
+    
     body, h1, h2, h3, p, span, a, input, textarea, button { font-family:var(--font-body); }
     .badge, .kicker, nav a, .brand, .login, .form-label, .metrics span, .marquee-box, .portfolio-card-ref p, .portfolio-slider-controls button, .portfolio-dots button { font-family:var(--font-mono); }
     .site-header.home-top nav.nav-menu a:hover, .site-header.home-top nav.nav-menu a:focus-visible { color:#fff !important; background:transparent !important; box-shadow:none !important; }
@@ -1270,11 +1288,11 @@
     .site-header:not(.home-top) nav.nav-menu a:hover:after, .site-header:not(.home-top) nav.nav-menu a:focus-visible:after { opacity:0 !important; transform:scaleX(0) !important; }
     #portfolio .portfolio-slider-controls button, #portfolio .portfolio-slider-controls button:hover, #portfolio .portfolio-card-ref .open-arrow { color:#0b0b0d !important; }
 
-    /* Unified blue hover for all service boxes */
+    
     #projects .tile:hover { background:#272dcf !important; border-color:#272dcf !important; color:#ffffff !important; box-shadow:0 28px 90px rgba(39,45,207,.35) !important; }
     #projects .tile:hover * { color:#ffffff !important; }
 
-    /* Apple-inspired clean slider arrows + visible liquid-glass CTA */
+    
     #portfolio .portfolio-slider-controls { bottom: 10px !important; gap: 14px !important; }
     #portfolio .portfolio-slider-controls button.portfolio-prev, #portfolio .portfolio-slider-controls button.portfolio-next { width: 46px !important; height: 46px !important; border-radius: 999px !important; border: 1px solid rgba(0,0,0,.08) !important; background: linear-gradient(145deg, rgba(255,255,255,.82), rgba(255,255,255,.42)) !important; color: #0b0b0d !important; font-size: 0 !important; line-height: 1 !important; box-shadow: inset 0 1px 0 rgba(255,255,255,.95), inset 0 -10px 22px rgba(255,255,255,.32), 0 18px 45px rgba(0,0,0,.12) !important; backdrop-filter: blur(22px) saturate(170%) !important; -webkit-backdrop-filter: blur(22px) saturate(170%) !important; position: relative !important; overflow: hidden !important; }
     #portfolio .portfolio-slider-controls button.portfolio-prev::before, #portfolio .portfolio-slider-controls button.portfolio-next::before { content: ""; position: absolute; width: 9px; height: 9px; border-top: 1.7px solid currentColor; border-left: 1.7px solid currentColor; top: 50%; left: 50%; }
@@ -1283,36 +1301,36 @@
     #portfolio .portfolio-slider-controls button.portfolio-prev::after, #portfolio .portfolio-slider-controls button.portfolio-next::after { content: ""; position: absolute; inset: 0; border-radius: inherit; background: linear-gradient(120deg, rgba(255,255,255,.72), transparent 38%, rgba(255,255,255,.30)); opacity: .42; pointer-events: none; }
     #portfolio .portfolio-slider-controls button.portfolio-prev:hover, #portfolio .portfolio-slider-controls button.portfolio-next:hover { transform: translateY(-2px) scale(1.035) !important; background: linear-gradient(145deg, rgba(255,255,255,.96), rgba(255,255,255,.56)) !important; box-shadow: inset 0 1px 0 rgba(255,255,255,1), 0 22px 56px rgba(0,0,0,.16), 0 0 38px rgba(39,45,207,.14) !important; }
 
-    /* Make the 'Let's create something amazing' button clearly visible on the white section */
+    
     #portfolio .portfolio-cta-mini { margin-top: 28px !important; color: rgba(11,11,13,.72) !important; }
     #portfolio .portfolio-cta-mini a { color: #1d1d1f !important; background: rgba(255,255,255,.78) !important; border: 1px solid rgba(0,0,0,.12) !important; box-shadow: 0 16px 46px rgba(0,0,0,.09) !important; backdrop-filter: blur(18px) saturate(150%) !important; -webkit-backdrop-filter: blur(18px) saturate(150%) !important; padding: 14px 26px !important; border-radius: 999px !important; font-weight: 500 !important; position: relative !important; overflow: hidden !important; transition: background 0.3s cubic-bezier(.16,1,.3,1), color 0.3s cubic-bezier(.16,1,.3,1), border-color 0.3s cubic-bezier(.16,1,.3,1), transform 0.3s cubic-bezier(.16,1,.3,1) !important; }
     #portfolio .portfolio-cta-mini a:hover { transform: translateY(-1px) !important; color: #ffffff !important; background: #272dcf !important; border-color: #272dcf !important; }
     #portfolio .portfolio-cta-mini span { color: rgba(11,11,13,.62) !important; }
 
-    /* Animated hero text cleanup */
+    
     #home .typed, #home .typed * { font-family: "Aileron", Arial, sans-serif !important; font-weight: 700 !important; letter-spacing: -0.03em !important; }
     #home .typed { border-bottom: none !important; text-decoration: none !important; box-shadow: none !important; }
 
-    /* Final portfolio controls polish: lower arrows, grey dots, no gradients */
+    
     #portfolio .portfolio-slider-controls { bottom: -22px !important; gap: 16px !important; align-items: center !important; }
 
-    /* Clean Apple-style arrow buttons - no gradients */
+    
     #portfolio .portfolio-slider-controls button.portfolio-prev, #portfolio .portfolio-slider-controls button.portfolio-next { width: 44px !important; height: 44px !important; border-radius: 999px !important; border: 1px solid rgba(0,0,0,.10) !important; background: rgba(255,255,255,.72) !important; color: #1d1d1f !important; box-shadow: 0 12px 32px rgba(0,0,0,.10) !important; backdrop-filter: blur(18px) saturate(150%) !important; -webkit-backdrop-filter: blur(18px) saturate(150%) !important; }
     #portfolio .portfolio-slider-controls button.portfolio-prev::after, #portfolio .portfolio-slider-controls button.portfolio-next::after { display: none !important; }
     #portfolio .portfolio-slider-controls button.portfolio-prev:hover, #portfolio .portfolio-slider-controls button.portfolio-next:hover { transform: translateY(-1px) !important; background: rgba(255,255,255,.86) !important; box-shadow: 0 14px 36px rgba(0,0,0,.13) !important; }
 
-    /* Visible neutral grey carousel dots */
+    
     #portfolio .portfolio-dots { gap: 8px !important; padding: 0 10px !important; }
     #portfolio .portfolio-dots button { width: 7px !important; height: 7px !important; border-radius: 999px !important; background: rgba(29,29,31,.28) !important; border: 0 !important; box-shadow: none !important; opacity: 1 !important; }
     #portfolio .portfolio-dots button.is-active { width: 22px !important; background: rgba(29,29,31,.62) !important; box-shadow: none !important; }
 
-    /* Clean visible CTA button: no blue hover, no shadow action */
+    
     #portfolio .portfolio-cta-mini { margin-top: 36px !important; }
     #portfolio .portfolio-cta-mini a { color: #1d1d1f !important; background: rgba(255,255,255,.78) !important; border: 1px solid rgba(0,0,0,.12) !important; box-shadow: 0 16px 46px rgba(0,0,0,.09) !important; backdrop-filter: blur(18px) saturate(150%) !important; -webkit-backdrop-filter: blur(18px) saturate(150%) !important; }
     #portfolio .portfolio-cta-mini a::before { display: none !important; }
     #portfolio .portfolio-cta-mini a:hover { transform: translateY(-1px) !important; color: #1d1d1f !important; background: rgba(255,255,255,.90) !important; border-color: rgba(0,0,0,.18) !important; box-shadow: 0 16px 46px rgba(0,0,0,.09) !important; }
 
-    /* Client report: animated editorial graph, same box size */
+    
     .client-live-report { overflow:hidden !important; min-height:118px !important; }
     .client-live-report .report-copy p:last-child { margin:0 !important; font-weight:500 !important; }
     .client-graph { position:relative !important; height:72px !important; padding:0 !important; border-radius:20px !important; overflow:hidden !important; background: linear-gradient(180deg, rgba(255,255,255,.78), rgba(245,245,247,.88)) !important; }
@@ -1330,41 +1348,41 @@
     @keyframes clientPulse { 0%, 100% { r:5; opacity:.9; } 50% { r:7; opacity:1; } }
     @media (max-width:760px) { .client-live-report { gap:18px !important; } .client-graph { height:84px !important; } }
 
-    /* Keep active nav highlight on all sections except Home */
+    
     .site-header:not(.home-top) nav.nav-menu a.active { background: #272dcf !important; color: #ffffff !important; border-radius: 999px !important; border-color: transparent !important; box-shadow: 0 0 38px rgba(39,45,207,.42) !important; }
     .site-header:not(.home-top) nav.nav-menu a.active::after { opacity: 0 !important; transform: scaleX(0) !important; }
 
-    /* Home remains minimal: no active highlight box */
+    
     .site-header.home-top nav.nav-menu a.active { background: transparent !important; box-shadow: none !important; color: rgba(255,255,255,.72) !important; }
 
-    /* Tighten Projects → Services spacing */
+    
     #portfolio .portfolio-cta-mini { margin-top: 18px !important; margin-bottom: 0 !important; }
     #portfolio { padding-bottom: 60px !important; }
     #projects { margin-top: 0 !important; padding-top: 70px !important; }
 
-    /* Video placeholder remains locked to 1920x1080 responsive ratio */
+    
     .studio-video-panel { aspect-ratio: 16 / 9 !important; width: 100% !important; height: auto !important; }
     .studio-video-placeholder { width: 100% !important; height: 100% !important; display: grid !important; place-items: center !important; background: #111114 !important; color: rgba(245,245,247,.52) !important; font-size: clamp(14px, 1.6vw, 20px) !important; letter-spacing: -0.02em !important; }
     .studio-video-placeholder span { padding: 12px 18px; border-radius: 999px; border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.04); }
 
-    /* Home H1 weight 600 */
+    
     #home h1, #home h1 > span:first-child { font-weight: 600 !important; }
 
-    /* Responsive projects slider fit: no bottom clipping or frame spill on tablet/mobile */
+    
     #portfolio.reference-style { overflow: hidden !important; }
     #portfolio .portfolio-grid { overflow: visible !important; }
     #portfolio .reference-slider-shell { overflow: visible !important; padding-bottom: 110px !important; box-sizing: content-box !important; }
     #portfolio .reference-card-row { overflow: visible !important; }
     #portfolio .portfolio-slider-controls { bottom: 22px !important; }
 
-   /* Tablet: reduce travel and add enough vertical room */
+   
     @media (max-width: 980px) {
-      /* Snaps the section height down to remove the large gaps on tablet/iPad */
+      
       #portfolio.reference-style { 
         padding-top: 24px !important; 
         padding-bottom: 10px !important; 
       }
-      /* Shaves down excess inner padding and container shell height */
+      
       #portfolio .reference-slider-shell { 
         height: 440px !important; 
         padding-bottom: 20px !important; 
@@ -1374,22 +1392,22 @@
       #portfolio .portfolio-card-ref { width: min(58vw, 270px) !important; height: min(390px, 58vw) !important; transform: translate(-50%,-50%) translateX(calc(var(--offset) * clamp(104px, 18vw, 152px))) translateY(calc(var(--lift) * .72)) rotateY(calc(var(--offset) * -15deg)) scale(calc(1 - var(--abs) * .115)) !important; }
       #portfolio.portfolio-revealed .portfolio-card-ref { transform: translate(-50%,-50%) translateX(calc(var(--offset) * clamp(104px, 18vw, 152px))) translateY(calc(var(--lift) * .72)) rotateY(calc(var(--offset) * -15deg)) scale(calc(1 - var(--abs) * .115)) !important; }
       #portfolio .portfolio-slider-controls { bottom: -15px !important; }
-      /* Squeezes out the massive dead space under the carousel */
+      
       #portfolio .portfolio-cta-mini { 
         margin-top: 24px !important; 
         margin-bottom: 0px !important;
       }
     }
 
-    /* Mobile: fit all cards inside viewport width and prevent bottom crop */
+    
     @media (max-width: 560px) {
-      /* Enforces complete visual overflow breakout across the entire portfolio block layout layer */
+      
       #portfolio, 
       #portfolio.reference-style, 
       #portfolio .portfolio-grid { 
         padding-left: 0 !important; 
         padding-right: 0 !important; 
-        padding-bottom: 0px !important; /* Collapses the empty gap under the button */
+        padding-bottom: 0px !important; 
         overflow: visible !important; 
       }
       #portfolio .portfolio-reference-head { 
@@ -1404,14 +1422,14 @@
         margin-right: auto !important; 
       }
       
-      /* Expanded wide tracking canvas container on mobile so side items can spread out correctly */
+      
       #portfolio .reference-slider-shell { height: 420px !important; width: 280px !important; margin: 10px auto 0 !important; padding-bottom: 20px !important; overflow: visible !important; perspective: 1000px !important; }
       
-      /* Explicitly hide arrow elements on smartphone resolutions */
+      
       #portfolio .portfolio-slider-controls button.portfolio-prev,
       #portfolio .portfolio-slider-controls button.portfolio-next { display: none !important; }
       
-      /* Rebalanced the spatial offset matrix to spread flanking cards out cleanly past the center view */
+      
       #portfolio .portfolio-card-ref { 
         width: 175px !important; 
         height: 290px !important; 
@@ -1425,14 +1443,14 @@
       #portfolio .portfolio-cta-mini { margin-top: 48px !important; }
     }
 
-    /* Very small screens */
+    
     @media (max-width: 390px) {
       #portfolio .reference-slider-shell { height: 468px !important; padding-bottom: 92px !important; }
       #portfolio .portfolio-card-ref { width: 66vw !important; height: 330px !important; transform: translate(-50%,-50%) translateX(calc(var(--offset) * 82px)) translateY(calc(var(--lift) * .35)) rotateY(calc(var(--offset) * -10deg)) scale(calc(1 - var(--abs) * .14)) !important; }
       #portfolio.portfolio-revealed .portfolio-card-ref { transform: translate(-50%,-50%) translateX(calc(var(--offset) * 82px)) translateY(calc(var(--lift) * .35)) rotateY(calc(var(--offset) * -10deg)) scale(calc(1 - var(--abs) * .14)) !important; }
     }
 
-    /* Reference-style client report panel from uploaded image */
+    
     .client-report-section { background:#050506 !important; padding-top:72px !important; padding-bottom:88px !important; }
     .client-stat-panel { width:min(1440px, calc(100vw - 28px)); min-height:192px; margin:0 auto; display:grid; grid-template-columns: 1fr 1fr 1fr 210px; align-items:center; gap:0; border-radius:24px; padding:34px 42px; color:#f5f5f7; background: linear-gradient(180deg, rgba(255,255,255,.055), rgba(255,255,255,.022)), linear-gradient(100deg, rgba(39,45,207,.10), rgba(15,15,18,.96) 24%, rgba(6,6,7,.98) 72%, rgba(255,255,255,.035)); border:1px solid rgba(255,255,255,.075); box-shadow: inset 0 1px 0 rgba(255,255,255,.06), inset 0 -22px 46px rgba(255,255,255,.018), 0 28px 85px rgba(0,0,0,.55); position:relative; overflow:hidden; }
     .client-stat-panel::before { content:""; position:absolute; inset:0; pointer-events:none; background:radial-gradient(circle at 4% 0%, rgba(52,65,255,.18), transparent 22%), radial-gradient(circle at 98% 55%, rgba(84,56,255,.11), transparent 24%); }
@@ -1454,7 +1472,7 @@
     .client-stat-item.green { color:#70ad20; }
     .client-stat-item.purple { color:#7a3caf; }
     
-    /* 3D Orb Asset Pass: Continuous Liquid Wave Throb */
+    
     .client-report-orb { 
       width:132px; 
       height:132px; 
@@ -1495,7 +1513,7 @@
       .client-report-orb { width:116px; height:116px; }
     }
 
-    /* Client report final fit pass: white box, bigger icons, responsive, no orb/black gradient */
+    
     .client-report-section { background:#f5f5f7 !important; padding:clamp(42px, 6vw, 76px) clamp(14px, 4vw, 54px) !important; overflow:hidden !important; }
     .client-stat-panel { width:min(1440px, 100%) !important; max-width:100% !important; min-height:168px !important; grid-template-columns:repeat(3, minmax(0, 1fr)) !important; gap:0 !important; padding:clamp(24px, 3vw, 38px) clamp(20px, 3.4vw, 46px) !important; border-radius:clamp(22px, 2vw, 30px) !important; background:#ffffff !important; color:#0b0b0d !important; border:1px solid rgba(0,0,0,.08) !important; box-shadow:0 24px 70px rgba(0,0,0,.075) !important; overflow:hidden !important; }
     .client-stat-panel::before { display:none !important; }
@@ -1540,22 +1558,22 @@
       .stat-copy strong { font-size:36px !important; }
     }
 
-  /* Global text pass: Uniform Aileron pass across display and body text frameworks */
+  
   :root {
     --font-display: "Aileron", ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial, sans-serif !important;
     --font-body: "Aileron", ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial, sans-serif !important;
     --font-mono: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", Arial, sans-serif !important;
   }
 
-  /* Keep SFMono / mono-family UI elements exactly as they are */
+  
   .badge, .kicker, nav a, .brand, .login, .form-label, .metrics span, .marquee-box, .portfolio-card-ref p, .portfolio-slider-controls button, .portfolio-dots button, .cta a, form button, input, textarea {
     font-family: var(--font-mono) !important;
   }
 
-  /* Main readable/display text uses Bureau Serif */
+  
   body, h1, h2, h3, p, span, a, button { font-family: var(--font-body) !important; }
 
-  /* Strict high-priority monospace injection for all interactive fields and texts within the enquiry box form framework */
+  
   #connect form,
   #connect form *,
   #connect input,
@@ -1565,27 +1583,27 @@
     font-family: var(--font-mono) !important;
   }
 
-  /* Restore mono after broad text rule */
+  
   .badge, .kicker, nav a, .brand, .brand span, .login, .login span, .form-label, .metrics span, .marquee-box, .portfolio-card-ref p, .portfolio-slider-controls button, .portfolio-dots button, .cta a, form button, input, textarea {
     font-family: var(--font-mono) !important;
   }
 
-  /* Keep all numbers Aileron */
+  
   .number, .case .meta, .subcard > span, .tile-top > span, .stat-copy strong, .stat-copy strong span, .portfolio-card-ref .number, .client-stat-item strong, .client-stat-item strong span, footer span, .studio-film-header span, .portfolio-reference-head .kicker span, [class*="number"], [class*="count"], [class*="metric"] b {
     font-family: "Aileron", ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial, sans-serif !important;
   }
 
-  /* Remove the Visual systems box from Home */
+  
   #home .visual { display: none !important; }
 
-  /* Center the Home hero text after removing the visual block */
+  
   #home.hero { min-height: 100vh !important; display: flex !important; align-items: center !important; justify-content: center !important; text-align: center !important; padding-top: 60px !important; }
   #home .hero-grid { max-width: 960px !important; width: 100% !important; display: grid !important; grid-template-columns: 1fr !important; justify-items: center !important; align-items: center !important; gap: 0 !important; margin: 0 auto !important; }
   #home .hero-grid > div:first-child { display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important; width: 100% !important; }
   #home .badge, #home .hero p, #home .cta { display: inline-flex !important; justify-content: center !important; text-align: center !important; margin-left: auto !important; margin-right: auto !important; }
 
-  /* Home headline: Centered Aileron presentation keeping identical spacing layout attributes */
-  /* Home headline: Forced to 1 line and scaled down 20% */
+  
+  
 #home h1,
 #home h1 > span:first-child,
 #home .typed,
@@ -1602,11 +1620,11 @@
   font-size: clamp(44px, 7.3vw, 112px) !important;
   margin-left: auto !important;
   margin-right: auto !important;
-  white-space: normal !important; /* Allows natural wrapping */
+  white-space: normal !important; 
 }
 
 #home h1 span:first-child {
-  display: block !important; /* Forcefully drops the animated text underneath into line 2 */
+  display: block !important; 
   white-space: normal !important;
 }
 
@@ -1618,19 +1636,19 @@
 }
 
 #home h1 {
-  font-size: clamp(48px, 7.3vw, 112px) !important; /* Exactly 20% smaller than 140px */
+  font-size: clamp(48px, 7.3vw, 112px) !important; 
   margin-left: auto !important;
   margin-right: auto !important;
-  white-space: nowrap !important; /* Double down reinforcement for 1 line */
+  white-space: nowrap !important; 
 }
 
-  /* Preserve all mono nav behavior, including the blue glowing Home dot */
+  
   .site-header.home-top nav.nav-menu a:hover:after, .site-header.home-top nav.nav-menu a.active:after, .site-header.home-top nav.nav-menu a:focus-visible:after { left:50% !important; right:auto !important; width:8px !important; height:8px !important; bottom:2px !important; border-radius:50% !important; background:#272dcf !important; box-shadow:0 0 10px #272dcf,0 0 22px rgba(39,45,207,.95) !important; transform:translateX(-50%) scale(1) !important; opacity:1 !important; }
 
   @media (max-width: 900px) { #home h1 { font-size: clamp(58px, 9.2vw, 112px) !important; } }
   @media (max-width: 560px) { #home h1 { font-size: clamp(52px, 17vw, 78px) !important; letter-spacing: -0.055em !important; } }
 
-  /* Clean page rhythm: remove unwanted gaps between sections while keeping breathing room */
+  
   section { margin-top: 0 !important; margin-bottom: 0 !important; }
   #home.hero { 
     min-height: 100vh !important; 
@@ -1644,7 +1662,7 @@
   }
   #about { padding-top: clamp(58px, 7vw, 88px) !important; padding-bottom: clamp(58px, 7vw, 86px) !important; }
   #studio-film { padding-top: clamp(56px, 7vw, 92px) !important; padding-bottom: clamp(56px, 7vw, 92px) !important; }
-  /* Safely adjusts the layout gaps ONLY on large desktop monitors */
+  
   @media (min-width: 981px) {
     #portfolio.reference-style { 
       min-height: auto !important; 
@@ -1653,18 +1671,18 @@
       overflow: hidden !important; 
     }
     #projects { 
-      padding-top: 20px !important;    /* Squeezes layout gap directly under projects slider */
-      padding-bottom: 12px !important; /* Shaves off the empty gap leading to the Client Report */
+      padding-top: 20px !important;    
+      padding-bottom: 12px !important; 
     }
     #client-report.client-report-section {
-      padding-top: 12px !important;    /* Pulls Client Report right up closer to the Studio Services marquee */
+      padding-top: 12px !important;    
     }
   }
   #client-report.client-report-section { padding-top: clamp(46px, 6vw, 72px) !important; padding-bottom: clamp(46px, 6vw, 76px) !important; }
   #connect { padding-top: clamp(80px, 9vw, 120px) !important; padding-bottom: 20px !important; }
   footer { padding-top: 20px !important; }
 
-  /* Projects slider: prevent overlapping and give each card a clean panoramic spread */
+  
   #portfolio .portfolio-grid { overflow: visible !important; }
   #portfolio .reference-slider-shell { height: clamp(600px, 50vw, 720px) !important; max-width: min(1420px, 100%) !important; margin: 18px auto 0 !important; padding-bottom: 86px !important; overflow: visible !important; perspective: 2200px !important; box-sizing: border-box !important; }
   #portfolio .reference-card-row { overflow: visible !important; }
@@ -1672,17 +1690,17 @@
   #portfolio.portfolio-revealed .portfolio-card-ref { opacity: calc(1 - var(--abs) * .08) !important; transform: translate(-50%, -50%) translateX(calc(var(--offset) * clamp(178px, 16.8vw, 270px))) translateY(calc(var(--lift) * .58)) translateZ(calc((1 - (var(--abs) / 3)) * 118px)) rotateY(calc(var(--offset) * -16deg)) rotateZ(calc(var(--offset) * .22deg)) scale(calc(1 - var(--abs) * .055)) !important; }
   #portfolio .portfolio-card-ref.is-center { z-index: 90 !important; }
 
-  /* Controls sit clearly below cards, not inside them */
+  
   #portfolio .portfolio-slider-controls { 
-    /* Pulled up closer underneath the newly shortened cards */
+    
     bottom: -24px !important; 
   }
   #portfolio .portfolio-cta-mini { 
-    /* Reduced margin gap to pull the upcoming section up faster */
+    
     margin-top: 36px !important; 
   }
 
-  /* Tablet portfolio fit */
+  
   @media (max-width: 980px) {
     #home.hero { 
       min-height: 100vh !important; 
@@ -1691,19 +1709,19 @@
       padding-bottom: 40px !important; 
     }
     #portfolio.reference-style { padding-top: 64px !important; padding-bottom: 60px !important; }
-    /* Reverted slider height to standard and hid arrow button actions */
+    
     #portfolio .reference-slider-shell { height: 520px !important; padding-bottom: 20px !important; overflow: visible !important; margin-top: 18px !important; }
-    /* Reduced horizontal track multipliers from 138px-210px down to 96px-132px to squeeze flanking cards safely inside iPad margins */
+    
     #portfolio .portfolio-card-ref, #portfolio.portfolio-revealed .portfolio-card-ref { width: min(44vw, 230px) !important; height: min(350px, 54vw) !important; transform: translate(-50%, -50%) translateX(calc(var(--offset) * clamp(96px, 18vw, 132px))) translateY(calc(var(--lift) * .48)) rotateY(calc(var(--offset) * -12deg)) scale(calc(1 - var(--abs) * .07)) !important; }
     
-    /* Strictly hides the previous and next arrow buttons on tablet viewports */
+    
     #portfolio .portfolio-slider-controls button.portfolio-prev,
     #portfolio .portfolio-slider-controls button.portfolio-next { display: none !important; }
     #portfolio .portfolio-slider-controls { bottom: 10px !important; }
     #portfolio .portfolio-cta-mini { margin-top: 32px !important; }
   }
 
-  /* Mobile layout fit: centers typing container and locks badge to 1 clean line */
+  
   @media (max-width: 560px) {
     #home.hero { 
       min-height: 100vh !important; 
@@ -1713,7 +1731,7 @@
       text-align: center !important;
       width: 100% !important;
       position: relative !important;
-      /* Drops a low opacity layout isolation layer behind the main heading text block to ensure maximum text contrast against passing background pills */
+      
       z-index: 2 !important; 
     }
     #home .hero-grid {
@@ -1745,7 +1763,7 @@
       max-width: 100% !important;
     }
     
-    /* Makes the info badge small, centers it, and locks it strictly to 1 line */
+    
     #home.hero .badge {
       font-size: clamp(9px, 2.3vw, 11px) !important;
       text-overflow: ellipsis !important;
@@ -1770,7 +1788,7 @@
       line-height: 1.02 !important;
     }
 
-    /* Overrides script measurements to keep the typing text dead-center without side drifting */
+    
     #rolling-word-container,
     #rolling-word-container.typewriter-word-container {
       display: inline-flex !important;
@@ -1778,7 +1796,7 @@
       justify-content: center !important;
       margin: 0.12em auto 0 !important;
       text-align: center !important;
-      width: 100% !important; /* Maximizes block container span to enforce center alignment */
+      width: 100% !important; 
       min-width: 0 !important;
       max-width: 100% !important;
       padding: 0 !important;
@@ -1794,14 +1812,14 @@
     #portfolio .portfolio-card-ref, #portfolio.portfolio-revealed .portfolio-card-ref { width: min(54vw, 210px) !important; height: min(330px, 86vw) !important; transform: translate(-50%, -50%) translateX(calc(var(--offset) * clamp(108px, 34vw, 150px))) translateY(calc(var(--lift) * .28)) rotateY(calc(var(--offset) * -8deg)) scale(calc(1 - var(--abs) * .075)) !important; }
     #portfolio .portfolio-slider-controls { bottom: 14px !important; }
     #portfolio .portfolio-cta-mini { margin-top: 8px !important; }
-    /* Tighten the rhythm between the button and services header on mobile */
+    
     #portfolio { padding-bottom: 0px !important; }
     #projects { padding-top: 10px !important; }
   }
 
-  /* Core 3D Overlapping Snapping Carousel Engine Settings for Mobile */
+  
   @media (max-width: 560px) {
-    /* Ensures zero margin cropping across the entire section block canvas grid layout */
+    
     #portfolio, 
     #portfolio.reference-style, 
     #portfolio .portfolio-grid { 
@@ -1810,7 +1828,7 @@
       padding-right: 0 !important; 
     }
     
-    /* Configures an unclipped panoramic width so background cards travel outwards correctly */
+    
     #portfolio .reference-slider-shell { 
       height: 440px !important; 
       width: 290px !important; 
@@ -1823,7 +1841,7 @@
       overflow: visible !important; 
     }
     
-    /* Premium panoramic spread mechanics: wide horizontal offset (114px step) with layered depth (3D overlapping queue) */
+    
     #portfolio .portfolio-card-ref { 
       width: 176px !important; 
       height: 295px !important; 
@@ -1831,7 +1849,7 @@
       transform: translate(-50%, -50%) translateX(calc(var(--offset) * 114px)) translateY(calc(var(--lift) * 0.22)) translateZ(calc((1 - var(--abs)) * 50px)) rotateY(calc(var(--offset) * -15deg)) scale(calc(1 - var(--abs) * 0.13)) !important; 
     }
     
-    /* Mirror reveal states exactly to keep animations flawless on user interaction loops */
+    
     #portfolio.portfolio-revealed .portfolio-card-ref { 
       transform: translate(-50%, -50%) translateX(calc(var(--offset) * 114px)) translateY(calc(var(--lift) * 0.22)) translateZ(calc((1 - var(--abs)) * 50px)) rotateY(calc(var(--offset) * -15deg)) scale(calc(1 - var(--abs) * 0.13)) !important; 
     }
@@ -1842,7 +1860,7 @@
     
     #portfolio .portfolio-cta-mini { 
       margin-top: 45px !important; 
-      margin-bottom: 0px !important; /* Locks structural balance cleanly above Studio Services */
+      margin-bottom: 0px !important; 
     }
   }
 
@@ -1851,10 +1869,10 @@
     #portfolio .portfolio-card-ref, #portfolio.portfolio-revealed .portfolio-card-ref { width: 156px !important; height: 265px !important; transform: translate(-50%, -50%) translateX(calc(var(--offset) * 98px)) translateY(calc(var(--lift) * 0.2)) translateZ(calc((1 - var(--abs)) * 40px)) rotateY(calc(var(--offset) * -12deg)) scale(calc(1 - var(--abs) * 0.12)) !important; }
   }
 
-  /* Enforces shortened 3D cards and project grid tiles ONLY on large screen viewports */
+  
   @media (min-width: 981px) {
     #portfolio .reference-slider-shell {
-      /* Reverting variables to absolute preview design alignment layout */
+      
       --card-w: clamp(176px, 16vw, 260px);
       --card-h: clamp(330px, 30vw, 430px);
       --card-step: clamp(132px, 13.1vw, 204px);
@@ -1863,7 +1881,7 @@
       overflow: visible !important;
     }
 
-    /* Compresses the project cards list only when viewed on wide desktop monitors */
+    
     .tile { 
       border: 1px solid rgba(255,255,255,.1); 
       background: rgba(255,255,255,.04); 
@@ -1887,7 +1905,7 @@
   }
   #portfolio .reference-card-row { transform-style: preserve-3d !important; overflow: visible !important; }
 
-  /* Fully matching properties alignment and smooth curvature variables from preview layout template */
+  
   #portfolio .portfolio-card-ref {
     width: clamp(176px, 16vw, 260px) !important;
     height: clamp(330px, 30vw, 430px) !important;
@@ -1904,14 +1922,14 @@
     transform: translate(-50%,-50%) translateX(calc(var(--offset) * clamp(132px, 13.1vw, 204px))) translateY(var(--lift)) translateZ(calc((1 - (var(--abs) / 3)) * 140px)) rotateY(calc(var(--offset) * -22deg)) rotateZ(calc(var(--offset) * .35deg)) scale(calc(1 - var(--abs) * .087)) !important;
   }
 
-  /* Center card layout tweaks */
+  
   #portfolio .portfolio-card-ref.is-center, #portfolio.portfolio-revealed .portfolio-card-ref.is-center { 
     opacity: 1 !important; 
     z-index: 70 !important; 
     transform: translate(-50%,-50%) translateX(0px) translateY(0px) translateZ(140px) rotateY(0deg) scale(1) !important;
   }
 
-  /* Reset layout transformations back to original look upon hover initialization */
+  
   #portfolio .portfolio-card-ref:hover { 
     transform: translate(-50%,-50%) translateX(calc(var(--offset) * clamp(132px, 13.1vw, 204px))) translateY(var(--lift)) translateZ(calc((1 - (var(--abs) / 3)) * 140px)) rotateY(calc(var(--offset) * -22deg)) rotateZ(calc(var(--offset) * .35deg)) scale(calc(1 - var(--abs) * .087)) !important; 
   }
@@ -1923,10 +1941,10 @@
   }
   #portfolio .portfolio-card-ref.is-far { opacity: .22 !important; pointer-events: none !important; }
 
-  /* Search and orbit routing now highlight service boxes 1-6 instead of controlling project sliders. */
+  
   #projects .tile { cursor: pointer; }
 
-  /* Search results UI configuration */
+  
   .site-search-panel { 
     position: fixed; 
     inset: 0; 
@@ -1946,20 +1964,20 @@
   .site-search-backdrop { 
     position: absolute; 
     inset: 0; 
-    background: rgba(5,5,6,.55); /* Slightly deeper dark mask overlay tint */
+    background: rgba(5,5,6,.55); 
   }
 
-  /* Structural Hooks to smoothly blur the main underlying website content layout */
+  
   main {
     transition: filter .45s cubic-bezier(.16, 1, .3, 1), -webkit-filter .45s cubic-bezier(.16, 1, .3, 1);
     will-change: filter, -webkit-filter;
   }
   
-  /* Blurs the body slightly into a premium low-blur background style */
+  
   body.search-active main {
     filter: blur(4px) saturate(92%);
     -webkit-filter: blur(4px) saturate(92%);
-    pointer-events: none; /* Blocks accidental clicks on underlying project cards during active search */
+    pointer-events: none; 
   }
   .site-search-box { position: relative; z-index: 1; width: min(760px, 92vw); border-radius: 28px; padding: 12px 58px 16px 56px; transform: translateY(-16px) scale(.97); opacity: 0; transition: transform .42s cubic-bezier(.16,1,.3,1), opacity .32s ease; }
   .site-search-panel.is-open .site-search-box { transform: translateY(0) scale(1); opacity: 1; }
@@ -1981,12 +1999,12 @@
     #portfolio .portfolio-card-ref { width: min(44vw, 230px) !important; height: 350px !important; transform: translate(-50%, -50%) translateX(calc(var(--offset) * clamp(96px, 18vw, 132px))) translateY(calc(var(--lift) * .48)) rotateY(calc(var(--offset) * -12deg)) scale(calc(1 - var(--abs) * .07)) !important; }
     #portfolio.portfolio-revealed .portfolio-card-ref { transform: translate(-50%, -50%) translateX(calc(var(--offset) * clamp(96px, 18vw, 132px))) translateY(calc(var(--lift) * .48)) rotateY(calc(var(--offset) * -12deg)) scale(calc(1 - var(--abs) * .07)) !important; }
     
-    /* Double validation rule to ensure mobile framework strips tablet arrow boxes completely */
+    
     #portfolio .portfolio-slider-controls button.portfolio-prev,
     #portfolio .portfolio-slider-controls button.portfolio-next { display: none !important; }
   }
   @media (max-width: 560px) {
-    /* Opened up container and forced a wide 280px distribution platform with visible layout overflow channels */
+    
     #portfolio .reference-slider-shell { height: 420px !important; width: 280px !important; margin: 14px auto 0 !important; overflow: visible !important; perspective: 1100px !important; }
     #portfolio .portfolio-card-ref { width: 175px !important; height: 290px !important; border-radius: 20px !important; transform: translate(-50%, -50%) translateX(calc(var(--offset) * 114px)) translateY(calc(var(--lift) * 0.25)) translateZ(calc((1 - var(--abs)) * 45px)) rotateY(calc(var(--offset) * -14deg)) scale(calc(1 - var(--abs) * 0.14)) !important; }
     #portfolio.portfolio-revealed .portfolio-card-ref { transform: translate(-50%, -50%) translateX(calc(var(--offset) * 114px)) translateY(calc(var(--lift) * 0.25)) translateZ(calc((1 - var(--abs)) * 45px)) rotateY(calc(var(--offset) * -14deg)) scale(calc(1 - var(--abs) * 0.14)) !important; }
@@ -1997,11 +2015,11 @@
     .site-search-result span:first-child { font-size: 19px; }
   }
 
-  /* Desktop client report panel fixes */
+  
   @media (min-width:1181px) {
     .client-stat-panel { 
       display:grid !important; 
-      /* Shifts layout balance heavily to the left column */
+      
       grid-template-columns: 1.4fr 0.8fr 0.8fr !important; 
       column-gap:0 !important; 
       padding:clamp(24px, 2.5vw, 36px) clamp(22px, 2.8vw, 40px) !important; 
@@ -2066,7 +2084,7 @@
     .stat-sparkline { max-width:128px !important; height:58px !important; }
   }
 
-  /* Projects first-view slide-up reveal mechanics */
+  
   #portfolio .portfolio-card-ref {
     opacity: 0 !important;
     transform: translate(-50%, calc(-50% + 92px)) translateX(calc(var(--offset) * clamp(132px, 13.1vw, 204px))) translateY(var(--lift)) translateZ(calc((1 - (var(--abs) / 3)) * 140px)) rotateY(calc(var(--offset) * -22deg)) rotateZ(calc(var(--offset) * .35deg)) scale(calc(.96 - var(--abs) * .087)) !important;
@@ -2084,14 +2102,14 @@
     #portfolio.portfolio-revealed .portfolio-card-ref { transform: translate(-50%, -50%) translateX(calc(var(--offset) * clamp(74px, 23vw, 104px))) translateY(calc(var(--lift) * .45)) rotateY(calc(var(--offset) * -12deg)) scale(calc(1 - var(--abs) * .13)) !important; }
   }
 
-  /* Home-only nav hover glowing effect setup */
+  
   .site-header.home-top nav.nav-menu a { overflow: visible !important; }
   .site-header.home-top nav.nav-menu a:hover, .site-header.home-top nav.nav-menu a:focus-visible, .site-header.home-top nav.nav-menu a.active { background: transparent !important; box-shadow: none !important; }
   .site-header.home-top nav.nav-menu a::after, .site-header.home-top nav.nav-menu a.active::after, .site-header.home-top nav.nav-menu a:hover::after, .site-header.home-top nav.nav-menu a:focus-visible::after { left: 50% !important; right: auto !important; bottom: -3px !important; width: 5px !important; height: 5px !important; border-radius: 999px !important; background: #ffffff !important; transform: translateX(-50%) scale(0) !important; transform-origin: center !important; opacity: 0 !important; box-shadow: 0 0 8px rgba(255,255,255,.95), 0 0 18px rgba(39,45,207,.72), 0 0 32px rgba(39,45,207,.38) !important; transition: transform .28s cubic-bezier(.16,1,.3,1), opacity .2s ease !important; }
   .site-header.home-top nav.nav-menu a:hover::after, .site-header.home-top nav.nav-menu a:focus-visible::after { opacity: 1 !important; transform: translateX(-50%) scale(1) !important; }
   .site-header.home-top nav.nav-menu a.active:not(:hover):not(:focus-visible)::after { opacity: 0 !important; transform: translateX(-50%) scale(0) !important; }
 
-  /* Final override: animated homepage word uses Mountriel Italic with tighter spacing */
+  
   @font-face {
     font-family: "Mountriel Italic";
     src: local("Mountriel Italic"), local("Mountriel-Italic"), local("Mountriel Italic Regular");
@@ -2105,13 +2123,13 @@
   #rolling-word-container,
   #rolling-word-container * {
     font-family: "Mountriel Italic", "Mountriel", "Bureau Serif", Georgia, "Times New Roman", serif !important;
-    font-style: italic !important; /* Restored the elegant italic slant */
+    font-style: italic !important; 
     font-weight: 400 !important;
-    letter-spacing: -0.085em !important; /* Re-applied tighter letter-spacing for elegant cursive tracking */
+    letter-spacing: -0.085em !important; 
     font-kerning: normal !important;
     font-feature-settings: "kern" 1, "liga" 1 !important;
     
-    /* Uniform soft white matching the main headline */
+    
     color: #f5f5f7 !important;
     background: none !important;
     -webkit-background-clip: initial !important;
@@ -2150,7 +2168,7 @@
   }
 
 
-  /* Final override: make the static Home headline slightly smaller than the animated word */
+  
   #home h1 > span:first-child {
     font-size: 0.88em !important;
     line-height: 0.98 !important;
@@ -2165,7 +2183,7 @@
 
 
 
-  /* Creative homepage word animation: continuous smooth dissolve-slide, no cropped edges */
+  
   #home h1 {
     overflow: visible !important;
     padding-left: 0.24em !important;
@@ -2264,7 +2282,7 @@
       animation: none !important;
     }
   }
-/* High-End Aesthetic Floating Space Engine */
+
   .floating-services-container {
     position: absolute;
     inset: 0;
@@ -2303,7 +2321,7 @@
     color: #ffffff !important;
   }
 
-  /* Absolute Center Engine for Orbit Alignment */
+  
   .floating-services-container {
     position: absolute;
     top: 50%;
@@ -2329,7 +2347,7 @@
     overflow: visible;
   }
 
-  /* Precise Orbit Sizing Guidelines (Expanded Distance) */
+  
   .inner-track {
     width: min(880px, 92vw);
     height: min(880px, 92vw);
@@ -2339,7 +2357,7 @@
     height: min(1340px, 150vw);
   }
 
-  /* Elegant Fine-Line Vector Graphics */
+  
   .orbit-line-svg {
     position: absolute;
     inset: 0;
@@ -2355,25 +2373,25 @@
     position: absolute;
     pointer-events: auto;
     white-space: nowrap;
-    /* Center item on the tracking perimeter line path */
+    
     top: 50%;
     left: 50%;
     margin-top: -16px; 
     margin-left: -65px;
   }
 
-  /* Mathematical Spacing & Motion Pass (Offsets of 120 degrees per item) */
-  /* Inner Orbit Animation Controls */
+  
+  
   .item-1-1 { animation: orbitRotateInner 32s linear infinite; --start-deg: 0deg; }
   .item-1-2 { animation: orbitRotateInner 32s linear infinite; --start-deg: 120deg; }
   .item-1-3 { animation: orbitRotateInner 32s linear infinite; --start-deg: 240deg; }
 
-  /* Outer Orbit Animation Controls (Slightly slower, traveling counter-clockwise) */
+  
   .item-2-1 { animation: orbitRotateOuter 48s linear infinite; --start-deg: 30deg; }
   .item-2-2 { animation: orbitRotateOuter 48s linear infinite; --start-deg: 150deg; }
   .item-2-3 { animation: orbitRotateOuter 48s linear infinite; --start-deg: 270deg; }
 
-  /* Keyframes for Synchronized Non-Flipping Translation Matrix (Expanded Distance) */
+  
   @keyframes orbitRotateInner {
     0% {
       transform: rotate(var(--start-deg)) translateX(calc(min(880px, 92vw) / 2)) rotate(calc(-1 * var(--start-deg)));
@@ -2392,7 +2410,7 @@
     }
   }
 
-  /* Live Radar Pulse Signals */
+  
   .live-pulse-ball {
     position: relative;
     width: 6px;
@@ -2410,7 +2428,7 @@
     animation: liveRadarPulse 2s cubic-bezier(0.25, 0, 0, 1) infinite;
   }
   
-  /* Multi-spectrum futuristic colors */
+  
   .live-pulse-ball.blue   { background: #272dcf; color: #272dcf; }
   .live-pulse-ball.green  { background: #65a51b; color: #65a51b; }
   .live-pulse-ball.purple { background: #8a3cca; color: #8a3cca; }
@@ -2423,7 +2441,7 @@
     100% { transform: scale(2.4); opacity: 0; }
   }
 
-  /* Removed conflicting duplicate responsive orbit engine definition block */
+  
 
 	  #backToTopBtn {
 	    position: fixed;
@@ -2479,11 +2497,11 @@
 	    display: block;
 	  }
 
-	  /* Premium Apple Intelligence Soft Liquid Wind Orb Architecture - Refined Spatial Distance */
+	  
   #aiComingSoonOrb {
     position: fixed;
-    right: clamp(24px, 3.5vw, 48px); /* Shifted inwards from 34px maximum for a perfect grid gutter look */
-	    bottom: var(--ai-orb-bottom, clamp(24px, 3.5vw, 48px)); /* JS pins this above the contact panel before it enters the black box */
+    right: clamp(24px, 3.5vw, 48px); 
+	    bottom: var(--ai-orb-bottom, clamp(24px, 3.5vw, 48px)); 
     z-index: 999998;
     width: 38px;
     height: 38px;
@@ -2499,7 +2517,7 @@
     overflow: visible;
   }
 
-  /* Smooth Volumetric Liquid Wind Color Core Matrix */
+  
   .gemini-orb-core {
     position: absolute;
     inset: -6px;
@@ -2509,27 +2527,27 @@
       radial-gradient(circle at 25% 25%, #aae0ff 0%, #1e73e6 35%, transparent 70%),
       radial-gradient(circle at 75% 75%, #0a1f7a 0%, #030a33 55%, transparent 85%),
       radial-gradient(circle at 40% 70%, #3a7bd5 0%, #3a6073 60%, #020726 100%);
-    /* Strong hardware blur completely melts away sharp circular edges into liquid gas */
+    
     filter: blur(8px) saturate(160%) contrast(1.12);
     z-index: 1;
-    /* Combines shifting fluid shapes with shifting color hues to create wind currents inside */
+    
     animation: geminiLiquidWindFlow 8s cubic-bezier(0.45, 0, 0.55, 1) infinite alternate;
     transform-origin: center center;
   }
 
-  /* Background Ambient Chromatic Fog Extension Layer - Smooth Breathing Glow */
+  
   .gemini-orb-aura {
     position: absolute;
-    inset: -20px; /* Slightly wider inset to let the breathing aura expand cleanly */
+    inset: -20px; 
     border-radius: 44% 56% 40% 60% / 50% 48% 52% 50%;
     background: radial-gradient(circle at center, rgba(39, 118, 255, 0.65) 0%, rgba(39, 118, 255, 0.3) 40%, rgba(10, 26, 125, 0.1) 60%, transparent 80%);
-    filter: blur(20px) saturate(150%); /* High-fidelity blur for smooth mounded bleeding edge vectors */
+    filter: blur(20px) saturate(150%); 
     z-index: 0;
     animation: geminiLiquidWindAura 11s cubic-bezier(0.45, 0, 0.55, 1) infinite alternate, appleAuraBreath 4s ease-in-out infinite alternate;
     mix-blend-mode: screen;
     will-change: transform, opacity;
   }
-  /* Custom SVG Sizing & Center Vector Fitting Rules */
+  
   #aiComingSoonOrb .ai-icon-embed {
     width: 28px;
     height: 28px;
@@ -2574,7 +2592,7 @@
     z-index: 999999;
   }
 
-  /* Interaction Hover Configurations */
+  
   #aiComingSoonOrb:hover {
     transform: translateY(-2px) scale(1.04);
   }
@@ -2591,7 +2609,7 @@
     transform: translateY(0) scale(1);
   }
 
-  /* Morphing Liquid Wind Wave Timelines */
+  
   @keyframes geminiLiquidWindFlow {
     0% {
       border-radius: 64% 36% 52% 48% / 55% 42% 58% 45%;
@@ -2626,7 +2644,7 @@
     }
   }
 
-  /* Independent High-End Volumetric Breathing Glow Animation Map */
+  
   @keyframes appleAuraBreath {
     0% {
       opacity: 0.55;
@@ -2635,8 +2653,8 @@
     }
     100% {
       opacity: 1;
-      transform: scale(1.16); /* Expands out smoothly for a rich light plume swell */
-      filter: blur(24px) saturate(170%); /* Light dilutes perfectly into a premium smoky fog halo */
+      transform: scale(1.16); 
+      filter: blur(24px) saturate(170%); 
     }
   }
 	  @media (max-width: 560px) {
@@ -2823,21 +2841,9 @@
   }
 </style>
 </head>
-	<body class="auth-state-pending">
+	<body class="auth-state-pending is-booting">
 	  <img src="bg1.jpg" fetchpriority="high" loading="eager" width="2048" height="1365" alt="" style="position:absolute; width:1px; height:1px; opacity:0.01; pointer-events:none; z-index:-9999; top:0; left:0;" aria-hidden="true" decoding="sync">
-  <!--
-    HTML EDIT MAP - change these names later if needed:
-    - Brand name: change the text inside <span class="name">AdnnStudio</span>.
-    - Navigation labels/links: change the <nav id="nav-menu"> links.
-    - Home text: change content inside <section id="home">.
-    - About text/cards: change content inside <section id="about">.
-    - Studio video: change the video/placeholder inside <section id="studio-film">.
-    - Projects cards: change .portfolio-card-ref items inside <section id="portfolio">.
-    - Service boxes: change .tile items inside <section id="projects">.
-    - Client report numbers: change .client-stat-item values inside <section id="client-report">.
-    - Contact form text: change fields inside <section id="connect">.
-    - Footer links/copyright: change content inside <footer>.
-	  -->
+  
 	  <div class="cursor-dots" aria-hidden="true"></div>
 	  <div class="mobile-nav-backdrop" aria-hidden="true"></div>
 	  <div class="mobile-scroll-veil" aria-hidden="true"></div>
@@ -2849,9 +2855,6 @@
       <nav id="nav-menu" class="nav-menu glass edge" aria-label="Main navigation">
         <button class="mobile-nav-search-row" type="button" aria-label="Search">
           <span class="mobile-nav-icon" aria-hidden="true"></span><span>Search</span>
-        </button>
-        <button class="mobile-nav-account-row" type="button" aria-label="Log in">
-          <span class="mobile-nav-account-avatar" aria-hidden="true"></span><span id="mobileNavAccountLabel">Log in</span>
         </button>
         <a href="#home" class="active">home</a><a href="#about">about</a><a href="#studio-film">portfolio</a><a href="#portfolio">projects</a><a href="#projects">services</a><a href="#connect">connect</a>
       </nav>
@@ -3000,9 +3003,9 @@
           </h2>
         </div>
         
-        <!-- Fully adaptable layout box layer that scales any video file ratio to fit perfectly -->
+        
 <div class="about-video-box" style="width: 100% !important; aspect-ratio: 3 / 3.5 !important; overflow: hidden !important; background: #0b0b0d !important; border: none !important; outline: none !important; box-shadow: none !important; margin-left: clamp(16px, 3vw, 48px) !important;">
-  <!-- Added filter matrices to safely deepen video blacks and blend lighting with the container background color -->
+  
   <video id="aboutSeamlessVideo" data-src="vid_1_about_web.mp4" preload="none" loop muted playsinline style="width: 100% !important; height: 100% !important; object-fit: cover !important; display: block !important; border: none !important; outline: none !important; background: #0b0b0d !important; filter: contrast(1.08) brightness(0.94); mix-blend-mode: screen;"></video>
 </div>
       </div>
@@ -3016,7 +3019,7 @@
 
     <section id="studio-film" class="studio-film" aria-label="Studio film preview" style="padding-top: 0 !important;">
       <div class="studio-film-wrap">
-        <!-- Full-bleed, edge-to-edge blue header strip layout matrix -->
+        
         <div class="studio-film-strip-banner" style="background: #272dcf !important; width: 100% !important; padding: 18px clamp(16px, 5vw, 64px) !important; margin-bottom: clamp(24px, 4vw, 48px) !important; border-top: 1px solid rgba(255,255,255,0.15) !important; border-bottom: 1px solid rgba(255,255,255,0.15) !important;">
           <div class="studio-film-header" style="width: 100% !important; max-width: 1280px !important; margin: 0 auto !important; display: flex !important; justify-content: space-between !important; align-items: center !important; gap: 18px !important; color: #ffffff !important;">
             <p class="kicker" style="margin: 0 !important; color: #ffffff !important; font-weight: 500 !important; letter-spacing: 0.18em !important;">Studio Reel</p>
@@ -3056,7 +3059,7 @@
     </section>
 
     <section id="portfolio" class="portfolio reference-style" style="display: flex !important; flex-direction: column !important; align-items: center !important;">
-      <!-- Removed internal padding variables to nudge the text container back to the left cleanly -->
+      
       <div style="width: 100% !important; max-width: 1280px !important; text-align: left !important; padding: 0 !important; margin: 0 auto !important;">
         <div class="portfolio-reference-head" style="width: 100% !important; max-width: 760px !important; margin-bottom: 12px !important; text-align: left !important;">
           <p class="kicker" style="margin-bottom: clamp(16px, 2vw, 28px) !important;">02 / Projects</p>
@@ -3243,14 +3246,14 @@
 	    </footer>
 	  </main>
 
-	  <!-- Apple-Inspired Glass Back to Home Button -->
+	  
 	  <a href="#home" id="backToTopBtn" aria-label="Back to home" title="Back to home">
 	    <svg viewBox="0 0 24 24" aria-hidden="true">
 	      <path d="M12 19V5m0 0-6.25 6.25M12 5l6.25 6.25" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
 	    </svg>
 	  </a>
 
-	  <!-- High-End Gemini Gas-Glow Ambient Assistant Component Layout -->
+	  
   <button type="button" id="aiComingSoonOrb" aria-label="AI assistant coming soon">
     <div class="gemini-orb-aura" aria-hidden="true"></div>
     <div class="gemini-orb-core" aria-hidden="true"></div>
@@ -3364,14 +3367,7 @@
 	  </script>
 
 <script>
-  /*
-    JAVASCRIPT EDIT MAP - main interactions:
-    - Projects slider timing/index: change the portfolioCylinder, setPortfolioIndex, and renderPortfolioCylinder logic.
-    - Navigation active state: change updateNav() and links/sections mapping.
-    - Mobile menu: change menuToggle, navMenu, and setMenuOpen().
-    - Home scroll glow: change scrollGlowBall behavior inside updateNav().
-    - Cursor dot effect and video controls are also handled in this main script block.
-  */
+  
   window.portfolioControls = {
     loopInterval: null,
     setIndex: null
@@ -3525,7 +3521,7 @@
     prevButton?.addEventListener("click", () => setPortfolioIndexUser(activePortfolioIndex - 1));
     nextButton?.addEventListener("click", () => setPortfolioIndexUser(activePortfolioIndex + 1));
 
-    // Hardware-Accelerated Dynamic Form Typewriter Routine Configuration Loop
+
     let activeFormTypewriterTimerReference = null;
 
     window.routeOrbitToProject = function(index) {
@@ -3543,13 +3539,13 @@
       const textareaField = connectBlock ? connectBlock.querySelector("textarea") : null;
 
       if (connectBlock && textareaField) {
-        // Halt any ongoing character layout animation loops instantly to prevent text overlapping
+
         if (activeFormTypewriterTimerReference) clearInterval(activeFormTypewriterTimerReference);
         
-        // Reset element bounds crisp clean before typing simulation initializes
+
         textareaField.value = "";
 
-        // Scroll gracefully straight to the off-white information query field block canvas
+
         connectBlock.scrollIntoView({ behavior: "smooth", block: "center" });
         
         const completeMessageStringToRender = `We would like to make a custom ${targetName.toLowerCase()} project for our brand. Please let me know how to get started with the workspace setup, what assets are needed, and how we can align on the estimated creative direction timeline!`;
@@ -3557,17 +3553,17 @@
         const characterArrayStream = [...completeMessageStringToRender];
         let currentStringCharacterIndexPosition = 0;
 
-        // Force browser focal execution parameters straight to textbox boundaries
+
         setTimeout(() => {
           textareaField.focus();
           
-          // Progressive interval stream generator configured at a hyper-fluid speed setting (14ms per letter)
+
           activeFormTypewriterTimerReference = setInterval(() => {
             if (currentStringCharacterIndexPosition < characterArrayStream.length) {
               textareaField.value += characterArrayStream[currentStringCharacterIndexPosition];
               currentStringCharacterIndexPosition++;
               
-              // Automatically push typing scroll baseline bounds down for long responsive messages
+
               textareaField.scrollTop = textareaField.scrollHeight;
             } else {
               clearInterval(activeFormTypewriterTimerReference);
@@ -3578,7 +3574,7 @@
       }
     };
 
-	    // Backward compatible alias in case any old inline references remain.
+
 	    window.routeOrbitToSlider = window.routeOrbitToProject;
 
 	    (function setupProjectEnquiryForm() {
@@ -3618,7 +3614,7 @@
   });
 })();
 
-	    // Direct click listener mapping layout bindings across static project tiles
+
     window.addEventListener("DOMContentLoaded", () => {
       const parentTilesBox = document.getElementById("projects");
       if (!parentTilesBox) return;
@@ -3632,7 +3628,7 @@
       });
     });
 
-   // Apple-Timer Continuous Real-Time Sliding Engine
+
     let isDraggingTrack = false;
     let trackBaseIndexOnDown = 0;
     
@@ -3651,7 +3647,7 @@
       trackBaseIndexOnDown = activePortfolioIndex;
       portfolioCylinder.setPointerCapture(event.pointerId);
       
-      // Clear auto-rotation loop instantly while interacting
+
       if (window.portfolioControls && window.portfolioControls.loopInterval) {
         window.clearInterval(window.portfolioControls.loopInterval);
       }
@@ -3663,11 +3659,11 @@
 	      
 	      const deltaX = event.clientX - dragStartX;
 	      
-	      // Adaptive drag tracking calculations scaling smoothly based on active desktop or mobile viewport widths
+
 	      const cardTravelSensitivity = window.innerWidth <= 560 ? 132 : window.innerWidth <= 980 ? 160 : 204;
       const indexOffset = deltaX / cardTravelSensitivity;
       
-      // Calculates precise fractional real-time positions
+
       let targetIndex = trackBaseIndexOnDown - indexOffset;
       
 	      activePortfolioIndex = targetIndex;
@@ -3680,7 +3676,7 @@
 	      portfolioCylinder.classList.remove("is-dragging");
 	      portfolioCylinder.releasePointerCapture(event.pointerId);
       
-      // Apple Inertial Snap: Snaps perfectly to the closest whole card index once you let go
+
       const snappedIndex = Math.round(activePortfolioIndex);
       setPortfolioIndexUser(snappedIndex);
       dragStartX = null;
@@ -3708,7 +3704,7 @@
       }, 4000);
     }
 
-	    // Allow external scripts to restart the auto-rotation loop
+
 	    window.portfolioControls.restart = restartPortfolioAutoLoop;
 	    addEventListener("resize", renderPortfolioCylinder, { passive: true });
 	    
@@ -3732,7 +3728,7 @@
   function syncStudioVideoControls() {
     if (!studioVideoNode) return;
 
-    // Audio Sync Engine
+
     if (videoMuteToggle) {
       const isMuted = studioVideoNode.muted;
       videoMuteToggle.classList.toggle("is-unmuted", !isMuted);
@@ -3740,7 +3736,7 @@
       videoMuteToggle.setAttribute("aria-label", isMuted ? "Unmute video audio" : "Mute video audio");
     }
 
-    // Playback Sync Engine
+
     if (videoPlayToggle) {
       const isPlaying = !studioVideoNode.paused;
       videoPlayToggle.classList.toggle("is-playing", isPlaying);
@@ -3748,17 +3744,17 @@
     }
   }
 
-  // Read and initialize global sound/playback preference flags in state memory loops
+
   let userMutedPreference = localStorage.getItem("studioVideoUserMuted") === "true";
   
-  // Clean initialization: ignore any old corrupted pause storage strings on a fresh landing page entry
+
   let userPausedPreference = localStorage.getItem("studioVideoUserPaused") === "true";
   let hasExplicitlyInteracted = false;
   
-  // CRITICAL FLAG: Tracks if a human explicitly clicked the pause button during this session
+
   let humanManuallyPausedVideo = false;
 
-  // Helper utility to safely unmute audio tracks if permitted
+
   function tryUnmuteVideoTrack() {
     if (!studioVideoNode || userMutedPreference) return;
     studioVideoNode.muted = false;
@@ -3766,7 +3762,7 @@
     syncStudioVideoControls();
   }
 
-  // Mute Button Click Listener Callback
+
   videoMuteToggle?.addEventListener("click", function(e) {
     e.preventDefault();
     e.stopPropagation();
@@ -3784,14 +3780,14 @@
     syncStudioVideoControls();
   });
 
-  // Play/Pause Button Click Listener Callback
+
   videoPlayToggle?.addEventListener("click", function(e) {
     e.preventDefault();
     e.stopPropagation();
     if (!studioVideoNode) return;
 
 	    if (studioVideoNode.paused) {
-	      // User manually toggled back to play
+
 	      humanManuallyPausedVideo = false;
 	      localStorage.setItem("studioVideoUserPaused", "false");
 	      userPausedPreference = false;
@@ -3804,7 +3800,7 @@
         syncStudioVideoControls();
       }).catch(function(){});
     } else {
-      // User manually clicked pause: freeze it completely
+
       studioVideoNode.pause();
       humanManuallyPausedVideo = true;
       localStorage.setItem("studioVideoUserPaused", "true");
@@ -3813,24 +3809,24 @@
     }
   });
 
-  // Attach event hooks to track the video's actual property changes
+
   if (studioVideoNode) {
     studioVideoNode.addEventListener("volumechange", syncStudioVideoControls);
     studioVideoNode.addEventListener("play", syncStudioVideoControls);
     studioVideoNode.addEventListener("pause", syncStudioVideoControls);
 
-    // MASTER SCROLL INTERSECTION ENGINE: Autoplays cleanly on landing, locks indefinitely if clicked pause
+
     const videoScrollObserver = new IntersectionObserver((entries) => {
       entries.forEach((entry) => {
         if (entry.isIntersecting && entry.intersectionRatio >= 0.5) {
-          // If a human explicitly hit pause, completely abort automated scroll-playback
+
           if (humanManuallyPausedVideo) {
             studioVideoNode.pause();
             syncStudioVideoControls();
             return;
           }
 	          
-	          // Otherwise, auto-run on screen entry (starts muted to clear strict browser security blocks)
+
 	          loadDeferredVideo(studioVideoNode);
 	          studioVideoNode.muted = true;
           studioVideoNode.setAttribute("muted", "muted");
@@ -3846,7 +3842,7 @@
               syncStudioVideoControls();
             });
         } else {
-          // Scrolled out of view: pause video without altering human preference variables
+
           studioVideoNode.pause();
           syncStudioVideoControls();
         }
@@ -3858,7 +3854,7 @@
 
     videoScrollObserver.observe(studioVideoNode);
 
-    // Seamless About Section Video Playback Hook
+
     const aboutVideoNode = document.getElementById("aboutSeamlessVideo");
     if (aboutVideoNode) {
 	      const aboutVideoObserver = new IntersectionObserver((entries) => {
@@ -3874,7 +3870,7 @@
       aboutVideoObserver.observe(aboutVideoNode);
     }
 
-    // Hydrates audio output paths instantly upon the user's first site gesture
+
     const wakeUpVideoAudioEngine = function() {
       hasExplicitlyInteracted = true;
       userPausedPreference = localStorage.getItem("studioVideoUserPaused") === "true";
@@ -3893,7 +3889,7 @@
     
     setTimeout(syncStudioVideoControls, 300);
   }
-	  /* Mouse Coordinate Tracking Engine */
+	  
   const cursorDots = document.querySelector(".cursor-dots");
   let cursorTargetX = innerWidth * .5;
   let cursorTargetY = innerHeight * .5;
@@ -3985,15 +3981,12 @@
 
     const activeUser = googleUser || designerUser;
     
-	    // Set explicit functional body state classes to hook into our smart layout css blocks
+
 	    document.body.classList.toggle("has-active-session", Boolean(activeUser));
 	    document.body.classList.toggle("session-is-designer", Boolean(designerUser && !googleUser));
-	    document.body.classList.remove("auth-state-pending");
+    document.body.classList.remove("auth-state-pending");
     
     const loginButton = document.querySelector(".account-menu-wrap .login");
-    const mobileAccountButton = document.querySelector(".mobile-nav-account-row");
-    const mobileAccountLabel = document.getElementById("mobileNavAccountLabel");
-    const mobileAccountAvatar = document.querySelector(".mobile-nav-account-avatar");
 
     if (!activeUser) {
       document.querySelectorAll(".login .login-text").forEach((label) => {
@@ -4003,19 +3996,13 @@
         loginButton.style.backgroundImage = "";
         loginButton.textContent = "log in";
       }
-      if (mobileAccountLabel) mobileAccountLabel.textContent = "Log in";
-      if (mobileAccountButton) mobileAccountButton.setAttribute("aria-label", "Log in");
-      if (mobileAccountAvatar) {
-        mobileAccountAvatar.style.backgroundImage = "";
-        mobileAccountAvatar.textContent = "";
-      }
       return;
     }
 
 	    const isDesigner = designerUser && !googleUser;
 	    const displayName = getSavedDisplayName(isDesigner, activeUser);
 
-    // Auto-rewrite destination navigation routing parameters for matching active workspace files.
+
     const dashboardLink = document.getElementById("universalDashboardLink");
     const chatLink = document.getElementById("adnnChatTrigger");
     const settingsLink = document.getElementById("universalSettingsLink");
@@ -4037,26 +4024,19 @@
       }
     }
 
-	    // Set up the dynamic typography parameters to populate the hover popover element
+
 	    const accountName = document.getElementById("accountMenuName");
 	    if (accountName) {
 	      accountName.textContent = displayName;
 	    }
-    if (mobileAccountLabel) mobileAccountLabel.textContent = displayName || "Account";
-    if (mobileAccountButton) mobileAccountButton.setAttribute("aria-label", `Open ${displayName || "account"}`);
-    if (mobileAccountAvatar) {
-      const picture = !isDesigner ? activeUser.picture : "";
-      mobileAccountAvatar.style.backgroundImage = picture ? `url("${picture}")` : "";
-      mobileAccountAvatar.textContent = picture ? "" : String(displayName || activeUser.email || "A").trim().slice(0, 1).toUpperCase();
-    }
 
-    // Direct image string handling architecture to swap text strings into modern structural avatars
+
     if (loginButton) {
-      loginButton.textContent = ""; // Clear plain text representation loop strings completely 
+      loginButton.textContent = "";
       if (!isDesigner && activeUser.picture) {
         loginButton.style.backgroundImage = `url("${activeUser.picture}")`;
      } else {
-        // Fallback placeholder rendering engine that uses an Apple-inspired minimal account silhouette
+
         loginButton.style.backgroundImage = "none";
         loginButton.style.backgroundColor = "#272dcf";
         loginButton.style.color = "#ffffff";
@@ -4076,7 +4056,7 @@
 
   window.startGoogleLogin = function startGoogleLogin() {
     if (getSavedGoogleUser() && getGoogleAccessToken()) {
-      // Safely maintain view context on the home screen instead of loading separate files
+
       location.href = "account.html";
       return;
     }
@@ -4093,7 +4073,7 @@
       prompt: "select_account",
       state: "account",
     });
-    // Jump instantly to the secure external identity server provider path, bypassing local file flashes
+
     window.location.replace(`https://accounts.google.com/o/oauth2/v2/auth?${params}`);
   };
 		  
@@ -4110,10 +4090,10 @@
     if (!accessToken) return;
     sessionStorage.setItem("adnnGoogleAccessToken", accessToken);
     
-    // Clear thread unread cache values to refresh interface states smoothly
+
     try { localStorage.removeItem("adnn_pinned_chat_ids"); } catch(_) {}
     
-    // Clear out any old offline persistence parameters to force clean chat sync
+
     try { localStorage.removeItem("adnn_pinned_chat_ids"); } catch(_) {}
 
     history.replaceState(null, "", location.pathname);
@@ -4153,7 +4133,7 @@
 	      console.warn("AdnnStudio logout sync warning", error);
 	    }
 	    localStorage.removeItem("adhnanPortfolioUser");
-	    localStorage.removeItem("adnnDesignerUser"); // Wipes custom designer keys safely
+	    localStorage.removeItem("adnnDesignerUser");
 	    sessionStorage.removeItem("adnnGoogleAccessToken");
 	    renderGoogleUser();
 	  };
@@ -4323,7 +4303,7 @@
     window.addEventListener("pagehide", clearTimers, { once: true });
   })();
 
-  // Slower, lightweight background passive orbit execution sequence
+
   (function() {
     const innerTrackItems = [
       { el: document.querySelector('.item-1-1'), angle: 0, speed: 360 / (55 * 60) },
@@ -4354,31 +4334,55 @@
     requestAnimationFrame(stepBackgroundOrbitLoop);
   })();
 
-  const links = [...document.querySelectorAll("nav a")];
+  const links = [...document.querySelectorAll("nav a[href^='#']")];
   const sections = links.map(a => document.querySelector(a.getAttribute("href")));
   const siteHeader = document.getElementById("site-header");
+  addEventListener("load", () => {
+    requestAnimationFrame(() => requestAnimationFrame(() => document.body.classList.remove("is-booting")));
+  }, { once: true });
 
   const menuToggle = document.querySelector(".menu-toggle");
   const navMenu = document.getElementById("nav-menu");
-  function setMenuOpen(open) {
+  let mobileNavLockedScrollY = 0;
+  function setMenuOpen(open, options = {}) {
     if (!menuToggle || !navMenu) return;
+    const isMobileNav = window.matchMedia("(max-width: 760px)").matches;
+    const restoreScroll = options.restoreScroll !== false;
+    if (open && isMobileNav && !document.body.classList.contains("mobile-nav-open")) {
+      mobileNavLockedScrollY = window.scrollY || document.documentElement.scrollTop || 0;
+      document.body.style.setProperty("--mobile-nav-lock-top", `-${mobileNavLockedScrollY}px`);
+    }
     menuToggle.classList.toggle("is-open", open);
     navMenu.classList.toggle("is-open", open);
     document.body.classList.toggle("mobile-nav-open", open);
+    if (!open && isMobileNav) {
+      document.body.style.removeProperty("--mobile-nav-lock-top");
+      if (restoreScroll) window.scrollTo(0, mobileNavLockedScrollY);
+    }
     menuToggle.setAttribute("aria-expanded", open ? "true" : "false");
     menuToggle.setAttribute("aria-label", open ? "Close navigation" : "Open navigation");
   }
+  window.setAdnnMobileMenuOpen = setMenuOpen;
   menuToggle?.addEventListener("click", () => setMenuOpen(!navMenu.classList.contains("is-open")));
-  navMenu?.querySelectorAll("a").forEach((link) => link.addEventListener("click", () => setMenuOpen(false)));
-  document.querySelector(".mobile-nav-account-row")?.addEventListener("click", () => {
-    setMenuOpen(false);
-    if (document.body.classList.contains("has-active-session")) {
-      const href = document.getElementById("universalDashboardLink")?.getAttribute("href") || "account.html";
-      location.href = href;
+  navMenu?.querySelectorAll("a").forEach((link) => link.addEventListener("click", (event) => {
+    const href = link.getAttribute("href") || "";
+    if (!href.startsWith("#")) {
+      setMenuOpen(false);
       return;
     }
-    if (typeof window.startGoogleLogin === "function") window.startGoogleLogin();
-  });
+    const target = document.querySelector(href);
+    if (!target) {
+      setMenuOpen(false);
+      return;
+    }
+    event.preventDefault();
+    setMenuOpen(false, { restoreScroll: false });
+    requestAnimationFrame(() => {
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
+      history.pushState(null, "", href);
+      updateNav();
+    });
+  }));
   addEventListener("keydown", (event) => { if (event.key === "Escape") setMenuOpen(false); });
   document.addEventListener("click", (event) => {
     if (!navMenu || !menuToggle) return;
@@ -4397,20 +4401,20 @@
     sections.forEach((s,i)=>{ if (s && s.getBoundingClientRect().top < innerHeight * .45) current = i; });
     links.forEach((a,i)=>a.classList.toggle("active", i===current));
     
-    // Calculates current displacement factors exclusively targeting the home frame height context
+
     if (homeSectionRef && scrollGlowBall) {
       const homeHeight = homeSectionRef.offsetHeight;
       const currentScroll = window.scrollY;
       
       if (currentScroll <= homeHeight) {
-        // Linearly normalizes displacement properties up to track line constraints (66px runtime window)
+
         const scrollPercent = Math.min(currentScroll / homeHeight, 1);
         const targetTranslateY = scrollPercent * 66; 
         
         scrollGlowBall.style.opacity = "1";
         scrollGlowBall.style.transform = `translate(-50%, ${targetTranslateY}px)`;
       } else {
-        // Shuts off rendering matrix allocations completely when viewport steps into lower cards
+
         scrollGlowBall.style.opacity = "0";
       }
     }
@@ -4420,7 +4424,7 @@
 </script>
 
 <style>
-/* CSS EDIT MAP - Mobile menu icon alignment fix. Change line widths/spacing here only if the hamburger icon looks off. */
+
 @media (max-width: 760px) {
   .nav-actions .menu-toggle,
   button.menu-toggle.glass.edge {
@@ -4428,35 +4432,30 @@
     height: 36px !important;
     min-width: 36px !important;
     min-height: 36px !important;
-    border-radius: 999px !important;
+    border-radius: 16px !important;
   }
 }
 </style>
 
 <style>
-/* CSS EDIT MAP - Home navigation blue dot fallback. Change dot size/color here if needed. */
+
 .site-header.home-top nav.nav-menu a:hover::after, .site-header.home-top nav.nav-menu a.active::after, .site-header.home-top nav.nav-menu a:focus-visible::after{ width:6px !important; height:6px !important; left:50% !important; right:auto !important; bottom:2px !important; transform:translateX(-50%) scale(1) !important; border-radius:999px !important; background:#272dcf !important; box-shadow:0 0 8px #272dcf, 0 0 18px rgba(39,45,207,.9) !important; }
 </style>
 
 <style id="home-blue-dot-fix">
-/* CSS EDIT MAP - Final Home nav active/hover dot. Change width, height, background, or box-shadow for the dot. */
+
 .site-header.home-top nav.nav-menu a:hover:after, .site-header.home-top nav.nav-menu a.active:after, .site-header.home-top nav.nav-menu a:focus-visible:after{ left:50% !important; right:auto !important; width:8px !important; height:8px !important; bottom:2px !important; border-radius:50% !important; background:#272dcf !important; box-shadow:0 0 10px #272dcf,0 0 22px rgba(39,45,207,.95) !important; transform:translateX(-50%) scale(1) !important; opacity:1 !important; }
 </style>
 
 <style id="spacing-and-portfolio-fit-fix">
-/* CSS EDIT MAP - Projects card transition timing. Change duration/easing here. */
+
   #portfolio .portfolio-card-ref {
     transition: transform 1.25s cubic-bezier(.22, 1, .18, 1), opacity 1.1s cubic-bezier(.22, 1, .18, 1), filter 1.1s cubic-bezier(.22, 1, .18, 1), box-shadow .45s ease !important;
   }
 </style>
 
 <script id="project-box-search-routing-script">
-  /*
-    JAVASCRIPT EDIT MAP - search/project routing:
-    - Searchable project names: change the title values inside the works array.
-    - Highlight targets: change each selector value inside the works array.
-    - Search behavior: change openSearch(), closeSearch(), renderResults(), and chooseWork().
-  */
+  
 (function(){
   const works = [
     { title: "Logo Design", selector: "#projects .tile:nth-child(1)", index: 0 },
@@ -4513,17 +4512,17 @@
           button.innerHTML = "<span>" + item.title + "</span><span>service</span>";
           button.addEventListener("click", function(){
             clearHighlights();
-            setSearchOpen(false, false); // Close search and clear query cleanly
+            setSearchOpen(false, false);
             
             const targetBox = document.querySelector(item.selector);
             if (targetBox) {
-              // Scroll smoothly to the matched studio service card
+
               targetBox.scrollIntoView({ behavior: "smooth", block: "center" });
               
-              // Apply the premium blue border/glow highlight class
+
               targetBox.classList.add("search-target-highlight");
               
-              // Wait until the user hovers over the specific box before fading it out
+
               const clearOnHover = function() {
                 targetBox.classList.remove("search-target-highlight");
                 targetBox.removeEventListener("mouseenter", clearOnHover);
@@ -4541,11 +4540,11 @@
     searchButtons.forEach((button) => button.setAttribute("aria-expanded", open ? "true" : "false"));
     
     if (open) {
-      document.body.classList.add("search-active"); /* Directly injects the site wide blurring engine class flag */
+      document.body.classList.add("search-active"); 
       setTimeout(function(){ input.focus(); }, 180);
       renderResults(input.value);
     } else {
-      document.body.classList.remove("search-active"); /* Safely clears out full site text blur when closing */
+      document.body.classList.remove("search-active"); 
       if (!keepQuery) {
         setTimeout(function() {
           if (!panel.classList.contains("is-open")) {
@@ -4559,11 +4558,17 @@
   }
 
   searchButtons.forEach(function(button){
-    button.addEventListener("click", function(){
-      document.body.classList.remove("mobile-nav-open");
-      document.querySelector(".menu-toggle")?.classList.remove("is-open");
-      document.getElementById("nav-menu")?.classList.remove("is-open");
-      setSearchOpen(true);
+    button.addEventListener("click", function(event){
+      event.preventDefault();
+      event.stopPropagation();
+      if (typeof window.setAdnnMobileMenuOpen === "function") {
+        window.setAdnnMobileMenuOpen(false);
+      } else {
+        document.body.classList.remove("mobile-nav-open");
+        document.querySelector(".menu-toggle")?.classList.remove("is-open");
+        document.getElementById("nav-menu")?.classList.remove("is-open");
+      }
+      requestAnimationFrame(function(){ setSearchOpen(true); });
     });
   });
   closeButton?.addEventListener("click", function(){ setSearchOpen(false); });
@@ -4589,11 +4594,11 @@
 })();
 </script>
 <style id="small-screen-fit-only">
-/* CSS EDIT MAP - Small-screen fit overrides. Change these only for tablet/mobile spacing and sizing. */
+
   html, body { width:100%; max-width:100%; overflow-x:hidden !important; }
   img, video, iframe, canvas, svg { max-width:100%; }
   @media (max-width:980px) {
-    /* Instantly drops out interactive background dots and ripple waves from mobile viewports */
+    
     .cursor-dots, .cursor-dots::before, .cursor-dots::after, .cursor-click-wave, .cursor-click-wave::before, .cursor-click-wave::after { 
       display: none !important; 
       opacity: 0 !important; 
@@ -4607,7 +4612,7 @@
     .nav-wrap, .nav-actions, .brand, .search, .login, .menu-toggle { min-width:0 !important; }
     .brand .name { max-width:36vw; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     h1, h2, h3, p, .badge, .portfolio-title, .portfolio-copy, .projects-head p, .studio-video-overlay span, .stat-copy, .stat-copy p, .stat-copy strong { max-width:100%; overflow-wrap:break-word; }
-    /* Mobile and Tablet responsive geometry configuration for active orbits */
+    
   @media (max-width: 820px) {
     .floating-services-container {
       display: grid !important; 
@@ -4616,7 +4621,7 @@
       overflow: visible !important;
     }
     
-    /* Boosted track diameters by an extra 20% on small screens to sweep pills completely clear of text */
+    
     .inner-track {
       width: 132vw !important; 
       height: 132vw !important;
@@ -4636,7 +4641,7 @@
       height: 4px !important;
     }
     
-    /* Re-calculated 3D translation matrices for the expanded 132vw / 210vw layout paths */
+    
     @keyframes orbitRotateInner {
       0% {
         transform: rotate(var(--start-deg)) translateX(calc(132vw / 2)) rotate(calc(-1 * var(--start-deg)));
@@ -4672,21 +4677,21 @@
     footer .foot p:last-child span { float:none !important; margin-left:auto; }
   }
   @media (max-width:900px) {
-    /* Transforms columns into a unified centered block stack on tablets, iPads, and mobile screen viewports */
+    
     .about-hero-grid { grid-template-columns: 1fr !important; gap: 36px !important; justify-items: left !important; }
     .about-video-box { max-width: clamp(260px, 65vw, 380px) !important; margin-top: 12px !important; }
   }
   @media (max-width: 560px) {
-    /* Enforces natural line wrapping to keep high-end editorial headings perfectly within the right viewport boundary edge */
+    
     #about h2.big { 
       white-space: normal !important; 
       word-break: break-word !important;
-      /* Increased the size range from 34px-48px up to 44px-64px for a giant, premium look */
+      
       font-size: clamp(44px, 13vw, 64px) !important;
-      line-height: 0.92 !important; /* Tightens line tracking for a clean look at large sizes */
+      line-height: 0.92 !important; 
       letter-spacing: -0.05em !important;
     }
-    /* Completely drops the video block layout from rendering on mobile screen widths */
+    
     #about .about-video-box {
       display: none !important;
     }
@@ -4714,7 +4719,7 @@
 </style>
 
 <style id="portfolio-card-mask-fix">
-/* CSS EDIT MAP - Projects slider image clipping. Keeps images inside the curved card edge during reveal/slide motion. */
+
   #portfolio .portfolio-card-ref {
     overflow: hidden !important;
     overflow: clip !important;
@@ -4756,7 +4761,7 @@
 </style>
 
 <style id="portfolio-touch-polish-final">
-/* CSS EDIT MAP - Final mobile touch polish for Projects slider. Keeps touch drag smooth and prevents text/card stacking glitches. */
+
   #portfolio .reference-slider-shell {
     touch-action: pan-y !important;
     -webkit-user-select: none !important;
@@ -4878,8 +4883,8 @@
 </style>
 
 <style id="typewriter-home-animation-final">
-/* CSS EDIT MAP - Home typewriter/orbit animation final styling. Change animated word font, size, and motion here. */
-  /* Final override: homepage word uses smooth type-in / type-out animation, 4s per word, no edge cropping */
+
+  
   #home h1 {
     overflow: visible !important;
     padding-left: 0.34em !important;
@@ -4912,20 +4917,20 @@
     text-align: center !important;
     white-space: nowrap !important;
     font-family: "Mountriel Italic", "Mountriel", "Bureau Serif", Georgia, "Times New Roman", serif !important;
-    font-style: italic !important; /* Restored the elegant italic slant */
+    font-style: italic !important; 
     font-weight: 400 !important;
-    letter-spacing: -0.078em !important; /* Re-applied tighter letter-spacing for elegant cursive tracking */
+    letter-spacing: -0.078em !important; 
     font-kerning: normal !important;
     font-feature-settings: "kern" 1, "liga" 1 !important;
     text-rendering: geometricPrecision !important;
     transform: translateZ(0);
   }
 
-  /* Structural override: Forces the container width layout back to absolute center on small viewports */
+  
   @media (max-width: 560px) {
     #rolling-word-container,
     #rolling-word-container.typewriter-word-container {
-      width: 100% !important; /* Clears JavaScript inline widths */
+      width: 100% !important; 
       min-width: 100% !important;
       max-width: 100% !important;
       display: inline-flex !important;
@@ -4970,8 +4975,8 @@
   }
 </style>
 <style id="home-scroll-tracker-presentation">
-/* CSS EDIT MAP - Home scroll tracker presentation. Change tracker line/dot visuals here. */
-  /* Position framework for the scroll track layout */
+
+  
   .home-scroll-indicator {
     position: absolute;
     bottom: 24px;
@@ -4999,7 +5004,7 @@
     background: rgba(255, 255, 255, 0.08);
   }
   
-  /* White glowing indicator node with custom filtration masks */
+  
   .scroll-glow-ball {
     position: absolute;
     top: 0;
@@ -5016,7 +5021,7 @@
   }
 </style>
 <style>
-/* CSS EDIT MAP - Hero overflow safety. Change only if headline edges are clipped. */
+
 .hero,.hero-content,.hero-text,.hero h1,.hero-title{overflow:visible !important;padding-left:12px !important;padding-right:12px !important;}
 </style>
 <style id="account-menu-polish">
@@ -5050,7 +5055,7 @@
     pointer-events: none;
   }
   
-  /* Logged-In State styling: Transform button layout into an avatar pill footprint */
+  
   body.has-active-session .account-menu-wrap .login {
     width: 44px !important;
     height: 44px !important;
@@ -5066,17 +5071,17 @@
     background-repeat: no-repeat !important;
   }
 
-  /* Structural override to clear the header text string when logged in */
+  
   body.has-active-session .account-menu-wrap .login .login-text {
     display: none !important;
   }
 
-  /* Inject a small, premium blue header indicator name inside the popover overlay panel */
+  
   .account-popover-user-badge {
     font-family: var(--font-mono);
     font-size: 11px !important;
     font-weight: 500;
-	    color: #5360ff !important; /* Premium small text in blue color */
+	    color: #5360ff !important; 
 	    text-transform: none;
     letter-spacing: -0.02em;
     padding: 2px 12px 10px !important;
@@ -5089,7 +5094,7 @@
     white-space: nowrap;
   }
 
-  /* Responsive refinement for compact mobile views */
+  
   @media (max-width: 680px) {
     body.has-active-session .account-popover {
       right: 0 !important;
@@ -5097,7 +5102,7 @@
     }
   }
 
-  /* The Invisible Pointer Bridge: Closes the gap between menu and pill so mouse movement never breaks the hover */
+  
   .account-menu-wrap::before {
     content: "";
     position: absolute;
@@ -5113,7 +5118,7 @@
     pointer-events: auto;
   }
 
-  /* Trigger States: Smooth entry transitions with an intentional safety buffer */
+  
 	  body:not(.has-active-session):not(.auth-state-pending) .account-menu-wrap:hover .login-choice-popover,
 	  body:not(.has-active-session):not(.auth-state-pending) .account-menu-wrap:focus-within .login-choice-popover,
 	  body.has-active-session:not(.auth-state-pending) .account-menu-wrap:hover .account-popover,
@@ -5124,7 +5129,7 @@
     pointer-events: auto !important;
   }
 
-  /* Structural configuration rule overrides to completely separate Client and Designer menus when logged in */
+  
   body.has-active-session:not(.session-is-designer) .login-choice-popover,
   body.has-active-session.session-is-designer .login-choice-popover,
   body:not(.has-active-session) .account-popover {
@@ -5958,6 +5963,11 @@
     body.mobile-nav-open {
       overflow: hidden !important;
       touch-action: none !important;
+      position: fixed !important;
+      left: 0 !important;
+      right: 0 !important;
+      top: var(--mobile-nav-lock-top, 0px) !important;
+      width: 100% !important;
     }
   }
 </style>
@@ -6644,7 +6654,7 @@
       height: 36px !important;
       min-height: 36px !important;
       padding: 0 13px !important;
-      border-radius: 999px !important;
+      border-radius: 16px !important;
       font-size: 10px !important;
       line-height: 1 !important;
       background: rgba(10,10,16,.22) !important;
@@ -6662,7 +6672,7 @@
       height: 36px !important;
       min-width: 36px !important;
       min-height: 36px !important;
-      border-radius: 999px !important;
+      border-radius: 16px !important;
       border: 1px solid rgba(255,255,255,.18) !important;
       background: rgba(10,10,16,.22) !important;
       box-shadow: none !important;
@@ -6713,6 +6723,7 @@
       top: max(18px, calc(env(safe-area-inset-top) + 14px)) !important;
       background: transparent !important;
       border-color: transparent !important;
+      border-radius: 16px !important;
     }
 
     .site-header .menu-toggle.is-open span:nth-child(1),
@@ -6811,7 +6822,6 @@
     }
 
     .mobile-nav-search-row,
-    .mobile-nav-account-row,
     .site-header nav#nav-menu.nav-menu a,
     .site-header nav#nav-menu.nav-menu a.active,
     .site-header.home-top nav#nav-menu.nav-menu a,
@@ -6828,7 +6838,7 @@
       padding: 6px 10px !important;
       margin: 3px 0 !important;
       border: 0 !important;
-      border-radius: 10px !important;
+      border-radius: 16px !important;
       background: transparent !important;
       box-shadow: none !important;
       color: rgba(255,255,255,.95) !important;
@@ -6842,22 +6852,20 @@
       transform: none !important;
       opacity: 1 !important;
       visibility: visible !important;
+      pointer-events: auto !important;
     }
 
     .site-header nav#nav-menu.nav-menu a.active,
     .site-header nav#nav-menu.nav-menu a:hover,
     .site-header nav#nav-menu.nav-menu a:focus-visible,
     .mobile-nav-search-row:hover,
-    .mobile-nav-search-row:focus-visible,
-    .mobile-nav-account-row:hover,
-    .mobile-nav-account-row:focus-visible {
+    .mobile-nav-search-row:focus-visible {
       background: rgba(255,255,255,.105) !important;
       color: #fff !important;
       outline: none !important;
     }
 
     .mobile-nav-icon,
-    .mobile-nav-account-avatar,
     .site-header nav#nav-menu.nav-menu a::before {
       width: 22px !important;
       height: 22px !important;
@@ -6869,17 +6877,27 @@
       justify-self: center !important;
     }
 
-    .mobile-nav-account-avatar {
-      background-color: #272dcf !important;
-      color: #fff !important;
-      border-radius: 50% !important;
-      -webkit-mask: none !important;
-      mask: none !important;
-    }
-
     .site-header nav#nav-menu.nav-menu a::after {
       display: none !important;
       content: none !important;
+    }
+
+    .site-header nav#nav-menu.nav-menu .mobile-nav-terms {
+      position: fixed !important;
+      left: 22px !important;
+      bottom: max(18px, calc(env(safe-area-inset-bottom) + 14px)) !important;
+      width: auto !important;
+      min-height: 0 !important;
+      display: inline-flex !important;
+      grid-template-columns: none !important;
+      padding: 8px 10px !important;
+      margin: 0 !important;
+      border-radius: 12px !important;
+      color: rgba(255,255,255,.68) !important;
+      font-size: 12px !important;
+      line-height: 1 !important;
+      background: transparent !important;
+      text-decoration: none !important;
     }
 
     body.mobile-nav-open {
@@ -6892,6 +6910,20 @@
       opacity: 0 !important;
       visibility: hidden !important;
       pointer-events: none !important;
+    }
+
+    .site-search-panel.is-open {
+      opacity: 1 !important;
+      visibility: visible !important;
+      pointer-events: auto !important;
+      z-index: 1600 !important;
+    }
+
+    .site-search-panel.is-open .site-search-backdrop,
+    .site-search-panel.is-open .site-search-box,
+    .site-search-panel.is-open input,
+    .site-search-panel.is-open button {
+      pointer-events: auto !important;
     }
 
     #portfolio .reference-slider-shell {
@@ -6918,6 +6950,256 @@
 
     #portfolio .reference-card-row.is-dragging .portfolio-card-ref {
       transition: opacity .08s linear, filter .08s linear !important;
+    }
+  }
+</style>
+<style id="adnn-nav-polish-final">
+  .mobile-nav-search-row,
+  .mobile-nav-terms {
+    display: none !important;
+  }
+
+  @media (min-width: 761px) {
+    .site-header {
+      width: min(1180px, calc(100vw - 44px)) !important;
+    }
+
+    .site-header .nav-wrap {
+      min-height: 64px !important;
+      grid-template-columns: minmax(150px, 220px) minmax(0, 1fr) minmax(150px, 220px) !important;
+      gap: clamp(18px, 3vw, 42px) !important;
+      padding: 10px 14px !important;
+      align-items: center !important;
+    }
+
+    .site-header .brand-logo-wrap {
+      width: 52px !important;
+      height: 52px !important;
+      padding: 0 !important;
+      justify-content: flex-start !important;
+    }
+
+    .site-header .brand-logo-img {
+      width: 46px !important;
+      height: 46px !important;
+      object-fit: contain !important;
+    }
+
+    .site-header nav#nav-menu.nav-menu {
+      width: 100% !important;
+      justify-content: center !important;
+      gap: clamp(8px, 1.2vw, 16px) !important;
+      padding: 0 !important;
+    }
+
+    .site-header nav#nav-menu.nav-menu a {
+      min-width: 0 !important;
+      padding: 11px clamp(12px, 1.25vw, 18px) !important;
+      font-size: 13px !important;
+      line-height: 1 !important;
+      white-space: nowrap !important;
+    }
+
+    .site-header .nav-actions {
+      justify-self: end !important;
+      gap: 9px !important;
+    }
+
+    .site-header .search,
+    .site-header .login,
+    .site-header .menu-toggle {
+      height: 42px !important;
+      border-radius: 16px !important;
+    }
+
+    .site-header .search {
+      width: 42px !important;
+      padding: 0 !important;
+    }
+  }
+
+  @media (max-width: 760px) {
+    .mobile-scroll-veil {
+      display: block !important;
+      position: fixed !important;
+      inset: 0 0 auto 0 !important;
+      height: calc(132px + env(safe-area-inset-top)) !important;
+      z-index: 1288 !important;
+      pointer-events: none !important;
+      opacity: 0 !important;
+      background: linear-gradient(
+        180deg,
+        rgba(5,5,7,.92) 0%,
+        rgba(5,5,7,.72) 34%,
+        rgba(5,5,7,.32) 68%,
+        rgba(5,5,7,0) 100%
+      ) !important;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+      box-shadow: none !important;
+      transition: opacity .28s ease !important;
+    }
+
+    body.mobile-nav-veil-on:not(.mobile-nav-open) .mobile-scroll-veil {
+      opacity: 1 !important;
+    }
+
+    body.mobile-nav-open .mobile-scroll-veil {
+      opacity: 0 !important;
+    }
+
+    .site-header,
+    .site-header.home-top,
+    .site-header.is-scrolled {
+      padding: max(18px, calc(env(safe-area-inset-top) + 16px)) 18px 0 !important;
+    }
+
+    .site-header .nav-wrap,
+    .site-header.home-top .nav-wrap,
+    .site-header.is-scrolled .nav-wrap {
+      min-height: 56px !important;
+      grid-template-columns: auto 1fr auto !important;
+      gap: 10px !important;
+    }
+
+    .site-header .brand-logo-wrap {
+      width: 52px !important;
+      height: 52px !important;
+      padding: 0 !important;
+    }
+
+    .site-header .brand-logo-img {
+      width: 50px !important;
+      height: 50px !important;
+      object-fit: contain !important;
+    }
+
+    .site-header .nav-actions {
+      gap: 9px !important;
+    }
+
+    .site-header .menu-toggle,
+    .nav-actions .menu-toggle,
+    button.menu-toggle.glass.edge {
+      width: 48px !important;
+      height: 48px !important;
+      min-width: 48px !important;
+      min-height: 48px !important;
+      border-radius: 18px !important;
+    }
+
+    .site-header .login {
+      height: 48px !important;
+      min-height: 48px !important;
+      padding: 0 18px !important;
+      border-radius: 18px !important;
+      font-size: 13px !important;
+    }
+
+    .site-header .menu-toggle span,
+    .nav-actions .menu-toggle span,
+    button.menu-toggle.glass.edge span {
+      height: 2px !important;
+    }
+
+    .site-header .menu-toggle span:nth-child(1),
+    .nav-actions .menu-toggle span:nth-child(1),
+    button.menu-toggle.glass.edge span:nth-child(1) {
+      width: 22px !important;
+      transform: translate(-50%, calc(-50% - 5px)) !important;
+    }
+
+    .site-header .menu-toggle span:nth-child(3),
+    .nav-actions .menu-toggle span:nth-child(3),
+    button.menu-toggle.glass.edge span:nth-child(3) {
+      width: 14px !important;
+      transform: translate(calc(-50% + 4px), calc(-50% + 5px)) !important;
+    }
+
+    .site-header .menu-toggle.is-open,
+    .nav-actions .menu-toggle.is-open,
+    button.menu-toggle.glass.edge.is-open {
+      left: 22px !important;
+      top: max(22px, calc(env(safe-area-inset-top) + 18px)) !important;
+    }
+
+    body.mobile-nav-open .account-menu-wrap {
+      right: 22px !important;
+      top: max(22px, calc(env(safe-area-inset-top) + 18px)) !important;
+    }
+
+    body:not(.mobile-nav-open) .mobile-nav-search-row,
+    body:not(.mobile-nav-open) .mobile-nav-terms {
+      display: none !important;
+      opacity: 0 !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
+    }
+
+    .site-header nav#nav-menu.nav-menu.is-open .mobile-nav-search-row {
+      display: grid !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+      pointer-events: auto !important;
+    }
+
+    .site-header nav#nav-menu.nav-menu.is-open .mobile-nav-terms {
+      display: none !important;
+      opacity: 0 !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
+    }
+
+    .site-header nav#nav-menu.nav-menu {
+      padding: max(96px, calc(env(safe-area-inset-top) + 88px)) 24px calc(34px + env(safe-area-inset-bottom)) !important;
+    }
+
+    .mobile-nav-search-row,
+    .site-header nav#nav-menu.nav-menu a:not(.mobile-nav-terms),
+    .site-header nav#nav-menu.nav-menu a.active:not(.mobile-nav-terms) {
+      grid-template-columns: 30px minmax(0, 1fr) !important;
+      gap: 15px !important;
+      min-height: 49px !important;
+      padding: 7px 12px !important;
+      border-radius: 14px !important;
+      font-size: 18px !important;
+      line-height: 1.1 !important;
+    }
+
+    .mobile-nav-icon,
+    .site-header nav#nav-menu.nav-menu a:not(.mobile-nav-terms)::before {
+      width: 26px !important;
+      height: 26px !important;
+      min-width: 26px !important;
+      -webkit-mask-size: 25px 25px !important;
+      mask-size: 25px 25px !important;
+      justify-self: center !important;
+    }
+
+    .site-header nav#nav-menu.nav-menu .mobile-nav-terms {
+      position: fixed !important;
+      left: 24px !important;
+      bottom: max(18px, calc(env(safe-area-inset-bottom) + 14px)) !important;
+      width: auto !important;
+      min-height: 0 !important;
+      padding: 0 0 2px !important;
+      margin: 0 !important;
+      border: 0 !important;
+      border-radius: 0 !important;
+      background: transparent !important;
+      box-shadow: none !important;
+      color: rgba(255,255,255,.66) !important;
+      font-size: 12px !important;
+      line-height: 1.2 !important;
+      text-decoration: underline !important;
+      text-underline-offset: 3px !important;
+      text-decoration-thickness: 1px !important;
+    }
+
+    .site-header nav#nav-menu.nav-menu .mobile-nav-terms::before,
+    .site-header nav#nav-menu.nav-menu .mobile-nav-terms::after {
+      display: none !important;
+      content: none !important;
     }
   }
 </style>

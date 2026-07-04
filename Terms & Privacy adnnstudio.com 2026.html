@@ -1,13 +1,13 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Terms & Privacy | AdnnStudio.com</title>
-  <link rel="icon" type="image/svg+xml" href="adnn icon.svg" />
-  <link rel="apple-touch-icon" sizes="180x180" href="adnn icon.svg" />
-  <link rel="mask-icon" href="adnn icon.svg" color="#272dcf" />
-  <style>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>Terms &amp; Privacy | AdnnStudio.com</title>
+<link href="adnn icon.svg" rel="icon" type="image/svg+xml"/>
+<link href="adnn icon.svg" rel="apple-touch-icon" sizes="180x180"/>
+<link color="#272dcf" href="adnn icon.svg" rel="mask-icon"/>
+<style>
     @import url("https://fonts.cdnfonts.com/css/aileron");
     @import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap");
 
@@ -290,6 +290,7 @@
     }
     .foot-links a:hover { color: #fff; border-color: rgba(255,255,255,.36); }
 
+    /* --- Chat UI Elements --- */
     .chat-bubble {
       position: fixed;
       right: 24px;
@@ -477,6 +478,28 @@
     }
     .ai-chat-submit:hover { opacity: 0.9; }
 
+    /* Minimal Typing Animation CSS */
+    .typing-indicator {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 4px;
+    }
+    .typing-indicator span {
+      width: 5px;
+      height: 5px;
+      background-color: rgba(255,255,255,0.7);
+      border-radius: 50%;
+      animation: typingBounce 1.4s infinite ease-in-out both;
+    }
+    .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+    .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+    
+    @keyframes typingBounce {
+      0%, 80%, 100% { transform: scale(0); opacity: 0.4; }
+      40% { transform: scale(1); opacity: 1; }
+    }
+
     @media (max-width: 980px) {
       header { width: calc(100vw - 16px) !important; top: 10px !important; }
       .page { grid-template-columns: 1fr; padding-top: 112px; }
@@ -496,210 +519,196 @@
   </style>
 </head>
 <body>
-
-  <header>
-    <div class="nav-wrap">
-      <a href="index.html#home" class="brand-logo-wrap" aria-label="Adnn Studio Home">
-        <img src="adnn icon.svg" alt="Adnn Studio Icon Logo" class="brand-logo-img">
-      </a>
-      <div class="topnav" aria-label="Legal navigation processing actions">
-        <a href="index.html#connect" class="cta-mail-icon" title="Open enquiry form" aria-label="Open enquiry form">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px; display: block;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
-        </a>
+<header>
+<div class="nav-wrap">
+<a aria-label="Adnn Studio Home" class="brand-logo-wrap" href="index.html#home">
+<img alt="Adnn Studio Icon Logo" class="brand-logo-img" src="adnn icon.svg"/>
+</a>
+<div aria-label="Legal navigation processing actions" class="topnav">
+<a aria-label="Open brief form" class="cta-mail-icon" href="index.html#connect" title="Open brief form">
+<svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" style="width: 18px; height: 18px; display: block;" viewbox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+</a>
+</div>
+</div>
+</header>
+<div class="page">
+<main class="legal-content" id="legalDocumentContent">
+<h1>Terms &amp; Privacy</h1>
+<div class="updated">Last revised: July 3rd, 2026 · Studio terms, platform access, project workflow, and privacy commitments</div>
+<section id="intro">
+<p><strong>These Terms &amp; Privacy details apply to adnnstudio™ and adnnstudio.com.</strong></p>
+<h2>About adnnstudio™</h2>
+<ol>
+<li><strong>Studio identity:</strong> adnnstudio™ is an independent creative studio building visual systems, digital content, motion, 3D, web experiences, and brand-facing design work for clients, founders, teams, and growing businesses.</li>
+<li><strong>Platform purpose:</strong> adnnstudio.com is designed as a project gateway where clients can submit briefs, sign in, receive updates, chat with the studio, review tasks, view invoice notes, and collaborate with assigned designers.</li>
+<li><strong>Team workflow:</strong> Some work may be completed directly by the owner, by the studio admin, or by selected designers connected to a client workspace through the admin system.</li>
+</ol>
+<div class="callout">
+<span class="callout-icon">i</span>
+<p>A submitted brief is not a confirmed project. Work begins only after scope, pricing, timeline, payment terms, and deliverables are reviewed and accepted by both sides.</p>
+</div>
+</section>
+<section id="enquiries">
+<h2>Project briefs and intake</h2>
+<ol start="4">
+<li><strong>Submitting a brief:</strong> When you send a form, email, message, file, or project note, you are inviting adnnstudio™ to review your requirement and respond with a suitable direction.</li>
+<li><strong>Review process:</strong> The studio may accept, decline, pause, or request more detail before quoting or starting. Requests can be declined for scope, timing, fit, capacity, budget, or practical production reasons.</li>
+<li><strong>Client responsibility:</strong> Clients are responsible for giving clear requirements, brand files, references, copy, deadlines, approvals, and feedback. Late or incomplete inputs can change the timeline and delivery plan.</li>
+<li><strong>Admin routing:</strong> The admin may connect a client account to an assigned designer account when the project requires additional creative support, production speed, or dedicated execution.</li>
+</ol>
+</section>
+<section id="services">
+<h2>Creative services</h2>
+<p>Services may include logo design, brand identity, graphic design, social content, campaign visuals, presentation design, motion graphics, video editing, 3D visuals, landing pages, website design, and web development.</p>
+<p>Every project is custom-scoped. Deliverables, formats, revisions, editable files, source files, usage rights, delivery dates, and handover details depend on the approved scope and quotation.</p>
+<p>adnnstudio™ may use a combination of creative direction, design software, production tools, AI-assisted workflows, stock assets, plugins, fonts, hosting platforms, and third-party services where they support the agreed result.</p>
+</section>
+<section id="pricing">
+<h2>Pricing, payment, and invoices</h2>
+<ol>
+<li><strong>Quotations:</strong> Prices are prepared after reviewing the project scope, timeline, complexity, deliverables, usage, urgency, and number of required outputs.</li>
+<li><strong>Scope changes:</strong> Quotes may change if the client adds new deliverables, changes the direction, increases urgency, requests extra formats, or expands the project after approval.</li>
+<li><strong>Advance payment:</strong> Some projects may require an advance payment or milestone payment before production begins or before the next phase continues.</li>
+<li><strong>Final release:</strong> Final exports, editable files, source files, website handover, or live publishing may be released only after pending payments are cleared.</li>
+<li><strong>Invoices:</strong> Invoices, payment summaries, and billing notes may be shared by email, chat, or within the client portal when available.</li>
+</ol>
+</section>
+<section id="revisions">
+<h2>Revisions, approvals, and delivery</h2>
+<p>Revision rounds, feedback windows, and approval steps are based on the approved agreement. Small adjustments can be included when they stay inside the agreed direction.</p>
+<p>Major direction changes, new concepts, new sizes, added platforms, extra animations, additional edits, rush delivery, or work outside the approved scope may require extra charges and timeline updates.</p>
+<p>Delivery timelines are professional estimates. They depend on feedback speed, content availability, project complexity, third-party platforms, technical limitations, and client approval time.</p>
+</section>
+<section id="ip">
+<h2>Ownership and intellectual property</h2>
+<p>Drafts, sketches, unused concepts, rejected directions, working files, process files, system logic, previews, internal templates, and source structures remain the property of adnnstudio™ unless agreed in writing.</p>
+<p>After full payment, the client may use the final approved deliverables within the agreed scope. Editable files, raw files, source files, font files, code repositories, or original project files are included only when specifically listed in the approved scope.</p>
+<div class="callout">
+<span class="callout-icon">i</span>
+<p>adnnstudio™ may display completed work in portfolios, case studies, reels, proposals, social media, or studio presentations unless confidentiality or white-label restrictions are agreed before kickoff.</p>
+</div>
+</section>
+<section id="client-materials">
+<h2>Client materials and approvals</h2>
+<p>Clients must confirm that all logos, images, videos, text, music, fonts, references, brand assets, product visuals, data, and files shared with adnnstudio™ are owned, licensed, approved, or legally usable.</p>
+<p>adnnstudio™ is not responsible for copyright claims, licensing issues, trademark conflicts, inaccurate information, false claims, or legal issues caused by client-supplied materials or client-approved content.</p>
+</section>
+<section id="third-party">
+<h2>Third-party tools and platforms</h2>
+<p>Projects may involve hosting providers, domain providers, plugins, stock libraries, fonts, APIs, AI tools, payment services, analytics, email tools, Firebase, Google sign-in, or other platforms. These services may have their own terms, pricing, outages, limits, and data policies.</p>
+<p>adnnstudio™ will take reasonable care when using third-party tools, but does not control their downtime, pricing changes, account restrictions, security updates, platform decisions, or technical failures.</p>
+</section>
+<section id="privacy">
+<h2>Privacy policy</h2>
+<p>adnnstudio™ collects and uses information only to operate the studio workflow, respond to briefs, prepare quotes, manage accounts, assign designers, deliver services, support communication, maintain records, and improve the website experience.</p>
+<p>Information may include name, email address, phone number, company name, project details, uploaded files, account activity, chat history, task updates, invoice notes, device/browser data, and any details voluntarily shared through forms, email, chat, or workspace tools.</p>
+</section>
+<section id="data-use">
+<h2>How information is used</h2>
+<ol>
+<li>To review project briefs and respond with the right creative direction.</li>
+<li>To prepare proposals, quotations, timelines, invoices, and project records.</li>
+<li>To create client and designer workspaces, route project communication, and support assigned collaboration.</li>
+<li>To send project updates, task notes, reminders, file references, billing notes, and support messages.</li>
+<li>To protect the platform, verify access, prevent misuse, troubleshoot errors, and improve the workflow.</li>
+</ol>
+<p>adnnstudio™ does not sell, rent, or trade personal information for third-party marketing.</p>
+</section>
+<section id="cookies">
+<h2>Cookies, login data, and website storage</h2>
+<p>The website may use cookies, browser storage, session storage, or similar technologies for login, workspace routing, settings, chat behavior, performance, analytics, and interface preferences.</p>
+<p>You can control cookies and storage through your browser. Some features, including sign-in, chat, dashboard access, and saved settings, may not work properly if required storage is disabled.</p>
+</section>
+<section id="security">
+<h2>Security and retention</h2>
+<p>adnnstudio™ takes reasonable technical and organizational care to protect submitted information, accounts, and project communication. No online transmission, storage method, or cloud platform can be guaranteed completely secure.</p>
+<p>Project files, account records, briefs, invoices, and messages may be retained for workflow continuity, business records, support, legal needs, dispute handling, portfolio reference, or future collaboration history.</p>
+</section>
+<section id="rights">
+<h2>Your privacy choices</h2>
+<p>You may request access, correction, export, or deletion of personal information where reasonably possible. Some information may need to be retained for invoices, payments, project history, legal records, security logs, or unresolved work.</p>
+<p>To request a privacy action, contact the studio using the email listed below and include enough detail to identify the related account, brief, or project.</p>
+</section>
+<section id="liability">
+<h2>Disclaimer and limitation</h2>
+<p>adnnstudio™ aims to deliver strong creative work with professional care, but does not guarantee sales, revenue, audience growth, platform reach, approvals, search ranking, conversion rates, or business results from any design or website deliverable.</p>
+<p>To the maximum extent permitted by law, adnnstudio™ is not liable for indirect, incidental, special, consequential, or business losses arising from use of the website, services, third-party platforms, or delivered creative work.</p>
+</section>
+<section id="changes">
+<h2>Updates to these terms</h2>
+<p>These Terms &amp; Privacy details may be updated when services, workflows, tools, platform features, pricing models, legal needs, or privacy practices change. The latest version will be posted on this page.</p>
+</section>
+<section id="contact">
+<h2>Contact</h2>
+<p>For terms, privacy requests, project briefs, client accounts, designer access, or studio communication, contact adnnstudio™ through the website brief form or email the admin desk.</p>
+<p><strong>Admin contact:</strong> getavcollab@gmail.com<br/><strong>Owner:</strong> adnnoptmz@gmail.com<br/><strong>Operating base:</strong> India / Saudi Arabia</p>
+</section>
+</main>
+<aside aria-label="Page content navigation tracker" class="side">
+<label aria-label="Search text contents" class="searchbox">
+<svg aria-hidden="true" viewbox="0 0 24 24"><path d="M10.75 17.5a6.75 6.75 0 1 1 0-13.5 6.75 6.75 0 0 1 0 13.5Z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.85"></path><path d="m15.65 15.65 4.15 4.15" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.85"></path></svg>
+<input autocomplete="off" id="pageSearch" placeholder="Ask us a question" type="search"/>
+</label>
+<ul class="toc" id="toc">
+<li><a class="active" href="#intro">About us and these terms</a></li>
+<li><a href="#enquiries">Project briefs</a></li>
+<li><a href="#services">Creative services</a></li>
+<li><a href="#pricing">Pricing and payment</a></li>
+<li><a href="#revisions">Revisions and delivery</a></li>
+<li><a href="#ip">Intellectual property</a></li>
+<li><a href="#client-materials">Client materials</a></li>
+<li><a href="#third-party">Third-party tools</a></li>
+<li><a href="#privacy">Privacy policy</a></li>
+<li><a href="#data-use">Our use of your information</a></li>
+<li><a href="#cookies">Cookies and website data</a></li>
+<li><a href="#security">Data security</a></li>
+<li><a href="#rights">Your rights</a></li>
+<li><a href="#liability">Disclaimer and limitation</a></li>
+<li><a href="#changes">Changes to this page</a></li>
+<li><a href="#contact">Contact</a></li>
+</ul>
+</aside>
+</div>
+<div class="ai-chat-window" id="aiChatWindow">
+<div class="ai-chat-header">
+<div class="ai-chat-title">
+<span class="ai-chat-status"></span>
+<span>Studio support</span>
+</div>
+<button class="ai-chat-close" id="closeChatBtn" type="button">×</button>
+</div>
+<div class="ai-chat-body" id="chatMessageFlow">
+<div class="ai-bubble system">Lavio is online for adnnstudio™. I can help with our studio terms, project briefs, or answer general questions you might have!
       </div>
-    </div>
-  </header>
-
-  <div class="page">
-    <main class="legal-content" id="legalDocumentContent">
-      <h1>Terms & Privacy</h1>
-      <div class="updated">Updated recently · For freelance creative enquiries, projects, invoices and client communication</div>
-
-      <section id="intro">
-        <p><strong>Last revised: June 1st, 2026</strong></p>
-        <h2>About us and these terms</h2>
-        <ol>
-          <li><strong>Welcome:</strong> Hi, we are Adnn Studio. We provide freelance and collaborative creative services for businesses, brands and individuals who need thoughtful visual work.</li>
-          <li><strong>About us:</strong> Adnn Studio works across logo design, brand identity, graphic design, motion graphics, video editing, 3D design and web development. These terms explain how enquiries, projects, creative work and communication are handled through this website.</li>
-        </ol>
-        <div class="callout">
-          <span class="callout-icon">i</span>
-          <p>Submitting an enquiry does not automatically confirm a project. A project begins only after scope, pricing, timeline and payment terms are discussed and accepted.</p>
-        </div>
-      </section>
-
-      <section id="enquiries">
-        <h2>Project enquiries</h2>
-        <ol start="3">
-          <li><strong>Sending an enquiry:</strong> When you submit a form or contact us by email, phone or message, you are inviting us to review your project requirement.</li>
-          <li><strong>Acceptance:</strong> We may accept, decline or request more information before starting any work. We may decline requests that are outside our scope, availability or comfort.</li>
-          <li><strong>Accuracy:</strong> Clients are responsible for sharing clear project details, brand materials, references, deadlines and feedback. Delays in information can affect delivery timelines.</li>
-        </ol>
-      </section>
-
-      <section id="services">
-        <h2>Creative services</h2>
-        <p>Our services may include logo design, brand identity systems, posters, social media design, motion graphics, video editing, 3D visualization, landing pages, website design and website development.</p>
-        <p>Each service is handled as a custom creative project. The exact deliverables, revisions, file formats and timelines will depend on the agreed scope.</p>
-      </section>
-
-      <section id="pricing">
-        <h2>Pricing and payment</h2>
-        <ol>
-          <li><strong>Quotations:</strong> Prices are shared after understanding the project scope. A quotation may change if the scope, deadline or deliverables change.</li>
-          <li><strong>Advance payment:</strong> Some projects may require an advance payment before work begins.</li>
-          <li><strong>Final payment:</strong> Final files, source files or live handover may be shared only after pending payment is completed.</li>
-          <li><strong>Invoices:</strong> Invoices or payment summaries may be provided digitally through email or the client workflow used for the project.</li>
-        </ol>
-      </section>
-
-      <section id="revisions">
-        <h2>Revisions and delivery</h2>
-        <p>Reasonable revisions may be included depending on the project agreement. Extra revisions, new concepts, major changes or additional formats may require additional charges.</p>
-        <p>Delivery timelines are estimates and may depend on client feedback, content availability, project complexity and third-party tools or platforms.</p>
-      </section>
-
-      <section id="ip">
-        <h2>Intellectual property</h2>
-        <p>Drafts, concepts, unused directions, working files and previews remain the property of Adnn Studio unless agreed otherwise.</p>
-        <p>Final approved deliverables may be used by the client after full payment, according to the agreed project scope. Source files, editable files or raw assets are not automatically included unless specified.</p>
-        <div class="callout">
-          <span class="callout-icon">i</span>
-          <p>Portfolio display rights may be retained by Adnn Studio unless a confidential or white-label arrangement is agreed before the project begins.</p>
-        </div>
-      </section>
-
-      <section id="client-materials">
-        <h2>Client materials</h2>
-        <p>Clients must ensure that any images, logos, videos, fonts, music, text or brand materials shared with us are owned by them or properly licensed for use.</p>
-        <p>Adnn Studio is not responsible for copyright issues caused by materials supplied by the client.</p>
-      </section>
-
-      <section id="third-party">
-        <h2>Third-party tools and platforms</h2>
-        <p>Some projects may use hosting providers, plugins, stock assets, fonts, AI tools, payment services, analytics or other third-party platforms. Their own terms, pricing and technical limitations may apply.</p>
-      </section>
-
-      <section id="privacy">
-        <h2>Privacy policy</h2>
-        <p>We respect your privacy. Information submitted through this website is used only to respond to enquiries, discuss projects, prepare quotations, communicate during work and maintain project records.</p>
-        <p>We may collect your name, email address, phone number, company name, project details, uploaded materials and communication history if you voluntarily provide them.</p>
-      </section>
-
-      <section id="data-use">
-        <h2>How we use your information</h2>
-        <ol>
-          <li>To reply to your enquiry and understand your project.</li>
-          <li>To prepare proposals, quotes, timelines and invoices.</li>
-          <li>To deliver creative services and manage project communication.</li>
-          <li>To improve our website, service quality and client experience.</li>
-        </ol>
-        <p>We do not sell, rent or trade your personal information for marketing purposes.</p>
-      </section>
-
-      <section id="cookies">
-        <h2>Cookies and website data</h2>
-        <p>This website may use cookies or similar technologies for basic functionality, performance, analytics or user experience improvements. You can control cookies through your browser settings.</p>
-      </section>
-
-      <section id="security">
-        <h2>Data security and retention</h2>
-        <p>We take reasonable care to protect information shared with us. However, no online method of transmission or storage can be guaranteed as completely secure.</p>
-        <p>Project and enquiry information may be retained as long as needed for communication, records, legal requirements or future project reference.</p>
-      </section>
-
-      <section id="rights">
-        <h2>Your rights</h2>
-        <p>You may contact us to request access, correction or deletion of your personal information where reasonably possible. Some information may need to be retained for payment, project or legal records.</p>
-      </section>
-
-      <section id="liability">
-        <h2>Disclaimer and limitation</h2>
-        <p>Adnn Studio aims to deliver high-quality creative work, but we cannot guarantee specific business results, sales, audience growth or platform performance from any design or digital deliverable.</p>
-        <p>We are not liable for indirect, incidental or consequential losses arising from use of this website or our services.</p>
-      </section>
-
-      <section id="changes">
-        <h2>Changes to this page</h2>
-        <p>We may update these Terms & Privacy details when our services, workflow or legal requirements change. The latest version will be published on this page.</p>
-      </section>
-
-      <section id="contact">
-        <h2>Contact</h2>
-        <p>For questions about these terms, privacy, project enquiries or client communication, contact Adnn Studio:</p>
-        <p><strong>Contact:</strong> Use the website enquiry form.<br><strong>Location:</strong> India</p>
-      </section>
-    </main>
-
-    <aside class="side" aria-label="Page content navigation tracker">
-      <label class="searchbox" aria-label="Search text contents">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.75 17.5a6.75 6.75 0 1 1 0-13.5 6.75 6.75 0 0 1 0 13.5Z" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round"/><path d="m15.65 15.65 4.15 4.15" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round"/></svg>
-        <input id="pageSearch" type="search" placeholder="Ask us a question" autocomplete="off" />
-      </label>
-      <ul class="toc" id="toc">
-        <li><a href="#intro" class="active">About us and these terms</a></li>
-        <li><a href="#enquiries">Project enquiries</a></li>
-        <li><a href="#services">Creative services</a></li>
-        <li><a href="#pricing">Pricing and payment</a></li>
-        <li><a href="#revisions">Revisions and delivery</a></li>
-        <li><a href="#ip">Intellectual property</a></li>
-        <li><a href="#client-materials">Client materials</a></li>
-        <li><a href="#third-party">Third-party tools</a></li>
-        <li><a href="#privacy">Privacy policy</a></li>
-        <li><a href="#data-use">Our use of your information</a></li>
-        <li><a href="#cookies">Cookies and website data</a></li>
-        <li><a href="#security">Data security</a></li>
-        <li><a href="#rights">Your rights</a></li>
-        <li><a href="#liability">Disclaimer and limitation</a></li>
-        <li><a href="#changes">Changes to this page</a></li>
-        <li><a href="#contact">Contact</a></li>
-      </ul>
-    </aside>
-  </div>
-
-  <div class="ai-chat-window" id="aiChatWindow">
-    <div class="ai-chat-header">
-      <div class="ai-chat-title">
-        <span class="ai-chat-status"></span>
-        <span>How can i assist you? 😊</span>
-      </div>
-      <button class="ai-chat-close" id="closeChatBtn" type="button">&times;</button>
-    </div>
-    <div class="ai-chat-body" id="chatMessageFlow">
-      <div class="ai-bubble system">Hey! I am Lavio, your Adnn Studio assistant. Ask me anything about our terms, creative services, design revisions, or pricing policies!
-      </div>
-    </div>
-    <div class="ai-chat-footer">
-      <input class="ai-chat-input" id="chatUserInput" type="text" placeholder="Tell me about your 3D work..." autocomplete="off">
-      <button class="ai-chat-submit" id="sendChatBtn" type="button">
-        <svg viewBox="0 0 24 24" style="width:16px; height:16px;" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="22" y1="2" x2="11" y2="13"></line>
-          <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-        </svg>
-      </button>
-    </div>
-  </div>
-
-  <div class="chat-bubble" id="triggerChatBubble">
-    <div class="icon-box">
-      <img src="adnn icon.svg" alt="Adnn Studio AI Icon" style="width: 24px; height: 24px; display: block;" />
-    </div>
-    <span class="chat-text">Need any help?</span>
-  </div>
-
-  <footer>
-    <div class="foot">
-      <p>Available for freelance, studio, and project collaborations</p>
-      <div class="foot-links">
-        <a href="#intro">Terms</a>
-        <a href="#privacy">Privacy</a>
-        <a href="index.html#connect">Enquiry</a>
-      </div>
-      <p><span>© Adnn Studio 2026</span></p>
-    </div>
-  </footer>
-
-  <script>
+</div>
+<div class="ai-chat-footer">
+<input autocomplete="off" class="ai-chat-input" id="chatUserInput" placeholder="Ask me anything..." type="text"/>
+<button class="ai-chat-submit" id="sendChatBtn" type="button">
+<svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" style="width:16px; height:16px;" viewbox="0 0 24 24">
+<line x1="22" x2="11" y1="2" y2="13"></line>
+<polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+</svg>
+</button>
+</div>
+</div>
+<div class="chat-bubble" id="triggerChatBubble">
+<div class="icon-box">
+<img alt="Adnn Studio AI Icon" src="adnn icon.svg" style="width: 24px; height: 24px; display: block;">
+</img></div>
+<span class="chat-text">Need help?</span>
+</div>
+<footer>
+<div class="foot">
+<p>Open for freelance, studio, startup, and brand collaborations</p>
+<div class="foot-links">
+<a href="#intro">Terms</a>
+<a href="#privacy">Privacy</a>
+<a href="index.html#connect">Start Brief</a>
+</div>
+<p><span>© adnnstudio™ 2026</span></p>
+</div>
+</footer>
+<script>
     const links = Array.from(document.querySelectorAll('.toc a'));
     const sections = links.map(link => document.querySelector(link.getAttribute('href'))).filter(Boolean);
 
@@ -746,125 +755,165 @@
     
     closeChat.addEventListener('click', () => chatWindow.classList.remove('is-open'));
 
-    // High-Performance Conversational Intent Framework
-    // High-Performance Conversational Intent Framework
-    function getSmartAnswer(userQuestion) {
-      const query = userQuestion.toLowerCase().trim().replace(/[^\w\s\+]/g, '');
+    // --- Highly Advanced Local AI Engine ---
+
+    function formatBotResponse(text) {
+      return text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+        .replace(/\*(.*?)\*/g, "<em>$1</em>")
+        .replace(/\n/g, "<br>");
+    }
+
+    const thinkDelay = (ms) => new Promise(res => setTimeout(res, ms));
+
+    // Fetch General Knowledge securely via public Wikipedia API (No key needed)
+    async function fetchGeneralKnowledge(query) {
+      try {
+        let searchTerm = query.replace(/^(what is|who is|where is|tell me about|what are|who are|explain)\s+/i, '').trim();
+        if(!searchTerm || searchTerm.length < 2) return null;
+        
+        const searchUrl = `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(searchTerm)}&utf8=&format=json&origin=*`;
+        const searchRes = await fetch(searchUrl);
+        const searchData = await searchRes.json();
+        
+        if (searchData.query && searchData.query.search.length > 0) {
+          const firstResult = searchData.query.search[0];
+          const summaryUrl = `https://en.wikipedia.org/w/api.php?action=query&prop=extracts&exsentences=3&exlimit=1&titles=${encodeURIComponent(firstResult.title)}&explaintext=1&format=json&origin=*`;
+          const summaryRes = await fetch(summaryUrl);
+          const summaryData = await summaryRes.json();
+          const pages = summaryData.query.pages;
+          const extract = Object.values(pages)[0].extract;
+          
+          if(extract && !extract.includes("may refer to:")) {
+             return extract;
+          }
+        }
+      } catch (e) { 
+        return null; 
+      }
+      return null;
+    }
+
+    async function processStudioIntelligence(userQuestion) {
+      const query = userQuestion.toLowerCase().trim();
       
-      if (!query) {
-        return "I am right here! Go ahead and ask me any questions about Adnn Studio's creative work, workflows, or terms.";
+      // 1. Core Conversational Hooks
+      if (/^(hi|hello|hey|yo)\b/i.test(query)) {
+        return "Hello! I'm Lavio, adnnstudio's assistant. How can I help you today?";
+      }
+      if (/how are you|hows it going/i.test(query)) {
+        return "I'm doing great, thank you for asking! Ready to help you with anything you need.";
+      }
+      if (/who are you|your name|what are you/i.test(query)) {
+        return "I am Lavio, the AI assistant for adnnstudio™. I can help you understand our terms, processes, do some quick math, or look up general facts for you.";
+      }
+      if (/joke|laugh/i.test(query)) {
+        return "Why did the web designer drown?\n\nBecause they didn't know how to float! 🖥️";
       }
 
-      // 1. Natural Chit-Chat & Greeting Intent Overrides (The Gemini Assistant Experience)
-      if (query === "hi" || query === "hello" || query === "hey" || query === "yo" || query.startsWith("greeting")) {
-        return "Hello! I am Lavio, your Adnn Studio assistant. How's your day going? Ask me anything about our creative design services, pricing rules, or workspace policies!";
-      }
-      if (query.includes("how are you") || query.includes("how is it going") || query.includes("how you doing")) {
-        return "I'm doing fantastic, thank you for asking! I'm fully charged and ready to answer any questions you have about Adnn Studio's design workflows or terms. How can I help you today? 😊";
-      }
-      if (query.includes("who are you") || query.includes("your name") || query.includes("what are you")) {
-        return "I am Lavio! I act as the digital assistant for Adnn Studio. I'm trained directly on our workflow parameters to help clients understand our design capabilities, revision steps, and terms.";
-      }
-      if (query.includes("thank") || query === "thanks" || query.includes("awesome") || query.includes("great")) {
-        return "You're very welcome! Let me know if you need clarification on anything else regarding our studio workflow.";
-      }
-      if (query.includes("joke")) {
-        return "Why do graphic designers love dark mode?\n\nBecause light attracts bugs! 💻 Let me know if you want to talk about real design tasks instead!";
+      // 2. Dates and Time
+      if (/\b(date|today|day|year|time)\b/i.test(query)) {
+        const now = new Date();
+        const systemDate = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        const systemTime = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+        if(query.includes('time')) return `The current time is **${systemTime}**.`;
+        return `Today is **${systemDate}**.`;
       }
 
-      // 2. Project Enquiries Intent (Fixes your current bug)
-      if (query.includes("enquire") || query.includes("how to start") || query.includes("hire") || query.includes("start a project") || query.includes("submit")) {
-        return "To enquire for a project with us, use the website enquiry form. \n\nWhen you submit an enquiry, you invite us to review your requirements. We'll chat about your project scope, timeline, and pricing parameters to get everything confirmed before any creative tasks officially kick off!";
+      // 3. Simple Math Engine
+      const mathMatch = query.match(/^what is\s+([\d\.\s\+\-\*\/\(\)]+)$/i) || query.match(/^([\d\.\s\+\-\*\/\(\)]+)$/i);
+      if (mathMatch) {
+        try {
+          const expression = mathMatch[1].trim();
+          if(/[a-zA-Z]/.test(expression)) throw new Error("Invalid"); // prevent code injection
+          const result = new Function(`return ${expression}`)();
+          if (!isNaN(result)) return `The answer is **${result}**.`;
+        } catch (e) {}
       }
 
-      // 3. Studio Services & 3D Deliverables Intent
-      if (query.includes("3d") || query.includes("render") || query.includes("visualization") || query.includes("modeling")) {
-        return "At Adnn Studio, our 3D visualization and modeling work is handled on a custom creative project basis! We build high-fidelity 3D structural visual models mapped out explicitly to your scope. Exact file formats, deadlines, and project tiers are locked in before kickoff.";
-      }
-      if (query.includes("service") || query.includes("do you do") || query.includes("capabilities") || query.includes("offer") || query.includes("work across") || query.includes("logo") || query.includes("branding") || query.includes("identity") || query.includes("video") || query.includes("motion") || query.includes("web")) {
-        return "Adnn Studio provides tailored visual execution across multiple mediums! Our services cover custom logo design, full brand identity systems, poster art, social imagery, motion graphics, video editing, 3D visualization, landing pages, and web asset development.";
-      }
+      // 4. Studio Documentation (DOM Context Parser)
+      const termsSections = Array.from(document.querySelectorAll('#legalDocumentContent section'));
+      let primeSection = null;
+      let topWeightScore = 0;
+      const linguisticTokens = query.split(/\s+/).filter(word => word.length > 2);
 
-      // 4. Financial Invoicing, Estimates & Retainers Intent
-      if (query.includes("deposit") || query.includes("advance") || query.includes("upfront") || query.includes("pay before")) {
-        return "Yes, our advance milestone payment is a standard phase required before creative project execution begins. This secures your booking slot on our studio calendar. Final project source folders are cleared and sent over upon final invoice settlement.";
-      }
-      if (query.includes("pricing") || query.includes("cost") || query.includes("quote") || query.includes("quotation") || query.includes("invoice") || query.includes("rate")) {
-        return "Regarding our pricing models: Quotations are customized directly from your unique guidelines. Quotes might adapt dynamically if your design requirements or aesthetic guidelines morph during structural sprints. Summarized invoices are shared directly via email loops.";
-      }
+      termsSections.forEach(section => {
+        const structuralBody = section.innerText.toLowerCase();
+        const headerTitle = section.querySelector('h2')?.innerText.toLowerCase() || "";
+        let specificWeight = 0;
 
-      // 5. Structural Revisions & Iteration Sprints Intent
-      if (query.includes("revision") || query.includes("change") || query.includes("edit") || query.includes("modify") || query.includes("concept") || query.includes("feedback") || query.includes("delay")) {
-        return "We offer reasonable structural revision cycles to perfect your assets! Please note that completely transforming your concept direction midway, or requiring complex alternative formats out of scope, will generate secondary processing fees. Fast client feedback speeds up final delivery loops.";
-      }
-
-      // 6. Intellectual Property Rights & Vector Source Layouts Intent
-      if (query.includes("copyright") || query.includes("own") || query.includes("right") || query.includes("source file") || query.includes("raw file") || query.includes("portfolio")) {
-        return "Once final invoice accounts are completely clear, usage permissions pass cleanly to you for approved project variants. However, all active design drafts, raw layout nodes, and alternate concepts remain the property of Adnn Studio. We retain portfolio staging rights unless non-disclosure parameter criteria are set before launching.";
-      }
-
-      // 7. Direct Contact Matrix Intent
-      if (query.includes("contact") || query.includes("email") || query.includes("phone") || query.includes("call") || query.includes("location") || query.includes("where") || query.includes("india")) {
-        return "You can contact Adnn Studio through the website enquiry form.\n\nDrop us an enquiry message to get a tailored pricing brief setup!";
-      }
-
-      // 8. Data Privacy, Encryption and Cookie Controls Intent
-      if (query.includes("privacy") || query.includes("data") || query.includes("secure") || query.includes("track") || query.includes("sell") || query.includes("cookie")) {
-        return "Your design metadata metrics are treated with deep professional respect. Information supplied (project specs, company briefs, shared logos) is used exclusively to evaluate timelines and build custom workflows. Adnn Studio strictly never trades user statistics with external advertising channels.";
-      }
-
-      // 9. Adaptive Dynamic Text Search Fallback
-      let bestSection = null;
-      let highestScore = 0;
-      const parsedWords = query.split(/\s+/).filter(w => w.length > 2);
-
-      document.querySelectorAll('#legalDocumentContent section').forEach(section => {
-        const textToSearch = section.innerText.toLowerCase();
-        let score = 0;
-        const headingText = section.querySelector('h2')?.innerText.toLowerCase() || "";
-
-        parsedWords.forEach(word => {
-          if (headingText.includes(word)) score += 6;
-          if (textToSearch.includes(word)) score += 1;
+        linguisticTokens.forEach(token => {
+          if (headerTitle.includes(token)) specificWeight += 12;
+          if (structuralBody.includes(token)) specificWeight += 3;
         });
 
-        if (score > highestScore) {
-          highestScore = score;
-          bestSection = section;
+        if (specificWeight > topWeightScore) {
+          topWeightScore = specificWeight;
+          primeSection = section;
         }
       });
 
-      if (bestSection && highestScore > 1) {
-        let textResult = bestSection.innerText.split('\n').filter(l => l.trim().length > 0).slice(1).join(' ');
-        if (textResult.length > 320) textResult = textResult.substring(0, 320) + "...";
-        return `Based on our page records regarding "${bestSection.querySelector('h2').innerText}":\n\n${textResult}`;
+      if (primeSection && topWeightScore > 5) { // Needs a decent match to trigger
+        const descriptiveLabel = primeSection.querySelector('h2')?.innerText || "Studio Info";
+        let bodyContent = primeSection.innerText.split('\n').filter(p => p.trim().length > 0).slice(1).join(' ');
+        if (bodyContent.length > 300) bodyContent = bodyContent.substring(0, 295) + "...";
+        return `Here is what our terms say about **${descriptiveLabel}**:\n\n"${bodyContent}"`;
       }
 
-      return "I can confirm that all Adnn Studio collaborative timelines run on individual project arrangements. Advance retainers are typical, full delivery ownership applies post-invoice clearing, and flexible visual iteration steps are provided. Use the website enquiry form for direct consultation help!";
+      // 5. External General Knowledge Fetch (The "Answer All" feature)
+      if (/^(what is|who is|where is|tell me about|what are|who are|explain)\b/i.test(query)) {
+        const externalFact = await fetchGeneralKnowledge(query);
+        if (externalFact) return externalFact;
+      }
+
+      // 6. Natural Human Fallback
+      const naturalFallbacks = [
+        "I checked my records but couldn't find an exact match for that. Could you share a bit more detail, or try phrasing it differently?",
+        "I'm not entirely sure about that one! If it's a specific project question, it's best to email the studio directly at getavcollab@gmail.com.",
+        "That's a great question, but I don't have the exact answer right now. Is there something specific about adnnstudio™'s services I can help clarify?"
+      ];
+      return naturalFallbacks[Math.floor(Math.random() * naturalFallbacks.length)];
     }
 
     async function handleIncomingUserQuery() {
-      const text = userInput.value.trim();
-      if (!text) return;
+      const promptText = userInput.value.trim();
+      if (!promptText) return;
 
       userInput.value = "";
-      appendBubble(text, 'user');
-
+      appendBubble(promptText, 'user');
       messageFlow.scrollTop = messageFlow.scrollHeight;
 
-      const loader = appendBubble("Thinking...", 'system');
+      // Inject minimal CSS typing animation
+      const loaderBubble = document.createElement('div');
+      loaderBubble.className = 'ai-bubble system';
+      loaderBubble.innerHTML = `<div class="typing-indicator"><span></span><span></span><span></span></div>`;
+      messageFlow.appendChild(loaderBubble);
       messageFlow.scrollTop = messageFlow.scrollHeight;
 
-      setTimeout(() => {
-        loader.textContent = getSmartAnswer(text);
-        messageFlow.scrollTop = messageFlow.scrollHeight;
-      }, 400);
+      // Ensure minimal animation runs for at least 800ms so it looks natural
+      const startTime = Date.now();
+      
+      try {
+        const answer = await processStudioIntelligence(promptText);
+        
+        const elapsedTime = Date.now() - startTime;
+        if(elapsedTime < 1000) await thinkDelay(1000 - elapsedTime);
+        
+        loaderBubble.innerHTML = formatBotResponse(answer);
+      } catch (err) {
+        loaderBubble.textContent = "Oops, I encountered a slight error. Please try asking again!";
+      }
+      
+      messageFlow.scrollTop = messageFlow.scrollHeight;
     }
 
     function appendBubble(contentStr, roleClass) {
       const bubble = document.createElement('div');
       bubble.className = `ai-bubble ${roleClass}`;
-      bubble.textContent = contentStr;
+      bubble.innerHTML = formatBotResponse(contentStr);
       messageFlow.appendChild(bubble);
       return bubble;
     }
@@ -872,6 +921,6 @@
     sendBtn.addEventListener('click', handleIncomingUserQuery);
     userInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleIncomingUserQuery(); });
   </script>
-  <script src="page-transition.js" defer></script>
+<script defer="" src="page-transition.js"></script>
 </body>
 </html>

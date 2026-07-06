@@ -2866,7 +2866,7 @@
   }
 </style>
 </head>
-	<body class="auth-state-pending is-booting">
+	<body class="auth-state-pending">
 	  <img src="bg1.jpg" fetchpriority="high" loading="eager" width="2048" height="1365" alt="" style="position:absolute; width:1px; height:1px; opacity:0.01; pointer-events:none; z-index:-9999; top:0; left:0;" aria-hidden="true" decoding="sync">
   
 	  <div class="cursor-dots" aria-hidden="true"></div>
@@ -4390,9 +4390,7 @@
   const links = [...document.querySelectorAll("nav a[href^='#']")];
   const sections = links.map(a => document.querySelector(a.getAttribute("href")));
   const siteHeader = document.getElementById("site-header");
-  addEventListener("load", () => {
-    requestAnimationFrame(() => requestAnimationFrame(() => document.body.classList.remove("is-booting")));
-  }, { once: true });
+  document.body.classList.remove("is-booting");
 
   const menuToggle = document.querySelector(".menu-toggle");
   const navMenu = document.getElementById("nav-menu");
@@ -7127,10 +7125,6 @@
   }
 </style>
 <style id="adnn-nav-entrance-final">
-  body.is-booting .site-header .nav-wrap {
-    opacity: 0 !important;
-    transform: translate3d(0, -18px, 0) scale(.985) !important;
-  }
 
   body:not(.is-booting) .site-header .nav-wrap {
     opacity: 1;
@@ -7144,12 +7138,6 @@
       -webkit-backdrop-filter .42s ease !important;
   }
 
-  body.is-booting .site-header .brand-logo-wrap,
-  body.is-booting .site-header .nav-actions > *,
-  body.is-booting .site-header nav#nav-menu.nav-menu:not(.is-open) a {
-    opacity: 0 !important;
-    transform: translate3d(0, -10px, 0) !important;
-  }
 
   body:not(.is-booting) .site-header .brand-logo-wrap,
   body:not(.is-booting) .site-header .nav-actions > *,
@@ -7639,6 +7627,271 @@
     event.preventDefault();
     event.stopImmediatePropagation();
   }, true);
+})();
+</script>
+
+
+<!-- ADNN STABLE HEADER REWRITE: desktop nav opening snap fix -->
+<style id="adnn-stable-header-rewrite">
+  body.is-booting { }
+
+  @media (min-width: 761px) {
+    .site-header {
+      position: fixed !important;
+      top: 20px !important;
+      left: 50% !important;
+      right: auto !important;
+      width: min(1120px, 94vw) !important;
+      max-width: min(1120px, 94vw) !important;
+      padding: 0 !important;
+      transform: translateX(-50%) !important;
+      z-index: 1300 !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+      contain: layout style !important;
+    }
+
+    .site-header,
+    .site-header *,
+    .site-header *::before,
+    .site-header *::after {
+      animation-name: none !important;
+    }
+
+    .site-header .nav-wrap,
+    .site-header.home-top .nav-wrap,
+    .site-header.is-scrolled .nav-wrap {
+      width: 100% !important;
+      min-height: 64px !important;
+      display: grid !important;
+      grid-template-columns: 132px minmax(0, 1fr) max-content !important;
+      align-items: center !important;
+      gap: 12px !important;
+      padding: 10px !important;
+      border-radius: 28px !important;
+      transform: none !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+      will-change: auto !important;
+      transition:
+        background-color .24s ease,
+        border-color .24s ease,
+        box-shadow .24s ease,
+        backdrop-filter .24s ease,
+        -webkit-backdrop-filter .24s ease !important;
+    }
+
+    .site-header.home-top .nav-wrap {
+      background: transparent !important;
+      border-color: transparent !important;
+      box-shadow: none !important;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+    }
+
+    .site-header.is-scrolled .nav-wrap {
+      background: linear-gradient(135deg, rgba(34,34,38,.72), rgba(22,22,26,.58) 38%, rgba(14,14,18,.42)) !important;
+      border-color: rgba(255,255,255,.08) !important;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.08), inset 0 -12px 35px rgba(255,255,255,.03), 0 20px 70px rgba(0,0,0,.34) !important;
+      backdrop-filter: blur(26px) saturate(160%) !important;
+      -webkit-backdrop-filter: blur(26px) saturate(160%) !important;
+    }
+
+    .site-header.home-top .nav-wrap.edge::before {
+      opacity: 0 !important;
+    }
+
+    .site-header.is-scrolled .nav-wrap.edge::before {
+      opacity: 1 !important;
+      display: block !important;
+      border-color: rgba(255,255,255,.12) !important;
+    }
+
+    .site-header .brand-logo-wrap {
+      grid-column: 1 !important;
+      justify-self: start !important;
+      width: 132px !important;
+      height: 44px !important;
+      min-width: 132px !important;
+      padding: 0 12px !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: flex-start !important;
+      transform: none !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+      transition: none !important;
+    }
+
+    .site-header .brand-logo-img {
+      width: auto !important;
+      height: 46px !important;
+      display: block !important;
+      object-fit: contain !important;
+      transform: translateY(-1px) !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+      transition: none !important;
+    }
+
+    .site-header nav#nav-menu.nav-menu {
+      grid-column: 2 !important;
+      position: relative !important;
+      left: auto !important;
+      right: auto !important;
+      top: auto !important;
+      width: auto !important;
+      max-width: 100% !important;
+      display: flex !important;
+      justify-content: center !important;
+      align-items: center !important;
+      gap: 18px !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      border: 0 !important;
+      border-radius: 0 !important;
+      background: transparent !important;
+      box-shadow: none !important;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+      transform: none !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+      pointer-events: auto !important;
+      transition: none !important;
+    }
+
+    .site-header nav#nav-menu.nav-menu.edge::before {
+      display: none !important;
+    }
+
+    .site-header nav#nav-menu.nav-menu .mobile-nav-search-row,
+    .site-header nav#nav-menu.nav-menu .mobile-nav-terms,
+    .site-header nav#nav-menu.nav-menu .mobile-nav-account-row {
+      display: none !important;
+    }
+
+    .site-header nav#nav-menu.nav-menu a,
+    .site-header.home-top nav#nav-menu.nav-menu a,
+    .site-header.is-scrolled nav#nav-menu.nav-menu a {
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      width: auto !important;
+      min-width: 0 !important;
+      min-height: 0 !important;
+      padding: 11px 18px !important;
+      margin: 0 !important;
+      border: 0 !important;
+      border-radius: 22px !important;
+      color: rgba(255,255,255,.72) !important;
+      background: transparent !important;
+      box-shadow: none !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+      transform: none !important;
+      transition: color .2s ease, background-color .2s ease, box-shadow .2s ease !important;
+    }
+
+    .site-header.home-top nav#nav-menu.nav-menu a.active {
+      color: rgba(255,255,255,.72) !important;
+      background: transparent !important;
+      box-shadow: none !important;
+    }
+
+    .site-header.is-scrolled nav#nav-menu.nav-menu a.active,
+    .site-header:not(.home-top) nav#nav-menu.nav-menu a.active {
+      color: #fff !important;
+      background: #272dcf !important;
+      box-shadow: 0 0 38px rgba(39,45,207,.42) !important;
+    }
+
+    .site-header.home-top nav#nav-menu.nav-menu a::after {
+      content: "" !important;
+      position: absolute !important;
+      left: 50% !important;
+      right: auto !important;
+      bottom: 2px !important;
+      width: 8px !important;
+      height: 8px !important;
+      border-radius: 999px !important;
+      background: #272dcf !important;
+      box-shadow: 0 0 10px #272dcf, 0 0 22px rgba(39,45,207,.95) !important;
+      transform: translateX(-50%) scale(0) !important;
+      opacity: 0 !important;
+      transition: transform .22s ease, opacity .18s ease !important;
+    }
+
+    .site-header.home-top nav#nav-menu.nav-menu a:hover::after,
+    .site-header.home-top nav#nav-menu.nav-menu a:focus-visible::after {
+      transform: translateX(-50%) scale(1) !important;
+      opacity: 1 !important;
+    }
+
+    .site-header.is-scrolled nav#nav-menu.nav-menu a::after,
+    .site-header:not(.home-top) nav#nav-menu.nav-menu a::after {
+      opacity: 0 !important;
+      transform: translateX(-50%) scale(0) !important;
+    }
+
+    .site-header .nav-actions {
+      grid-column: 3 !important;
+      justify-self: end !important;
+      min-width: max-content !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: flex-end !important;
+      gap: 8px !important;
+      transform: none !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+      transition: none !important;
+    }
+
+    .site-header .search,
+    .site-header .account-menu-wrap,
+    .site-header .login {
+      transform: none !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+    }
+
+    .site-header .menu-toggle {
+      display: none !important;
+    }
+  }
+</style>
+<script id="adnn-stable-header-script">
+(() => {
+  const header = document.getElementById('site-header');
+  const nav = document.getElementById('nav-menu');
+  if (!header) return;
+
+  document.body.classList.remove('is-booting');
+
+  const applyHeaderState = () => {
+    const scrolled = window.scrollY > 24;
+    header.classList.toggle('home-top', !scrolled);
+    header.classList.toggle('is-scrolled', scrolled);
+  };
+
+  applyHeaderState();
+  window.addEventListener('pageshow', applyHeaderState, { passive: true });
+
+  let scheduled = false;
+  window.addEventListener('scroll', () => {
+    if (scheduled) return;
+    scheduled = true;
+    requestAnimationFrame(() => {
+      scheduled = false;
+      applyHeaderState();
+    });
+  }, { passive: true });
+
+  if (nav && window.matchMedia('(min-width: 761px)').matches) {
+    nav.classList.remove('is-open');
+    document.body.classList.remove('mobile-nav-open', 'mobile-nav-veil-on');
+  }
 })();
 </script>
 </body>

@@ -15,7 +15,7 @@
       --muted:rgba(11,11,13,.62);
       --line:rgba(0,0,0,.08);
       --font-body:"Aileron", ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial, sans-serif;
-      --font-mono:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+      --font-mono:-apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
     }
     * { box-sizing:border-box; }
     html { scroll-behavior:smooth; }
@@ -250,7 +250,7 @@
       box-shadow:0 18px 52px rgba(0,0,0,.055);
       transition: border-color .2s ease, background .2s ease;
     }
-    /* Style for unread items */
+    
     .account-item.is-unread {
       border-color: rgba(39, 45, 207, 0.24);
       background: linear-gradient(135deg, rgba(39, 45, 207, 0.03), rgba(255, 255, 255, 0.75));
@@ -269,7 +269,7 @@
       letter-spacing:-.035em;
       font-weight:400;
     }
-    /* Blue unread title highlight */
+    
     .account-item.is-unread h2 {
       color: var(--accent);
     }
@@ -313,7 +313,7 @@
       color:var(--accent);
       border-color:rgba(39,45,207,.18);
     }
-    /* Custom button styling within item meta layout */
+    
     .account-meta button {
       cursor: pointer;
       font: inherit;
@@ -384,7 +384,7 @@
       background:#fff;
       box-shadow:inset 0 1px 0 rgba(255,255,255,.96), 0 18px 42px rgba(39,45,207,.12);
     }
-    /* Controlled spinning animation classes */
+    
     .refresh-account-button.is-spinning svg {
       animation: refreshSpin .72s cubic-bezier(.16, 1, .3, 1) both;
     }
@@ -511,7 +511,7 @@
       font-size:11px;
       text-align:center;
     }
-	    /* Account portal shell: matched to the admin workspace design language */
+	    
 	    :root {
 	      --bg:#050506;
 	      --panel-bg:linear-gradient(135deg, rgba(34,34,38,.72), rgba(22,22,26,.58) 38%, rgba(14,14,18,.42));
@@ -985,7 +985,7 @@
 	      font-size:11px;
 	    }
 	    
-	    /* Unaltered Admin Studio Interactive Calendar Core UI */
+	    
     .apple-cal-wrap {
       display: grid;
       grid-template-columns: 1.2fr 1fr;
@@ -1293,7 +1293,7 @@
 	    }
   
 
-    /* Unified dashboard chrome: the sidebar logo is the desktop home button. */
+    
     .adnn-sidebar-home { color:var(--text); text-decoration:none; cursor:pointer; }
     .portal-top { display:none !important; }
     body > .shell > main { padding:clamp(18px,3vw,32px) !important; }
@@ -1478,7 +1478,7 @@
     box-shadow: 0 18px 50px rgba(39,45,207,.24), inset 0 1px 0 rgba(255,255,255,.15) !important;
   }
 
-  /* Base wrapper logic: hide all elements completely by default */
+  
   .adnn-weather-element {
     position: absolute;
     opacity: 0;
@@ -1487,9 +1487,9 @@
     pointer-events: none;
   }
 
-  /* --- DEFINING EACH INDIVIDUAL WEATHER PIECE --- */
+  
 
-  /* 1. Dynamic Sun Design */
+  
   .element-sun {
     width: 44px;
     height: 44px;
@@ -1500,7 +1500,7 @@
     box-shadow: 0 0 0 .3rem rgba(255,210,64,.15), 0 0 24px rgba(255,205,64,.6);
   }
 
-  /* 2. Sleek Moon Variant (With a clean subtle lunar shadow edge) */
+  
   .element-moon {
     width: 40px;
     height: 40px;
@@ -1511,7 +1511,7 @@
     box-shadow: 0 0 16px rgba(229, 233, 240, 0.35), inset -6px -3px 0px rgba(0,0,0,0.12);
   }
 
-  /* 3. Volumetric Cloud Element */
+  
   .element-cloud {
     left: 10px;
     bottom: 18px;
@@ -1530,7 +1530,7 @@
   .element-cloud:before { width: 36px; height: 36px; left: 10px; top: -18px; }
   .element-cloud:after { width: 42px; height: 42px; right: 8px; top: -24px; }
 
-  /* 4. Electric Bolt Element */
+  
   .element-bolt {
     left: 36px;
     top: 36px;
@@ -1542,7 +1542,7 @@
     z-index: 3;
   }
 
-  /* 5. Rain Wrapper & Falling Micro Drops */
+  
   .element-rain-wrap {
     inset: 0;
     width: 100%;
@@ -1562,28 +1562,28 @@
   .drop-c { left: 60px; }
 
 
-  /* --- SYSTEM SCENE THEMES (DYNMIC ACTIONS) --- */
+  
 
-  /* Clear Day Scene */
+  
   .adnn-weather-scene[data-weather-scene="clear"] {
     background: radial-gradient(circle at 30% 22%, rgba(255,255,255,.4), transparent 25%), linear-gradient(145deg, #38bdf8, #2563eb) !important;
   }
   .adnn-weather-scene[data-weather-scene="clear"] .element-sun { opacity: 1; transform: scale(1); }
 
-  /* Clear Night Scene */
+  
   .adnn-weather-scene[data-weather-scene="clear-night"] {
     background: linear-gradient(145deg, #1e293b, #0f172a, #020617) !important;
   }
   .adnn-weather-scene[data-weather-scene="clear-night"] .element-moon { opacity: 1; transform: scale(1); }
 
-  /* Partly Cloudy Scene */
+  
   .adnn-weather-scene[data-weather-scene="partly"] {
     background: linear-gradient(145deg, #bae6fd, #38bdf8, #1d4ed8) !important;
   }
   .adnn-weather-scene[data-weather-scene="partly"] .element-sun { opacity: 1; transform: translate(-10px, -10px) scale(0.75); }
   .adnn-weather-scene[data-weather-scene="partly"] .element-cloud { opacity: 1; transform: scale(1); }
 
-  /* Fully Cloudy / Overcast / Fog Scene */
+  
   .adnn-weather-scene[data-weather-scene="cloud"],
   .adnn-weather-scene[data-weather-scene="fog"] {
     background: linear-gradient(145deg, #94a3b8, #475569) !important;
@@ -1595,14 +1595,14 @@
     background: linear-gradient(180deg, #f1f5f9, #cbd5e1);
   }
 
-  /* Rain Scene */
+  
   .adnn-weather-scene[data-weather-scene="rain"] {
     background: linear-gradient(145deg, #64748b, #1e293b) !important;
   }
   .adnn-weather-scene[data-weather-scene="rain"] .element-cloud { opacity: 1; transform: translateY(-8px) scale(0.95); background: linear-gradient(180deg, #cbd5e1, #94a3b8); }
   .adnn-weather-scene[data-weather-scene="rain"] .element-rain-wrap { opacity: 1; transform: scale(1); }
 
-  /* Thunderstorm Storm Scene */
+  
   .adnn-weather-scene[data-weather-scene="storm"] {
     background: linear-gradient(145deg, #475569, #0f172a) !important;
   }
@@ -1610,7 +1610,7 @@
   .adnn-weather-scene[data-weather-scene="storm"] .element-bolt { opacity: 1; transform: scale(1); }
   .adnn-weather-scene[data-weather-scene="storm"] .element-rain-wrap { opacity: 1; transform: scale(1); }
 
-  /* Snow Scene */
+  
   .adnn-weather-scene[data-weather-scene="snow"] {
     background: linear-gradient(145deg, #e0f2fe, #7dd3fc) !important;
   }
@@ -1636,7 +1636,10 @@
 </style>
 <style id="adnn-mobile-header-stability">
   @media (max-width: 760px) {
-    body:not(.locked):not(.auth-pending) .mobile-header-bar {
+    :root {
+      --adnn-mobile-header-space: 64px;
+    }
+    body:not(.locked) .mobile-header-bar {
       position: fixed !important;
       top: 0 !important;
       left: 0 !important;
@@ -1647,14 +1650,34 @@
       will-change: auto !important;
       backface-visibility: hidden;
     }
-    body:not(.locked):not(.auth-pending):not(.adnn-chat-mobile-lock) > .shell {
-      padding-top: 64px !important;
+    body:not(.locked):not(.chat-view-active):not(.adnn-chat-mobile-lock) > .shell {
+      padding-top: var(--adnn-mobile-header-space) !important;
+      scroll-padding-top: var(--adnn-mobile-header-space) !important;
     }
-    body.adnn-chat-mobile-lock .mobile-header-bar {
-      display: none !important;
+    body:not(.locked):not(.chat-view-active):not(.adnn-chat-mobile-lock) > .shell > main {
+      padding-top: max(28px, env(safe-area-inset-top)) !important;
     }
   }
 </style>
+<script id="adnn-mobile-entry-scroll-stability">
+  (function() {
+    try {
+      if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+    } catch (error) {}
+    function settleMobileEntryPosition() {
+      if (!window.matchMedia || !window.matchMedia("(max-width: 760px)").matches) return;
+      if (document.body.classList.contains("chat-view-active") || document.body.classList.contains("adnn-chat-mobile-lock")) return;
+      window.scrollTo(0, 0);
+      document.querySelector("main")?.scrollTo?.(0, 0);
+    }
+    window.addEventListener("pageshow", function() {
+      requestAnimationFrame(settleMobileEntryPosition);
+    });
+    window.addEventListener("load", function() {
+      requestAnimationFrame(settleMobileEntryPosition);
+    });
+  })();
+</script>
 </head>
 <body class="auth-pending locked">
 	<script>
@@ -1895,7 +1918,7 @@
     
     <div class="settings-card adnn-setting-card"><div><strong>Terms & Privacy</strong><span>Read the latest studio terms and privacy page.</span></div><a href="#terms" class="apple-home-btn" data-view-link="terms" aria-label="Open terms"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 3.5h8.7L19 7.3v13.2H6.5v-17Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M15 3.8V8h4M9 12h6M9 16h6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></a></div>
   </div>
-<!-- ADNN OS interactive bottom card -->
+
 <style>
   @import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap");
   @import url("https://fonts.cdnfonts.com/css/aileron");
@@ -2492,7 +2515,7 @@
   });
 })();
 </script>
-<!-- /ADNN OS interactive bottom card -->
+
 
 </section>
 
@@ -2723,7 +2746,7 @@
       if (!accessToken) return;
       sessionStorage.setItem("adnnGoogleAccessToken", accessToken);
       
-      // Clear cache tokens to enforce a fresh, un-cached data fetch from Firestore
+
       try { localStorage.removeItem("adnn_pinned_chat_ids"); } catch(_) {}
       try { localStorage.removeItem("adnn_chat_unread_total"); } catch(_) {}
       history.replaceState(null, "", location.pathname);
@@ -2810,7 +2833,7 @@
           if (statusAlert) statusAlert.textContent = "Refresh failed. Check connection.";
         })
         .then(() => {
-          // This always executes in the promise ecosystem, guaranteeing the icon stops spinning
+
           if (refreshBtn) {
             setTimeout(() => { refreshBtn.classList.remove("is-spinning"); }, 400);
           }
@@ -2946,10 +2969,10 @@
       const article = document.createElement("article");
       article.className = "account-item";
       
-      // Generate a deterministic structural ID based on unique keys of the item if no item.id exists
+
       const itemUniqueId = item.id || btoa(encodeURIComponent((item.title || '') + (item.created || item.publishAt || ''))).slice(0, 24);
       
-      // Check read status tracking from client localstorage
+
       const seenKey = "adnn_seen_" + itemUniqueId;
       const isRead = localStorage.getItem(seenKey) === "true";
       
@@ -2963,7 +2986,7 @@
       title.textContent = item.title || defaultTitle(type);
       top.append(title);
 
-      // Only generate and render the status badge if the message is unread
+
       if (!isRead) {
         const status = document.createElement("span");
         status.className = "account-status";
@@ -2984,7 +3007,7 @@
       addLink(meta, item.fileLink, "Open file");
       addLink(meta, item.buttonLink, item.buttonLabel || "Open");
 
-      // Append Mark as Read/Seen action button to the structural item
+
       if (!isRead) {
         const seenBtn = document.createElement("button");
         seenBtn.type = "button";
@@ -3033,7 +3056,7 @@
     function formatDate(value) {
       if (!value) return "Just now";
       
-      // Clean sanitation loop to handle Firestore formats or custom text strings gracefully
+
       let standardValue = value;
       if (typeof value === "string" && value.includes(" at ")) {
         standardValue = value.replace(" at ", " ").replace(/UTC[\+\-]\d+/g, "").trim();
@@ -3041,7 +3064,7 @@
       
       let date = new Date(standardValue);
       
-      // Ultimate fallback: If the date parsing still returns invalid, use the current time context
+
       if (Number.isNaN(date.getTime())) {
         date = new Date();
       }
@@ -3083,7 +3106,7 @@
       return "Notification";
     }
 
-    // Helper dynamically monitoring total global unread notifications counts for navigation side-badge updates
+
     function updateSideBadgeCount() {
       const counts = {
         notification: document.querySelectorAll("#notificationsList .account-item.is-unread").length,
@@ -3091,7 +3114,7 @@
         invoice: document.querySelectorAll("#invoiceList .account-item.is-unread").length
       };
       
-      // Update all navigation elements carrying a notification tracking data attribute badge
+
       document.querySelectorAll("[data-notification-badge]").forEach(badge => {
         const totalUnread = counts.notification;
         badge.textContent = totalUnread;
@@ -3290,7 +3313,7 @@
       navigator.geolocation.getCurrentPosition(async (pos) => {
         try {
           const { latitude, longitude } = pos.coords || {};
-          // Added daily parameters for sunrise and sunset tracking from open-meteo
+
           const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${encodeURIComponent(latitude)}&longitude=${encodeURIComponent(longitude)}&current=temperature_2m,weather_code,is_day&timezone=auto`;
           
           const [weatherResponse, cityName] = await Promise.all([
@@ -3301,7 +3324,7 @@
           const data = await weatherResponse.json();
           const current = data?.current || {};
           
-          // Determine day/night flag natively from open-meteo payload API configuration directly
+
           const isDaytime = current.is_day === 1;
 
           setWeather(
@@ -3512,6 +3535,61 @@
 	  </script>
   <script type="module" src="firebase-account.js?v=20260630-mobile-admin-cleanup" onerror="window.adnnAccountModuleFallback && window.adnnAccountModuleFallback()"></script>
   <script type="module" src="firebase-chat.js?v=20260630-chat-mobile-reactions-swipe"></script>
+
+<style id="adnn-account-surface-cleanup-final">
+  body > .shell > main > .view.active:not(#chat):not(#admin-support) {
+    border-radius: 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  .settings-card.adnn-os-card,
+  .settings-card.adnn-setting-card.adnn-os-card,
+  div.adnn-os-card,
+  .adnn-os-card {
+    display: none !important;
+  }
+
+  .profile .profile-info {
+    position: relative !important;
+    padding-right: 28px !important;
+  }
+
+  #accountName {
+    border-bottom-color: transparent !important;
+    padding-right: 2px !important;
+  }
+
+  .profile .profile-info::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    top: 2px;
+    width: 22px;
+    height: 22px;
+    border-radius: 999px;
+    background: currentColor;
+    opacity: .62;
+    -webkit-mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M4 17.7V20h2.3L17.1 9.2l-2.3-2.3L4 17.7Z' fill='black'/%3E%3Cpath d='m16.2 5.5 1.2-1.2a1.4 1.4 0 0 1 2 0l.3.3a1.4 1.4 0 0 1 0 2l-1.2 1.2-2.3-2.3Z' fill='black'/%3E%3C/svg%3E") center / 14px 14px no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M4 17.7V20h2.3L17.1 9.2l-2.3-2.3L4 17.7Z' fill='black'/%3E%3Cpath d='m16.2 5.5 1.2-1.2a1.4 1.4 0 0 1 2 0l.3.3a1.4 1.4 0 0 1 0 2l-1.2 1.2-2.3-2.3Z' fill='black'/%3E%3C/svg%3E") center / 14px 14px no-repeat;
+    pointer-events: none;
+  }
+
+  #accountName:focus {
+    border-bottom-color: rgba(39,45,207,.55) !important;
+  }
+
+  .profile .profile-info:focus-within::after {
+    background: #272dcf;
+    opacity: 1;
+    -webkit-mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M5 12.5 9.2 16.7 19.2 6.7' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 15px 15px no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M5 12.5 9.2 16.7 19.2 6.7' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 15px 15px no-repeat;
+  }
+</style>
 
 <script id="adnn-settings-upgrade-js">
 (function setupAdnnSettingsUpgrade(){

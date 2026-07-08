@@ -15,7 +15,7 @@
       --muted:rgba(11,11,13,.62);
       --line:rgba(0,0,0,.08);
       --font-body:"Aileron", ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial, sans-serif;
-      --font-mono:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+      --font-mono:-apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
     }
     * { box-sizing:border-box; }
     body {
@@ -235,7 +235,7 @@
       letter-spacing:-.058em;
       font-weight:400;
     }
-    .lead {
+    body:not(.locked):not(.chat-view-active):not(.adnn-chat-mobile-lock) > .shell > main > .view.active .lead {
       max-width:680px;
       color:var(--muted);
       font-size:clamp(16px,1.45vw,20px);
@@ -416,7 +416,7 @@
 	    .note-row, .reminder-entry-row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 14px; border:1px solid var(--line); border-radius:14px; background:rgba(255,255,255,.03); color:var(--text); }
 	    .note-row small, .reminder-time-tag { color:#8d96ff; font-family:var(--font-mono); font-size:11px; }
 	    .note-delete, .reminder-del-btn { border:0; background:transparent; color:#ff2602; cursor:pointer; font-family:var(--font-mono); font-size:11px; }
-	    /* Unaltered Admin Studio Interactive Calendar Core UI */
+	    
     .apple-cal-wrap {
       display: grid;
       grid-template-columns: 1.2fr 1fr;
@@ -651,7 +651,7 @@
 	    }
   
 
-    /* Unified dashboard chrome: the sidebar logo is the desktop home button. */
+    
     .adnn-sidebar-home { color:var(--text); text-decoration:none; cursor:pointer; }
     .portal-top { display:none !important; }
     body > .shell > main { padding:clamp(18px,3vw,32px) !important; }
@@ -846,7 +846,7 @@
     box-shadow: 0 18px 50px rgba(39,45,207,.24), inset 0 1px 0 rgba(255,255,255,.15) !important;
   }
 
-  /* Base wrapper logic: hide all elements completely by default */
+  
   .adnn-weather-element {
     position: absolute;
     opacity: 0;
@@ -855,9 +855,9 @@
     pointer-events: none;
   }
 
-  /* --- DEFINING EACH INDIVIDUAL WEATHER PIECE --- */
+  
 
-  /* 1. Dynamic Sun Design */
+  
   .element-sun {
     width: 44px;
     height: 44px;
@@ -868,7 +868,7 @@
     box-shadow: 0 0 0 .3rem rgba(255,210,64,.15), 0 0 24px rgba(255,205,64,.6);
   }
 
-  /* 2. Sleek Moon Variant (With a clean subtle lunar shadow edge) */
+  
   .element-moon {
     width: 40px;
     height: 40px;
@@ -879,7 +879,7 @@
     box-shadow: 0 0 16px rgba(229, 233, 240, 0.35), inset -6px -3px 0px rgba(0,0,0,0.12);
   }
 
-  /* 3. Volumetric Cloud Element */
+  
   .element-cloud {
     left: 10px;
     bottom: 18px;
@@ -898,7 +898,7 @@
   .element-cloud:before { width: 36px; height: 36px; left: 10px; top: -18px; }
   .element-cloud:after { width: 42px; height: 42px; right: 8px; top: -24px; }
 
-  /* 4. Electric Bolt Element */
+  
   .element-bolt {
     left: 36px;
     top: 36px;
@@ -910,7 +910,7 @@
     z-index: 3;
   }
 
-  /* 5. Rain Wrapper & Falling Micro Drops */
+  
   .element-rain-wrap {
     inset: 0;
     width: 100%;
@@ -930,28 +930,28 @@
   .drop-c { left: 60px; }
 
 
-  /* --- SYSTEM SCENE THEMES (DYNMIC ACTIONS) --- */
+  
 
-  /* Clear Day Scene */
+  
   .adnn-weather-scene[data-weather-scene="clear"] {
     background: radial-gradient(circle at 30% 22%, rgba(255,255,255,.4), transparent 25%), linear-gradient(145deg, #38bdf8, #2563eb) !important;
   }
   .adnn-weather-scene[data-weather-scene="clear"] .element-sun { opacity: 1; transform: scale(1); }
 
-  /* Clear Night Scene */
+  
   .adnn-weather-scene[data-weather-scene="clear-night"] {
     background: linear-gradient(145deg, #1e293b, #0f172a, #020617) !important;
   }
   .adnn-weather-scene[data-weather-scene="clear-night"] .element-moon { opacity: 1; transform: scale(1); }
 
-  /* Partly Cloudy Scene */
+  
   .adnn-weather-scene[data-weather-scene="partly"] {
     background: linear-gradient(145deg, #bae6fd, #38bdf8, #1d4ed8) !important;
   }
   .adnn-weather-scene[data-weather-scene="partly"] .element-sun { opacity: 1; transform: translate(-10px, -10px) scale(0.75); }
   .adnn-weather-scene[data-weather-scene="partly"] .element-cloud { opacity: 1; transform: scale(1); }
 
-  /* Fully Cloudy / Overcast / Fog Scene */
+  
   .adnn-weather-scene[data-weather-scene="cloud"],
   .adnn-weather-scene[data-weather-scene="fog"] {
     background: linear-gradient(145deg, #94a3b8, #475569) !important;
@@ -963,14 +963,14 @@
     background: linear-gradient(180deg, #f1f5f9, #cbd5e1);
   }
 
-  /* Rain Scene */
+  
   .adnn-weather-scene[data-weather-scene="rain"] {
     background: linear-gradient(145deg, #64748b, #1e293b) !important;
   }
   .adnn-weather-scene[data-weather-scene="rain"] .element-cloud { opacity: 1; transform: translateY(-8px) scale(0.95); background: linear-gradient(180deg, #cbd5e1, #94a3b8); }
   .adnn-weather-scene[data-weather-scene="rain"] .element-rain-wrap { opacity: 1; transform: scale(1); }
 
-  /* Thunderstorm Storm Scene */
+  
   .adnn-weather-scene[data-weather-scene="storm"] {
     background: linear-gradient(145deg, #475569, #0f172a) !important;
   }
@@ -978,7 +978,7 @@
   .adnn-weather-scene[data-weather-scene="storm"] .element-bolt { opacity: 1; transform: scale(1); }
   .adnn-weather-scene[data-weather-scene="storm"] .element-rain-wrap { opacity: 1; transform: scale(1); }
 
-  /* Snow Scene */
+  
   .adnn-weather-scene[data-weather-scene="snow"] {
     background: linear-gradient(145deg, #e0f2fe, #7dd3fc) !important;
   }
@@ -993,7 +993,10 @@
 </style>
 <style id="adnn-mobile-header-stability">
   @media (max-width: 760px) {
-    body:not(.locked):not(.auth-pending) .mobile-header-bar {
+    :root {
+      --adnn-mobile-header-space: 64px;
+    }
+    body:not(.locked) .mobile-header-bar {
       position: fixed !important;
       top: 0 !important;
       left: 0 !important;
@@ -1004,14 +1007,34 @@
       will-change: auto !important;
       backface-visibility: hidden;
     }
-    body:not(.locked):not(.auth-pending):not(.adnn-chat-mobile-lock) > .shell {
-      padding-top: 64px !important;
+    body:not(.locked):not(.chat-view-active):not(.adnn-chat-mobile-lock) > .shell {
+      padding-top: var(--adnn-mobile-header-space) !important;
+      scroll-padding-top: var(--adnn-mobile-header-space) !important;
     }
-    body.adnn-chat-mobile-lock .mobile-header-bar {
-      display: none !important;
+    body:not(.locked):not(.chat-view-active):not(.adnn-chat-mobile-lock) > .shell > main {
+      padding-top: max(28px, env(safe-area-inset-top)) !important;
     }
   }
 </style>
+<script id="adnn-mobile-entry-scroll-stability">
+  (function() {
+    try {
+      if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+    } catch (error) {}
+    function settleMobileEntryPosition() {
+      if (!window.matchMedia || !window.matchMedia("(max-width: 760px)").matches) return;
+      if (document.body.classList.contains("chat-view-active") || document.body.classList.contains("adnn-chat-mobile-lock")) return;
+      window.scrollTo(0, 0);
+      document.querySelector("main")?.scrollTo?.(0, 0);
+    }
+    window.addEventListener("pageshow", function() {
+      requestAnimationFrame(settleMobileEntryPosition);
+    });
+    window.addEventListener("load", function() {
+      requestAnimationFrame(settleMobileEntryPosition);
+    });
+  })();
+</script>
 </head>
 <body class="auth-pending locked">
   <div class="auth-gate">
@@ -1230,7 +1253,7 @@
     <label class="settings-card adnn-setting-card"><div><strong>Message sound</strong><span>Turn off to enable silent mode for chat and missed call alerts.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_message_sounds"><i></i></span></label>
     <label class="settings-card adnn-setting-card"><div><strong>Reduce motion</strong><span>Calm animations for a lighter, accessibility-friendly dashboard.</span></div><span class="adnn-switch"><input type="checkbox" data-adnn-setting="adnn_reduce_motion"><i></i></span></label>
   </div>
-<!-- ADNN OS interactive bottom card -->
+
 <style>
   @import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap");
   @import url("https://fonts.cdnfonts.com/css/aileron");
@@ -1827,7 +1850,7 @@
   });
 })();
 </script>
-<!-- /ADNN OS interactive bottom card -->
+
 
 </section>
     </main>
@@ -2065,7 +2088,7 @@
       navigator.geolocation.getCurrentPosition(async (pos) => {
         try {
           const { latitude, longitude } = pos.coords || {};
-          // Added daily parameters for sunrise and sunset tracking from open-meteo
+
           const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${encodeURIComponent(latitude)}&longitude=${encodeURIComponent(longitude)}&current=temperature_2m,weather_code,is_day&timezone=auto`;
           
           const [weatherResponse, cityName] = await Promise.all([
@@ -2076,7 +2099,7 @@
           const data = await weatherResponse.json();
           const current = data?.current || {};
           
-          // Determine day/night flag natively from open-meteo payload API configuration directly
+
           const isDaytime = current.is_day === 1;
 
           setWeather(
@@ -2309,6 +2332,216 @@
     hydrateUser();
     setView(location.hash.replace("#", ""));
   </script>
+
+<style id="adnn-designer-surface-cleanup-final">
+  body > .shell > main > .view.active:not(#chat):not(#admin-support) {
+    border-radius: 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  .settings-card.adnn-os-card,
+  .settings-card.adnn-setting-card.adnn-os-card,
+  div.adnn-os-card,
+  .adnn-os-card {
+    display: none !important;
+  }
+
+  .profile .profile-info {
+    position: relative !important;
+    padding-right: 28px !important;
+  }
+
+  #designerName,
+  #accountName {
+    border-bottom-color: transparent !important;
+    padding-right: 2px !important;
+  }
+
+  .profile .profile-info::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    top: 2px;
+    width: 22px;
+    height: 22px;
+    border-radius: 999px;
+    background: currentColor;
+    opacity: .62;
+    -webkit-mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M4 17.7V20h2.3L17.1 9.2l-2.3-2.3L4 17.7Z' fill='black'/%3E%3Cpath d='m16.2 5.5 1.2-1.2a1.4 1.4 0 0 1 2 0l.3.3a1.4 1.4 0 0 1 0 2l-1.2 1.2-2.3-2.3Z' fill='black'/%3E%3C/svg%3E") center / 14px 14px no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M4 17.7V20h2.3L17.1 9.2l-2.3-2.3L4 17.7Z' fill='black'/%3E%3Cpath d='m16.2 5.5 1.2-1.2a1.4 1.4 0 0 1 2 0l.3.3a1.4 1.4 0 0 1 0 2l-1.2 1.2-2.3-2.3Z' fill='black'/%3E%3C/svg%3E") center / 14px 14px no-repeat;
+    pointer-events: none;
+  }
+
+  #designerName:focus,
+  #accountName:focus {
+    border-bottom-color: rgba(39,45,207,.55) !important;
+  }
+
+  .profile .profile-info:focus-within::after {
+    background: #272dcf;
+    opacity: 1;
+    -webkit-mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M5 12.5 9.2 16.7 19.2 6.7' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 15px 15px no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M5 12.5 9.2 16.7 19.2 6.7' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 15px 15px no-repeat;
+  }
+</style>
+
+<style id="adnn-designer-mobile-layout-polish-final">
+  @media (max-width: 900px) {
+    :root {
+      --adnn-mobile-header-space: 72px;
+      --adnn-mobile-page-x: clamp(28px, 8vw, 44px);
+      --adnn-mobile-page-top: clamp(38px, 8vw, 54px);
+      --adnn-mobile-page-bottom: clamp(72px, 18vw, 120px);
+    }
+
+    body:not(.locked) .mobile-header-bar {
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      right: 0 !important;
+      height: var(--adnn-mobile-header-space) !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: space-between !important;
+      padding: 12px var(--adnn-mobile-page-x) !important;
+      z-index: 2147482500 !important;
+      background: var(--bg) !important;
+      border-bottom: 1px solid var(--line) !important;
+      transform: none !important;
+      box-shadow: none !important;
+    }
+
+    body:not(.locked) .mobile-menu-trigger,
+    body:not(.locked) .mobile-header-bar .apple-home-btn {
+      width: 48px !important;
+      height: 48px !important;
+      border-radius: 18px !important;
+      flex: 0 0 48px !important;
+    }
+
+    body:not(.locked) .mobile-header-bar .apple-home-btn {
+      border-radius: 999px !important;
+    }
+
+    body:not(.locked):not(.chat-view-active):not(.adnn-chat-mobile-lock) > .shell {
+      width: 100% !important;
+      height: auto !important;
+      min-height: 100svh !important;
+      overflow: visible !important;
+      display: block !important;
+      padding: var(--adnn-mobile-header-space) 0 0 !important;
+      margin: 0 !important;
+      scroll-padding-top: calc(var(--adnn-mobile-header-space) + var(--adnn-mobile-page-top)) !important;
+    }
+
+    body:not(.locked):not(.chat-view-active):not(.adnn-chat-mobile-lock) > .shell > main {
+      width: 100% !important;
+      height: auto !important;
+      min-height: calc(100svh - var(--adnn-mobile-header-space)) !important;
+      overflow: visible !important;
+      display: block !important;
+      padding: var(--adnn-mobile-page-top) var(--adnn-mobile-page-x) var(--adnn-mobile-page-bottom) !important;
+      border-radius: 0 !important;
+      background: transparent !important;
+      border: 0 !important;
+      box-shadow: none !important;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+    }
+
+    body:not(.locked):not(.chat-view-active):not(.adnn-chat-mobile-lock) > .shell > main > .view {
+      scroll-margin-top: calc(var(--adnn-mobile-header-space) + var(--adnn-mobile-page-top)) !important;
+    }
+
+    body:not(.locked):not(.chat-view-active):not(.adnn-chat-mobile-lock) > .shell > main > .view,
+    body:not(.locked):not(.chat-view-active):not(.adnn-chat-mobile-lock) > .shell > main > .view.active {
+      width: 100% !important;
+      max-width: none !important;
+      height: auto !important;
+      min-height: calc(100svh - var(--adnn-mobile-header-space) - var(--adnn-mobile-page-top)) !important;
+      overflow: visible !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      border-radius: 0 !important;
+    }
+
+    .lead {
+      width: 100% !important;
+      max-width: 100% !important;
+      margin-top: 0 !important;
+      font-size: clamp(19px, 5.4vw, 24px) !important;
+      line-height: 1.55 !important;
+      letter-spacing: -0.055em !important;
+    }
+
+    body:not(.locked):not(.chat-view-active):not(.adnn-chat-mobile-lock) > .shell > main > .view.active .designer-feed {
+      width: 100% !important;
+      margin-top: clamp(34px, 10vw, 58px) !important;
+    }
+
+    body:not(.locked):not(.chat-view-active):not(.adnn-chat-mobile-lock) > .shell > main > .view.active .empty-card {
+      width: 100% !important;
+      min-height: clamp(300px, 45svh, 430px) !important;
+      margin: 0 !important;
+      border-radius: clamp(24px, 7vw, 36px) !important;
+      background: rgba(255,255,255,.035) !important;
+      border: 1px dashed rgba(255,255,255,.12) !important;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.035) !important;
+    }
+
+    body:not(.locked):not(.chat-view-active):not(.adnn-chat-mobile-lock) > .shell > main > .view.active .empty-card strong {
+      font-size: clamp(30px, 8.8vw, 42px) !important;
+      line-height: 1.06 !important;
+      letter-spacing: -0.04em !important;
+    }
+
+    body:not(.locked):not(.chat-view-active):not(.adnn-chat-mobile-lock) > .shell > main > .view.active .empty-card span {
+      font-size: clamp(13px, 3.6vw, 17px) !important;
+      line-height: 1.5 !important;
+    }
+
+    body:not(.locked):not(.chat-view-active):not(.adnn-chat-mobile-lock) > .shell > main > .view.active .apple-cal-wrap {
+      gap: 20px !important;
+      margin-top: 30px !important;
+    }
+
+    body:not(.locked):not(.chat-view-active):not(.adnn-chat-mobile-lock) > .shell > main > .view.active .reminder-list-box {
+      width: 100% !important;
+      border: 1px solid var(--line) !important;
+      border-radius: 24px !important;
+      padding: 18px !important;
+      background: rgba(255,255,255,.035) !important;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.04) !important;
+    }
+
+    body:not(.locked):not(.chat-view-active):not(.adnn-chat-mobile-lock) > .shell > main > .view.active .reminder-list-box input,
+    body:not(.locked):not(.chat-view-active):not(.adnn-chat-mobile-lock) > .shell > main > .view.active .reminder-list-box button {
+      min-height: 42px !important;
+      font-size: 12px !important;
+    }
+
+    body:not(.locked):not(.chat-view-active):not(.adnn-chat-mobile-lock) > .shell > main > .view.active .reminder-list-box input[type="time"] {
+      min-width: 112px !important;
+      flex: 0 0 112px !important;
+    }
+
+    body:not(.locked):not(.chat-view-active):not(.adnn-chat-mobile-lock) > .shell > main > .view.active .reminder-list-box #addReminderBtn {
+      min-width: 118px !important;
+      white-space: nowrap !important;
+    }
+
+    body:not(.locked):not(.chat-view-active):not(.adnn-chat-mobile-lock) > .shell > main > .view.active .adnn-clock-weather-card {
+      width: 100% !important;
+      min-height: 156px !important;
+      overflow: hidden !important;
+    }
+  }
+</style>
 
 <script id="adnn-settings-upgrade-js">
 (function setupAdnnSettingsUpgrade(){

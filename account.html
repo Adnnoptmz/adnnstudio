@@ -217,7 +217,7 @@
       letter-spacing:-.058em;
       font-weight:400;
     }
-    .lead {
+    body:not(.locked):not(.chat-view-active):not(.adnn-chat-mobile-lock) > .shell > main > .view.active .lead {
       max-width:680px;
       color:var(--muted);
       font-size:clamp(16px, 1.45vw, 20px);
@@ -236,7 +236,7 @@
     }
     .empty-card strong { display:block; font-size:26px; font-weight:400; letter-spacing:-.035em; }
     .empty-card span { display:block; margin-top:8px; color:var(--muted); font-family:var(--font-mono); font-size:12px; }
-    .account-feed {
+    body:not(.locked):not(.chat-view-active):not(.adnn-chat-mobile-lock) > .shell > main > .view.active .account-feed {
       margin-top:42px;
       display:grid;
       gap:14px;
@@ -3588,6 +3588,159 @@
     opacity: 1;
     -webkit-mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M5 12.5 9.2 16.7 19.2 6.7' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 15px 15px no-repeat;
     mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M5 12.5 9.2 16.7 19.2 6.7' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 15px 15px no-repeat;
+  }
+</style>
+
+<style id="adnn-account-mobile-layout-polish-final">
+  @media (max-width: 900px) {
+    :root {
+      --adnn-mobile-header-space: 72px;
+      --adnn-mobile-page-x: clamp(28px, 8vw, 44px);
+      --adnn-mobile-page-top: clamp(38px, 8vw, 54px);
+      --adnn-mobile-page-bottom: clamp(72px, 18vw, 120px);
+    }
+
+    body:not(.locked) .mobile-header-bar {
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      right: 0 !important;
+      height: var(--adnn-mobile-header-space) !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: space-between !important;
+      padding: 12px var(--adnn-mobile-page-x) !important;
+      z-index: 2147482500 !important;
+      background: var(--bg) !important;
+      border-bottom: 1px solid var(--line) !important;
+      transform: none !important;
+      box-shadow: none !important;
+    }
+
+    body:not(.locked) .mobile-menu-trigger,
+    body:not(.locked) .mobile-header-bar .apple-home-btn {
+      width: 48px !important;
+      height: 48px !important;
+      border-radius: 18px !important;
+      flex: 0 0 48px !important;
+    }
+
+    body:not(.locked) .mobile-header-bar .apple-home-btn {
+      border-radius: 999px !important;
+    }
+
+    body:not(.locked):not(.chat-view-active):not(.adnn-chat-mobile-lock) > .shell {
+      width: 100% !important;
+      height: auto !important;
+      min-height: 100svh !important;
+      overflow: visible !important;
+      display: block !important;
+      padding: var(--adnn-mobile-header-space) 0 0 !important;
+      margin: 0 !important;
+      scroll-padding-top: calc(var(--adnn-mobile-header-space) + var(--adnn-mobile-page-top)) !important;
+    }
+
+    body:not(.locked):not(.chat-view-active):not(.adnn-chat-mobile-lock) > .shell > main {
+      width: 100% !important;
+      height: auto !important;
+      min-height: calc(100svh - var(--adnn-mobile-header-space)) !important;
+      overflow: visible !important;
+      display: block !important;
+      padding: var(--adnn-mobile-page-top) var(--adnn-mobile-page-x) var(--adnn-mobile-page-bottom) !important;
+      border-radius: 0 !important;
+      background: transparent !important;
+      border: 0 !important;
+      box-shadow: none !important;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+    }
+
+    body:not(.locked):not(.chat-view-active):not(.adnn-chat-mobile-lock) > .shell > main > .view {
+      scroll-margin-top: calc(var(--adnn-mobile-header-space) + var(--adnn-mobile-page-top)) !important;
+    }
+
+    body:not(.locked):not(.chat-view-active):not(.adnn-chat-mobile-lock) > .shell > main > .view,
+    body:not(.locked):not(.chat-view-active):not(.adnn-chat-mobile-lock) > .shell > main > .view.active {
+      width: 100% !important;
+      max-width: none !important;
+      height: auto !important;
+      min-height: calc(100svh - var(--adnn-mobile-header-space) - var(--adnn-mobile-page-top)) !important;
+      overflow: visible !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      border-radius: 0 !important;
+    }
+
+    .lead {
+      width: 100% !important;
+      max-width: 100% !important;
+      margin-top: 0 !important;
+      font-size: clamp(19px, 5.4vw, 24px) !important;
+      line-height: 1.55 !important;
+      letter-spacing: -0.055em !important;
+    }
+
+    .account-feed {
+      width: 100% !important;
+      margin-top: clamp(34px, 10vw, 58px) !important;
+    }
+
+    body:not(.locked):not(.chat-view-active):not(.adnn-chat-mobile-lock) > .shell > main > .view.active .empty-card {
+      width: 100% !important;
+      min-height: clamp(300px, 45svh, 430px) !important;
+      margin: 0 !important;
+      border-radius: clamp(24px, 7vw, 36px) !important;
+      background: rgba(255,255,255,.035) !important;
+      border: 1px dashed rgba(255,255,255,.12) !important;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.035) !important;
+    }
+
+    body:not(.locked):not(.chat-view-active):not(.adnn-chat-mobile-lock) > .shell > main > .view.active .empty-card strong {
+      font-size: clamp(30px, 8.8vw, 42px) !important;
+      line-height: 1.06 !important;
+      letter-spacing: -0.04em !important;
+    }
+
+    body:not(.locked):not(.chat-view-active):not(.adnn-chat-mobile-lock) > .shell > main > .view.active .empty-card span {
+      font-size: clamp(13px, 3.6vw, 17px) !important;
+      line-height: 1.5 !important;
+    }
+
+    body:not(.locked):not(.chat-view-active):not(.adnn-chat-mobile-lock) > .shell > main > .view.active .apple-cal-wrap {
+      gap: 20px !important;
+      margin-top: 30px !important;
+    }
+
+    body:not(.locked):not(.chat-view-active):not(.adnn-chat-mobile-lock) > .shell > main > .view.active .reminder-list-box {
+      width: 100% !important;
+      border: 1px solid var(--line) !important;
+      border-radius: 24px !important;
+      padding: 18px !important;
+      background: rgba(255,255,255,.035) !important;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.04) !important;
+    }
+
+    body:not(.locked):not(.chat-view-active):not(.adnn-chat-mobile-lock) > .shell > main > .view.active .reminder-list-box input,
+    body:not(.locked):not(.chat-view-active):not(.adnn-chat-mobile-lock) > .shell > main > .view.active .reminder-list-box button {
+      min-height: 42px !important;
+      font-size: 12px !important;
+    }
+
+    body:not(.locked):not(.chat-view-active):not(.adnn-chat-mobile-lock) > .shell > main > .view.active .reminder-list-box input[type="time"] {
+      min-width: 112px !important;
+      flex: 0 0 112px !important;
+    }
+
+    body:not(.locked):not(.chat-view-active):not(.adnn-chat-mobile-lock) > .shell > main > .view.active .reminder-list-box #addReminderBtn {
+      min-width: 118px !important;
+      white-space: nowrap !important;
+    }
+
+    body:not(.locked):not(.chat-view-active):not(.adnn-chat-mobile-lock) > .shell > main > .view.active .adnn-clock-weather-card {
+      width: 100% !important;
+      min-height: 156px !important;
+      overflow: hidden !important;
+    }
   }
 </style>
 

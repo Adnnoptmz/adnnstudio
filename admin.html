@@ -18,7 +18,7 @@
       --muted: rgba(245, 245, 247, 0.62);
       --line: rgba(255, 255, 255, 0.08);
       --font-body: "Aileron", ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial, sans-serif;
-      --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+      --font-mono: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
       --radial-glow: radial-gradient(circle at 82% 8%, rgba(39, 45, 207, 0.14), transparent 36%);
       --linear-bg: linear-gradient(180deg, #050506, #0b0b0d);
       --glass-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 24px 70px rgba(0, 0, 0, 0.55);
@@ -26,7 +26,7 @@
       --toggle-btn-hover: rgba(255, 255, 255, 0.1);
     }
 
-    /* Light Theme Overrides (Apple Light Ecosystem Layout Elements) */
+    
     :root.light-theme {
       --bg: #f5f5f7;
       --panel-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.56));
@@ -61,7 +61,7 @@
 
     button, input, textarea, select { font: inherit; }
 
-    /* Premium Blur/Glass Panels */
+    
     .glass {
       background: var(--panel-bg);
       backdrop-filter: blur(26px) saturate(160%);
@@ -71,7 +71,7 @@
       transition: background 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease;
     }
 
-    /* Master Multi-Column App Structure Layout Grid Frame */
+    
     .admin-app-container {
       display: grid;
       grid-template-columns: 280px 1fr;
@@ -83,7 +83,7 @@
       grid-template-columns: 78px 1fr;
     }
 
-    /* Premium Collapsable Sidebar Structure */
+    
     .admin-sidebar {
       position: sticky;
       top: 0;
@@ -134,7 +134,7 @@
       width: 0;
     }
 
-    /* Toggle Menu Button Trigger */
+    
     .sidebar-toggle-trigger {
       width: 34px;
       height: 34px;
@@ -162,7 +162,7 @@
       margin: 0 auto;
     }
 
-    /* Separate Scroll Container Matrix */
+    
     .sidebar-navigation {
       overflow-y: auto;
       overflow-x: hidden;
@@ -174,7 +174,7 @@
     }
     .sidebar-navigation::-webkit-scrollbar { width: 0; background: transparent; }
 
-    /* Separated Settings & Utility Row at Bottom */
+    
     .sidebar-bottom-utilities {
       border-top: 1px solid var(--line);
       padding-top: 14px;
@@ -244,7 +244,7 @@
       color: #5360ff;
     }
 
-    /* Logout Action Block Elements inside the panel */
+    
     .sidebar-logout-item {
       color: var(--red) !important;
     }
@@ -276,7 +276,7 @@
       padding: 0;
     }
 
-    /* Mobile Quick Nav Bar Header (Hidden on Desktop) */
+    
     .mobile-header-bar {
       display: none;
       align-items: center;
@@ -317,7 +317,7 @@
       visibility: visible;
     }
 
-    /* Portal Lock Screen Gate Framework */
+    
     .portal-lock-gate {
       position: fixed;
       inset: 0;
@@ -517,7 +517,7 @@
       box-shadow: 0 12px 28px rgba(39, 45, 207, 0.35);
     }
 
-    /* Apple Premium Action Button Circles */
+    
     .top a.apple-home-btn { 
       width: 44px;
       height: 44px;
@@ -568,7 +568,7 @@
       min-height: 16px;
     }
 
-    /* APPLE CALENDAR INTERACTIVE CONSOLE MODULE UI */
+    
     .apple-cal-wrap {
       display: grid;
       grid-template-columns: 1.2fr 1fr;
@@ -751,7 +751,7 @@
       background: rgba(39, 45, 207, 0.08);
     }
     
-    /* Apple-Style Settings Theme Panel Selectors */
+    
     #settingsInlineThemeToggleBtn .sun-icon { display: none; }
     #settingsInlineThemeToggleBtn .moon-icon { display: block; }
 
@@ -807,7 +807,7 @@
     }
 
 
-    /* APPLE INLINE NOTIFICATION SYSTEM GRAPHICS */
+    
     .apple-alert-stack {
       display: flex;
       flex-direction: column;
@@ -839,7 +839,7 @@
       flex-shrink: 0;
     }
 
-    /* GEMINI UI EXTRA-PREMIUM HIDDING SIDEBAR OVERRIDES */
+    
     @media (max-width: 820px) {
       .admin-app-container {
         grid-template-columns: 1fr !important;
@@ -873,9 +873,9 @@
         display: none;
       }
 
-      /* PERFECT MOBILE LEFT ALIGNMENT STUCTURE PASSTHROUGH RULES */
+      
       .admin-sidebar .sidebar-link-item {
-        grid-template-columns: 24px 1fr !important; /* Locks left icon track bounds precisely */
+        grid-template-columns: 24px 1fr !important; 
         padding: 0 16px !important;
         width: 100% !important;
         text-align: left !important;
@@ -883,7 +883,7 @@
         gap: 12px !important;
       }
       .admin-sidebar .sidebar-link-item svg {
-        margin: 0 !important; /* Moves from centered to left-docked inside the icon grid track */
+        margin: 0 !important; 
       }
       .admin-sidebar .sidebar-link-item span.link-label {
         display: block !important;
@@ -935,7 +935,7 @@
 
 
 
-    /* Unified dashboard chrome: the sidebar logo is the desktop home button. */
+    
     .adnn-sidebar-home { color:var(--text); text-decoration:none; cursor:pointer; }
     .top { display:none !important; }
     .admin-main-viewport { padding:clamp(18px,3vw,32px) !important; }
@@ -1055,7 +1055,10 @@
 </style>
 <style id="adnn-mobile-header-stability">
   @media (max-width: 760px) {
-    body:not(.locked):not(.auth-pending) .mobile-header-bar {
+    :root {
+      --adnn-mobile-header-space: 64px;
+    }
+    body.portal-unlocked .mobile-header-bar {
       position: fixed !important;
       top: 0 !important;
       left: 0 !important;
@@ -1066,14 +1069,34 @@
       will-change: auto !important;
       backface-visibility: hidden;
     }
-    body:not(.locked):not(.auth-pending):not(.adnn-chat-mobile-lock) > .shell {
-      padding-top: 64px !important;
+    body.portal-unlocked:not(.chat-view-active) > .admin-app-container {
+      padding-top: var(--adnn-mobile-header-space) !important;
+      scroll-padding-top: var(--adnn-mobile-header-space) !important;
     }
-    body.adnn-chat-mobile-lock .mobile-header-bar {
-      display: none !important;
+    body.portal-unlocked:not(.chat-view-active) .admin-main-viewport {
+      padding-top: max(28px, env(safe-area-inset-top)) !important;
     }
   }
 </style>
+<script id="adnn-mobile-entry-scroll-stability">
+  (function() {
+    try {
+      if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+    } catch (error) {}
+    function settleMobileEntryPosition() {
+      if (!window.matchMedia || !window.matchMedia("(max-width: 760px)").matches) return;
+      if (document.body.classList.contains("chat-view-active")) return;
+      window.scrollTo(0, 0);
+      document.querySelector(".admin-main-viewport")?.scrollTo?.(0, 0);
+    }
+    window.addEventListener("pageshow", function() {
+      requestAnimationFrame(settleMobileEntryPosition);
+    });
+    window.addEventListener("load", function() {
+      requestAnimationFrame(settleMobileEntryPosition);
+    });
+  })();
+</script>
 </head>
 <body>
 
@@ -1259,7 +1282,35 @@
       </form>
     </div>
     </div> <div id="dashboard_view" class="admin-view-panel-container" style="display:none;">
-      <div class="panel glass"><p class="kicker">Overview</p><h2>Studio Analytics Dashboard</h2><p class="help">Live workspace stream overview interface.</p></div>
+      <div class="dashboard-premium">
+        <section class="dashboard-hero">
+          <div>
+            <p class="kicker">Executive overview</p>
+            <h2>Good evening, Admin.</h2>
+            <p class="help">A focused view of your studio operations, client activity, and delivery pipeline.</p>
+          </div>
+          <button type="button" class="dashboard-primary-action" data-open-composer>+ New dispatch</button>
+        </section>
+        <section class="metric-grid">
+          <article class="metric-card"><span>Active clients</span><strong id="metricClients">—</strong><small>Connected accounts</small></article>
+          <article class="metric-card"><span>Designers</span><strong id="metricDesigners">—</strong><small>Workspace members</small></article>
+          <article class="metric-card"><span>Open enquiries</span><strong id="metricEnquiries">—</strong><small>Awaiting review</small></article>
+          <article class="metric-card"><span>System status</span><strong class="metric-status">Operational</strong><small>Firebase services online</small></article>
+        </section>
+        <section class="dashboard-layout">
+          <article class="dashboard-card activity-card">
+            <div class="card-heading"><div><p class="kicker">Workspace pulse</p><h3>Activity overview</h3></div><span class="live-pill"><i></i> Live</span></div>
+            <div class="activity-chart" aria-hidden="true"><span style="--h:34%"></span><span style="--h:52%"></span><span style="--h:43%"></span><span style="--h:69%"></span><span style="--h:58%"></span><span style="--h:82%"></span><span style="--h:72%"></span><span style="--h:92%"></span><span style="--h:77%"></span><span style="--h:88%"></span><span style="--h:64%"></span><span style="--h:79%"></span></div>
+            <div class="chart-labels"><span>12 AM</span><span>6 AM</span><span>12 PM</span><span>Now</span></div>
+          </article>
+          <article class="dashboard-card quick-actions-card">
+            <div class="card-heading"><div><p class="kicker">Shortcuts</p><h3>Quick actions</h3></div></div>
+            <button type="button" data-quick-view="composer_view"><b>01</b><span><strong>Send a dispatch</strong><small>Create a task, invoice, or notice</small></span></button>
+            <button type="button" data-quick-view="chats_view"><b>02</b><span><strong>Open team chat</strong><small>Continue live conversations</small></span></button>
+            <button type="button" data-quick-view="calendar_view"><b>03</b><span><strong>Add a reminder</strong><small>Plan a deadline or milestone</small></span></button>
+          </article>
+        </section>
+      </div>
     </div>
     <div id="enquiries_view" class="admin-view-panel-container" style="display:none;">
       <div class="panel glass">
@@ -2049,11 +2100,11 @@
         localStorage.setItem(themeStorageKey, isCurrentlyLight);
       }
 
-      // Select the new inline setting panel view button node element
+
       const settingsInlineThemeToggleBtn = document.getElementById("settingsInlineThemeToggleBtn");
       settingsInlineThemeToggleBtn?.addEventListener("click", toggleTheme);
 
-      // GLOBAL NOTIFICATION STREAM SYNC PIPELINE
+
       window.adnnTriggerSystemNotification = function(reminderText, timeStr) {
         const targetFeed = document.getElementById("appleNotificationsFeedTarget");
         if (!targetFeed) return;
@@ -2076,7 +2127,7 @@
         targetFeed.insertBefore(alertItem, targetFeed.firstChild);
       };
 
-      // GEMINI SIDEBAR CORE CONTROLLERS
+
       const mobileTrigger = document.getElementById("mobileMenuTriggerBtn");
       const dimOverlay = document.getElementById("sidebarDimOverlay");
 
@@ -2118,7 +2169,7 @@
           if (matchedTargetPanel) matchedTargetPanel.style.display = "block";
         }
 
-        // Map layout names logically to avoid the rigid static header
+
         const headingMap = {
           "dashboard_view": { sub: "Studio Overview", main: "Analytics Dashboard" },
           "enquiries_view": { sub: "Client Enquiries", main: "Client Forms Directory" },
@@ -2133,7 +2184,7 @@
           "settings_view": { sub: "System", main: "Settings" }
         };
         
-        // Safety Fallback override to strip unwanted static text strings from any global window containers
+
         const badHeader = document.querySelector("h1");
         if(badHeader && badHeader.textContent.includes("Send to account")) {
           badHeader.textContent = "Message Composer";
@@ -2217,7 +2268,7 @@
         }
       }
 
-      // NATIVE INTERACTIVE APPLE CALENDAR LOGIC WITH PERSISTENT REMINDER FEEDS
+
       (function runtimeAppleCalendarEngine() {
         let currentDate = new Date();
         const todayReal = new Date(); 
@@ -3189,6 +3240,166 @@
   </script>
   <script type="module" src="firebase-chat.js?v=20260630-chat-mobile-reactions-swipe"></script>
 
+<style id="adnn-admin-surface-cleanup-final">
+  .admin-view-panel-container:not(#chats_view) > .panel.glass {
+    border-radius: 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  .settings-card.adnn-os-card,
+  .settings-card.adnn-setting-card.adnn-os-card,
+  div.adnn-os-card,
+  .adnn-os-card {
+    display: none !important;
+  }
+
+  .settings-card.adnn-setting-card,
+  .adnn-setting-card {
+    font-family: var(--font-mono) !important;
+  }
+</style>
+
+<style id="adnn-admin-mobile-layout-polish-final">
+  @media (max-width: 900px) {
+    :root {
+      --adnn-mobile-header-space: 72px;
+      --adnn-mobile-page-x: clamp(28px, 8vw, 44px);
+      --adnn-mobile-page-top: clamp(38px, 8vw, 54px);
+      --adnn-mobile-page-bottom: clamp(72px, 18vw, 120px);
+    }
+
+    body.portal-unlocked .mobile-header-bar {
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      right: 0 !important;
+      height: var(--adnn-mobile-header-space) !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: space-between !important;
+      padding: 12px var(--adnn-mobile-page-x) !important;
+      z-index: 2147482500 !important;
+      background: var(--bg) !important;
+      border-bottom: 1px solid var(--line) !important;
+      transform: none !important;
+      box-shadow: none !important;
+    }
+
+    body.portal-unlocked .mobile-menu-trigger,
+    body.portal-unlocked .mobile-home-trigger {
+      width: 48px !important;
+      height: 48px !important;
+      border-radius: 18px !important;
+      flex: 0 0 48px !important;
+    }
+
+    body.portal-unlocked .mobile-home-trigger {
+      border-radius: 999px !important;
+    }
+
+    body.portal-unlocked:not(.chat-view-active) > .admin-app-container {
+      width: 100% !important;
+      height: auto !important;
+      min-height: 100svh !important;
+      overflow: visible !important;
+      display: block !important;
+      padding: var(--adnn-mobile-header-space) 0 0 !important;
+      margin: 0 !important;
+      scroll-padding-top: calc(var(--adnn-mobile-header-space) + var(--adnn-mobile-page-top)) !important;
+    }
+
+    body.portal-unlocked:not(.chat-view-active) .admin-main-viewport {
+      width: 100% !important;
+      height: auto !important;
+      min-height: calc(100svh - var(--adnn-mobile-header-space)) !important;
+      overflow: visible !important;
+      display: block !important;
+      padding: var(--adnn-mobile-page-top) var(--adnn-mobile-page-x) var(--adnn-mobile-page-bottom) !important;
+      border-radius: 0 !important;
+      background: transparent !important;
+      border: 0 !important;
+      box-shadow: none !important;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+    }
+
+    body.portal-unlocked:not(.chat-view-active) .admin-view-panel-container {
+      scroll-margin-top: calc(var(--adnn-mobile-header-space) + var(--adnn-mobile-page-top)) !important;
+      width: 100% !important;
+      max-width: none !important;
+      height: auto !important;
+      min-height: calc(100svh - var(--adnn-mobile-header-space) - var(--adnn-mobile-page-top)) !important;
+      overflow: visible !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      border-radius: 0 !important;
+    }
+
+    body.portal-unlocked:not(.chat-view-active) .admin-view-panel-container:not(#chats_view) > .panel.glass {
+      width: 100% !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      border-radius: 0 !important;
+      background: transparent !important;
+      border: 0 !important;
+      box-shadow: none !important;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+    }
+
+    body.portal-unlocked:not(.chat-view-active) .admin-view-panel-container:not(#chats_view) .lead,
+    body.portal-unlocked:not(.chat-view-active) .admin-view-panel-container:not(#chats_view) .help {
+      width: 100% !important;
+      max-width: 100% !important;
+      margin-top: 0 !important;
+      font-size: clamp(16px, 4.4vw, 21px) !important;
+      line-height: 1.55 !important;
+      letter-spacing: -0.04em !important;
+    }
+
+    body.portal-unlocked:not(.chat-view-active) .admin-view-panel-container:not(#chats_view) .apple-cal-wrap {
+      gap: 20px !important;
+      margin-top: 30px !important;
+    }
+
+    body.portal-unlocked:not(.chat-view-active) .admin-view-panel-container:not(#chats_view) .reminder-list-box {
+      width: 100% !important;
+      border: 1px solid var(--line) !important;
+      border-radius: 24px !important;
+      padding: 18px !important;
+      background: rgba(255,255,255,.035) !important;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.04) !important;
+    }
+
+    body.portal-unlocked:not(.chat-view-active) .admin-view-panel-container:not(#chats_view) .reminder-list-box input,
+    body.portal-unlocked:not(.chat-view-active) .admin-view-panel-container:not(#chats_view) .reminder-list-box button {
+      min-height: 42px !important;
+      font-size: 12px !important;
+    }
+
+    body.portal-unlocked:not(.chat-view-active) .admin-view-panel-container:not(#chats_view) .reminder-list-box input[type="time"] {
+      min-width: 112px !important;
+      flex: 0 0 112px !important;
+    }
+
+    body.portal-unlocked:not(.chat-view-active) .admin-view-panel-container:not(#chats_view) .reminder-list-box #addReminderBtn {
+      min-width: 118px !important;
+      white-space: nowrap !important;
+    }
+
+    body.portal-unlocked:not(.chat-view-active) .admin-view-panel-container:not(#chats_view) .adnn-clock-weather-card {
+      width: 100% !important;
+      min-height: 156px !important;
+      overflow: hidden !important;
+    }
+  }
+</style>
+
 <script id="adnn-settings-upgrade-js">
 (function setupAdnnSettingsUpgrade(){
   const defaults = {
@@ -3226,6 +3437,43 @@
 })();
 </script>
 
+
+
+<style id="adnn-mainstream-admin-redesign">
+:root{--accent:#5b5ce2;--accent-2:#7c5cff;--bg:#f5f7fb;--surface:#fff;--surface-2:#f8f9fc;--text:#151821;--muted:#7b8190;--line:#e7e9f0;--sidebar:#11131a;--sidebar-muted:#8e94a4;--shadow:0 18px 50px rgba(25,31,52,.08);--radius:18px}
+html:not(.light-theme){--bg:#0d0f14;--surface:#151820;--surface-2:#191d26;--text:#f5f7fb;--muted:#9399a8;--line:#272c38;--sidebar:#090b0f;--shadow:0 18px 50px rgba(0,0,0,.28)}
+*{box-sizing:border-box} body{background:var(--bg)!important;color:var(--text)!important;font-family:Inter,Aileron,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important}
+body:before{display:none!important}.glass{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+.admin-app-container{display:grid!important;grid-template-columns:260px minmax(0,1fr)!important;min-height:100vh!important;background:var(--bg)!important}
+.admin-sidebar{position:fixed!important;inset:0 auto 0 0!important;width:260px!important;height:100vh!important;border:0!important;border-right:1px solid rgba(255,255,255,.07)!important;border-radius:0!important;background:var(--sidebar)!important;padding:20px 14px 16px!important;box-shadow:none!important;z-index:100!important}
+.sidebar-header{height:58px!important;padding:0 8px 18px!important;border-bottom:1px solid rgba(255,255,255,.08)!important;margin-bottom:16px!important}
+.sidebar-brand{gap:11px!important;color:#fff!important}.sidebar-brand img{width:34px!important;height:34px!important;border-radius:10px!important;background:#fff!important;padding:6px!important}.sidebar-brand span{font-size:15px!important;font-weight:700!important;letter-spacing:-.2px!important}
+.sidebar-toggle-trigger{background:rgba(255,255,255,.06)!important;border:1px solid rgba(255,255,255,.08)!important;color:#aeb4c2!important;border-radius:9px!important;width:32px!important;height:32px!important}
+.sidebar-navigation{gap:5px!important;overflow:auto!important}.sidebar-link-item{min-height:43px!important;border-radius:10px!important;padding:0 12px!important;color:var(--sidebar-muted)!important;background:transparent!important;border:0!important;font-size:13px!important;font-weight:500!important;gap:12px!important;transition:.2s ease!important}.sidebar-link-item svg{width:18px!important;height:18px!important;stroke-width:1.8!important}.sidebar-link-item:hover{background:rgba(255,255,255,.06)!important;color:#fff!important}.sidebar-link-item.is-active{background:linear-gradient(135deg,var(--accent),var(--accent-2))!important;color:#fff!important;box-shadow:0 8px 24px rgba(91,92,226,.3)!important}.sidebar-link-item.is-active:before{display:none!important}.sidebar-bottom-utilities{border-top:1px solid rgba(255,255,255,.08)!important;padding-top:12px!important}.sidebar-footer-profile{margin-top:10px!important;padding:12px!important;background:rgba(255,255,255,.04)!important;border:1px solid rgba(255,255,255,.07)!important;border-radius:11px!important}
+.admin-main-viewport{grid-column:2!important;margin-left:0!important;width:auto!important;min-height:100vh!important;padding:0!important;background:var(--bg)!important}.shell{max-width:none!important;width:100%!important;padding:0 34px 48px!important}.top{height:88px!important;position:sticky!important;top:0!important;z-index:50!important;margin:0 -34px 28px!important;padding:0 34px!important;background:color-mix(in srgb,var(--bg) 90%,transparent)!important;border-bottom:1px solid var(--line)!important;backdrop-filter:blur(18px)!important}.brand img{display:none!important}.brand .kicker{font-size:11px!important;color:var(--muted)!important;margin-bottom:4px!important}.brand h1{font-size:22px!important;letter-spacing:-.5px!important;font-weight:700!important}.apple-home-btn{width:40px!important;height:40px!important;border-radius:11px!important;border:1px solid var(--line)!important;background:var(--surface)!important;color:var(--text)!important;box-shadow:0 4px 14px rgba(0,0,0,.04)!important}
+.panel.glass,.admin-view-panel-container:not(#chats_view)>.panel.glass{background:var(--surface)!important;border:1px solid var(--line)!important;border-radius:var(--radius)!important;box-shadow:var(--shadow)!important;padding:28px!important}.panel h2,.panel h1{font-size:24px!important;letter-spacing:-.6px!important}.kicker{text-transform:uppercase!important;letter-spacing:.12em!important;font-size:10px!important;font-weight:700!important;color:var(--accent)!important}.help,.lead{color:var(--muted)!important;line-height:1.65!important}
+input,textarea,select{background:var(--surface-2)!important;border:1px solid var(--line)!important;color:var(--text)!important;border-radius:11px!important;min-height:44px!important;padding:11px 13px!important;box-shadow:none!important;transition:border-color .2s,box-shadow .2s!important}input:focus,textarea:focus,select:focus{outline:0!important;border-color:var(--accent)!important;box-shadow:0 0 0 3px rgba(91,92,226,.13)!important}label{font-size:12px!important;font-weight:600!important;color:var(--text)!important;gap:8px!important}button{font-family:inherit!important}form .actions button,.panel button:not(.cal-arrow-btn):not(.settings-inline-btn){border-radius:10px!important;min-height:42px!important;padding:0 17px!important;font-weight:600!important;background:var(--accent)!important;color:#fff!important;border:0!important}.actions button.secondary{background:var(--surface-2)!important;color:var(--text)!important;border:1px solid var(--line)!important}
+.dashboard-premium{display:grid;gap:20px}.dashboard-hero{display:flex;align-items:end;justify-content:space-between;gap:20px;padding:8px 2px 4px}.dashboard-hero h2{font-size:32px;margin:5px 0 6px;letter-spacing:-1px}.dashboard-primary-action{height:44px;padding:0 18px;border:0;border-radius:11px;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;font-weight:700;box-shadow:0 10px 24px rgba(91,92,226,.25)}
+.metric-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}.metric-card,.dashboard-card{background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow)}.metric-card{padding:20px}.metric-card span{display:block;color:var(--muted);font-size:12px;font-weight:600}.metric-card strong{display:block;font-size:30px;letter-spacing:-1px;margin:15px 0 5px}.metric-card small{color:var(--muted);font-size:11px}.metric-card .metric-status{font-size:17px;color:#21a56b;letter-spacing:-.3px;margin-top:24px}.dashboard-layout{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(280px,.8fr);gap:14px}.dashboard-card{padding:22px}.card-heading{display:flex;justify-content:space-between;align-items:center}.card-heading h3{font-size:17px;margin:4px 0}.live-pill{font-size:11px;color:#21a56b;background:rgba(33,165,107,.1);padding:7px 9px;border-radius:99px}.live-pill i{display:inline-block;width:6px;height:6px;background:#21a56b;border-radius:50%;margin-right:5px}.activity-chart{height:210px;display:flex;align-items:end;gap:9px;padding-top:28px;border-bottom:1px solid var(--line)}.activity-chart span{flex:1;height:var(--h);min-width:8px;border-radius:6px 6px 1px 1px;background:linear-gradient(180deg,var(--accent-2),var(--accent));opacity:.9}.chart-labels{display:flex;justify-content:space-between;color:var(--muted);font-size:10px;padding-top:10px}.quick-actions-card{display:grid;gap:9px;align-content:start}.quick-actions-card>button{display:flex;align-items:center;gap:12px;text-align:left;padding:13px!important;min-height:64px!important;background:var(--surface-2)!important;color:var(--text)!important;border:1px solid var(--line)!important;border-radius:12px!important}.quick-actions-card>button:hover{border-color:var(--accent)!important;transform:translateY(-1px)}.quick-actions-card b{display:grid;place-items:center;width:34px;height:34px;border-radius:9px;background:rgba(91,92,226,.12);color:var(--accent);font-size:11px}.quick-actions-card strong,.quick-actions-card small{display:block}.quick-actions-card strong{font-size:12px;margin-bottom:3px}.quick-actions-card small{font-size:10px;color:var(--muted)}
+.adnn-live-sheet-shell{border:1px solid var(--line)!important;border-radius:14px!important;overflow:hidden!important;background:var(--surface)!important}.adnn-live-sheet-toolbar{background:var(--surface-2)!important;border-bottom:1px solid var(--line)!important}.adnn-live-sheet-table th{background:var(--surface-2)!important;color:var(--muted)!important}.adnn-live-sheet-table td,.adnn-live-sheet-table th{border-color:var(--line)!important}.settings-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}.settings-card{background:var(--surface-2)!important;border:1px solid var(--line)!important;border-radius:13px!important}.apple-cal-wrap{gap:18px!important}.cal-cell{border-radius:9px!important;background:var(--surface-2)!important;border:1px solid transparent!important}.cal-cell:hover,.cal-cell.is-selected{background:var(--accent)!important;color:#fff!important}.reminder-list-box{background:var(--surface-2)!important;border:1px solid var(--line)!important;border-radius:14px!important}
+.portal-lock-gate{background:#0b0d12!important}.lock-card{max-width:440px!important;background:#151820!important;border:1px solid #282d39!important;border-radius:20px!important;padding:34px!important;box-shadow:0 30px 90px rgba(0,0,0,.45)!important}.lock-card h2{font-size:28px!important}.lock-card button{width:100%!important;height:46px!important;border-radius:11px!important;background:linear-gradient(135deg,var(--accent),var(--accent-2))!important;color:#fff!important;border:0!important;font-weight:700!important}
+body.sidebar-collapsed .admin-app-container{grid-template-columns:82px minmax(0,1fr)!important}body.sidebar-collapsed .admin-sidebar{width:82px!important}body.sidebar-collapsed .sidebar-brand span,body.sidebar-collapsed .sidebar-footer-profile{display:none!important}
+@media(max-width:980px){.admin-app-container{display:block!important}.admin-main-viewport{margin-left:0!important}.admin-sidebar{transform:translateX(-100%);width:270px!important}.mobile-sidebar-open .admin-sidebar{transform:translateX(0)}.shell{padding:78px 18px 32px!important}.top{margin:0 -18px 22px!important;padding:0 18px!important;height:72px!important}.metric-grid{grid-template-columns:repeat(2,1fr)}.dashboard-layout{grid-template-columns:1fr}.mobile-header-bar{background:var(--surface)!important;border-bottom:1px solid var(--line)!important}}
+@media(max-width:620px){.metric-grid{grid-template-columns:1fr}.dashboard-hero{align-items:flex-start;flex-direction:column}.dashboard-hero h2{font-size:27px}.settings-grid{grid-template-columns:1fr!important}.panel.glass{padding:19px!important}.activity-chart{height:160px;gap:5px}}
+</style>
+<script id="adnn-premium-admin-runtime">
+(function(){
+  function openView(id){const btn=document.querySelector('.sidebar-link-item[data-target-view="'+id+'"]'); if(btn) btn.click();}
+  document.addEventListener('click',function(e){const q=e.target.closest('[data-quick-view]'); if(q) openView(q.dataset.quickView); if(e.target.closest('[data-open-composer]')) openView('composer_view');});
+  function syncMetrics(){
+    const pairs=[['metricClients','clientDirectoryList'],['metricDesigners','designerDirectoryList']];
+    pairs.forEach(([metric,list])=>{const el=document.getElementById(metric),box=document.getElementById(list);if(el&&box){const count=[...box.children].filter(x=>x.offsetParent!==null||x.textContent.trim()).length;el.textContent=String(count)}});
+    const table=document.querySelector('#enquirySheetTable tbody');const e=document.getElementById('metricEnquiries');if(table&&e){const rows=[...table.rows].filter(r=>!/loading|no enquiries/i.test(r.textContent));e.textContent=String(rows.length)}
+  }
+  new MutationObserver(syncMetrics).observe(document.body,{subtree:true,childList:true});
+  document.addEventListener('DOMContentLoaded',syncMetrics); setTimeout(syncMetrics,1200);
+})();
+</script>
 
 <script src="page-transition.js" defer></script>
 <script id="adnnFinalRoundGuards">

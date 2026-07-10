@@ -1,48 +1,3 @@
-/*
-  firebase-chat.js
-  New ADNN chat runtime. Drop-in replacement for the older firebase-chat file.
-
-  Required before this module loads:
-    window.ADNN_FIREBASE_CONFIG = { ...firebase web config... }
-
-  Optional overrides:
-    window.ADNN_CHAT_CONFIG = {
-      adminEmail: "",
-      adminAliasUid: "adnn-admin",
-      homeUrl: "/",
-      firebaseVersion: "10.8.0",
-      msgLimit: 180,
-      maxFiles: 10,
-      maxFileSizeMb: 40,
-      iceServers: [
-        { urls: "stun:stun.l.google.com:19302" },
-        { urls: "stun:stun1.l.google.com:19302" }
-        // Add your TURN servers here for production-grade calls.
-      ],
-      theme: {
-        primary: "#272dcf",
-        primary2: "#161bba",
-        danger: "#ff2602",
-        success: "#25d366",
-        bg: "#050506",
-        panel: "#0b0b10"
-      }
-    }
-
-  Expected Firestore structure used by this runtime:
-    chats/{chatId}
-    chats/{chatId}/messages/{messageId}
-    chats/{chatId}/typing/{uid}
-    presence/{uid}
-    calls/{callId}
-    calls/{callId}/offerCandidates/{candidateId}
-    calls/{callId}/answerCandidates/{candidateId}
-    callInbox/{uid}
-
-  Existing mount IDs kept:
-    #directChatMount, #clientChatMount, #adminChatMount, #chats_view
-*/
-
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import {
@@ -234,6 +189,7 @@ const CHAT_SOUND_KEY = "adnn_message_sounds";
 const CHAT_SOUND_CONFIRMED_KEY = "adnn_sound_user_confirmed";
 const CHAT_REDUCE_MOTION_KEY = "adnn_reduce_motion";
 const CHAT_PAGE_LOAD_AT_MS = Date.now();
+const CHAT_REALTIME_EVENT_GRACE_MS = 1200;
 const CHAT_REFRESH_AUDIO_MUTE_MS = 18000;
 const CHAT_TOTAL_UNREAD_STORAGE_KEY = "adnn_chat_unread_total";
 const PINNED_CHAT_STORAGE_KEY = "adnn_pinned_chat_ids";
@@ -4326,6 +4282,11 @@ function canPlayChatSound() {
   return hasConfirmedSoundOptIn() && !isRefreshAudioMuteWindow() && !chatReduceMotionEnabled();
 }
 
+function isHistoricalChatEvent(ms) {
+  const time = Number(ms) || 0;
+  return !time || time <= CHAT_PAGE_LOAD_AT_MS + CHAT_REALTIME_EVENT_GRACE_MS;
+}
+
 function hasFreshUserActivation() {
   return !!(navigator.userActivation?.hasBeenActive || document.hasFocus());
 }
@@ -4513,6 +4474,7 @@ function notifyThreadUnread(chat, title, unread) {
 
   if (Date.now() < notificationsReadyAtMs) return;
   if (previousUnread === undefined && previousSig === undefined) return;
+  if (isHistoricalChatEvent(lastMs)) return;
   const unreadIncreased = unread && (previousUnread === undefined || unread > previousUnread);
   const messageChanged = previousSig && sig !== previousSig;
   if (!unreadIncreased && !messageChanged) return;
@@ -4546,6 +4508,8 @@ function notifyIncomingMessages(state, messages) {
     if (state.notifiedMessageIds.has(msg.id)) return;
     state.notifiedMessageIds.add(msg.id);
     if (isMineMessage(msg)) return;
+    const messageMs = toMillis(msg.createdAt || msg.createdAtMs || msg.updatedAt || msg.updatedAtMs);
+    if (isHistoricalChatEvent(messageMs)) return;
     const title = msg.senderName || getChatTitle(state.chatData, isAdminEmail(activeUser?.email) ? "admin" : "user");
     const body = isCallEventMessage(msg) ? callSummaryLastMessage(msg) : (msg.text || attachmentSummary(msg.attachments || []) || "New message");
     const tone = isCallEventMessage(msg) && (msg.callStatus === "missed" || msg.endedReason === "timeout") ? "missed" : "message";
@@ -5120,6 +5084,24 @@ function injectChatStyles() {
       .adnn-chat-app .adnn-room-shell > .adnn-room-head .adnn-room-actions { gap:5px !important; margin-left:auto !important; }
       .adnn-chat-app .adnn-room-shell > .adnn-message-scroll { padding:12px 10px !important; }
       .adnn-chat-app .adnn-room-shell > .adnn-composer-wrap { padding:7px 8px max(8px, env(safe-area-inset-bottom)) !important; }
+      body.chat-view-active:not(.adnn-chat-mobile-lock) .adnn-chat-shell,
+      body:not(.adnn-chat-mobile-lock) #directChatMount .adnn-chat-shell,
+      body:not(.adnn-chat-mobile-lock) #clientChatMount .adnn-chat-shell {
+        padding-top: 72px !important;
+        min-height: 100dvh !important;
+      }
+      body.chat-view-active:not(.adnn-chat-mobile-lock) .adnn-chat-layout,
+      body:not(.adnn-chat-mobile-lock) #directChatMount .adnn-chat-layout,
+      body:not(.adnn-chat-mobile-lock) #clientChatMount .adnn-chat-layout {
+        height: calc(100dvh - 72px) !important;
+        min-height: 0 !important;
+      }
+      body.chat-view-active:not(.adnn-chat-mobile-lock) .adnn-chat-thread-head,
+      body:not(.adnn-chat-mobile-lock) #directChatMount .adnn-chat-thread-head,
+      body:not(.adnn-chat-mobile-lock) #clientChatMount .adnn-chat-thread-head {
+        min-height: 78px !important;
+        align-content: end !important;
+      }
     }
     @keyframes adnnMobileRoomIn { from { opacity:.01; transform:translate3d(0,14px,0) scale(.992); filter:blur(6px); } to { opacity:1; transform:translate3d(0,0,0) scale(1); filter:blur(0); } }
 

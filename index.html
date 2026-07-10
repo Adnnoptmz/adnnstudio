@@ -20,7 +20,7 @@
   <link rel="apple-touch-icon" sizes="180x180" href="adnn icon.svg" />
   
   <link rel="mask-icon" href="adnn icon.svg" color="#272dcf" />
-	<link rel="preload" href="bg1.jpg" as="image" type="image/jpeg" fetchpriority="high" />
+	<link rel="preload" href="bg1-hero-1600.jpg" as="image" type="image/jpeg" fetchpriority="high" />
   <style>
     
 	    :root { --accent:#272dcf; --red:#ff2602; --bg:#050506; --text:#fff; --font-mono:-apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", Arial, sans-serif; }
@@ -883,7 +883,7 @@
     #about { background: #0b0b0d !important; color: #f5f5f7 !important; }
     #home { 
       background-color: #0b0b0d !important;
-      background-image: url('bg1.jpg') !important;
+      background-image: url('bg1-hero-1600.jpg') !important;
       background-repeat: no-repeat !important;
       background-position: center center !important;
       background-size: cover !important; 
@@ -3267,8 +3267,6 @@
 
 </head>
 	<body class="auth-state-pending">
-	  <img src="bg1.jpg" fetchpriority="high" loading="eager" width="2048" height="1365" alt="" style="position:absolute; width:1px; height:1px; opacity:0.01; pointer-events:none; z-index:-9999; top:0; left:0;" aria-hidden="true" decoding="sync">
-  
 	  <div class="cursor-dots" aria-hidden="true"></div>
 	  <header id="site-header" class="site-header home-top">
     <div class="nav-wrap glass edge">
@@ -4332,6 +4330,12 @@
   }
 	  
   const cursorDots = document.querySelector(".cursor-dots");
+  const supportsCursorDots = window.matchMedia
+    ? window.matchMedia("(hover: hover) and (pointer: fine)").matches && window.innerWidth > 760
+    : true;
+  if (cursorDots && !supportsCursorDots) {
+    cursorDots.remove();
+  }
   let cursorTargetX = innerWidth * .5;
   let cursorTargetY = innerHeight * .5;
   let cursorCurrentX = cursorTargetX;
@@ -4346,7 +4350,7 @@
     cursorAnimationFrame = requestAnimationFrame(animateCursorDots);
   }
 
-	  if (cursorDots) {
+	  if (cursorDots && supportsCursorDots) {
 	    function createCursorDotWave(event) {
 	      if (event.button !== undefined && event.button !== 0) return;
 	      cursorTargetX = event.clientX;
@@ -5797,7 +5801,6 @@
     "#about .subcard",
     "#projects .tile",
     "#client-report .client-stat-item",
-    "#connect form",
     "footer .foot"
   ].join(","))).filter((node) => {
     return node && !node.closest("#portfolioCylinder") && !node.matches("script, style");
@@ -5888,6 +5891,211 @@
   #portfolio .portfolio-reference-wrap {
     max-width: 100% !important;
     box-sizing: border-box !important;
+  }
+</style>
+<style id="adnn-mobile-orbit-slider-final">
+  @media (max-width: 760px) {
+    .cursor-dots,
+    .cursor-click-wave {
+      display: none !important;
+    }
+
+    #home,
+    #home.hero {
+      overflow: visible !important;
+      clip-path: none !important;
+      --mobile-inner-orbit: min(940px, 104vw);
+      --mobile-outer-orbit: min(1460px, 168vw);
+      --orbit-bleed: clamp(46px, 12vw, 78px);
+    }
+
+    #home .hero-grid {
+      position: relative !important;
+      min-height: calc(100svh - 108px) !important;
+      display: grid !important;
+      place-items: center !important;
+      overflow: visible !important;
+    }
+
+    #home .hero-grid > div:first-child {
+      position: relative !important;
+      z-index: 2 !important;
+    }
+
+    #home .floating-services-container {
+      position: absolute !important;
+      inset: calc(var(--orbit-bleed) * -1) !important;
+      width: auto !important;
+      height: auto !important;
+      transform: none !important;
+      -webkit-transform: none !important;
+      display: grid !important;
+      place-items: center !important;
+      overflow: visible !important;
+      z-index: 1 !important;
+    }
+
+    #home .orbit-track {
+      top: 50% !important;
+      left: 50% !important;
+      transform: translate3d(-50%, -50%, 0) !important;
+      -webkit-transform: translate3d(-50%, -50%, 0) !important;
+    }
+
+    #home .inner-track {
+      width: var(--mobile-inner-orbit) !important;
+      height: var(--mobile-inner-orbit) !important;
+    }
+
+    #home .outer-track {
+      width: var(--mobile-outer-orbit) !important;
+      height: var(--mobile-outer-orbit) !important;
+    }
+
+    @keyframes orbitRotateInner {
+      0% { transform: rotate(var(--start-deg)) translateX(calc(var(--mobile-inner-orbit) / 2)) rotate(calc(-1 * var(--start-deg))); }
+      100% { transform: rotate(calc(var(--start-deg) + 360deg)) translateX(calc(var(--mobile-inner-orbit) / 2)) rotate(calc(-1 * (var(--start-deg) + 360deg))); }
+    }
+
+    @keyframes orbitRotateOuter {
+      0% { transform: rotate(var(--start-deg)) translateX(calc(var(--mobile-outer-orbit) / 2)) rotate(calc(-1 * var(--start-deg))); }
+      100% { transform: rotate(calc(var(--start-deg) - 360deg)) translateX(calc(var(--mobile-outer-orbit) / 2)) rotate(calc(-1 * (var(--start-deg) - 360deg))); }
+    }
+
+    #home .service-pill {
+      width: 132px !important;
+      justify-content: center !important;
+      padding-left: 12px !important;
+      padding-right: 12px !important;
+      margin-left: -66px !important;
+    }
+
+    #portfolio.reference-style {
+      padding-top: clamp(34px, 9vw, 54px) !important;
+      padding-bottom: clamp(28px, 8vw, 48px) !important;
+    }
+
+    #portfolio .portfolio-reference-head {
+      margin-bottom: clamp(4px, 1.8vw, 10px) !important;
+    }
+
+    #portfolio .portfolio-copy {
+      margin-bottom: 0 !important;
+    }
+
+    #portfolio .portfolio-grid {
+      gap: 0 !important;
+      margin-top: 0 !important;
+    }
+
+    #portfolio .reference-slider-shell {
+      height: clamp(356px, 92vw, 430px) !important;
+      width: min(100%, 330px) !important;
+      margin: clamp(4px, 1.5vw, 10px) auto 0 !important;
+      padding-bottom: clamp(42px, 10vw, 60px) !important;
+    }
+
+    #portfolio .portfolio-slider-controls {
+      bottom: clamp(2px, 1.5vw, 10px) !important;
+    }
+
+    #portfolio .portfolio-cta-mini {
+      margin-top: clamp(20px, 6vw, 32px) !important;
+      margin-bottom: 0 !important;
+    }
+
+    .site-header nav#nav-menu.nav-menu,
+    .site-header nav#nav-menu.nav-menu.glass,
+    .site-header nav#nav-menu.nav-menu.edge {
+      gap: 8px !important;
+      padding: max(96px, calc(env(safe-area-inset-top) + 84px)) clamp(24px, 7vw, 36px) calc(30px + env(safe-area-inset-bottom)) !important;
+      background:
+        radial-gradient(circle at 78% 10%, rgba(39,45,207,.28), transparent 34%),
+        linear-gradient(180deg, rgba(8,8,12,.86), rgba(7,7,10,.72)) !important;
+      backdrop-filter: blur(30px) saturate(170%) !important;
+      -webkit-backdrop-filter: blur(30px) saturate(170%) !important;
+    }
+
+    .site-header nav#nav-menu.nav-menu a,
+    .site-header nav#nav-menu.nav-menu a.active,
+    .site-header.home-top nav#nav-menu.nav-menu a,
+    .site-header.home-top nav#nav-menu.nav-menu a.active {
+      min-height: 50px !important;
+      grid-template-columns: 24px minmax(0, 1fr) 18px !important;
+      gap: 14px !important;
+      padding: 0 10px !important;
+      border-radius: 18px !important;
+      border: 1px solid transparent !important;
+      border-bottom-color: rgba(255,255,255,.075) !important;
+      font-family: "Aileron", -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif !important;
+      font-size: clamp(17px, 5.4vw, 22px) !important;
+      font-weight: 420 !important;
+      letter-spacing: -.015em !important;
+    }
+
+    .site-header nav#nav-menu.nav-menu a.active,
+    .site-header.home-top nav#nav-menu.nav-menu a.active {
+      background: rgba(255,255,255,.07) !important;
+      border-color: rgba(255,255,255,.12) !important;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.10) !important;
+    }
+
+    .site-header nav#nav-menu.nav-menu a::before {
+      width: 21px !important;
+      height: 21px !important;
+      opacity: .86 !important;
+      -webkit-mask-size: 19px 19px !important;
+      mask-size: 19px 19px !important;
+    }
+
+    .site-header nav#nav-menu.nav-menu a::after {
+      font-size: 21px !important;
+      opacity: .28 !important;
+    }
+  }
+
+  @media (max-width: 360px) {
+    #home .floating-services-container {
+      display: none !important;
+    }
+  }
+
+  .glass.edge.adnn-scroll-reveal,
+  .glass.edge.adnn-scroll-reveal.is-visible {
+    transform: none !important;
+    filter: none !important;
+    transition-property: opacity, background, border-color, box-shadow, backdrop-filter, -webkit-backdrop-filter !important;
+    will-change: opacity !important;
+  }
+
+  #projectEnquiryForm,
+  #projectEnquiryForm.glass.edge,
+  #projectEnquiryForm.glass.edge.adnn-scroll-reveal,
+  #projectEnquiryForm.glass.edge.adnn-scroll-reveal.is-visible {
+    width: min(100%, 460px) !important;
+    max-width: 460px !important;
+    justify-self: end !important;
+    border-radius: 28px !important;
+    padding: clamp(20px, 2.2vw, 28px) !important;
+    animation: none !important;
+    transform: none !important;
+    filter: none !important;
+    transition-property: background, border-color, box-shadow, backdrop-filter, -webkit-backdrop-filter !important;
+    will-change: auto !important;
+    overflow: hidden !important;
+  }
+
+  #projectEnquiryForm.edge::before {
+    border-radius: 28px !important;
+  }
+
+  @media (max-width: 900px) {
+    #projectEnquiryForm,
+    #projectEnquiryForm.glass.edge {
+      width: 100% !important;
+      max-width: none !important;
+      justify-self: stretch !important;
+    }
   }
 </style>
 </body>

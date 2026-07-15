@@ -368,9 +368,6 @@
     .cta .dark { color:#fff; }
     .visual { min-height:520px; border-radius:26px; border:1px solid rgba(255,255,255,.1); background:radial-gradient(circle at 72% 20%,rgba(39,45,207,.26),transparent 30%),linear-gradient(135deg,rgba(255,255,255,.08),rgba(255,255,255,.015) 42%,rgba(255,255,255,.035)); padding:32px; overflow:hidden; position:relative; box-shadow:0 40px 140px rgba(39,45,207,.18); }
     .visual h2 { max-width:360px; font-size:38px; line-height:1.12; letter-spacing:0; font-weight:520; margin-top:64px; }
-    .pixels { position:absolute; right:32px; top:32px; display:grid; grid-template-columns:repeat(3,8px); gap:4px; opacity:.7; }
-    .pixels span { width:8px; height:8px; background:#fff9; }
-    .pixels span:nth-child(even) { background:var(--accent); }
     .about, .portfolio, .projects, .connect { padding-top:80px; padding-bottom:60px; }
     .kicker { font-size:12px; line-height:1; text-transform:uppercase; letter-spacing:0; }
     h2.big { font-size:62px; line-height:1.04; letter-spacing:0; font-weight:520; margin:24px 0 0; }
@@ -3547,14 +3544,49 @@
     <section class="services" id="projects">
       <div class="shell">
         <div class="projects-head reveal"><div><p class="kicker" style="margin-bottom: clamp(16px, 2vw, 28px) !important;">04 / Services</p>
-        <h2 class="section-title" style="font-size: clamp(56px, 8vw, 124px); line-height: .86; letter-spacing: -.07em; font-weight: 400; margin: 0;">Studio Services</h2></div><p class="lead">A quick look at studio services across branding, motion, design, 3D, video, and web.</p></div>
+        <h2 class="section-title" style="font-size: clamp(56px, 8vw, 124px); line-height: .86; letter-spacing: -.07em; font-weight: 400; margin: 0;">Studio Services</h2></div><p class="lead">Brand, multimedia, product, and launch systems for businesses that need to look trusted before they scale.</p></div>
         <div class="service-grid reveal">
-          <article class="service-card tile"><div class="service-top"><b>01</b><div class="thumb"><img src="https://images.unsplash.com/photo-1518005020951-eccb494ad742?q=80&w=500&auto=format&fit=crop" alt="Logo design"></div></div><div><h3>Logo Design</h3><p>Distinctive marks built for clarity, memorability, and use across every touchpoint.</p></div></article>
-          <article class="service-card tile"><div class="service-top"><b>02</b><div class="thumb"><img src="https://images.unsplash.com/photo-1524758631624-e2822e304c36?q=80&w=500&auto=format&fit=crop" alt="Brand identity"></div></div><div><h3>Brand Identity</h3><p>Systems, palettes, typography, assets, and direction that keep the brand consistent.</p></div></article>
-          <article class="service-card tile"><div class="service-top"><b>03</b><div class="thumb"><img src="https://images.unsplash.com/photo-1497366754035-f200968a6e72?q=80&w=500&auto=format&fit=crop" alt="Motion graphics"></div></div><div><h3>Motion Graphics</h3><p>Animated stories, launch assets, reels, and polished content for social and campaigns.</p></div></article>
-          <article class="service-card tile"><div class="service-top"><b>04</b><div class="thumb"><img src="https://images.unsplash.com/photo-1516321497487-e288fb19713f?q=80&w=500&auto=format&fit=crop" alt="Web designing"></div></div><div><h3>Web Designing</h3><p>Premium landing pages and digital experiences with strong UI, UX, and conversion flow.</p></div></article>
-          <article class="service-card tile"><div class="service-top"><b>05</b><div class="thumb"><img src="https://images.unsplash.com/photo-1517292987719-0369a794ec0f?q=80&w=500&auto=format&fit=crop" alt="Video editing"></div></div><div><h3>Video Editing</h3><p>Clean edits, promos, brand films, and launch content with rhythm and polish.</p></div></article>
-          <article class="service-card tile"><div class="service-top"><b>06</b><div class="thumb"><img src="https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=500&auto=format&fit=crop" alt="3D design"></div></div><div><h3>3D Design</h3><p>Product showcases, dimensional visuals, and scenes for campaigns and presentations.</p></div></article>
+          <article class="service-card tile" data-service="Logo Design"><div class="service-top"><b>01</b><div class="thumb"><img src="https://images.unsplash.com/photo-1518005020951-eccb494ad742?q=80&w=500&auto=format&fit=crop" alt="Logo design"></div></div><div><h3>Logo Design</h3><p>Distinctive marks built for clarity, memorability, and use across every touchpoint.</p></div></article>
+          <article class="service-card tile" data-service="Brand Identity"><div class="service-top"><b>02</b><div class="thumb"><img src="https://images.unsplash.com/photo-1524758631624-e2822e304c36?q=80&w=500&auto=format&fit=crop" alt="Brand identity"></div></div><div><h3>Brand Identity</h3><p>Systems, palettes, typography, assets, and direction that keep the brand consistent.</p></div></article>
+          <article class="service-card tile" data-service="Motion Graphics"><div class="service-top"><b>03</b><div class="thumb"><img src="https://images.unsplash.com/photo-1497366754035-f200968a6e72?q=80&w=500&auto=format&fit=crop" alt="Motion graphics"></div></div><div><h3>Motion Graphics</h3><p>Animated stories, launch assets, reels, and polished content for social and campaigns.</p></div></article>
+          <article class="service-card tile" data-service="Web Designing"><div class="service-top"><b>04</b><div class="thumb"><img src="https://images.unsplash.com/photo-1516321497487-e288fb19713f?q=80&w=500&auto=format&fit=crop" alt="Web designing"></div></div><div><h3>Web Designing</h3><p>Premium landing pages and digital experiences with strong UI, UX, and conversion flow.</p></div></article>
+          <article class="service-card tile" data-service="Video Editing"><div class="service-top"><b>05</b><div class="thumb"><img src="https://images.unsplash.com/photo-1517292987719-0369a794ec0f?q=80&w=500&auto=format&fit=crop" alt="Video editing"></div></div><div><h3>Video Editing</h3><p>Clean edits, promos, brand films, and launch content with rhythm and polish.</p></div></article>
+          <article class="service-card tile" data-service="3D Design"><div class="service-top"><b>06</b><div class="thumb"><img src="https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=500&auto=format&fit=crop" alt="3D design"></div></div><div><h3>3D Design</h3><p>Product showcases, dimensional visuals, and campaign scenes.</p></div></article>
+        </div>
+        <button class="service-expander reveal" type="button" id="moreServicesToggle" aria-expanded="false" aria-controls="moreServicesPanel">
+          <span class="service-expander-copy"><strong>View all services</strong><small>16 additional capabilities across strategy, content, product, and digital</small></span>
+          <span class="service-expander-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 9.5 12 15l6-5.5"/></svg></span>
+        </button>
+        <div class="more-services-wrap" id="moreServicesPanel" hidden>
+          <div class="more-services-grid" aria-label="Expanded service list">
+            <article data-service="Brand Strategy" role="button" tabindex="0"><b>07</b><h3>Brand Strategy</h3><p>Positioning, audience logic, offer clarity, and visual direction.</p></article>
+            <article data-service="Creative Direction" role="button" tabindex="0"><b>08</b><h3>Creative Direction</h3><p>Campaign look, art direction, launch tone, and content rules.</p></article>
+            <article data-service="Social Media Kits" role="button" tabindex="0"><b>09</b><h3>Social Media Kits</h3><p>Post systems, story templates, covers, and content identity.</p></article>
+            <article data-service="Brand Film" role="button" tabindex="0"><b>10</b><h3>Brand Film</h3><p>Founder videos, studio reels, launch films, and brand stories.</p></article>
+            <article data-service="Content Reels" role="button" tabindex="0"><b>11</b><h3>Content Reels</h3><p>Short-form videos with rhythm, captions, covers, and polish.</p></article>
+            <article data-service="Packaging Design" role="button" tabindex="0"><b>12</b><h3>Packaging Design</h3><p>Labels, packs, product mockups, and shelf-ready systems.</p></article>
+            <article data-service="Pitch Decks" role="button" tabindex="0"><b>13</b><h3>Pitch Decks</h3><p>Investor, sales, and launch decks with clear business storytelling.</p></article>
+            <article data-service="Company Profiles" role="button" tabindex="0"><b>14</b><h3>Company Profiles</h3><p>Professional documents that make the company look structured.</p></article>
+            <article data-service="Website Build" role="button" tabindex="0"><b>15</b><h3>Website Build</h3><p>Responsive front-end pages for launches, services, and products.</p></article>
+            <article data-service="App UI/UX" role="button" tabindex="0"><b>16</b><h3>App UI/UX</h3><p>Mobile and web app screens, flows, systems, and interaction logic.</p></article>
+            <article data-service="App Prototype" role="button" tabindex="0"><b>17</b><h3>App Prototype</h3><p>Clickable product concepts before full development investment.</p></article>
+            <article data-service="Idea To App" role="button" tabindex="0"><b>18</b><h3>Idea To App</h3><p>Turn a business idea into app structure, screens, and launch plan.</p></article>
+            <article data-service="Launch System" role="button" tabindex="0"><b>19</b><h3>Launch System</h3><p>Landing page, campaign visuals, pitch story, and social kit.</p></article>
+            <article data-service="AI Creative Workflow" role="button" tabindex="0"><b>20</b><h3>AI Creative Workflow</h3><p>Research, planning, content direction, and concept development.</p></article>
+            <article data-service="Growth Visual Kit" role="button" tabindex="0"><b>21</b><h3>Growth Visual Kit</h3><p>Ads, banners, repeatable templates, and conversion graphics.</p></article>
+            <article data-service="Consultation" role="button" tabindex="0"><b>22</b><h3>Consultation</h3><p>Free first guidance on brand, product, trust, and launch priorities.</p></article>
+          </div>
+        </div>
+        <div class="service-consultation-card reveal" data-service="Free Consultation">
+          <div class="consultation-heading">
+            <p class="kicker">Free consultation</p>
+            <h3>Start with clarity.</h3>
+          </div>
+          <p class="consultation-copy">A focused first conversation to identify what your brand or product needs now, what can wait, and the strongest next move for your business.</p>
+          <div class="consultation-action">
+            <span>30 minutes · Clear direction · No commitment</span>
+            <button class="consultation-cta" type="button" data-service="Free Consultation"><span>Book a session</span><i aria-hidden="true">↗</i></button>
+          </div>
         </div>
         <div class="marquee-box reveal" style="margin-top: 22px;"><div class="marquee"><span>Brand Launch</span><span>Identity System</span><span>Creative Direction</span><span>Motion Story</span><span>Digital Experience</span><span>Visual Campaign</span><span>Product Showcase</span><span>Growth Project</span><span>Brand Launch</span><span>Identity System</span><span>Creative Direction</span><span>Motion Story</span><span>Digital Experience</span><span>Visual Campaign</span></div></div>
       </div>
@@ -3632,34 +3664,23 @@
     </section>
 
 	    <footer>
-	      <div class="foot">
-	        <div style="width: 100%; display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 24px 16px;">
-	          <div style="flex: 1; min-width: 260px;">
-	            <p style="font-weight:500; margin: 0 0 12px 0;">Studio Links</p>
-	            <div class="links" style="display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-start;">
-	              <a href="#connect">Enquiry</a>
-	              <a href="https://www.instagram.com/artifstudio.co/" target="_blank" rel="noopener">Instagram</a>
-	              <a href="https://www.linkedin.com/in/adhnan-nv-5aa4011b5/" target="_blank" rel="noopener">LinkedIn</a>
-	              <a href="https://www.behance.net/" target="_blank" rel="noopener">Behance</a>
-	              <a href="https://dribbble.com/" target="_blank" rel="noopener">Dribbble</a>
-	            </div>
+	      <div class="foot footer-shell">
+	        <div class="footer-directory">
+	          <div class="footer-brand-block">
+	            <strong>adnnstudio</strong>
+	            <p>Thoughtful design, clear direction, and digital experiences built to make ambitious businesses feel credible.</p>
+	            <span class="footer-availability"><i aria-hidden="true"></i> Available for selected work</span>
 	          </div>
-	          <div style="display: flex; justify-content: flex-end; min-width: max-content; margin-bottom: 2px;">
-	            <img src="adnn (2).svg" alt="Adnn Studio Footer Logo" loading="lazy" decoding="async" style="height: 54px; width: auto; object-fit: contain; display: block; margin: 0;">
+	          <div class="footer-column"><strong>Work</strong><a href="#portfolio">Portfolio</a><a href="#projects">Services</a><a href="#client-report">Impact</a></div>
+	          <div class="footer-column"><strong>Studio</strong><a href="#about">About</a><a href="#connect">Enquiry</a><a href="#home">Home</a></div>
+	          <div class="footer-column"><strong>Resources</strong><a href="Terms & Privacy adnnstudio.com 2026.html#intro">Terms &amp; Privacy</a><a href="Terms & Privacy adnnstudio.com 2026.html#privacy">Privacy choices</a></div>
+	          <div class="footer-socials" aria-label="Social links">
+	            <a href="https://www.instagram.com/artifstudio.co/" target="_blank" rel="noopener" aria-label="Instagram"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.8" r=".8" fill="currentColor" stroke="none"/></svg></a>
+	            <a href="mailto:adnnoptmz@gmail.com" aria-label="Email"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m4 7 8 6 8-6"/></svg></a>
+	            <a href="https://www.linkedin.com/in/adhnan-nv-5aa4011b5/" target="_blank" rel="noopener" aria-label="LinkedIn"><svg class="linkedin-mark" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.7 8.2H3.4V18h3.3V8.2ZM5.05 3.5a1.92 1.92 0 1 0 0 3.84 1.92 1.92 0 0 0 0-3.84ZM20.6 12.38c0-3.02-1.61-4.43-3.76-4.43-1.74 0-2.52.96-2.96 1.63V8.2h-3.3V18h3.3v-4.86c0-1.28.24-2.52 1.82-2.52 1.56 0 1.58 1.46 1.58 2.61V18h3.3l.02-5.62Z"/></svg></a>
 	          </div>
 	        </div>
-	        <div style="margin-top:40px; width: 100%;">
-	          <p style="color:#ffffff8c; margin: 0; width: 100%;">
-	            Available for freelance, studio, and project collaborations 
-	            <span style="float:right; display: inline-flex; align-items: center; gap: 10px; font-family: var(--font-mono) !important; font-size: 11px;">
-	              <a href="Terms & Privacy adnnstudio.com 2026.html#intro" style="color: inherit; text-decoration: none; border-bottom: 1px dashed transparent; transition: color 0.2s, border-color 0.2s;" onmouseover="this.style.color='#fff'; this.style.borderColor='rgba(255,255,255,0.4)'" onmouseout="this.style.color='inherit'; this.style.borderColor='transparent'">Terms & Privacy</a>
-	              <span style="opacity: 0.4;">·</span>
-	              <a href="Terms & Privacy adnnstudio.com 2026.html#privacy" style="color: inherit; text-decoration: none; border-bottom: 1px dashed transparent; transition: color 0.2s, border-color 0.2s;" onmouseover="this.style.color='#fff'; this.style.borderColor='rgba(255,255,255,0.4)'" onmouseout="this.style.color='inherit'; this.style.borderColor='transparent'">Do not sell or share my personal information</a>
-	              <span style="opacity: 0.4; margin-left: 4px;">·</span>
-	              <span style="font-family: var(--font-body) !important; font-size: 14px; color: #fff;">© adnnstudio 2026</span>
-	            </span>
-	          </p>
-	        </div>
+	        <div class="footer-copyright"><span>© 2026 adnnstudio. All rights reserved.</span></div>
 	      </div>
 	    </footer>
 	  </main>
@@ -3766,16 +3787,17 @@
   if (shouldPin === aiOrbPinned && shouldPin) return;
   aiOrbPinned = shouldPin;
 
-  if (shouldPin) {
-    aiOrb.style.position = "absolute";
-    aiOrb.style.top = `${connectSection.offsetTop + 44}px`;
-    aiOrb.style.right = "clamp(20px, 3.5vw, 48px)";
+	  if (shouldPin) {
+	    const isMobile = window.matchMedia("(max-width: 760px)").matches;
+	    aiOrb.style.position = "absolute";
+	    aiOrb.style.top = `${connectSection.offsetTop + (isMobile ? -86 : 44)}px`;
+	    aiOrb.style.right = isMobile ? "18px" : "clamp(20px, 3.5vw, 48px)";
     aiOrb.style.bottom = "auto";
     aiOrb.style.setProperty("--ai-orb-bottom", "auto");
   } else {
     aiOrb.style.position = "fixed";
     aiOrb.style.top = "auto";
-    aiOrb.style.right = "clamp(24px, 3.5vw, 48px)";
+	    aiOrb.style.right = window.matchMedia("(max-width: 760px)").matches ? "18px" : "clamp(24px, 3.5vw, 48px)";
     aiOrb.style.bottom = "clamp(24px, 3.5vw, 48px)";
     aiOrb.style.setProperty("--ai-orb-bottom", "clamp(24px, 3.5vw, 48px)");
   }
@@ -3963,6 +3985,45 @@
 
     let activeFormTypewriterTimerReference = null;
 
+    window.routeServiceToEnquiry = function(targetName, options = {}) {
+      const connectBlock = document.getElementById("connect");
+      const textareaField = document.getElementById("enquiryMessage");
+      if (!connectBlock || !textareaField) return;
+
+      if (activeFormTypewriterTimerReference) {
+        clearInterval(activeFormTypewriterTimerReference);
+        activeFormTypewriterTimerReference = null;
+      }
+
+      const completeMessageStringToRender = `We are interested in ${targetName.toLowerCase()} for our business. Please share the recommended process, what you need from us, and the best next step to begin.`;
+      textareaField.value = "";
+
+      if (options.scroll !== false) {
+        connectBlock.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+
+      if (options.animate === false || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        textareaField.value = completeMessageStringToRender;
+        if (options.focus !== false) textareaField.focus({ preventScroll: true });
+        return;
+      }
+
+      const characterArrayStream = [...completeMessageStringToRender];
+      let currentStringCharacterIndexPosition = 0;
+      setTimeout(() => {
+        if (options.focus !== false) textareaField.focus({ preventScroll: true });
+        activeFormTypewriterTimerReference = setInterval(() => {
+          if (currentStringCharacterIndexPosition < characterArrayStream.length) {
+            textareaField.value += characterArrayStream[currentStringCharacterIndexPosition++];
+            textareaField.scrollTop = textareaField.scrollHeight;
+          } else {
+            clearInterval(activeFormTypewriterTimerReference);
+            activeFormTypewriterTimerReference = null;
+          }
+        }, 12);
+      }, options.scroll === false ? 0 : 520);
+    };
+
     window.routeOrbitToProject = function(index) {
       const servicesListNames = [
         "Logo Design",
@@ -3973,44 +4034,7 @@
         "3D Design"
       ];
       
-      const targetName = servicesListNames[index] || "Creative Services";
-      const connectBlock = document.getElementById("connect");
-      const textareaField = connectBlock ? connectBlock.querySelector("textarea") : null;
-
-      if (connectBlock && textareaField) {
-
-        if (activeFormTypewriterTimerReference) clearInterval(activeFormTypewriterTimerReference);
-        
-
-        textareaField.value = "";
-
-
-        connectBlock.scrollIntoView({ behavior: "smooth", block: "center" });
-        
-        const completeMessageStringToRender = `We would like to make a custom ${targetName.toLowerCase()} project for our brand. Please let me know how to get started with the workspace setup, what assets are needed, and how we can align on the estimated creative direction timeline!`;
-        
-        const characterArrayStream = [...completeMessageStringToRender];
-        let currentStringCharacterIndexPosition = 0;
-
-
-        setTimeout(() => {
-          textareaField.focus();
-          
-
-          activeFormTypewriterTimerReference = setInterval(() => {
-            if (currentStringCharacterIndexPosition < characterArrayStream.length) {
-              textareaField.value += characterArrayStream[currentStringCharacterIndexPosition];
-              currentStringCharacterIndexPosition++;
-              
-
-              textareaField.scrollTop = textareaField.scrollHeight;
-            } else {
-              clearInterval(activeFormTypewriterTimerReference);
-              activeFormTypewriterTimerReference = null;
-            }
-          }, 14);
-        }, 650);
-      }
+      window.routeServiceToEnquiry(servicesListNames[index] || "Creative Services");
     };
 
 
@@ -4058,12 +4082,17 @@
       const parentTilesBox = document.getElementById("projects");
       if (!parentTilesBox) return;
       
-      parentTilesBox.querySelectorAll(".tile").forEach((tileElement, tileIndex) => {
+      parentTilesBox.querySelectorAll(".service-card[data-service]:not(#moreServicesToggle)").forEach((tileElement) => {
         tileElement.style.cursor = "pointer";
         tileElement.addEventListener("click", (e) => {
           e.preventDefault();
-          window.routeOrbitToProject(tileIndex);
+          window.routeServiceToEnquiry(tileElement.dataset.service);
         });
+      });
+
+      const consultationButton = parentTilesBox.querySelector(".consultation-cta[data-service]");
+      consultationButton?.addEventListener("click", () => {
+        window.routeServiceToEnquiry(consultationButton.dataset.service);
       });
     });
 
@@ -4925,9 +4954,25 @@
     { title: "Logo Design", selector: "#projects .tile:nth-child(1)", index: 0 },
     { title: "Brand Identity", selector: "#projects .tile:nth-child(2)", index: 1 },
     { title: "Motion Graphics", selector: "#projects .tile:nth-child(3)", index: 2 },
-    { title: "Graphic Design", selector: "#projects .tile:nth-child(4)", index: 3 },
+    { title: "Web Designing", selector: "#projects .tile:nth-child(4)", index: 3 },
     { title: "Video Editing", selector: "#projects .tile:nth-child(5)", index: 4 },
-    { title: "3D Designing", selector: "#projects .tile:nth-child(6)", index: 5 }
+	    { title: "3D Design", selector: "#projects .tile:nth-child(6)", index: 5 },
+    { title: "Brand Strategy", selector: "#moreServicesPanel article:nth-child(1)", expand: true },
+    { title: "Creative Direction", selector: "#moreServicesPanel article:nth-child(2)", expand: true },
+    { title: "Social Media Kits", selector: "#moreServicesPanel article:nth-child(3)", expand: true },
+    { title: "Brand Film", selector: "#moreServicesPanel article:nth-child(4)", expand: true },
+    { title: "Content Reels", selector: "#moreServicesPanel article:nth-child(5)", expand: true },
+	    { title: "Packaging Design", selector: "#moreServicesPanel article:nth-child(6)", expand: true },
+	    { title: "Pitch Decks", selector: "#moreServicesPanel article:nth-child(7)", expand: true },
+	    { title: "Company Profiles", selector: "#moreServicesPanel article:nth-child(8)", expand: true },
+	    { title: "Website Build", selector: "#moreServicesPanel article:nth-child(9)", expand: true },
+	    { title: "App UI/UX", selector: "#moreServicesPanel article:nth-child(10)", expand: true },
+	    { title: "App Prototype", selector: "#moreServicesPanel article:nth-child(11)", expand: true },
+	    { title: "Idea To App", selector: "#moreServicesPanel article:nth-child(12)", expand: true },
+	    { title: "Launch System", selector: "#moreServicesPanel article:nth-child(13)", expand: true },
+	    { title: "AI Creative Workflow", selector: "#moreServicesPanel article:nth-child(14)", expand: true },
+	    { title: "Growth Visual Kit", selector: "#moreServicesPanel article:nth-child(15)", expand: true },
+    { title: "Consultation", selector: ".service-consultation-card", expand: true }
   ];
 
   function normalize(text) { return (text || "").toLowerCase().replace(/\s+/g, " ").trim(); }
@@ -4978,6 +5023,9 @@
             clearHighlights();
             setSearchOpen(false, false);
             
+            if (item.expand && typeof window.setMoreServicesOpen === "function") {
+              window.setMoreServicesOpen(true);
+            }
             const targetBox = document.querySelector(item.selector);
             if (targetBox) {
 
@@ -5075,6 +5123,39 @@
       setSearchOpen(true);
     }
     if (event.key === "Escape" && panel.classList.contains("is-open")) { setSearchOpen(false); }
+  });
+})();
+</script>
+<script id="service-expander-script">
+(function(){
+  const toggle = document.getElementById("moreServicesToggle");
+  const panel = document.getElementById("moreServicesPanel");
+  if (!toggle || !panel) return;
+
+  function setOpen(open, options = {}) {
+    toggle.setAttribute("aria-expanded", open ? "true" : "false");
+    panel.hidden = !open;
+    if (open && options.scroll !== false) {
+      requestAnimationFrame(() => panel.scrollIntoView({ behavior: "smooth", block: "nearest" }));
+    }
+  }
+
+  window.setMoreServicesOpen = setOpen;
+	  toggle.addEventListener("click", () => {
+	    const shouldOpen = toggle.getAttribute("aria-expanded") !== "true";
+	    setOpen(shouldOpen);
+	  });
+
+	  panel.querySelectorAll("article[data-service]").forEach((card, index) => {
+	    card.style.setProperty("--service-order", index);
+    const selectService = () => window.routeServiceToEnquiry?.(card.dataset.service);
+    card.addEventListener("click", selectService);
+    card.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        selectService();
+      }
+    });
   });
 })();
 </script>
@@ -5800,6 +5881,9 @@
     "main section:not(#home) > *",
     "#about .subcard",
     "#projects .tile",
+    "#projects .service-expander",
+    "#projects .more-services-grid article",
+    "#projects .service-consultation-card",
     "#client-report .client-stat-item",
     "footer .foot"
   ].join(","))).filter((node) => {
@@ -6097,6 +6181,1099 @@
       justify-self: stretch !important;
     }
   }
+
+  #about,
+  #connect,
+  footer {
+    display: flex !important;
+    justify-content: center !important;
+  }
+
+  #about,
+  footer {
+    flex-direction: column !important;
+    align-items: center !important;
+  }
+
+  #about .about-hero-grid,
+  #about .subcards,
+  #connect .connect-grid,
+  footer .footer-shell {
+    width: min(1280px, 100%) !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+  }
+
+  #about .about-video-box {
+    justify-self: end !important;
+    max-width: min(420px, 100%) !important;
+  }
+
+  #connect .connect-grid {
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  #connect .connect-grid > div:first-child {
+    width: 100% !important;
+    max-width: 720px !important;
+  }
+
+  .footer-shell {
+    padding-top: clamp(28px, 4vw, 42px) !important;
+  }
+
+  .footer-top {
+    width: 100% !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    gap: clamp(22px, 5vw, 56px) !important;
+    align-items: end !important;
+  }
+
+  .footer-link-block p {
+    margin: 0 0 14px !important;
+    font-weight: 520 !important;
+    color: inherit !important;
+  }
+
+  .footer-logo-block {
+    display: flex !important;
+    justify-content: flex-end !important;
+    align-items: center !important;
+  }
+
+  .footer-logo-block img {
+    width: auto !important;
+    height: clamp(44px, 5vw, 62px) !important;
+    object-fit: contain !important;
+    display: block !important;
+  }
+
+  .footer-bottom {
+    width: 100% !important;
+    margin-top: clamp(30px, 5vw, 54px) !important;
+    padding-top: clamp(18px, 2.4vw, 26px) !important;
+    border-top: 1px solid rgba(255,255,255,.10) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 18px !important;
+  }
+
+  .footer-bottom p {
+    margin: 0 !important;
+    color: rgba(245,245,247,.76) !important;
+  }
+
+  .footer-legal {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    justify-content: flex-end !important;
+    align-items: center !important;
+    gap: 8px 14px !important;
+    font-family: var(--font-mono) !important;
+    font-size: 12px !important;
+    line-height: 1.35 !important;
+    color: rgba(245,245,247,.68) !important;
+    text-align: right !important;
+  }
+
+  .footer-legal a {
+    color: inherit !important;
+    text-decoration: none !important;
+    border-bottom: 1px solid rgba(245,245,247,.22) !important;
+    transition: color .22s ease, border-color .22s ease !important;
+  }
+
+  .footer-legal a:hover {
+    color: #fff !important;
+    border-color: rgba(255,255,255,.72) !important;
+  }
+
+  @media (max-width: 760px) {
+    .site-header nav#nav-menu.nav-menu a[href="#projects"] {
+      --nav-icon: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Crect x='4' y='4' width='6.5' height='6.5' rx='1.7' fill='none' stroke='black' stroke-width='1.8'/%3E%3Crect x='13.5' y='4' width='6.5' height='6.5' rx='1.7' fill='none' stroke='black' stroke-width='1.8'/%3E%3Crect x='4' y='13.5' width='6.5' height='6.5' rx='1.7' fill='none' stroke='black' stroke-width='1.8'/%3E%3Crect x='13.5' y='13.5' width='6.5' height='6.5' rx='1.7' fill='none' stroke='black' stroke-width='1.8'/%3E%3C/svg%3E");
+    }
+
+    #about,
+    #connect {
+      padding-left: clamp(18px, 5vw, 28px) !important;
+      padding-right: clamp(18px, 5vw, 28px) !important;
+    }
+
+    #about .about-hero-grid {
+      display: grid !important;
+      grid-template-columns: 1fr !important;
+      gap: 0 !important;
+      align-items: start !important;
+      text-align: left !important;
+    }
+
+    #about .about-video-box {
+      display: none !important;
+    }
+
+    #about h2.big {
+      max-width: 100% !important;
+      white-space: normal !important;
+      font-size: clamp(46px, 15vw, 74px) !important;
+      line-height: .9 !important;
+    }
+
+    #about .subcards {
+      margin-top: clamp(30px, 8vw, 44px) !important;
+    }
+
+    #connect .connect-grid {
+      grid-template-columns: 1fr !important;
+      gap: clamp(24px, 8vw, 40px) !important;
+      justify-items: stretch !important;
+    }
+
+    #connect h2.big {
+      max-width: 100% !important;
+      font-size: clamp(48px, 14vw, 76px) !important;
+      line-height: .96 !important;
+    }
+
+    .footer-top {
+      grid-template-columns: 1fr !important;
+      align-items: start !important;
+    }
+
+    .footer-logo-block {
+      justify-content: flex-start !important;
+    }
+
+    .footer-bottom {
+      align-items: flex-start !important;
+      flex-direction: column !important;
+    }
+
+    .footer-legal {
+      justify-content: flex-start !important;
+      text-align: left !important;
+      max-width: 100% !important;
+    }
+  }
+
+  .service-expander {
+    position: relative !important;
+    isolation: isolate !important;
+    width: 100% !important;
+    min-height: 72px !important;
+    margin-top: 12px !important;
+    padding: 12px 12px 12px 20px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 18px !important;
+    overflow: hidden !important;
+    border: 1px solid rgba(11,11,13,.12) !important;
+    border-radius: 8px !important;
+    background: rgba(255,255,255,.38) !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.9), 0 12px 34px rgba(11,11,13,.045) !important;
+    color: #0b0b0d !important;
+    text-align: left !important;
+    cursor: pointer !important;
+    backdrop-filter: blur(18px) saturate(130%) !important;
+    -webkit-backdrop-filter: blur(18px) saturate(130%) !important;
+    transition: transform .34s cubic-bezier(.16,1,.3,1), border-color .26s ease, box-shadow .26s ease !important;
+  }
+
+  .service-expander::before {
+    content: "" !important;
+    position: absolute !important;
+    inset: 0 auto 0 -34% !important;
+    z-index: -1 !important;
+    width: 34% !important;
+    background: linear-gradient(90deg, transparent, rgba(39,45,207,.13), transparent) !important;
+    transform: skewX(-16deg) !important;
+    transition: left .7s cubic-bezier(.16,1,.3,1) !important;
+  }
+
+  .service-expander:hover,
+  .service-expander:focus-visible,
+  .service-expander[aria-expanded="true"] {
+    border-color: rgba(39,45,207,.34) !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.95), 0 18px 46px rgba(39,45,207,.10) !important;
+    outline: none !important;
+  }
+
+  .service-expander:hover::before,
+  .service-expander:focus-visible::before,
+  .service-expander[aria-expanded="true"]::before {
+    left: 110% !important;
+  }
+
+  .service-expander-copy {
+    min-width: 0 !important;
+    display: flex !important;
+    align-items: baseline !important;
+    gap: clamp(12px, 2vw, 28px) !important;
+  }
+
+  .service-expander-copy strong {
+    color: #0b0b0d !important;
+    font-size: clamp(17px, 1.6vw, 22px) !important;
+    line-height: 1.1 !important;
+    font-weight: 500 !important;
+  }
+
+  .service-expander-copy small {
+    color: rgba(11,11,13,.52) !important;
+    font-family: var(--font-mono) !important;
+    font-size: 10px !important;
+    line-height: 1.4 !important;
+  }
+
+  .service-expander-arrow {
+    flex: 0 0 auto !important;
+    width: 42px !important;
+    height: 42px !important;
+    display: grid !important;
+    place-items: center !important;
+    border: 1px solid rgba(11,11,13,.13) !important;
+    border-radius: 6px !important;
+    background: rgba(255,255,255,.55) !important;
+    transition: transform .4s cubic-bezier(.16,1,.3,1), background .24s ease, color .24s ease !important;
+  }
+
+  .service-expander-arrow svg {
+    width: 18px !important;
+    height: 18px !important;
+    fill: none !important;
+    stroke: currentColor !important;
+    stroke-width: 1.7 !important;
+    stroke-linecap: round !important;
+    stroke-linejoin: round !important;
+  }
+
+  .service-expander[aria-expanded="true"] .service-expander-arrow {
+    color: #fff !important;
+    background: #272dcf !important;
+    border-color: #272dcf !important;
+    transform: rotate(180deg) !important;
+  }
+
+  .more-services-wrap[hidden] {
+    display: none !important;
+  }
+
+  .more-services-wrap {
+    overflow: hidden !important;
+    margin-top: 14px !important;
+    animation: moreServicesIn .46s cubic-bezier(.16,1,.3,1) both !important;
+  }
+
+  @keyframes moreServicesIn {
+    from { opacity: 0; transform: translateY(-12px); filter: blur(8px); }
+    to { opacity: 1; transform: translateY(0); filter: blur(0); }
+  }
+
+  .more-services-grid {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+  }
+
+  .more-services-grid article {
+    min-height: 148px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+    border: 1px solid rgba(0,0,0,.07) !important;
+    border-radius: 20px !important;
+    padding: 16px !important;
+    background: rgba(255,255,255,.82) !important;
+    box-shadow: 0 14px 42px rgba(0,0,0,.045) !important;
+  }
+
+  .more-services-grid b {
+    color: rgba(11,11,13,.42) !important;
+    font-family: var(--font-mono) !important;
+    font-size: 12px !important;
+    font-weight: 500 !important;
+  }
+
+  .more-services-grid h3 {
+    margin: 18px 0 7px !important;
+    color: #0b0b0d !important;
+    font-size: clamp(18px, 2vw, 26px) !important;
+    line-height: 1 !important;
+    letter-spacing: -.04em !important;
+    font-weight: 420 !important;
+  }
+
+  .more-services-grid p {
+    margin: 0 !important;
+    color: rgba(11,11,13,.58) !important;
+    font-size: 13px !important;
+    line-height: 1.42 !important;
+  }
+
+  .service-consultation-card {
+    margin-top: 14px !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, .78fr) minmax(280px, 1fr) auto !important;
+    gap: clamp(18px, 4vw, 42px) !important;
+    align-items: center !important;
+    border-radius: 28px !important;
+    padding: clamp(22px, 3.2vw, 38px) !important;
+    background: radial-gradient(circle at 88% 12%, rgba(39,45,207,.18), transparent 34%), linear-gradient(135deg, #111114, #09090b) !important;
+    color: #f5f5f7 !important;
+    border: 1px solid rgba(255,255,255,.10) !important;
+    box-shadow: 0 28px 90px rgba(0,0,0,.18) !important;
+  }
+
+  .service-consultation-card .kicker {
+    margin: 0 0 14px !important;
+    color: rgba(245,245,247,.62) !important;
+  }
+
+  .service-consultation-card h3 {
+    margin: 0 !important;
+    max-width: 520px !important;
+    color: #fff !important;
+    font-size: clamp(34px, 4.8vw, 72px) !important;
+    line-height: .92 !important;
+    letter-spacing: -.06em !important;
+    font-weight: 400 !important;
+  }
+
+  .service-consultation-card p {
+    margin: 0 !important;
+    color: rgba(245,245,247,.68) !important;
+    font-size: clamp(14px, 1.35vw, 17px) !important;
+    line-height: 1.68 !important;
+  }
+
+  .service-consultation-card a {
+    min-height: 48px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    white-space: nowrap !important;
+    border-radius: 999px !important;
+    padding: 0 22px !important;
+    background: #fff !important;
+    color: #0b0b0d !important;
+    text-decoration: none !important;
+    font-family: var(--font-mono) !important;
+    font-size: 12px !important;
+  }
+
+  @media (max-width: 900px) {
+    .more-services-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+
+    .service-consultation-card {
+      grid-template-columns: 1fr !important;
+      justify-items: start !important;
+    }
+  }
+
+  @media (max-width: 560px) {
+    .more-services-grid {
+      grid-template-columns: 1fr !important;
+    }
+
+    .more-services-grid article {
+      min-height: 124px !important;
+      border-radius: 16px !important;
+      padding: 14px !important;
+    }
+  }
+
+  .more-services-grid article {
+    min-height: 112px !important;
+    padding: 14px 15px !important;
+    display: grid !important;
+    grid-template-columns: auto minmax(0, 1fr) !important;
+    grid-template-rows: auto 1fr !important;
+    column-gap: 13px !important;
+    align-items: start !important;
+    cursor: pointer !important;
+    border-radius: 14px !important;
+    transition: transform .24s cubic-bezier(.16,1,.3,1), border-color .24s ease, box-shadow .24s ease !important;
+  }
+
+  .more-services-grid article > b {
+    grid-row: 1 / 3 !important;
+    padding-top: 2px !important;
+  }
+
+  .more-services-grid h3 {
+    margin: 0 0 6px !important;
+    font-size: clamp(17px, 1.55vw, 22px) !important;
+  }
+
+  .more-services-grid p {
+    font-size: 11px !important;
+    line-height: 1.36 !important;
+  }
+
+  .more-services-grid article:hover,
+  .more-services-grid article:focus-visible {
+    transform: translateY(-2px) !important;
+    border-color: rgba(39,45,207,.28) !important;
+    box-shadow: 0 14px 38px rgba(39,45,207,.09) !important;
+    outline: none !important;
+  }
+
+  @keyframes serviceCapabilityIn {
+    from { opacity: 0; transform: translateY(12px); filter: blur(5px); }
+    to { opacity: 1; transform: translateY(0); filter: blur(0); }
+  }
+
+  .more-services-wrap:not([hidden]) .more-services-grid article {
+    animation: serviceCapabilityIn .5s cubic-bezier(.16,1,.3,1) both !important;
+    animation-delay: calc(var(--service-order, 0) * 28ms) !important;
+  }
+
+  .service-consultation-card {
+    margin-top: 18px !important;
+    display: grid !important;
+    grid-template-columns: minmax(210px, .78fr) minmax(280px, 1.1fr) minmax(230px, .72fr) !important;
+    gap: clamp(24px, 4vw, 52px) !important;
+    align-items: center !important;
+    border-radius: 8px !important;
+    padding: clamp(26px, 3.2vw, 40px) !important;
+    background: #08080a !important;
+    color: #fff !important;
+    border: 1px solid rgba(255,255,255,.14) !important;
+    box-shadow: 0 22px 64px rgba(0,0,0,.16) !important;
+    overflow: hidden !important;
+  }
+
+  #projects .service-consultation-card .consultation-heading .kicker {
+    margin: 0 0 18px !important;
+    color: rgba(255,255,255,.58) !important;
+  }
+
+  .service-consultation-card h3 {
+    margin: 0 !important;
+    color: #fff !important;
+    font-size: clamp(32px, 3.5vw, 48px) !important;
+    line-height: .94 !important;
+    letter-spacing: -.05em !important;
+    font-weight: 400 !important;
+  }
+
+  #projects .service-consultation-card .consultation-copy {
+    margin: 0 !important;
+    color: rgba(255,255,255,.66) !important;
+    font-size: 14px !important;
+    line-height: 1.58 !important;
+  }
+
+  .consultation-action {
+    min-width: 0 !important;
+  }
+
+  .consultation-action > span {
+    display: block !important;
+    margin-bottom: 14px !important;
+    color: rgba(255,255,255,.46) !important;
+    font-family: var(--font-mono) !important;
+    font-size: 10px !important;
+    line-height: 1.4 !important;
+  }
+
+  .consultation-cta {
+    width: 100% !important;
+    min-height: 48px !important;
+    margin: 0 !important;
+    padding: 0 7px 0 16px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 12px !important;
+    border: 1px solid rgba(255,255,255,.16) !important;
+    border-radius: 6px !important;
+    background: #17171a !important;
+    color: #fff !important;
+    cursor: pointer !important;
+    transition: background .22s ease, border-color .22s ease !important;
+  }
+
+  .consultation-cta:hover {
+    background: #272dcf !important;
+    border-color: #272dcf !important;
+  }
+
+  .consultation-cta span {
+    color: #fff !important;
+    font-family: var(--font-mono) !important;
+    font-size: 11px !important;
+  }
+
+  .consultation-cta i {
+    width: 34px !important;
+    height: 34px !important;
+    display: grid !important;
+    place-items: center !important;
+    border-radius: 4px !important;
+    background: #fff !important;
+    color: #0b0b0d !important;
+    font-style: normal !important;
+    font-size: 15px !important;
+    transition: transform .22s ease !important;
+  }
+
+  .consultation-cta:hover i {
+    transform: translate(2px, -2px) !important;
+  }
+
+  /* Compact directory footer based on the supplied hierarchy. */
+  footer {
+    padding: clamp(44px, 6vw, 76px) clamp(20px, 5vw, 64px) 26px !important;
+  }
+
+  footer .footer-shell {
+    width: min(1280px, 100%) !important;
+    padding-top: 0 !important;
+    border-top: 1px solid rgba(255,255,255,.13) !important;
+  }
+
+  .footer-directory {
+    display: grid !important;
+    grid-template-columns: minmax(220px, 1.5fr) repeat(3, minmax(110px, .62fr)) auto !important;
+    gap: clamp(26px, 4vw, 58px) !important;
+    align-items: start !important;
+    padding: clamp(30px, 4vw, 48px) 0 !important;
+  }
+
+  .footer-brand-block strong,
+  .footer-column strong {
+    display: block !important;
+    margin: 0 0 14px !important;
+    color: #fff !important;
+    font-weight: 600 !important;
+  }
+
+  .footer-brand-block > strong { font-size: 18px !important; }
+
+  .footer-brand-block p {
+    max-width: 300px !important;
+    margin: 0 !important;
+    color: rgba(245,245,247,.52) !important;
+    font-size: 12px !important;
+    line-height: 1.55 !important;
+  }
+
+  .footer-availability {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    margin-top: 20px !important;
+    color: rgba(245,245,247,.68) !important;
+    font-family: var(--font-mono) !important;
+    font-size: 11px !important;
+  }
+
+  .footer-availability i {
+    width: 6px !important;
+    height: 6px !important;
+    border-radius: 50% !important;
+    background: #55d780 !important;
+    box-shadow: 0 0 12px rgba(85,215,128,.6) !important;
+  }
+
+  .footer-column strong { font-size: 12px !important; }
+  .footer-column { display: flex !important; flex-direction: column !important; gap: 9px !important; }
+  .footer-column a {
+    width: fit-content !important;
+    color: rgba(245,245,247,.52) !important;
+    text-decoration: none !important;
+    font-family: var(--font-mono) !important;
+    font-size: 11px !important;
+    transition: color .2s ease !important;
+  }
+  .footer-column a:hover { color: #fff !important; }
+
+  .footer-socials { display: flex !important; align-items: center !important; gap: 10px !important; padding-top: 11px !important; }
+  .footer-socials a {
+    width: 40px !important;
+    height: 40px !important;
+    display: grid !important;
+    place-items: center !important;
+    border: 1px solid rgba(255,255,255,.14) !important;
+    border-radius: 50% !important;
+    color: #fff !important;
+    background: rgba(255,255,255,.025) !important;
+    transition: transform .22s ease, border-color .22s ease, background .22s ease !important;
+  }
+  .footer-socials a:hover { transform: translateY(-2px) !important; border-color: rgba(105,112,255,.7) !important; background: rgba(39,45,207,.18) !important; }
+  .footer-socials svg { width: 17px !important; height: 17px !important; fill: none !important; stroke: currentColor !important; stroke-width: 1.6 !important; stroke-linecap: round !important; stroke-linejoin: round !important; }
+  .footer-socials svg.linkedin-mark { fill: currentColor !important; stroke: none !important; }
+
+  .footer-copyright {
+    min-height: 40px !important;
+    display: grid !important;
+    place-items: center !important;
+    border-top: 1px solid rgba(255,255,255,.10) !important;
+    color: rgba(245,245,247,.42) !important;
+    font-family: var(--font-mono) !important;
+    font-size: 10px !important;
+    text-align: center !important;
+  }
+
+  @media (max-width: 900px) {
+    .service-consultation-card { grid-template-columns: minmax(180px, .8fr) minmax(240px, 1.2fr) !important; align-items: center !important; }
+    .consultation-action { grid-column: 1 / -1 !important; display: flex !important; align-items: center !important; justify-content: space-between !important; gap: 20px !important; }
+    .consultation-action > span { margin-bottom: 0 !important; }
+    .consultation-cta { width: min(240px, 100%) !important; }
+    .footer-directory { grid-template-columns: minmax(220px, 1.4fr) repeat(3, minmax(90px, .7fr)) !important; }
+    .footer-socials { grid-column: 1 / -1 !important; padding-top: 0 !important; }
+  }
+
+  @media (max-width: 560px) {
+    #projects .service-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+      gap: 8px !important;
+    }
+
+    .service-expander {
+      min-height: 62px !important;
+      margin-top: 9px !important;
+      padding: 9px 9px 9px 13px !important;
+      border-radius: 7px !important;
+      gap: 10px !important;
+    }
+    .service-expander-copy {
+      display: block !important;
+    }
+    .service-expander-copy strong {
+      display: block !important;
+      font-size: 15px !important;
+    }
+    .service-expander-copy small {
+      display: block !important;
+      margin-top: 3px !important;
+      max-width: 240px !important;
+      font-size: 8.5px !important;
+    }
+    .service-expander-arrow {
+      width: 40px !important;
+      height: 40px !important;
+      border-radius: 5px !important;
+    }
+
+    .more-services-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+      gap: 8px !important;
+    }
+    .more-services-grid article {
+      min-height: 108px !important;
+      display: grid !important;
+      border-radius: 14px !important;
+      padding: 12px 10px !important;
+      column-gap: 9px !important;
+    }
+    .more-services-grid h3 { margin: 0 0 4px !important; font-size: 15px !important; }
+    .more-services-grid p { font-size: 10px !important; line-height: 1.35 !important; }
+
+    .service-consultation-card {
+      grid-template-columns: 1fr !important;
+      border-radius: 8px !important;
+      padding: 18px !important;
+      gap: 14px !important;
+    }
+    #projects .service-consultation-card .consultation-heading .kicker { margin-bottom: 8px !important; }
+    .service-consultation-card h3 { font-size: 30px !important; }
+    #projects .service-consultation-card .consultation-copy { font-size: 11px !important; line-height: 1.48 !important; }
+    .consultation-action { grid-column: 1 !important; display: block !important; }
+    .consultation-action > span { margin-bottom: 9px !important; font-size: 9px !important; }
+    .consultation-cta { width: 100% !important; }
+
+    footer { padding: 42px 28px 20px !important; }
+    .footer-directory {
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+      gap: 46px 26px !important;
+      padding: 42px 0 34px !important;
+    }
+    .footer-brand-block { grid-column: 1 / -1 !important; }
+    .footer-brand-block > strong {
+      margin-bottom: 26px !important;
+      font-size: 27px !important;
+      letter-spacing: -.03em !important;
+    }
+    .footer-brand-block p {
+      max-width: 330px !important;
+      font-size: 15px !important;
+      line-height: 1.55 !important;
+    }
+    .footer-availability {
+      margin-top: 28px !important;
+      font-size: 12px !important;
+    }
+    .footer-column { gap: 17px !important; }
+    .footer-column strong {
+      margin-bottom: 5px !important;
+      font-size: 16px !important;
+    }
+    .footer-column a { font-size: 13px !important; }
+    .footer-column:nth-of-type(4) { grid-column: 1 !important; }
+    .footer-socials {
+      grid-column: 2 !important;
+      justify-self: end !important;
+      align-self: end !important;
+      gap: 9px !important;
+      padding: 0 0 2px !important;
+    }
+    .footer-socials a {
+      width: 44px !important;
+      height: 44px !important;
+    }
+    .footer-copyright {
+      min-height: 48px !important;
+      font-size: 9px !important;
+    }
+
+    #aiComingSoonOrb {
+      width: 44px !important;
+      height: 44px !important;
+      right: 18px !important;
+      z-index: 8 !important;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .service-expander,
+    .service-expander::before,
+    .service-expander-arrow,
+    .more-services-wrap,
+    .more-services-wrap:not([hidden]) .more-services-grid article {
+      animation: none !important;
+      transition: none !important;
+      filter: none !important;
+    }
+  }
+
+
+
+/* Modern services reveal — isolated override */
+#projects .service-card,
+#projects .service-card:hover {
+  transform: none !important;
+  background: #ffffff !important;
+  color: #0b0b0d !important;
+  border-color: rgba(11,11,13,.08) !important;
+  box-shadow: 0 14px 42px rgba(11,11,13,.055) !important;
+}
+#projects .service-card:hover h3,
+#projects .service-card:hover b { color: #0b0b0d !important; }
+#projects .service-card:hover p { color: rgba(10,10,13,.58) !important; }
+
+#projects .service-expander {
+  position: relative !important;
+  width: 100% !important;
+  min-height: 132px !important;
+  margin-top: 0 !important;
+  padding: 54px 24px 18px !important;
+  border: 0 !important;
+  border-radius: 0 0 24px 24px !important;
+  background:
+    linear-gradient(180deg, rgba(245,245,247,0) 0%, rgba(245,245,247,.90) 42%, #f5f5f7 72%) !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  overflow: visible !important;
+  color: #0b0b0d !important;
+  cursor: pointer !important;
+  transform: none !important;
+  transition: background .38s ease, color .38s ease, border-radius .38s ease !important;
+}
+#projects .service-expander::before {
+  content: "" !important;
+  position: absolute !important;
+  left: 50% !important;
+  top: 34px !important;
+  width: min(520px, 72%) !important;
+  height: 1px !important;
+  transform: translateX(-50%) !important;
+  background: linear-gradient(90deg, transparent, rgba(11,11,13,.16), transparent) !important;
+  transition: opacity .3s ease !important;
+  z-index: 0 !important;
+}
+#projects .service-expander::after {
+  content: "" !important;
+  position: absolute !important;
+  left: 50% !important;
+  bottom: 9px !important;
+  width: 76px !important;
+  height: 34px !important;
+  transform: translateX(-50%) !important;
+  border-radius: 999px !important;
+  background: rgba(39,45,207,.12) !important;
+  filter: blur(22px) !important;
+  pointer-events: none !important;
+}
+#projects .service-expander:hover,
+#projects .service-expander:focus-visible {
+  transform: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+#projects .service-expander-copy {
+  position: relative !important;
+  z-index: 1 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  gap: 5px !important;
+}
+#projects .service-expander-copy strong {
+  color: #0b0b0d !important;
+  font-size: clamp(18px, 1.7vw, 24px) !important;
+  line-height: 1 !important;
+  font-weight: 500 !important;
+  letter-spacing: -.035em !important;
+}
+#projects .service-expander-copy small {
+  max-width: 620px !important;
+  color: rgba(11,11,13,.48) !important;
+  font-size: 10px !important;
+  line-height: 1.45 !important;
+}
+#projects .service-expander-arrow {
+  position: relative !important;
+  z-index: 1 !important;
+  width: 48px !important;
+  height: 48px !important;
+  border: 1px solid rgba(11,11,13,.10) !important;
+  border-radius: 999px !important;
+  background: #0b0b0d !important;
+  color: #fff !important;
+  box-shadow: 0 12px 30px rgba(11,11,13,.14) !important;
+  transition: transform .42s cubic-bezier(.16,1,.3,1), background .3s ease, color .3s ease !important;
+}
+#projects .service-expander[aria-expanded="true"] {
+  min-height: 96px !important;
+  padding: 24px 24px 20px !important;
+  border-radius: 0 !important;
+  background: #f5f5f7 !important;
+  color: #0b0b0d !important;
+}
+#projects .service-expander[aria-expanded="true"]::before,
+#projects .service-expander[aria-expanded="true"]::after { opacity: 0 !important; }
+#projects .service-expander[aria-expanded="true"] .service-expander-copy strong { color: #0b0b0d !important; }
+#projects .service-expander[aria-expanded="true"] .service-expander-copy small { color: rgba(11,11,13,.48) !important; }
+#projects .service-expander[aria-expanded="true"] .service-expander-arrow {
+  transform: rotate(180deg) !important;
+  background: #0b0b0d !important;
+  color: #fff !important;
+  border-color: #0b0b0d !important;
+  box-shadow: 0 12px 30px rgba(11,11,13,.14) !important;
+}
+#projects .more-services-wrap {
+  margin-top: 0 !important;
+  padding: 0 0 18px !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  animation: modernServicesOpen .5s cubic-bezier(.16,1,.3,1) both !important;
+}
+@keyframes modernServicesOpen {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+#projects .more-services-grid {
+  padding-top: 4px !important;
+  gap: 10px !important;
+}
+#projects .more-services-grid article,
+#projects .more-services-grid article:hover,
+#projects .more-services-grid article:focus-visible {
+  min-height: 154px !important;
+  padding: 18px !important;
+  border: 1px solid rgba(11,11,13,.08) !important;
+  border-radius: 18px !important;
+  background: #ffffff !important;
+  color: #0b0b0d !important;
+  box-shadow: 0 14px 42px rgba(11,11,13,.055) !important;
+  transform: none !important;
+  outline: none !important;
+}
+#projects .more-services-grid article b { color: rgba(11,11,13,.34) !important; }
+#projects .more-services-grid article h3 { color: #0b0b0d !important; }
+#projects .more-services-grid article p { color: rgba(10,10,13,.58) !important; }
+
+@media (max-width: 560px) {
+  #projects .service-expander {
+    min-height: 112px !important;
+    padding: 46px 14px 14px !important;
+    border-radius: 0 0 18px 18px !important;
+  }
+  #projects .service-expander::before { top: 29px !important; width: 78% !important; }
+  #projects .service-expander-copy { display: flex !important; }
+  #projects .service-expander-copy strong { font-size: 16px !important; }
+  #projects .service-expander-copy small { max-width: 230px !important; font-size: 8.5px !important; }
+  #projects .service-expander-arrow { width: 42px !important; height: 42px !important; }
+  #projects .service-expander[aria-expanded="true"] {
+    min-height: 82px !important;
+    padding: 18px 14px !important;
+    border-radius: 18px 18px 0 0 !important;
+  }
+  #projects .more-services-wrap { padding: 0 8px 8px !important; border-radius: 0 0 18px 18px !important; }
+  #projects .more-services-grid article,
+  #projects .more-services-grid article:hover,
+  #projects .more-services-grid article:focus-visible {
+    min-height: 116px !important;
+    padding: 12px !important;
+    border-radius: 13px !important;
+  }
+}
+
+
+
+/* Compact service option tags — final isolated override */
+#projects .service-grid,
+#projects .more-services-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)) !important;
+  gap: 10px !important;
+}
+
+#projects .service-grid {
+  margin-top: clamp(34px, 4vw, 52px) !important;
+}
+
+#projects .service-card,
+#projects .service-card:hover,
+#projects .service-card:focus-visible,
+#projects .more-services-grid article,
+#projects .more-services-grid article:hover,
+#projects .more-services-grid article:focus-visible {
+  position: relative !important;
+  min-height: 0 !important;
+  height: auto !important;
+  padding: 15px 46px 15px 16px !important;
+  border: 1px solid rgba(11,11,13,.11) !important;
+  border-radius: 999px !important;
+  background: rgba(255,255,255,.72) !important;
+  color: #0b0b0d !important;
+  box-shadow: none !important;
+  overflow: hidden !important;
+  cursor: pointer !important;
+  transform: none !important;
+  transition:
+    background .28s cubic-bezier(.16,1,.3,1),
+    border-color .28s ease,
+    color .28s ease,
+    box-shadow .28s ease,
+    transform .28s cubic-bezier(.16,1,.3,1) !important;
+}
+
+#projects .service-card::after,
+#projects .more-services-grid article::after {
+  content: "↗" !important;
+  position: absolute !important;
+  right: 16px !important;
+  top: 50% !important;
+  transform: translateY(-50%) rotate(0deg) !important;
+  font-size: 15px !important;
+  line-height: 1 !important;
+  color: rgba(11,11,13,.42) !important;
+  transition: transform .28s cubic-bezier(.16,1,.3,1), color .28s ease !important;
+}
+
+#projects .service-card:hover,
+#projects .service-card:focus-visible,
+#projects .more-services-grid article:hover,
+#projects .more-services-grid article:focus-visible {
+  background: #272dcf !important;
+  border-color: #272dcf !important;
+  color: #ffffff !important;
+  box-shadow: 0 12px 30px rgba(39,45,207,.20) !important;
+  transform: translateY(-2px) !important;
+  outline: none !important;
+}
+
+#projects .service-card:hover::after,
+#projects .service-card:focus-visible::after,
+#projects .more-services-grid article:hover::after,
+#projects .more-services-grid article:focus-visible::after {
+  color: #ffffff !important;
+  transform: translateY(-50%) translate(2px,-2px) !important;
+}
+
+#projects .service-card .service-top,
+#projects .service-card .thumb,
+#projects .service-card p,
+#projects .more-services-grid article b,
+#projects .more-services-grid article p {
+  display: none !important;
+}
+
+#projects .service-card > div:last-child {
+  display: contents !important;
+}
+
+#projects .service-card h3,
+#projects .more-services-grid article h3 {
+  margin: 0 !important;
+  color: inherit !important;
+  font-family: var(--font-mono) !important;
+  font-size: 13px !important;
+  line-height: 1.2 !important;
+  letter-spacing: -.02em !important;
+  font-weight: 500 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+#projects .service-card:hover h3,
+#projects .service-card:focus-visible h3,
+#projects .more-services-grid article:hover h3,
+#projects .more-services-grid article:focus-visible h3 {
+  color: #ffffff !important;
+}
+
+#projects .more-services-wrap {
+  padding: 0 0 14px !important;
+}
+
+#projects .more-services-grid {
+  padding-top: 10px !important;
+}
+
+@media (max-width: 760px) {
+  #projects .service-grid,
+  #projects .more-services-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+  #projects .service-card,
+  #projects .service-card:hover,
+  #projects .service-card:focus-visible,
+  #projects .more-services-grid article,
+  #projects .more-services-grid article:hover,
+  #projects .more-services-grid article:focus-visible {
+    padding: 13px 36px 13px 13px !important;
+    border-radius: 14px !important;
+  }
+  #projects .service-card::after,
+  #projects .more-services-grid article::after {
+    right: 13px !important;
+    font-size: 13px !important;
+  }
+  #projects .service-card h3,
+  #projects .more-services-grid article h3 {
+    font-size: 11px !important;
+  }
+}
+
+@media (max-width: 390px) {
+  #projects .service-grid,
+  #projects .more-services-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
 </style>
 </body>
 </html>
